@@ -5115,7 +5115,7 @@ bool isCommlink(int factionId1, int factionId2)
 Factions have vendetta.
 Aliens are always at war with other factions.
 */
-bool isVendetta(int factionId1, int factionId2)
+bool isVendetta(int const factionId1, int const factionId2)
 {
 	assert(factionId1 >= 0 && factionId1 < MaxPlayerNum);
 	assert(factionId2 >= 0 && factionId2 < MaxPlayerNum);
