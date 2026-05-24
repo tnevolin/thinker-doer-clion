@@ -2,7 +2,7 @@
 
 #include "wtp_ai.h"
 
-#include <float.h>
+#include <cfloat>
 #include "robin_hood.h"
 
 #include "wtp_ai_game.h"

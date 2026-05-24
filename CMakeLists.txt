@@ -110,8 +110,8 @@ set(THINKER_SOURCES
     src/veh_turn.h
     src/wtp_ai.cpp
     src/wtp_ai.h
-    src/wtp_aiData.cpp
-    src/wtp_aiData.h
+    src/wtp_ai_game.cpp
+    src/wtp_ai_game.h
     src/wtp_aiHurry.cpp
     src/wtp_aiHurry.h
     src/wtp_aiMove.cpp
