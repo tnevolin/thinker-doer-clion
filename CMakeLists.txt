@@ -213,6 +213,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
         # Core binaries and config
         COMMAND ${CMAKE_COMMAND} -E make_directory ${RELEASE_DIR}/core
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/resources/exe/terranx_mod.exe ${RELEASE_DIR}/core/
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:thinkerlaunch> ${RELEASE_DIR}/core/
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:thinker> ${RELEASE_DIR}/core/
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/resources/configuration ${RELEASE_DIR}/core/
         # Basenames

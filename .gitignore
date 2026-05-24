@@ -10,3 +10,7 @@ cmake-build-*/
 .idea/
 .output.txt
 base.obj
+cmake-build-*/
+.idea/
+.output.txt
+base.obj
