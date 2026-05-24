@@ -6,6 +6,8 @@ enum Triad {
     TRIAD_SEA = 1,
     TRIAD_AIR = 2,
 };
+size_t const TRIAD_COUNT = TRIAD_AIR + 1;
+std::array<Triad, TRIAD_COUNT> const TRIADS = {TRIAD_LAND, TRIAD_SEA, TRIAD_AIR};
 
 
 enum VehMorale {
@@ -470,6 +472,23 @@ struct UNIT {
     bool is_planet_buster() {
         return plan == PLAN_PLANET_BUSTER;
     }
+    
+    // [WTP]
+    bool is_air() {
+        return Chassis[chassis_id].triad == TRIAD_AIR;
+    }
+    bool is_needlejet() {
+        return chassis_id == CHS_NEEDLEJET;
+    }
+    // air except missile
+    bool is_air_not_missile() {
+        return Chassis[chassis_id].triad == TRIAD_AIR && !Chassis[chassis_id].missile;
+    }
+    // air with air superiority except missile
+    bool is_interceptor() {
+        return !Chassis[chassis_id].missile && Chassis[chassis_id].triad == TRIAD_AIR && (ability_flags & ABL_AIR_SUPERIORITY) != 0;
+    }
+
 };
 
 struct VEH {

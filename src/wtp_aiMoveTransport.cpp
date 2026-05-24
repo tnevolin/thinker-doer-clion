@@ -1,12 +1,11 @@
+#include "wtp_aiMoveTransport.h"
+
 #include <float.h>
 #include <map>
-#include "wtp_game.h"
-#include "wtp_ai.h"
-#include "wtp_aiData.h"
-#include "wtp_aiMove.h"
-#include "wtp_aiMoveColony.h"
-#include "wtp_aiMoveTransport.h"
+
+#include "wtp_ai_game.h"
 #include "wtp_aiRoute.h"
+#include "wtp_aiMove.h"
 
 void moveTranportStrategy()
 {
@@ -66,7 +65,7 @@ void moveTranportStrategy()
 //		{
 //			int seaTransportVehiclePad0 = unloadRequestEntry.first;
 //			std::vector<UnloadRequest> &transportUnloadRequests = unloadRequestEntry.second;
-//			int seaTransportVehicleId = getVehicleIdByAIId(seaTransportVehiclePad0);
+//			int seaTransportVehicleId = getVehicleIdByPad0(seaTransportVehiclePad0);
 //			VEH *seaTransportVehicle = getVehicle(seaTransportVehicleId);
 //			
 //			debug("\t\t\t[%4d] %s\n", seaTransportVehicleId, getLocationString({seaTransportVehicle->x, seaTransportVehicle->y}));
@@ -179,7 +178,7 @@ void moveSeaTransportStrategy(int vehicleId)
 	if (closestUnloadLocation != nullptr)
 	{
 		setTask(Task(vehicleId, TT_UNLOAD, closestUnloadLocation));
-		if (TRACE) { debug("\tunload task: %s\n", getLocationString(closestUnloadLocation)); }
+		trace("\tunload task: %s\n", getLocationString(closestUnloadLocation));
 	}
 	
 	// assign load tasks
@@ -188,7 +187,7 @@ void moveSeaTransportStrategy(int vehicleId)
 	
 	if (getTransportRemainingCapacity(vehicleId) == 0)
 	{
-		if (TRACE) { debug("\ttransport is full\n"); }
+		trace("\ttransport is full\n");
 		return;
 	}
 	
@@ -233,7 +232,7 @@ void moveSeaTransportStrategy(int vehicleId)
 		{
 			setTask(Task(vehicleId, TT_LOAD, closestTransitRequest->origin));
 			closestTransitRequest->setSeaTransportVehicleId(vehicleId);
-			if (TRACE) { debug("\tload task: %s\n", getLocationString(closestTransitRequest->origin)); }
+			trace("\tload task: %s\n", getLocationString(closestTransitRequest->origin));
 		}
 		
 	}
@@ -289,7 +288,7 @@ void moveSeaTransportStrategy(int vehicleId)
 		{
 			setTask(Task(vehicleId, TT_LOAD, closestTransitRequest->origin));
 			closestTransitRequest->setSeaTransportVehicleId(vehicleId);
-			if (TRACE) { debug("\tload task: %s\n", getLocationString(closestTransitRequest->origin)); }
+			trace("\tload task: %s\n", getLocationString(closestTransitRequest->origin));
 		}
 		
 	}

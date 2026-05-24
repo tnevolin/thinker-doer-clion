@@ -1,14 +1,14 @@
-#include "wtp_aiMoveColony.h"
+
 #include <algorithm>
-#include "wtp_terranx.h"
-#include "wtp_game.h"
-#include "wtp_ai.h"
-#include "wtp_aiData.h"
-#include "wtp_aiMove.h"
+
+#include "wtp_aiMoveColony.h"
+
+#include "wtp_ai_game.h"
 #include "wtp_aiRoute.h"
+#include "wtp_aiMove.h"
+#include "wtp_aiMoveFormer.h"
 
 std::vector<std::array<int, 2>> a1 = {{1, 2}};
-
 
 // YieldScore comparator
 

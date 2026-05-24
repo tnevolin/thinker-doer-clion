@@ -8,7 +8,7 @@ Game is a mix of many author contributions. Following approach is used to preser
 
 1. Use vanilla/Thinker algorithms as a base line.
 2. Improve game in small area of operations.
-3. Fall back to default (#1) for not covered or impossible to compute cases.
+3. Fall back to default (#1) for not not covered or impossible to compute cases.
 
 # Generic AI paradigm
 
@@ -40,7 +40,7 @@ income value        = <income resource score>
 income growth value = <income growth resource score> * <development scale>
 ```
 
-They can be converted to each other using above rules. Income is picked as a baseline as it is the most common bonus and the most easiest to comprehend.
+They can be converted to each other using above rules. Income is picked as a baseline as it is the most common bonus and the most easiest to visualise.
 
 ## Evaluation examples
 

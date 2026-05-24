@@ -27,9 +27,7 @@
 #else
 #define MOD_DATE __DATE__
 #define DEBUG 0
-#ifndef NDEBUG
 #define NDEBUG /* Disable assertions */
-#endif
 #define debug(...) /* Nothing */
 #endif
 

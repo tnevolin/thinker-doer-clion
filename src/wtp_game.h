@@ -1,12 +1,20 @@
 #pragma once
 
-#include "main.h"
-#include <array>
 #include <vector>
 #include <set>
 #include <map>
 #include "robin_hood.h"
-#include "engine.h"
+#include "lib/tree.hh"
+
+#include "main.h"
+
+// tracing statements
+#ifdef BUILD_DEBUG
+	#define trace(...) if (TRACE) { fprintf(debug_log, __VA_ARGS__); }
+#else
+	#define trace(...) /* Nothing */
+#endif
+constexpr bool TRACE = DEBUG && true;
 
 extern char const NULLPTR_STRING[];
 
@@ -15,12 +23,202 @@ extern const std::array<Triad, 3> Triads;
 // first level triad based defensive structure facilities
 FacilityId constexpr TRIAD_DEFENSIVE_FACILITIES[] = {FAC_PERIMETER_DEFENSE, FAC_NAVAL_YARD, FAC_AEROSPACE_COMPLEX};
 // all defensive structure facilities
-FacilityId const DEFENSIVE_FACILITIES[] = {FAC_PERIMETER_DEFENSE, FAC_NAVAL_YARD, FAC_AEROSPACE_COMPLEX, FAC_TACHYON_FIELD};
+FacilityId constexpr DEFENSIVE_FACILITIES[] = {FAC_PERIMETER_DEFENSE, FAC_NAVAL_YARD, FAC_AEROSPACE_COMPLEX, FAC_TACHYON_FIELD};
+
+extern double const INF;
+
+struct Profile
+{
+	std::string name;
+	bool running = false;
+	int executionCount = 0;
+	clock_t startTime = 0;
+	clock_t totalTime = 0;
+	
+	void start();
+	void pause();
+	void resume();
+	void stop();
+	
+};
+struct ProfileName
+{
+	std::string name;
+	Profile profile;
+};
+class Profiling
+{
+private:
+	
+	static int const NAME_LENGTH = 120;
+	
+	static tree<ProfileName> profiles;
+	
+	static Profile *getProfile(std::string name);
+	static Profile *addTopProfile(std::string name);
+	static Profile *addChildProfile(std::string name, std::string parentName);
+	
+public:
+	
+	static void reset();
+	static void start(std::string name);
+	static void start(std::string name, std::string parentName);
+	static void pause(std::string name);
+	static void resume(std::string name);
+	static void stop(std::string name);
+	static void print();
+	
+};
+
+struct IdIntValue
+{
+	int id;
+	int value;
+};
+
+struct IdDoubleValue
+{
+	int id;
+	double value;
+
+};
+
+struct MapIntValue
+{
+	MAP *tile = nullptr;
+	int value = INT_MAX;
+	
+	MapIntValue(MAP *_tile, int _value)
+	: tile(_tile), value(_value)
+	{}
+	
+};
+
+struct MapDoubleValue
+{
+	MAP *tile = nullptr;
+	double value = INF;
+	
+	MapDoubleValue(MAP *_tile, double _value)
+	: tile(_tile), value(_value)
+	{}
+	
+};
+
+/*
+Information about defend economic effect and remaining health.
+*/
+struct VehicleDefendInfo
+{
+	double economicEffect;
+	double relativeDamage;
+};
+
+/// surface type (land or sea)
+enum SurfaceType
+{
+	ST_LAND,
+	ST_SEA,
+};
+static constexpr int SurfaceTypeCount = ST_SEA + 1;
+
+enum ENGAGEMENT_MODE
+{
+	EM_MELEE,
+	EM_ARTILLERY,
+};
+int const ENGAGEMENT_MODE_COUNT = EM_ARTILLERY + 1;
+std::array<ENGAGEMENT_MODE, ENGAGEMENT_MODE_COUNT> const ENGAGEMENT_MODES = {EM_MELEE, EM_ARTILLERY};
+
+enum CombatMode
+{
+	CM_MELEE,
+	CM_ARTILLERY_DUEL,
+	CM_BOMBARDMENT,
+};
+static constexpr int CombatMode_COUNT = CM_BOMBARDMENT + 1;
+
+enum COMBAT_TYPE
+{
+	CT_CON = 0,
+	CT_PSI = 1,
+};
+static constexpr int COMBAT_TYPE_COUNT = CT_PSI + 1;
+
+/// strength for psi/con against psi/con
+struct CombatStrength
+{
+	// [attacker gear type (psi/con)][defender gear type (psi/con)]
+	std::array<std::array<double, COMBAT_TYPE_COUNT>, COMBAT_TYPE_COUNT> values;
+	
+	void accumulate(CombatStrength &combatStrength, double multiplier = 1.0);
+	double getAttackEffect(int vehicleId);
+	
+};
+
+/**
+Combination of factionId and unitId uniquely definining game unit properties.
+*/
+struct FactionUnit
+{
+	int factionId;
+	int unitId;
+	int key = -1;
+	
+	static int encodeKey(int factionId, int unitId);
+	static int encodeKey(int vehicleId);
+	
+	FactionUnit(int _factionId, int _unitId);
+	FactionUnit(int _key);
+	int encodeKey();
+	
+};
+
+/**
+Combination of two faction-units and engagement mode identifying combat.
+*/
+struct FactionUnitCombat
+{
+	FactionUnit attackerFactionUnit;
+	FactionUnit defenderFactionUnit;
+	ENGAGEMENT_MODE engagementMode;
+	
+	static int encodeKey(int attackerKey, int defenderKey, ENGAGEMENT_MODE engagementMode);
+	static int encodeKey(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode);
+	
+	FactionUnitCombat(FactionUnit _attackerFactionUnit, FactionUnit _defenderFactionUnit, ENGAGEMENT_MODE _engagementMode);
+	FactionUnitCombat(int _key);
+	
+};
+
+/**
+Combination of two faction/unit identifying combat with the combat effect attached.
+*/
+struct FactionUnitCombatEffect
+{
+	FactionUnitCombat factionUnitCombat;
+	double effect;
+	
+	FactionUnitCombatEffect(FactionUnitCombat _factionUnitCombat, double effect);
+	
+};
 
 int const MAX_RANGE = 40;
-int const MAX_RANGE_TILE_COUNT = (1 + 2 * MAX_RANGE) * (1 + 2 * MAX_RANGE);
 int const MAX_REACHABLE_LOCATION_RANGE = 40;
 int const MAX_REACHABLE_LOCATION_COUNT = (1 + 2 * MAX_REACHABLE_LOCATION_RANGE) * (1 + 2 * MAX_REACHABLE_LOCATION_RANGE);
+
+/*
+Applies terrain/base/bunker defensive bonuses against attack triad.
+*/
+enum AttackTriad
+{
+	ATTACK_TRIAD_LAND	= 0,
+	ATTACK_TRIAD_SEA	= 1,
+	ATTACK_TRIAD_AIR	= 2,
+	ATTACK_TRIAD_PSI	= 3,
+};
+size_t const ATTACK_TRIAD_COUNT = ATTACK_TRIAD_PSI + 1;
+std::array<AttackTriad, ATTACK_TRIAD_COUNT> const ATTACK_TRIADS = {ATTACK_TRIAD_LAND, ATTACK_TRIAD_SEA, ATTACK_TRIAD_AIR, ATTACK_TRIAD_PSI, };
 
 /// alien units
 const std::vector<int> ALIEN_UNITS
@@ -32,36 +230,6 @@ const std::vector<int> ALIEN_UNITS
     BSC_SPORE_LAUNCHER,
     BSC_FUNGAL_TOWER,
 };
-
-/// surface type (land or sea)
-enum SurfaceType
-{
-	ST_LAND,
-	ST_SEA,
-};
-const int SurfaceTypeCount = ST_SEA + 1;
-
-enum ENGAGEMENT_MODE
-{
-	EM_MELEE,
-	EM_ARTILLERY,
-};
-int const ENGAGEMENT_MODE_COUNT = EM_ARTILLERY + 1;
-
-enum COMBAT_MODE
-{
-	CM_MELEE,
-	CM_ARTILLERY_DUEL,
-	CM_BOMBARDMENT,
-};
-const int COMBAT_MODE_COUNT = CM_BOMBARDMENT + 1;
-
-enum COMBAT_TYPE
-{
-	CT_CON = 0,
-	CT_PSI = 1,
-};
-const int COMBAT_TYPE_COUNT = CT_PSI + 1;
 
 enum MovementType
 {
@@ -89,51 +257,51 @@ std::array<MovementType, SEA_MOVEMENT_TYPE_COUNT> const SEA_MOVEMENT_TYPES {MT_S
 std::array<MovementType, LAND_MOVEMENT_TYPE_COUNT> const LAND_MOVEMENT_TYPES {MT_LAND, MT_LAND_NATIVE, MT_LAND_EASY, MT_LAND_HOVER, MT_LAND_NATIVE_HOVER};
 std::array<MovementType, BASIC_LAND_MOVEMENT_TYPE_COUNT> const BASIC_LAND_MOVEMENT_TYPES {MT_LAND, MT_LAND_NATIVE};
 
-// array structures
-template<class T, int N> class ArrayVector : public std::array<T,N>
-{
-private:
-	int size = 0;
-public:
-	void clear()
-	{
-		size = 0;
-	}
-	void push_back(T element)
-	{
-		if (size < N) this->at(size++) = element;
-	}
-	typename std::array<T,N>::const_iterator const begin() const
-	{
-		return this->cbegin();
-	}
-	typename std::array<T,N>::const_iterator const end() const
-	{
-		return this->cbegin() + size;
-	}
-};
-template<class T, int N> class ArrayView
-{
-private:
-	std::array<T,N> const *a;
-	int b;
-	int e;
-public:
-	void set(std::array<T,N> const *_a, int _b, int _e)
-	{
-		a = _a;
-		b = _b;
-		e = _e;
-	}
-	typename std::array<T,N>::const_iterator const begin() const
-	{
-		return a->cbegin() + b;
-	}
-	typename std::array<T,N>::const_iterator const end() const
-	{
-		return a->cbegin() + e;
-	}
-};
+//// array structures
+//template<class T, int N> class ArrayVector : public std::array<T,N>
+//{
+//private:
+//	int size = 0;
+//public:
+//	void clear()
+//	{
+//		size = 0;
+//	}
+//	void push_back(T element)
+//	{
+//		if (size < N) this->at(size++) = element;
+//	}
+//	typename std::array<T,N>::iterator begin()
+//	{
+//		return this->begin();
+//	}
+//	typename std::array<T,N>::iterator end()
+//	{
+//		return this->begin() + size;
+//	}
+//};
+//template<class T, int N> class ArrayView
+//{
+//private:
+//	std::array<T,N> *a;
+//	int b;
+//	int e;
+//public:
+//	void set(std::array<T,N> *_a, int _b, int _e)
+//	{
+//		a = _a;
+//		b = _b;
+//		e = _e;
+//	}
+//	typename std::array<T,N>::iterator begin()
+//	{
+//		return a->begin() + b;
+//	}
+//	typename std::array<T,N>::iterator end()
+//	{
+//		return a->begin() + e;
+//	}
+//};
 
 /// combination of angle and tile
 struct MapAngle
@@ -222,7 +390,7 @@ struct RangeTile
 	MAP *tile = nullptr;
 };
 
-class ArithmeticSummaryStatistics
+class SummaryStatistics
 {
 private:
 	double sumWeight = 0.0;
@@ -239,15 +407,15 @@ public:
 		sumWeight += weight;
 		sumWeightValue += weight * value;
 	}
-	double getWeight()
-	{
-		return sumWeight;
-	}
-	double getArithmeticSum()
+//	double sumWeight()
+//	{
+//		return sumWeight;
+//	}
+	double sum()
 	{
 		return sumWeightValue;
 	}
-	double getArithmeticMean()
+	double mean()
 	{
 		return sumWeight <= 0.0 ? 0.0 : sumWeightValue / sumWeight;
 	}
@@ -697,20 +865,19 @@ std::vector<int> const getAdjacentTileIndexes(int tileIndex);
 std::vector<MAP *> const getAdjacentTiles(MAP *tile);
 std::vector<MAP *> getSideTiles(MAP *tile);
 
-ArrayVector<MAP *, MAX_RANGE_TILE_COUNT> const &getSquareOffsetTiles(MAP *center, int beginIndex, int endIndex);
-ArrayVector<MAP *, MAX_RANGE_TILE_COUNT> const &getSquareBlockRadiusTiles(MAP *center, int minRadius, int maxRadius);
-ArrayVector<MAP *, MAX_RANGE_TILE_COUNT> const &getRangeTiles(MAP *tile, int range, bool includeCenter);
-bool nextRangeTile(MAP *center, int maxRange, bool includeCenter, RangeTile &rangeTile);
+std::vector<MAP *> getSquareOffsetTiles(MAP *center, int beginIndex, int endIndex);
+std::vector<MAP *> getSquareBlockRadiusTiles(MAP *center, int minRadius, int maxRadius);
+std::vector<MAP *> getRangeTiles(MAP *center, int range, bool includeCenter);
 
 std::vector<MAP *> getBaseOffsetTiles(int x, int y, int offsetBegin, int offsetEnd);
-std::vector<MAP *> getBaseOffsetTiles(MAP *tile, int offsetBegin, int offsetEnd);
+std::vector<MAP *> getBaseOffsetTiles(MAP *center, int offsetBegin, int offsetEnd);
 std::vector<MAP *> getBaseAdjacentTiles(int x, int y, bool includeCenter);
-std::vector<MAP *> getBaseAdjacentTiles(MAP *tile, bool includeCenter);
+std::vector<MAP *> getBaseAdjacentTiles(MAP *center, bool includeCenter);
 std::vector<MAP *> getBaseRadiusTiles(int x, int y, bool includeCenter);
-std::vector<MAP *> getBaseRadiusTiles(MAP *tile, bool includeCenter);
-ArrayVector<MAP *, MAX_RANGE_TILE_COUNT> const &getBaseExternalRadiusTiles(MAP *tile);
-std::vector<MAP *> getBaseRadiusSideTiles(MAP *tile);
-std::vector<MAP *> getBaseRadiusAdjacentTiles(MAP *tile);
+std::vector<MAP *> getBaseRadiusTiles(MAP *center, bool includeCenter);
+std::vector<MAP *> getBaseExternalRadiusTiles(MAP *center);
+std::vector<MAP *> getBaseRadiusSideTiles(MAP *center);
+std::vector<MAP *> getBaseRadiusAdjacentTiles(MAP *center);
 
 // =======================================================
 // iterating surrounding locations - end
@@ -827,8 +994,7 @@ std::vector<MAP *> getBaseWorkedTiles(int baseId);
 int getBaseWorkerCount(int baseId);
 bool isBaseWorkedTile(int baseId, int x, int y);
 bool isBaseWorkedTile(int baseId, MAP *tile);
-std::vector<int> getFactionUnitIds(int factionId, bool includeObsolete, bool includeNotPrototyped);
-int getFactionFastestFormerUnitId(int factionId);
+std::vector<int> getDesignedFactionUnitIds(int factionId, bool includeObsolete, bool includeNotPrototyped);
 bool isVehicleNativeLand(int vehicleId);
 bool isBaseBuildingColony(int baseId);
 int getFacilityPopulationLimit(int factionId, int facilityId);
@@ -877,8 +1043,6 @@ bool isVehicleOnTransport(int vehicleId);
 bool isVehicleOnSeaTransport(int vehicleId);
 bool isLandVehicleOnTransport(int vehicleId);
 int getVehicleTransportId(int vehicleId);
-int setMoveTo(int vehicleId, MAP *destination);
-int setMoveTo(int vehicleId, const std::vector<MAP *> &waypoints);
 bool isFriendlyTerritory(int factionId, MAP* tile);
 bool isUnfriendlyTerritory(int factionId, MAP* tile);
 bool isNeutralTerritory(int factionId, MAP* tile);
@@ -917,8 +1081,9 @@ int getBaseIdAt(int x, int y);
 bool isNativeUnit(int unitId);
 bool isNativeVehicle(int vehicleId);
 bool isRegularUnit(int unitId);
+bool isRegularCombatUnit(int unitId);
 bool isRegularVehicle(int vehicleId);
-double getPercentageBonusMultiplier(int percentageBonus);
+double getPercentageBonusMultiplier(double percentageBonus);
 bool isMineBonus(MAP *tile);
 std::vector<int> selectVehicles(const VehicleFilter filter);
 bool isNextToRegion(int x, int y, int region);
@@ -954,7 +1119,7 @@ bool isTransportHasCapacity(int transportVehicleId);
 int getVehicleMaxPower(int vehicleId);
 int getVehiclePower(int vehicleId);
 double getVehicleRelativeDamage(int vehicleId);
-double getVehicleRelativePower(int vehicleId);
+double getVehicleRelativeHealth(int vehicleId);
 int getVehicleHitPoints(int vehicleId, bool psiCombat);
 int getBaseGrowthRate(int baseId);
 bool isCommlink(int factionId1, int factionId2);
@@ -972,8 +1137,6 @@ int getVehicleCurrentConHP(int vehicleId);
 int getUnitSlotById(int unitId);
 int getUnitIdBySlot(int factionId, int slot);
 int getUnitIndex(int factionId, int unitId);
-int getFactionIdByUnitIndex(int unitIndex);
-int getUnitIdByUnitIndex(int unitIndex);
 int getBasePoliceSuppressedDrones(int baseId);
 bool isReactorIgnoredInCombat(bool psiCombat);
 bool isInfantryUnit(int unitId);
@@ -983,7 +1146,8 @@ bool isPolice2xVehicle(int vehicleId);
 bool isInfantryPolice2xUnit(int unitId, int factionId);
 bool isInfantryPolice2xVehicle(int vehicleId);
 bool isPsiCombat(int attackerUnitId, int defenderUnitId);
-double getAlienTurnStrengthModifier();
+double getAlienTurnOffenseModifier();
+double getAlienTurnDefenseModifier();
 int getFactionMaintenance(int factionId);
 int getFactionNetIncome(int factionId);
 int getFactionGrossIncome(int factionId);
@@ -1021,10 +1185,6 @@ bool isNeedlejetInFlightVehicle(int vehicleId);
 void longRangeFire(int vehicleId, int offsetIndex);
 void longRangeFire(int vehicleId, MAP *attackLocation);
 RepairInfo getVehicleRepairInfo(int vehicleId, MAP *tile);
-bool isObsoleteUnit(int unitId, int factionId);
-bool isPrototypedUnit(int unitId);
-bool isActiveUnit(int unitId);
-bool isAvailableUnit(int unitId, int factionId, bool includeObsolete);
 CAbility *getAbility(int abilityId);
 void obsoleteUnit(int unitId, int factionId);
 void reinstateUnit(int unitId, int factionId);
@@ -1047,7 +1207,6 @@ bool isUnitCanBombardAircraftInFlight(int unitId);
 int getClosestHostileBaseRange(int factionId, MAP *tile);
 double getEuclidianDistance(int x1, int y1, int x2, int y2);
 int getVehicleUnitCost(int vehicleId);
-int getVehicleRemainingMovement(int vehicleId);
 bool isAllowedMove(int vehicleId, MAP *srcTile, MAP *dstTile);
 bool isZocAffectedUnit(int unitId);
 bool isZocAffectedVehicle(int vehicleId);
@@ -1097,7 +1256,6 @@ int getVectorDist(MAP const *tile1, MAP const *tile2);
 int getProximity(int x1, int y1, int x2, int y2);
 double getEuqlideanDistanceSquared(MAP *origin, MAP *destination);
 double getEuqlideanDistance(MAP *origin, MAP *destination);
-double getDiagonalDistance(MAP *tile1, MAP *tile2);
 int getDiagonalDistanceDoubled(MAP *tile1, MAP *tile2);
 Location getLocationByAngle(int x, int y, int angle);
 int getTileIndexByAngle(int tileIndex, int angle);
@@ -1105,13 +1263,12 @@ MAP *getTileByAngle(MAP *tile, int angle);
 int getAngleByTile(MAP *tile, MAP *anotherTile);
 bool isPodAt(MAP *tile);
 std::vector<int> getTransportPassengers(int transportVehicleId);
-double getLocationBombardmentMaxRelativeDamage(MAP *tile);
-double getVehicleBombardmentMaxRelativeDamage(int vehicleId);
-double getVehicleBombardmentRemainingRelativeDamage(int vehicleId);
+double getMaxBombardmentDamage(Triad triad, MAP *tile);
+double isLethalBombardment(Triad triad, MAP *tile);
+double getVehicleRemainingBombardmentDamage(int vehicleId);
 int getBasePopulationLimit(int baseId);
-int getBaseRadiusLayer(MAP *baseTile, MAP *tile);
-bool isWithinBaseRadius(MAP *baseTile, MAP *tile);
-std::vector<MAP *> getFartherBaseRadiusTiles(MAP *baseTile, MAP *tile);
+bool isWithinBaseRadius(int x1, int y1, int x2, int y2);
+bool isWithinBaseRadius(MAP *tile1, MAP *tile2);
 bool isFactionHasProject(int factionId, int facilityId);
 Budget getBaseBudgetIntake(int baseId);
 Budget getBaseBudgetIntake2(int baseId);
@@ -1139,7 +1296,8 @@ bool isBattleOgreUnit(int unitId);
 bool isBattleOgreVehicle(int unitId);
 int getUnitMoveRate(int factionId, int unitId);
 int getUnitSpeed(int factionId, int unitId);
-int getVehicleMoveRate(int vehicleId);
+int getVehicleMaxMoves(int vehicleId);
+int getVehicleRemainingMoves(int vehicleId);
 int getVehicleSpeed(int vehicleId);
 bool isTileAccessesWater(MAP *tile);
 bool isBaseAccessesWater(int baseId);
@@ -1163,8 +1321,28 @@ bool isOpenTerrain(MAP *tile);
 std::set<int> getBaseSeaRegions(int baseId);
 int getClosestNotOwnedTileRange(int factionId, MAP *tile, int minRadius, int maxRadius);
 int getClosestNotOwnedOrSeaTileRange(int factionId, MAP *tile, int minRadius, int maxRadius);
-int getUnitOffenseExtendedTriad(int unitId, int enemyUnitId);
+AttackTriad getAttackTriad(int attackUnitId, int defendUnitId);
+bool isUnitObsolete(int unitId, int factionId);
+bool isUnitAvailable(int unitId, int factionId);
+bool isUnitPsiOffense(int unitId);
+bool isUnitPsiDefense(int unitId);
+CombatMode getCombatMode(ENGAGEMENT_MODE engagementMode, int defenderUnitId);
+bool isMutualCombat(ENGAGEMENT_MODE engagementMode, int defenderUnitId);
+bool isBombardment(ENGAGEMENT_MODE engagementMode, int defenderUnitId);
+double getVehicleStrenghtMultiplier(int vehicleId);
+double getVehicleBombardmentStrenghtMultiplier(int vehicleId);
+bool isMapValueEmpty(robin_hood::unordered_flat_map<int, double> const &map, int key);
 int getBaseDoctorCount(int baseId);
 int getBaseSpecialistPsych(int baseId);
 bool isFriendlyBaseInRangeHasFacility(int factionId, int x, int y, int range, FacilityId facilityId);
+bool isRangedAirUnit(int unitId);
+bool isRangedAirVehicle(int vehicleId);
+char * getAbilitiesString(int unitType);
+int getBaseItemBuildTime(int baseId, int item, bool countAccumulatedMinerals = false);
+bool isVehicleConvoying(int vehicleId);
+bool isVehicleTerraforming(VEH *vehicle);
+double getValueSum(robin_hood::unordered_flat_map<int, double> weights);
+bool isValidFactionId(int factionId);
+bool isValidUnitId(int unitId);
+bool isValidVehicleId(int vehicleId);	
 

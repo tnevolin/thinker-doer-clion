@@ -1,8 +1,9 @@
 #pragma once
 
+#include "robin_hood.h"
+
 #include "main.h"
-#include "game.h"
-#include "wtp_aiData.h"
+#include "engine.h"
 
 const int GAME_DURATION = 350;
 const double MAX_THREAT_TURNS = 10.0;
@@ -173,18 +174,13 @@ void evaluateBunkerDefenseUnits();
 void evaluateTerritoryProtectionUnits();
 void evaluateEnemyBaseAssaultUnits();
 void evaluateSeaTransport();
-int findNativeAttackerUnit(bool ocean);
 int findScoutUnit(int triad);
 bool canBaseProduceColony(int baseId);
-int findFormerUnit(int triad);
 std::vector<int> getRegionBases(int factionId, int region);
 int getRegionBasesMaxMineralSurplus(int factionId, int region);
 int getRegionBasesMaxPopulationSize(int factionId, int region);
 int calculateUnitTypeCount(int baseId, int weaponType, int triad, int excludedBaseId);
 bool isMilitaryItem(int item);
-int selectProtectionUnit(int baseId, int targetBaseId);
-int selectAlienProtectorUnit();
-int findTransportUnit();
 bool isBaseCanBuildUnit(int baseId, int unitId);
 bool isBaseCanBuildFacility(int baseId, int facilityId);
 int getFirstAvailableFacility(int baseId, std::vector<int> facilityIds);

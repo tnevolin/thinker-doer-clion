@@ -5,51 +5,6 @@
 #include <iomanip>
 #include <map>
 #include "robin_hood.h"
-#include "game.h"
-#include "lib/tree.hh"
-
-struct Profile
-{
-	std::string name;
-	bool running = false;
-	int executionCount = 0;
-	clock_t startTime = 0;
-	clock_t totalTime = 0;
-	
-	void start();
-	void pause();
-	void resume();
-	void stop();
-	
-};
-struct ProfileName
-{
-	std::string name;
-	Profile profile;
-};
-class Profiling
-{
-private:
-	
-	static int const NAME_LENGTH = 120;
-	
-	static tree<ProfileName> profiles;
-	
-	static Profile *getProfile(std::string name);
-	static Profile *addTopProfile(std::string name);
-	static Profile *addChildProfile(std::string name, std::string parentName);
-	
-public:
-	
-	static void reset();
-	static void start(std::string name);
-	static void start(std::string name, std::string parentName);
-	static void pause(std::string name);
-	static void resume(std::string name);
-	static void stop(std::string name);
-	static void print();
-	
-};
 
 struct BASE_INFO
 {
@@ -84,7 +39,6 @@ double standard_combat_mechanics_calculate_attacker_winning_probability(double p
 double binomial_koefficient(int n, int k);
 
 int map_distance(int x1, int y1, int x2, int y2);
-bool isWithinBaseRadius(int x1, int y1, int x2, int y2);
 __cdecl int modified_artillery_damage(int attacker_strength, int defender_strength, int attacker_firepower);
 int wtp_tech_level(int id);
 int wtp_tech_cost(int fac, int tech);
@@ -110,7 +64,6 @@ int __cdecl wtp_mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, i
 __cdecl int modifiedSocialWinDrawSocialCalculateSpriteOffset(int spriteIndex, int effectValue);
 __cdecl int modifiedVehicleCargoForAirTransportUnload(int vehicleId);
 __cdecl void modifiedFactionUpkeep(const int factionId);
-double calculateWinningProbability(double p, int attackerHP, int defenderHP);
 void simplifyOdds(int *attackerOdds, int *defenderOdds);
 bool isTechDiscovered(int factionId, int techId);
 bool isTechAvailable(int factionId, int techId);
@@ -188,6 +141,7 @@ int __cdecl wtp_mod_capture_base(int base_id, int faction, int is_probe);
 void __cdecl wtp_mod_retire_proto(int unitId, int factionId);
 int __cdecl wtp_mod_has_abil_land_air_superiority_attack_needlejet_at_sea(int unit_id, VehAblFlag ability);
 int __cdecl wtp_mod_has_abil_air_superiority_attack_needlejet(int unit_id, VehAblFlag ability);
+int __cdecl wtp_mod_veh_kill(int vehicleId);
 int __thiscall StringList__sort_nop(int *This, int sortType);
 int __thiscall wtp_mod_BattleWin_battle_report_Buffer_wrap2(Buffer* This, LPCSTR lpString, int x, int y, int a5);
 

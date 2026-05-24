@@ -1,10 +1,14 @@
 #pragma GCC diagnostic ignored "-Wshadow"
 
-#include "wtp_ai.h"
-#include "wtp_aiData.h"
+#include "wtp_aiMoveCrawler.h"
+
+#include <vector>
+
+#include "main.h"
+#include "wtp_game.h"
+#include "wtp_ai_game.h"
 #include "wtp_aiRoute.h"
 #include "wtp_aiMove.h"
-#include "wtp_aiMoveCrawler.h"
 
 // convoy data
 
@@ -335,7 +339,7 @@ void assignCrawlerOrders()
 			
 			// travel time
 			
-			double travelTime = getVehicleApproachTime(vehicleId, tile, true);
+			double travelTime = getVehicleApproachTime(vehicleId, tile);
 			if (travelTime == INF)
 				continue;
 			

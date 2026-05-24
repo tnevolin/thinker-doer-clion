@@ -342,7 +342,15 @@ void __cdecl veh_clear(int veh_id, int unit_id, int faction_id) {
         veh->waypoint_x[i] = -1;
         veh->waypoint_y[i] = -1;
     }
+    
+    // [WTP]
+    // default morale = 0
+    /*
     veh->morale = (uint8_t)(MFactions[faction_id].rule_morale + 1);
+    */
+    veh->morale = (uint8_t) (MFactions[faction_id].rule_morale + 0);
+    //
+    
     veh->movement_turns = 0;
     veh->order_auto_type = 0;
     veh->visibility = 0;
@@ -2110,9 +2118,17 @@ int __cdecl mod_veh_init(int unit_id, int faction_id, int x, int y) {
 }
 
 int __cdecl mod_veh_kill(int veh_id) {
+    
+    // [WTP]
+    // intercept veh_kill
+    /*
     VEH* veh = &Vehs[veh_id];
     debug("disband %2d %2d %s\n", veh->x, veh->y, veh->name());
     veh_kill(veh_id);
+    */
+    wtp_mod_veh_kill(veh_id);
+    //
+    
     return VEH_SKIP;
 }
 

@@ -458,10 +458,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->alternative_tech_cost = (atoi(value) == 0 ? false : true);
     }
-//    else if (MATCH("fix_mineral_contribution"))
-//    {
-//        cf->fix_mineral_contribution = (atoi(value) == 0 ? false : true);
-//    }
     else if (MATCH("modified_probe_risks"))
     {
         cf->modified_probe_risks = (atoi(value) == 0 ? false : true);
@@ -1269,26 +1265,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_expansion_weight_deep = atof(value);
     }
-    else if (MATCH("ai_mapstat_ocean"))
-    {
-        cf->ai_mapstat_ocean = atof(value);
-    }
-    else if (MATCH("ai_mapstat_rocky"))
-    {
-        cf->ai_mapstat_rocky = atof(value);
-    }
-    else if (MATCH("ai_mapstat_rainfall"))
-    {
-        cf->ai_mapstat_rainfall = atof(value);
-    }
-    else if (MATCH("ai_mapstat_rockiness"))
-    {
-        cf->ai_mapstat_rockiness = atof(value);
-    }
-    else if (MATCH("ai_mapstat_elevation"))
-    {
-        cf->ai_mapstat_elevation = atof(value);
-    }
     else if (MATCH("ai_expansion_travel_time_scale"))
     {
         cf->ai_expansion_travel_time_scale = atof(value);
@@ -1433,13 +1409,21 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_terraforming_landBridgeRangeScale = atof(value);
     }
-    else if (MATCH("ai_combat_base_threat_coefficient"))
+    else if (MATCH("ai_combat_enemy_unit_value_coefficient"))
     {
-        cf->ai_combat_base_threat_coefficient = atof(value);
+        cf->ai_combat_enemy_unit_value_coefficient = atof(value);
     }
-    else if (MATCH("ai_combat_base_threat_range"))
+    else if (MATCH("ai_combat_unit_value_offense_coefficient"))
     {
-        cf->ai_combat_base_threat_range = atof(value);
+        cf->ai_combat_unit_value_offense_coefficient = atof(value);
+    }
+    else if (MATCH("ai_combat_unit_value_defense_coefficient"))
+    {
+        cf->ai_combat_unit_value_defense_coefficient = atof(value);
+    }
+    else if (MATCH("ai_combat_unit_value_speed_coefficient"))
+    {
+        cf->ai_combat_unit_value_speed_coefficient = atof(value);
     }
     else if (MATCH("ai_base_threat_travel_time_scale"))
     {
@@ -1448,10 +1432,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     else if (MATCH("ai_combat_travel_time_scale"))
     {
         cf->ai_combat_travel_time_scale = atof(value);
-    }
-    else if (MATCH("ai_combat_travel_time_scale_base_protection"))
-    {
-        cf->ai_combat_travel_time_scale_base_protection = atof(value);
     }
     else if (MATCH("ai_combat_priority_escape"))
     {
@@ -1505,29 +1485,13 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_combat_priority_pod = atof(value);
     }
-    else if (MATCH("ai_combat_base_protection_superiority"))
+    else if (MATCH("ai_combat_advantage"))
     {
-        cf->ai_combat_base_protection_superiority = atof(value);
+        cf->ai_combat_advantage = atof(value);
     }
     else if (MATCH("ai_combat_field_attack_base_proximity_scale"))
     {
         cf->ai_combat_field_attack_base_proximity_scale = atoi(value);
-    }
-    else if (MATCH("ai_combat_field_attack_superiority_required"))
-    {
-        cf->ai_combat_field_attack_superiority_required = atof(value);
-    }
-    else if (MATCH("ai_combat_field_attack_superiority_desired"))
-    {
-        cf->ai_combat_field_attack_superiority_desired = atof(value);
-    }
-    else if (MATCH("ai_combat_base_attack_superiority_required"))
-    {
-        cf->ai_combat_base_attack_superiority_required = atof(value);
-    }
-    else if (MATCH("ai_combat_base_attack_superiority_desired"))
-    {
-        cf->ai_combat_base_attack_superiority_desired = atof(value);
     }
     else if (MATCH("ai_combat_strength_increase_value"))
     {
@@ -1544,6 +1508,22 @@ int option_handler(void* user, const char* section, const char* name, const char
     else if (MATCH("ai_combat_sea_base_threat_coefficient"))
     {
         cf->ai_combat_sea_base_threat_coefficient = atof(value);
+    }
+    else if (MATCH("ai_combat_strength_destruction_gain"))
+    {
+        cf->ai_combat_strength_destruction_gain = atof(value);
+    }
+    else if (MATCH("ai_combat_healing_chance"))
+    {
+        cf->ai_combat_healing_chance = atof(value);
+    }
+    else if (MATCH("ai_combat_proximity_dest_time_coefficient"))
+    {
+        cf->ai_combat_proximity_dest_time_coefficient = atof(value);
+    }
+    else if (MATCH("ai_combat_damage_destruction_value_coefficient"))
+    {
+        cf->ai_combat_damage_destruction_value_coefficient = atof(value);
     }
     // =WTP= configuratoin end
     else {

@@ -1,7 +1,10 @@
+
 #include "wtp_aiMoveArtifact.h"
+
+#include <float.h>
+
 #include "wtp_game.h"
-#include "wtp_aiData.h"
-#include "wtp_ai.h"
+#include "wtp_ai_game.h"
 #include "wtp_aiRoute.h"
 #include "wtp_aiMove.h"
 

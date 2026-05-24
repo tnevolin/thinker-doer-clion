@@ -1,20 +1,19 @@
 #pragma GCC diagnostic ignored "-Wshadow"
 
+#include "wtp_aiProduction.h"
+
 #include <math.h>
 #include <set>
 #include <map>
 #include <numeric>
 #include <deque>
-#include "wtp_aiProduction.h"
-#include "engine.h"
-#include "game.h"
-#include "wtp_game.h"
+
 #include "wtp_terranx.h"
-#include "wtp_ai.h"
-#include "wtp_aiData.h"
-#include "wtp_aiMoveColony.h"
+#include "wtp_mod.h"
+#include "wtp_game.h"
 #include "wtp_aiRoute.h"
 #include "wtp_aiHurry.h"
+#include "wtp_aiMoveColony.h"
 
 // global statistics
 
@@ -32,8 +31,6 @@ robin_hood::unordered_flat_map<int, double> weakestEnemyBaseProtection;
 
 double const LAND_ARTILLERY_SATURATION_RATIO = 0.20;
 double const INFANTRY_DEFENSIVE_SATURATION_RATIO = 0.75;
-double globalLandArtillerySaturationCoefficient;
-double globalInfantryDefensiveSaturationCoefficient;
 
 double techStealGain;
 
@@ -195,9 +192,6 @@ void populateFactionProductionData()
 		
 	}
 	
-	double landArtilleryRatio = landOffensiveVehicleCount == 0 ? 0.0 : (double)landArtilleryVehicleCount / (double)landOffensiveVehicleCount;
-	globalLandArtillerySaturationCoefficient = landArtilleryRatio <= LAND_ARTILLERY_SATURATION_RATIO ? 1.0 : (1.0 - landArtilleryRatio) / (1.0 - LAND_ARTILLERY_SATURATION_RATIO);
-	
 	int vehicleCount = 0;
 	int infantryDefensiveVehicleCount = 0;
 	
@@ -217,9 +211,6 @@ void populateFactionProductionData()
 		infantryDefensiveVehicleCount++;
 		
 	}
-	
-	double infantryDefensiveRatio = vehicleCount == 0 ? 0.0 : (double)infantryDefensiveVehicleCount / (double)vehicleCount;
-	globalInfantryDefensiveSaturationCoefficient = infantryDefensiveRatio <= INFANTRY_DEFENSIVE_SATURATION_RATIO ? 1.0 : (1.0 - infantryDefensiveRatio) / (1.0 - INFANTRY_DEFENSIVE_SATURATION_RATIO);
 	
 	Profiling::stop("populateFactionProductionData");
 	
@@ -698,12 +689,11 @@ void evaluateProject()
 	// max threat
 	
 	double maxThreat = 2.0;
-	
 	for (ProductionDemand &productionDemand : productionDemands)
 	{
 		BaseInfo &baseInfo = aiData.getBaseInfo(productionDemand.baseId);
 		
-		double threat = baseInfo.combatData.requiredEffect;
+		double threat = baseInfo.combatData.getAssailantWeightSum();
 		maxThreat = std::max(maxThreat, threat);
 		
 	}
@@ -726,7 +716,7 @@ void evaluateProject()
 		
 		// threat coefficient
 		
-		double threat = baseInfo.combatData.requiredEffect;
+		double threat = baseInfo.combatData.getAssailantWeightSum();
 		double threatCoefficient = 1.0 - threat / maxThreat;
 		
 		// value
@@ -1340,7 +1330,7 @@ void evaluateMilitaryFacilities()
 	int baseId = productionDemand.baseId;
 	BASE *base = productionDemand.base;
 	bool ocean = is_ocean(getBaseMapTile(baseId));
-	BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
+	TileInfo &baseTileInfo = aiData.getBaseTileInfo(baseId);
 	
 	int const mineralCostFactor = mod_cost_factor(aiFactionId, RSC_MINERAL, -1);
 	
@@ -1383,7 +1373,7 @@ void evaluateMilitaryFacilities()
 		{
 			// count cost and support for defense vehicles in this base: old and new (with improved defense)
 			
-			for (int vehicleId : baseInfo.combatData.garrison)
+			for (int vehicleId : baseTileInfo.playerVehicleIds)
 			{
 				VEH *vehicle = getVehicle(vehicleId);
 				
@@ -1576,7 +1566,7 @@ void evaluateDefensiveProbeUnits()
 	
 	// scan combat units for protection
 	
-	for (int unitId : aiData.unitIds)
+	for (int unitId : aiFactionInfo->buildableUnitIds)
 	{
 		UNIT *unit = getUnit(unitId);
 		
@@ -1603,14 +1593,14 @@ void evaluateDefensiveProbeUnits()
 			if (targetBaseProbeData.isSatisfied(false))
 				continue;
 			
-			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, targetBaseTile, false);
+			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, targetBaseTile);
 			double travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, travelTime);
 			
 			// probe
 			
 			double combatEffect = newProbeMoraleMultiplier;
-			double combatEffectCoefficient = getCombatEffectCoefficient(combatEffect);
-			double unitProbeGain = techStealGain * combatEffectCoefficient;
+			double winningProbability = getWinningProbability(combatEffect);
+			double unitProbeGain = techStealGain * winningProbability;
 			double probeGain = unitProbeGain * travelTimeCoefficient;
 			
 			double upkeep = getResourceScore(-getUnitSupport(unitId), 0.0);
@@ -1632,7 +1622,7 @@ void evaluateDefensiveProbeUnits()
 				" travelTime=%7.2f"
 				" travelTimeCoefficient=%5.2f"
 				" combatEffect=%5.2f"
-				" combatEffectCoefficient=%5.2f"
+				" winningProbability=%5.2f"
 				" unitProbeGain=%5.2f"
 				" probeGain=%5.2f"
 				" upkeepGain=%5.2f"
@@ -1643,7 +1633,7 @@ void evaluateDefensiveProbeUnits()
 				, travelTime
 				, travelTimeCoefficient
 				, combatEffect
-				, combatEffectCoefficient
+				, winningProbability
 				, unitProbeGain
 				, probeGain
 				, upkeepGain
@@ -1777,7 +1767,7 @@ void evaluateExpansionUnits()
 			
 			// travel time
 			
-			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, tile, true);
+			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, tile);
 			
 			// yield score
 			
@@ -2166,7 +2156,7 @@ void evaluateConvoyUnits()
 	
 	// process available supply units
 	
-	for (int unitId : aiData.unitIds)
+	for (int unitId : aiFactionInfo->buildableUnitIds)
 	{
 		UNIT *unit = getUnit(unitId);
 		int triad = unit->triad();
@@ -2205,7 +2195,7 @@ void evaluateConvoyUnits()
 			
 			// travelTime
 			
-			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, convoyRequest.tile, true);
+			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, convoyRequest.tile);
 			if (travelTime == INF)
 				continue;
 			
@@ -2537,7 +2527,7 @@ void evaluateBaseDefenseUnits()
 	ProductionDemand &productionDemand = *currentBaseProductionDemand;
 	int baseId = productionDemand.baseId;
 	MAP *baseTile = getBaseMapTile(baseId);
-	BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
+	TileInfo &baseTileInfo = aiData.getBaseTileInfo(baseId);
 	
 	debug("evaluateBaseDefenseUnits\n");
 	
@@ -2555,7 +2545,7 @@ void evaluateBaseDefenseUnits()
 		
 		// best armor or psi
 		
-		if (baseInfo.combatData.garrison.size() == 0)
+		if (baseTileInfo.playerVehicleIds.size() == 0)
 		{
 			if (unitId != BSC_SCOUT_PATROL)
 				continue;
@@ -2571,10 +2561,6 @@ void evaluateBaseDefenseUnits()
 		if (!isBaseCanBuildUnit(baseId, unitId))
 			continue;
 		
-		// saturation ratio
-		
-		double infantryDefensiveSaturationCoefficient = (isInfantryDefensiveUnit(unitId) && !isOffensiveUnit(unitId, aiFactionId)) ? globalInfantryDefensiveSaturationCoefficient : 1.0;
-		
 		// seek for best target base gain
 		
 		double bestGain = 0.0;
@@ -2584,21 +2570,20 @@ void evaluateBaseDefenseUnits()
 			MAP *targetBaseTile = getBaseMapTile(targetBaseId);
 			BaseInfo &targetBaseInfo = aiData.baseInfos.at(targetBaseId);
 			BasePoliceData &targetBasePoliceData = targetBaseInfo.policeData;
-			ProtectCombatData &targetProtectCombatData = targetBaseInfo.combatData;
+			CombatData &targetCombatData = targetBaseInfo.combatData;
 			
-			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, targetBaseTile, true);
+			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, targetBaseTile);
 			double travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, travelTime);
 			
 			// police
 			
-			double unitPoliceGain = targetBasePoliceData.isSatisfied(false) ? 0.0 : targetBasePoliceData.getUnitPoliceGain(unitId, aiFactionId);
+			double unitPoliceGain = targetBasePoliceData.isSatisfied(isPolice2xUnit(unitId, aiFactionId)) ? 0.0 : targetBasePoliceData.getUnitPoliceGain(unitId, aiFactionId);
 			double policeGain = conf.ai_production_priority_police * getGainDelay(unitPoliceGain, travelTime);
 			
 			// protection
 			
-			double combatEffect = targetProtectCombatData.getUnitEffect(unitId);
-			double survivalEffect = getSurvivalEffect(combatEffect);
-			double unitProtectionGain = targetProtectCombatData.isSatisfied(targetBaseId == baseId && baseInfo.combatData.garrison.empty()) ? 0.0 : aiFactionInfo->averageBaseGain * survivalEffect;
+			double unitContribution = targetCombatData.getProtectorUnitContribution(aiFactionId, unitId);
+			double unitProtectionGain = aiFactionInfo->averageBaseGain * unitContribution;
 			double protectionGain = unitProtectionGain * travelTimeCoefficient;
 			
 			double upkeep = getResourceScore(-getBaseNextUnitSupport(baseId, unitId), 0);
@@ -2624,8 +2609,7 @@ void evaluateBaseDefenseUnits()
 				" unitPoliceGain=%5.2f"
 				" policeGain=%5.2f"
 				" ai_production_base_protection_priority=%5.2f"
-				" combatEffect=%5.2f"
-				" survivalEffect=%5.2f"
+				" unitContribution=%5.2f"
 				" unitProtectionGain=%5.2f"
 				" protectionGain=%5.2f"
 				" upkeepGain=%5.2f"
@@ -2639,8 +2623,7 @@ void evaluateBaseDefenseUnits()
 				, unitPoliceGain
 				, policeGain
 				, conf.ai_production_base_protection_priority
-				, combatEffect
-				, survivalEffect
+				, unitContribution
 				, unitProtectionGain
 				, protectionGain
 				, upkeepGain
@@ -2654,7 +2637,6 @@ void evaluateBaseDefenseUnits()
 		double rawPriority = getItemPriority(unitId, bestGain);
 		double priority =
 			conf.ai_production_base_protection_priority
-			* infantryDefensiveSaturationCoefficient
 			* rawPriority
 		;
 		
@@ -2667,14 +2649,12 @@ void evaluateBaseDefenseUnits()
 			"\t%-32s"
 			" priority=%5.2f   |"
 			" ai_production_base_protection_priority=%5.2f"
-			" infantryDefensiveSaturationCoefficient=%5.2f"
 			" bestGain=%5.2f"
 			" rawPriority=%5.2f"
 			"\n"
 			, Units[unitId].name
 			, priority
 			, conf.ai_production_base_protection_priority
-			, infantryDefensiveSaturationCoefficient
 			, bestGain
 			, rawPriority
 		);
@@ -2694,7 +2674,7 @@ void evaluateBunkerDefenseUnits()
 	ProductionDemand &productionDemand = *currentBaseProductionDemand;
 	int baseId = productionDemand.baseId;
 	MAP *baseTile = getBaseMapTile(baseId);
-	BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
+	TileInfo &baseTileInfo = aiData.getBaseTileInfo(baseId);
 	
 	// scan combat units for protection
 	
@@ -2710,7 +2690,7 @@ void evaluateBunkerDefenseUnits()
 		
 		// best armor or psi
 		
-		if (baseInfo.combatData.garrison.size() == 0)
+		if (baseTileInfo.playerVehicleIds.size() == 0)
 		{
 			if (unitId != BSC_SCOUT_PATROL)
 				continue;
@@ -2726,29 +2706,26 @@ void evaluateBunkerDefenseUnits()
 		if (!isBaseCanBuildUnit(baseId, unitId))
 			continue;
 		
-		// saturation ratio
-		
-		double infantryDefensiveSaturationCoefficient = (isInfantryDefensiveUnit(unitId) && !isOffensiveUnit(unitId, aiFactionId)) ? globalInfantryDefensiveSaturationCoefficient : 1.0;
-		
 		// seek for best target base gain
 		
 		double bestGain = 0.0;
 		
-		for (robin_hood::pair<MAP *, ProtectCombatData> const &bunkerCombatDataEntry : aiData.bunkerCombatDatas)
+		for (robin_hood::pair<MAP *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
 		{
-			MAP *targetBunkerTile = bunkerCombatDataEntry.first;
-			ProtectCombatData const &targetBunkerCombatData = bunkerCombatDataEntry.second;
+			MAP *targetBunkerTile = bunkerInfoEntry.first;
+			BunkerInfo &targetBunkerInfo = bunkerInfoEntry.second;
+			CombatData &targetBunkerCombatData = targetBunkerInfo.combatData;
 			
-			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, targetBunkerTile, true);
+			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, targetBunkerTile);
 			if (travelTime == INF)
 				continue;
 			double travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, travelTime);
 			
 			// protection
+			// 0.5 of average base gain
 			
-			double combatEffect = targetBunkerCombatData.getUnitEffect(unitId);
-			double survivalEffect = getSurvivalEffect(combatEffect);
-			double unitProtectionGain = targetBunkerCombatData.isSatisfied(false) ? 0.0 : 0.5 * aiFactionInfo->averageBaseGain * survivalEffect;
+			double unitContribution = targetBunkerCombatData.getProtectorUnitContribution(aiFactionId, unitId);
+			double unitProtectionGain = aiFactionInfo->averageBaseGain * unitContribution;
 			double protectionGain = unitProtectionGain * travelTimeCoefficient;
 			
 			double upkeep = getResourceScore(-getBaseNextUnitSupport(baseId, unitId), 0);
@@ -2803,7 +2780,6 @@ void evaluateBunkerDefenseUnits()
 		double rawPriority = getItemPriority(unitId, bestGain);
 		double priority =
 			conf.ai_production_base_protection_priority
-			* infantryDefensiveSaturationCoefficient
 			* rawPriority
 		;
 		
@@ -2816,14 +2792,12 @@ void evaluateBunkerDefenseUnits()
 			"\t%-32s"
 			" priority=%5.2f   |"
 			" ai_production_base_protection_priority=%5.2f"
-			" infantryDefensiveSaturationCoefficient=%5.2f"
 			" bestGain=%5.2f"
 			" rawPriority=%5.2f"
 			"\n"
 			, Units[unitId].name
 			, priority
 			, conf.ai_production_base_protection_priority
-			, infantryDefensiveSaturationCoefficient
 			, bestGain
 			, rawPriority
 		);
@@ -2898,15 +2872,17 @@ void evaluateTerritoryProtectionUnits()
 			// get attack position
 			
 			MapDoubleValue position(nullptr, INF);
+			bool direct = true;
 			
 			if (position.tile == nullptr && enemyStackInfo->isUnitCanMeleeAttackStack(unitId))
 			{
 				position = getMeleeAttackPosition(unitId, baseTile, enemyStackInfo->tile);
+				direct = true;
 			}
-			
 			if (position.tile == nullptr && enemyStackInfo->isUnitCanArtilleryAttackStack(unitId))
 			{
 				position = getArtilleryAttackPosition(unitId, baseTile, enemyStackInfo->tile);
+				direct = enemyStackInfo->artillery;
 			}
 			
 			if (position.tile == nullptr)
@@ -2919,9 +2895,26 @@ void evaluateTerritoryProtectionUnits()
 			
 			// gain
 			
-			double combatEffect = enemyStackInfo->getUnitEffect(unitId);
-			double survivalProbability = getWinningProbability(combatEffect);
-			double attackGain = getGainRepetion(enemyStackInfo->averageAttackGain * combatEffect, survivalProbability, travelTime);
+			double combatEffect;
+			double combatValue;
+			
+			if (direct)
+			{
+				combatEffect = enemyStackInfo->getUnitDirectEffect(unitId);
+				double winningProbability = getWinningProbability(combatEffect);
+				double defenderDestructionGain = winningProbability * enemyStackInfo->destructionGain;
+				double attackerDestructionGain = (1.0 - winningProbability) * aiData.unitDestructionGains.at(unitId);
+				combatValue = defenderDestructionGain - attackerDestructionGain;
+			}
+			else
+			{
+				combatEffect = enemyStackInfo->getUnitBombardmentEffect(unitId);
+				double defenderDestructionGain = combatEffect * enemyStackInfo->destructionGain;
+				double attackerDestructionGain = 0.0;
+				combatValue = defenderDestructionGain - attackerDestructionGain;
+			}
+			
+			double attackGain = getGainDelay(getGainBonus(combatValue), travelTime);
 			
 			double upkeep = getResourceScore(-getUnitSupport(unitId), 0);
 			double upkeepGain = getGainIncome(upkeep);
@@ -2939,7 +2932,6 @@ void evaluateTerritoryProtectionUnits()
 				" -> %s"
 				" travelTime=%7.2f"
 				" combatEffect=%5.2f"
-				" survivalProbability=%5.2f"
 				" attackGain=%5.2f"
 				" upkeepGain=%5.2f"
 				" gain=%7.2f"
@@ -2948,7 +2940,6 @@ void evaluateTerritoryProtectionUnits()
 				, getLocationString(enemyStackInfo->tile)
 				, travelTime
 				, combatEffect
-				, survivalProbability
 				, attackGain
 				, upkeepGain
 				, gain
@@ -3030,10 +3021,6 @@ void evaluateEnemyBaseAssaultUnits()
 		
 		debug("\t%-32s\n", unit->name);
 		
-		// landArtillerySaturationCoefficient
-		
-		double landArtillerySaturationCoefficient = isLandArtilleryUnit(unitId) ? globalLandArtillerySaturationCoefficient : 1.0;
-		
 		// iterate potential enemy bases
 		
 		double bestGain = 0.0;
@@ -3043,14 +3030,11 @@ void evaluateEnemyBaseAssaultUnits()
 			BASE *enemyBase = getBase(enemyBaseId);
 			MAP *enemyBaseTile = getBaseMapTile(enemyBaseId);
 			BaseInfo &enemyBaseInfo = aiData.getBaseInfo(enemyBaseId);
-			FactionInfo &factionInfo = aiData.factionInfos[enemyBase->faction_id];
 			
 			// enemy base stack
 			
 			if (!aiData.isEnemyStackAt(enemyBaseTile))
 				continue;
-			
-			EnemyStackInfo &enemyStackInfo = aiData.getEnemyStackInfo(enemyBaseTile);
 			
 			// exclude player base or friendly base
 			
@@ -3059,25 +3043,20 @@ void evaluateEnemyBaseAssaultUnits()
 			
 			// travel time
 			
-			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, enemyBaseTile, false);
+			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, enemyBaseTile);
 			
 			if (travelTime == INF)
 				continue;
 			
 			// proportional base capture value
 			
-			double assaultEffect = enemyBaseInfo.assaultEffects.at(unitId);
-			double productionRatio = aiFactionInfo->productionPower / factionInfo.productionPower;
-			double costRatio = enemyStackInfo.averageUnitCost / (double)unit->cost;
-			double adjustedEffect = assaultEffect * productionRatio * costRatio;
-			double adjustedSuperiority = adjustedEffect - 2.0;
+			double unitContribution = enemyBaseInfo.combatData.getAssailantUnitContribution(aiFactionId, unitId);
 			
-			if (adjustedSuperiority <= 0.0)
+			if (unitContribution <= 0.0)
 				continue;
 			
-			double enemyBaseCaptureGain = enemyBaseInfo.captureGain;
-			double adjustedEnemyBaseCaptureGain  = enemyBaseCaptureGain * adjustedSuperiority;
-			double incomeGain = getGainDelay(adjustedEnemyBaseCaptureGain, travelTime);
+			double unitEnemyBaseCaptureGain  = enemyBaseInfo.captureGain * unitContribution;
+			double incomeGain = getGainDelay(unitEnemyBaseCaptureGain, travelTime);
 			
 			// range coefficient
 			
@@ -3139,7 +3118,6 @@ void evaluateEnemyBaseAssaultUnits()
 		double rawPriority = getItemPriority(unitId, bestGain);
 		double priority =
 			unitPriorityCoefficient
-			* landArtillerySaturationCoefficient
 			* rawPriority
 		;
 		
@@ -3259,59 +3237,6 @@ void evaluateSeaTransport()
 	
 }
 
-int findNativeAttackerUnit(bool ocean)
-{
-    int bestUnitId = -1;
-    double bestUnitEffectiveness = 0.0;
-
-    for (int unitId : aiData.unitIds)
-	{
-		UNIT *unit = &(Units[unitId]);
-
-		// skip wrong triad
-
-		if (!(unit->triad() == (ocean ? TRIAD_SEA : TRIAD_LAND)))
-			continue;
-
-		// skip not scout
-
-		if (!isScoutUnit(unitId))
-			continue;
-
-		// prefer empath unit
-
-		double effectiveness;
-
-		if (unit_has_ability(unitId, ABL_EMPATH))
-		{
-			effectiveness = 1.5;
-		}
-		else
-		{
-			effectiveness = 1.0;
-		}
-
-		// prefer fast unit after turn 100
-
-		if (*CurrentTurn > 50)
-		{
-			effectiveness *= (double)unit->speed();
-		}
-
-		// update best
-
-		if (bestUnitId == -1 || effectiveness > bestUnitEffectiveness)
-		{
-			bestUnitId = unitId;
-			bestUnitEffectiveness = effectiveness;
-		}
-
-	}
-
-    return bestUnitId;
-
-}
-
 int findScoutUnit(int triad)
 {
 	int bestUnitId = -1;
@@ -3394,50 +3319,6 @@ bool canBaseProduceColony(int baseId)
 	
 	return true;
 	
-}
-
-int findFormerUnit(int triad)
-{
-	int bestUnitId = -1;
-	double bestUnitValue = -1;
-
-	for (int unitId : aiData.unitIds)
-	{
-		UNIT *unit = &(Units[unitId]);
-
-		// formers only
-
-		if (!isFormerUnit(unitId))
-			continue;
-
-		// given triad only or air
-
-		if (!(unit_triad(unitId) == TRIAD_AIR || unit_triad(unitId) == triad))
-			continue;
-
-		// calculate value
-
-		double unitTerraformingSpeedValue =
-			(unit_has_ability(unitId, ABL_FUNGICIDAL) ? 1.2 : 1.0)
-			*
-			(unit_has_ability(unitId, ABL_SUPER_TERRAFORMER) ? 2.5 : 1.0)
-		;
-		double unitNativeProtectionValue = (unit_has_ability(unitId, ABL_TRANCE) ? 2.0 : 1.0);
-		double unitChassisSpeedValue = 1.0 + (double)(unit_chassis_speed(unitId) - 1) * 1.5;
-		double unitValue = unitTerraformingSpeedValue * unitNativeProtectionValue * unitChassisSpeedValue / (double)unit->cost;
-
-		// find best unit
-
-		if (bestUnitId == -1 || unitValue > bestUnitValue)
-		{
-			bestUnitId = unitId;
-			bestUnitValue = unitValue;
-		}
-
-	}
-
-	return bestUnitId;
-
 }
 
 int getRegionBasesMaxMineralSurplus(int factionId, int region)
@@ -3552,228 +3433,6 @@ bool isMilitaryItem(int item)
 	{
 		return false;
 	}
-
-}
-
-/*
-Finds best combat unit built at source base to help target base against target base threats.
-*/
-int selectProtectionUnit(int baseId, int targetBaseId)
-{
-	bool TRACE = DEBUG && false;
-	
-	if (TRACE) { debug("selectProtectionUnit\n"); }
-	
-	MAP *baseTile = getBaseMapTile(baseId);
-	int baseSeaCluster = getBaseSeaCluster(baseTile);
-	
-	// no target base
-	
-	if (targetBaseId == -1)
-	{
-		return -1;
-	}
-	
-	// get target base strategy
-	
-	MAP *targetBaseTile = getBaseMapTile(targetBaseId);
-	bool targetBaseOcean = is_ocean(targetBaseTile);
-	int targetBaseSeaCluster = getBaseSeaCluster(targetBaseTile);
-	BaseInfo &targetBaseInfo = aiData.getBaseInfo(targetBaseId);
-	ProtectCombatData &targetProtectCombatData = targetBaseInfo.combatData;
-	
-	// iterate best protectors at target base
-	
-	int bestUnitId = -1;
-	double bestUnitPreference = 0.0;
-	
-	for (int unitId : aiData.combatUnitIds)
-	{
-		UNIT *unit = getUnit(unitId);
-		int triad = unit->triad();
-		int offenseValue = getUnitOffenseValue(unitId);
-		int defenseValue = getUnitDefenseValue(unitId);
-		double averageCombatEffect = targetProtectCombatData.getUnitEffect(unitId);
-		
-		// infantry defender
-		
-		if (!isInfantryDefensiveUnit(unitId))
-			continue;
-			
-		// skip that unfit for target base or cannot travel there
-		
-		switch (triad)
-		{
-		case TRIAD_LAND:
-			{
-				// do not send any land unit besides infantry defensive to ocean base unless amphibious
-				
-				if (targetBaseOcean && !isInfantryDefensiveUnit(unitId))
-					continue;
-					
-			}
-			break;
-			
-		case TRIAD_SEA:
-			{
-				// do not send sea units to different ocean cluster
-				
-				if (baseSeaCluster == -1 || targetBaseSeaCluster == -1 || baseSeaCluster != targetBaseSeaCluster)
-					continue;
-					
-			}
-			break;
-			
-		}
-		
-		// compute true cost
-		// this should not include prototype cost
-		
-		int cost = getCombatUnitTrueCost(unitId);
-		
-		// compute effectiveness
-		
-		double effectiveness = averageCombatEffect / (double)cost;
-		
-		// give slight preference to more advanced units
-		
-		double preferenceModifier = 1.0;
-		
-		if (!isNativeUnit(unitId))
-		{
-			preferenceModifier *= (1.0 + 0.2 * (double)((offenseValue - 1) + (defenseValue - 1)));
-		}
-		
-		// combined preference
-		
-		double preference = effectiveness * preferenceModifier;
-		
-		// update best
-		
-		if (TRACE)
-		{
-			debug
-			(
-				"\t%-32s"
-				" preference=%5.2f"
-				" cost=%2d"
-				" averageCombatEffect=%5.2f"
-				" effectiveness=%5.2f"
-				" preferenceModifier=%5.2f"
-				"\n"
-				, getUnit(unitId)->name
-				, preference
-				, cost
-				, averageCombatEffect
-				, effectiveness
-				, preferenceModifier
-			);
-		}
-		
-		if (preference > bestUnitPreference)
-		{
-			bestUnitId = unitId;
-			bestUnitPreference = preference;
-			if (TRACE) { debug("\t\t- best\n"); }
-		}
-		
-	}
-	
-	// return
-	
-	return bestUnitId;
-	
-}
-
-int selectAlienProtectorUnit()
-{
-	int bestUnitId = -1;
-	int bestUnitTrance = 0;
-	int bestUnitCost = INT_MAX;
-
-	for (int unitId : aiData.unitIds)
-	{
-		UNIT *unit = &(Units[unitId]);
-
-		// exclude not infantry
-
-		if (unit->chassis_id != CHS_INFANTRY)
-			continue;
-
-		// get trance
-
-		int trance = (isUnitHasAbility(unitId, ABL_TRANCE) ? 1 : 0);
-
-		// get cost
-
-		int cost = unit->cost;
-
-		// update best
-
-		if
-		(
-			(trance > bestUnitTrance)
-			||
-			(trance == bestUnitTrance && cost < bestUnitCost)
-		)
-		{
-			bestUnitId = unitId;
-			bestUnitTrance = trance;
-			bestUnitCost = cost;
-		}
-
-	}
-
-	return bestUnitId;
-
-}
-
-int findTransportUnit()
-{
-	int bestUnitId = -1;
-	double bestUnitEffectiveness = 0.0;
-
-	for (int unitId : aiData.unitIds)
-	{
-		UNIT *unit = &(Units[unitId]);
-		int triad = unit->triad();
-
-		// sea
-
-		if (triad != TRIAD_SEA)
-			continue;
-
-		// transport
-
-		if (!isTransportUnit(unitId))
-			continue;
-
-		// calculate effectiveness
-
-		double effectiveness = 1.0;
-
-		// faster unit
-
-		effectiveness *= unit->speed();
-
-		// more capacity unit
-
-		if (unit_has_ability(unitId, ABL_HEAVY_TRANSPORT))
-		{
-			effectiveness *= 1.5;
-		}
-
-		// update best
-
-		if (bestUnitId == -1 || effectiveness > bestUnitEffectiveness)
-		{
-			bestUnitId = unitId;
-			bestUnitEffectiveness = effectiveness;
-		}
-
-	}
-
-	return bestUnitId;
 
 }
 
@@ -3995,10 +3654,10 @@ void hurryProtectiveUnit()
 			continue;
 		}
 
-		if (baseInfo.combatData.requiredEffect <= 0.0)
+		if (baseInfo.combatData.getAssailantWeightSum() <= 0.0)
 			continue;
 
-		double relativeNotProvidedPresentEffect = (1.0 - baseInfo.combatData.getProvidedEffect(true) / baseInfo.combatData.requiredEffect);
+		double relativeNotProvidedPresentEffect = std::min(1.0, baseInfo.combatData.remainingAssailantUnitWeightSum / baseInfo.combatData.getAssailantWeightSum());
 
 		debug("\t\tremainingEffect=%3d\n", item);
 
@@ -4508,7 +4167,7 @@ double getBasePopulationGain(int baseId, const Interval &baseSizeInterval)
 {
 	bool TRACE = DEBUG & false;
 
-	if (TRACE) { debug("getBasePopulationGain\n"); }
+	trace("getBasePopulationGain\n");
 
 	BASE *base = getBase(baseId);
 
@@ -4905,7 +4564,7 @@ Calculates number of extra police units can be added to the base.
 */
 int getBasePoliceExtraCapacity(int baseId)
 {
-	BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
+	TileInfo &baseTileInfo = aiData.getBaseTileInfo(baseId);
 	
 	// get base police allowed
 	
@@ -4920,7 +4579,7 @@ int getBasePoliceExtraCapacity(int baseId)
 	
 	int policePresent = 0;
 	
-	for (int vehicleId : baseInfo.combatData.garrison)
+	for (int vehicleId : baseTileInfo.playerVehicleIds)
 	{
 		// count only police2x if available
 		

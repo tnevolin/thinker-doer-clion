@@ -560,10 +560,21 @@ int __cdecl mod_get_basic_defense(int veh_id_def, int veh_id_atk, int psi_combat
 		}
 		//
 		
+		// [WTP]
+		// no morale change when MORALE gives direct bonus
+		if (conf.se_morale_combat_bonus > 0)
+		{
+			// no changes
+		}
+		else
+		{
         int morale_pending = Factions[faction_id_def].SE_morale_pending;
         if (!native_unit && morale_pending >= 2 && morale_pending <= 3) {
             morale++;
         }
+		}
+		//
+		
         if (veh_id_atk >= 0 && !Vehs[veh_id_atk].faction_id) {
 			// [WTP]
 			// no bonus against aliens
@@ -821,8 +832,17 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
         DF_Sensor = 4,
         DF_GSP = 8,
     };
+    
+    // [WTP]
+    // modified asserts to allow fake vehicles
+    /*
     assert(veh_id_atk >= 0 && veh_id_atk < *VehCount);
     assert(veh_id_def >= 0 && veh_id_def < *VehCount);
+    */
+    assert((veh_id_atk >= 0 && veh_id_atk < *VehCount) || (veh_id_atk >= conf.max_veh_num && veh_id_atk < conf.max_veh_num + 2));
+    assert((veh_id_def >= 0 && veh_id_def < *VehCount) || (veh_id_def >= conf.max_veh_num && veh_id_def < conf.max_veh_num + 2));
+    //
+    
     VehBattleModCount[0] = 0;
     VehBattleModCount[1] = 0;
     VehBattleState[0] = 0;
@@ -1023,8 +1043,14 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
                 defense *= 4;
             } else {
                 int terrain_def = terrain_defense(veh_def, veh_atk);
+                
+                // [WTP]
+                // do not assert for fake vehicles
+                if (sq_def != nullptr)
+				{
                 assert(terrain_def == (veh_def->triad() == TRIAD_AIR ? 2 :
                     defense_value(faction_id_def, veh_def->x, veh_def->y, veh_id_def, veh_id_atk)));
+				}
 				
 				// [WTP]
 				// bunker ignores terrain if configured
@@ -1077,6 +1103,11 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
                         add_bat(1, Rules->combat_mobile_def_in_rough, base_id_def < 0
                             ? label_get(548) : label_get(612));
                     }
+                    
+                    // [WTP]
+                    // on map only
+                    if (sq_atk && sq_def)
+					{
                     // Modify this bonus to apply only when both tiles have roads or magtubes
                     // and the defender does not have a base or bunker
                     if (Rules->combat_bonus_atk_road
@@ -1099,6 +1130,9 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
                         offense = offense * (Rules->combat_bonus_atk_higher_elevation + 100) / 100;
                         add_bat(0, Rules->combat_bonus_atk_higher_elevation, label_get(330)); // Downhill
                     }
+					}
+					//
+					
                 }
                 defense *= terrain_def;
                 if (!plain_terrain) {
@@ -1190,6 +1224,11 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
                 }
             }
             if (faction_id_def) {
+				
+				// [WTP]
+				// compute sensor if on map only
+				if (sq_def)
+				{
                 // Sensor search is optimized to avoid repeated calls to is_sensor and base_find
                 int def_state = (conf.sensor_defense_ocean || !is_ocean(sq_def) ? DF_Enable : 0);
                 int flechette = 100;
@@ -1230,7 +1269,10 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
                 if (def_state & DF_GSP) {
                     defense = defense * (Rules->combat_defend_sensor + 100) / 100;
                     add_bat(1, Rules->combat_defend_sensor, label_get(1123)); // GSP
-                }
+                }                
+				}
+				// [WTP]
+				
             }
             if (veh_id_atk >= 0 && psi_combat & 1
             && Rules->combat_bonus_trance_vs_psi
@@ -1716,6 +1758,8 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
             }
         }
     }
+    */
+    
     if (*CurrentTurn < conf.native_weak_until_turn) {
         if (!faction_id_atk) {
             offense_out /= 3;
@@ -1732,8 +1776,6 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
 			add_bat(1, modifier, "Early native");
         }
     }
-    */
-    
     if (base_id >= 0 && veh_atk->triad() == TRIAD_AIR) {
         Bases[base_id].state_flags |= BSTATE_UNK_100000;
     }
@@ -1779,12 +1821,20 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
             int divisor = std::__gcd(off_value, def_value);
             off_value /= divisor;
             def_value /= divisor;
+            
+            // [WTP]
+            // more precise algorithm
+            /*
             for (int value : {10000, 5000, 1000, 500, 100, 50}) {
                 while (off_value >= 2*value && def_value >= 2*value) {
                     off_value /= value;
                     def_value /= value;
                 }
             }
+            */
+            simplifyFraction(&off_value, &def_value, 50);
+            //
+            
             combat_odds_fix(veh_atk, veh_def, &off_value, &def_value);
             BattleWin_stop_timer(BattleWin);
             parse_num(0, off_value);
@@ -2631,5 +2681,41 @@ END_BATTLE:
     return (veh->movement_turns + 1 < veh_range ? result : 1);
 }
 
-
+/*
+Simplifies fraction to reduce numerator and denominator to be not more than max value.
+*/
+void simplifyFraction(int *p, int *q, int maxVal)
+{
+	double r = *p / *q;
+	
+	// Initialize continued fraction
+	int p0 = 1;
+	int q0 = 0;
+	int p1 = (int) floor(r);
+	int q1 = 1;
+	
+	r = r - floor(r);
+	
+	while (r != 0.0)
+	{
+		r = 1 / r;
+		double n = floor(r);
+		r -= n;
+		int p2 = (int) n * p1 + p0;
+		int q2 = (int) n * q1 + q0;
+		
+		if (p2 > maxVal || q2 > maxVal)
+			break;
+		
+		p0 = p1;
+		q0 = q1;
+		p1 = p2;
+		q1 = q2;
+		
+	}
+	
+	*p = p1;
+	*q = q1;
+	
+}
 

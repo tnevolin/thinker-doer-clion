@@ -1,18 +1,20 @@
 #pragma GCC diagnostic ignored "-Wshadow"
 
-#include <algorithm>
 #include "wtp_aiMove.h"
-#include "wtp_terranx.h"
-#include "wtp_ai.h"
-#include "wtp_aiData.h"
+
+#include <algorithm>
+
+#include "wtp_aiRoute.h"
 #include "wtp_aiMoveArtifact.h"
-#include "wtp_aiMoveColony.h"
 #include "wtp_aiMoveCombat.h"
+#include "wtp_aiMoveColony.h"
 #include "wtp_aiMoveFormer.h"
 #include "wtp_aiMoveCrawler.h"
-#include "wtp_aiProduction.h"
 #include "wtp_aiMoveTransport.h"
-#include "wtp_aiRoute.h"
+
+/**
+Generic vehicle move related functions.
+*/
 
 // SeaTransit
 
@@ -306,9 +308,13 @@ int lastEnemyMoveVehicleX = -1;
 int lastEnemyMoveVehicleY = -1;
 int enemyMoveVehicle(const int vehicleId)
 {
-	VEH *vehicle = getVehicle(vehicleId);
+	debug("enemyMoveVehicle %s remaningMoves=%2d\n", getVehiclePad0LocationNameString(vehicleId), getVehicleRemainingMoves(vehicleId));
 	
-	debug("enemyMoveVehicle [%4d] %s %2d %s\n", vehicleId, getLocationString(getVehicleMapTile(vehicleId)), getVehicleRemainingMovement(vehicleId), Units[vehicle->unit_id].name);
+	// update map data
+	
+	enemyMoveVehicleUpdateMapData();
+	
+	VEH *vehicle = getVehicle(vehicleId);
 	
 	// fall over to default if vehicle did not move since last iteration
 	
@@ -325,16 +331,11 @@ int enemyMoveVehicle(const int vehicleId)
 	
 	// execute task
 	
-	if (hasExecutableTask(vehicleId))
-	{
-		return executeTask(vehicleId);
-	}
+	Task *task = getTask(vehicleId);
 	
-    // use vanilla algorithm for non defensive probes
-	
-    if (isProbeVehicle(vehicleId) && !isInfantryVehicle(vehicleId))
+	if (task != nullptr && task->type != TT_NONE)
 	{
-		return enemy_move(vehicleId);
+		return task->execute();
 	}
 	
 	// unhandled cases handled by default
@@ -347,11 +348,11 @@ int enemyMoveVehicle(const int vehicleId)
 Creates tasks to transit vehicle to destination.
 Returns true on successful task creation.
 */
-bool transitVehicle(Task task)
+bool transitVehicle(Task const &task)
 {
 	const bool TRACE = DEBUG && false;
 
-	int vehicleId = task.getVehicleId();
+	int vehicleId = task.getTaskVehicleId();
 	VEH *vehicle = getVehicle(vehicleId);
 	MAP *vehicleTile = getVehicleMapTile(vehicleId);
 	MAP *destination = task.getDestination();
@@ -439,9 +440,9 @@ bool transitVehicle(Task task)
 
 }
 
-bool transitLandVehicle(Task task)
+bool transitLandVehicle(Task const &task)
 {
-	int vehicleId = task.getVehicleId();
+	int vehicleId = task.getTaskVehicleId();
 	MAP *destination = task.getDestination();
 	
 	assert(vehicleId >= 0 && vehicleId < *VehCount);
@@ -481,9 +482,7 @@ bool transitLandVehicle(Task task)
 		
 		// set unboarding task and add unload request
 		
-		task.type = TT_UNBOARD;
-		task.destination = transfer.passengerStop;
-		setTask(task);
+		setTask(Task(vehicleId, TT_UNBOARD, transfer.passengerStop));
 		aiData.transportControl.addUnloadRequest(transportId, vehicleId, transfer.transportStop, transfer.passengerStop);
 		
 		return true;
@@ -510,9 +509,7 @@ bool transitLandVehicle(Task task)
 		
 		// handle transit
 		
-		task.type = TT_BOARD;
-		task.destination = transfer.passengerStop;
-		setTask(task);
+		setTask(Task(vehicleId, TT_BOARD, transfer.passengerStop));
 		
 		if (vehicleTile == transfer.passengerStop)
 		{
@@ -645,7 +642,7 @@ void balanceVehicleSupport()
 /*
 Modified vehicle movement.
 */
-int __cdecl wtp_mod_ai_enemy_move(const int vehicleId)
+int aiEnemyMove(const int vehicleId)
 {
 	VEH *vehicle = getVehicle(vehicleId);
 	
@@ -928,11 +925,10 @@ void setSafeMoveTo(int vehicleId, MAP *destination)
 	bool dangerous = false;
 	
 	Profiling::start("- setSafeMoveTo - getVehicleReachableLocations");
-	for (robin_hood::pair<int, int> const &reachableLocation : getVehicleReachableLocations(vehicleId))
+	for (MoveAction const &moveAction : getVehicleMoveActions(vehicleId, false))
 	{
-		int tileIndex = reachableLocation.first;
-		MAP *tile = *MapTiles + tileIndex;
-		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
+		MAP *tile = moveAction.destination;
+		TileInfo &tileInfo = aiData.getTileInfo(tile);
 		
 		double danger = tileInfo.hostileDangerZone ? 1.0 : 0.0;
 		double distance = getEuqlideanDistance(tile, destination);
@@ -965,104 +961,6 @@ void setSafeMoveTo(int vehicleId, MAP *destination)
 	Profiling::stop("- setSafeMoveTo - getVehicleReachableLocations");
 	
 	if (!dangerous || bestTile == destination)
-	{
-		setMoveTo(vehicleId, destination);
-	}
-	else
-	{
-		setMoveTo(vehicleId, {bestTile, destination});
-	}
-	
-}
-
-/*
-Ends combat vehicle turn at the best tile.
-*/
-void setCombatMoveTo(int vehicleId, MAP *destination)
-{
-	VEH &vehicle = Vehs[vehicleId];
-	int factionId = vehicle.faction_id;
-	int triad = vehicle.triad();
-	MAP *vehicleTile = getVehicleMapTile(vehicleId);
-	bool fungusBonus = isNativeVehicle(vehicleId) || has_project(FAC_XENOEMPATHY_DOME, factionId);
-	
-	debug("setCombatMoveTo [%4d] %s -> %s\n", vehicleId, getLocationString(vehicleTile), getLocationString(destination));
-	
-	// not land unit moves normally
-	
-	if (triad != TRIAD_LAND)
-	{
-		debug("\tnot land\n");
-		setMoveTo(vehicleId, destination);
-		return;
-	}
-	
-	// not in the same cluster
-	
-	if (!isSameLandCluster(vehicleTile, destination))
-	{
-		debug("\tnot in same land cluster\n");
-		setMoveTo(vehicleId, destination);
-		return;
-	}
-	
-	// no need for best location when vehicle is not in the danger zone
-	
-	if (aiData.hostileEndangeredVehicleIds.find(vehicleId) == aiData.hostileEndangeredVehicleIds.end())
-	{
-		debug("\tnot hostileEndangeredVehicle\n");
-		setMoveTo(vehicleId, destination);
-		return;
-	}
-	
-	MAP *bestTile = nullptr;
-	double bestTileTravelTime = DBL_MAX;
-	int bestTileSafety = 0;
-	
-	Profiling::start("- setCombatMoveTo - getVehicleReachableLocations");
-	for (robin_hood::pair<int, int> const &reachableLocation : getVehicleReachableLocations(vehicleId))
-	{
-		int tileIndex = reachableLocation.first;
-		MAP *tile = *MapTiles + tileIndex;
-		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
-		int safety = 10 * (tileInfo.hostileDangerZone ? 0 : 1) + 1 * (tileInfo.rough || (fungusBonus && tile->is_fungus()) ? 1 : 0);
-		
-		double travelTime = getVehicleTravelTime(vehicleId, tile, destination, false);
-		if (travelTime == INF)
-			continue;
-		
-		if (travelTime <= bestTileTravelTime - 1.0)
-		{
-			bestTile = tile;
-			bestTileTravelTime = travelTime;
-			bestTileSafety = safety;
-		}
-		else if (travelTime < bestTileTravelTime + 1.0 && safety > bestTileSafety)
-		{
-			bestTile = tile;
-			bestTileTravelTime = std::min(bestTileTravelTime, travelTime);
-			bestTileSafety = safety;
-		}
-		else
-		{
-			continue;
-		}
-		
-		debug
-		(
-			"%s"
-			" travelTime=%5.2f"
-			" safety=%d"
-			"\n"
-			, getLocationString(tile)
-			, travelTime
-			, safety
-		);
-	
-	}
-	Profiling::stop("- setCombatMoveTo - getVehicleReachableLocations");
-	
-	if (bestTile == nullptr)
 	{
 		setMoveTo(vehicleId, destination);
 	}
@@ -1240,6 +1138,153 @@ MAP *getSafeLocation(int vehicleId, bool unfriendly)
 	
 	Profiling::stop("- getSafeLocation");
 	return nullptr;
+	
+}
+
+void enemyMoveVehicleUpdateMapData()
+{
+	Profiling::start("- enemyMoveVehicleUpdateMapData");
+	
+	// update vehicle related tileInfos
+	
+	updateVehicleTileBlockedAndZocs();
+	
+	Profiling::stop("- enemyMoveVehicleUpdateMapData");
+	
+}
+
+int setMoveTo(int vehicleId, MAP *destination)
+{
+	assert(isOnMap(destination));
+	
+    VEH *vehicle = getVehicle(vehicleId);
+	int factionId = vehicle->faction_id;
+    MAP *vehicleTile = getVehicleMapTile(vehicleId);
+    int vehicleSpeed1 = (getVehicleSpeed(vehicleId) == 1 ? 1 : 0);
+	int x = getX(destination);
+	int y = getY(destination);
+	bool vehicleTileOcean = is_ocean(vehicleTile);
+	bool destinationOcean = is_ocean(destination);
+	
+    debug("setMoveTo %s -> %s\n", getLocationString({vehicle->x, vehicle->y}), getLocationString(destination));
+	
+    vehicle->waypoint_x[0] = x;
+    vehicle->waypoint_y[0] = y;
+    vehicle->order = ORDER_MOVE_TO;
+    vehicle->status_icon = 'G';
+    vehicle->movement_turns = 0;
+	
+    // vanilla bug fix for adjacent tile move
+	
+    int vehicleTileRangeToDestination = getRange(vehicleTile, destination);
+    
+    int destinationVehicleFactionId = veh_who(x, y);
+    bool destinationBlocked = destinationVehicleFactionId == -1 ? false : !isFriendly(factionId, destinationVehicleFactionId);
+	
+    if (vehicle->triad() == TRIAD_LAND && !vehicleTileOcean && !destinationOcean && vehicleTileRangeToDestination == 1 && !destinationBlocked)
+	{
+		int directMoveHexCost = mod_hex_cost(vehicle->unit_id, vehicle->faction_id, vehicle->x, vehicle->y, x, y, vehicleSpeed1);
+		bool destinationZoc = isZoc(factionId, vehicleTile, destination);
+		
+		// set direct move to infinite cost if zoc
+		
+		if (destinationZoc)
+		{
+			directMoveHexCost = INT_MAX;
+		}
+		
+		// search optimal waypoint
+		
+		MAP *waypoint = nullptr;
+		int waypointMoveHexCost = directMoveHexCost;
+		
+		for (MAP *adjacentTile : getAdjacentTiles(vehicleTile))
+		{
+			bool adjacentTileOcean = is_ocean(adjacentTile);
+			int adjacentTileRangeToDestination = getRange(adjacentTile, destination);
+			int adjacentTileX = getX(adjacentTile);
+			int adjacentTileY = getY(adjacentTile);
+			bool adjacentTileBlocked = isBlocked(factionId, adjacentTile);
+			bool adjacentTileZoc = isZoc(factionId, vehicleTile, adjacentTile);
+			
+			// land
+			
+			if (adjacentTileOcean)
+				continue;
+			
+			// adjacent tile should be also adjacent to destination
+			
+			if (adjacentTileRangeToDestination != 1)
+				continue;
+			
+			// not blocked
+			
+			if (adjacentTileBlocked)
+				continue;
+			
+			// not zoc
+			
+			if (adjacentTileZoc)
+				continue;
+			
+			// compute cost
+			
+			int hexCost1 = mod_hex_cost(vehicle->unit_id, vehicle->faction_id, vehicle->x, vehicle->y, adjacentTileX, adjacentTileY, vehicleSpeed1);
+			int hexCost2 = mod_hex_cost(vehicle->unit_id, vehicle->faction_id, adjacentTileX, adjacentTileY, x, y, vehicleSpeed1);
+			int hexCost = hexCost1 + hexCost2;
+			
+			if (hexCost >= directMoveHexCost)
+				continue;
+			
+			if (hexCost < waypointMoveHexCost)
+			{
+				waypoint = adjacentTile;
+				waypointMoveHexCost = hexCost;
+			}
+			
+		}
+		
+		if (waypoint != nullptr)
+		{
+			vehicle->waypoint_x[0] = getX(waypoint);
+			vehicle->waypoint_y[0] = getY(waypoint);
+			vehicle->waypoint_x[1] = x;
+			vehicle->waypoint_y[1] = y;
+			vehicle->waypoint_count = 1;
+			debug("setWaypoint %s\n", getLocationString(waypoint));
+		}
+		
+	}
+	
+    return EM_SYNC;
+	
+}
+
+int setMoveTo(int vehicleId, const std::vector<MAP *> &waypoints)
+{
+    VEH* vehicle = getVehicle(vehicleId);
+	
+    debug("setMoveTo %s -> waypoints\n", getLocationString({vehicle->x, vehicle->y}));
+	
+	setVehicleWaypoints(vehicleId, waypoints);
+    vehicle->order = ORDER_MOVE_TO;
+    vehicle->status_icon = 'G';
+    vehicle->movement_turns = 0;
+	
+    return EM_SYNC;
+	
+}
+
+/*
+Move faction vehicles.
+*/
+void aiEnemyMoveVehicles()
+{
+	debug("aiEnemyMoveVehicles - %s\n", aiMFaction->noun_faction);
+	
+	// move combat vehicles
+	
+	aiEnemyMoveCombatVehicles();
 	
 }
 

@@ -35,9 +35,7 @@
 #else
     #define MOD_DATE __DATE__
     #define DEBUG 0
-    #ifndef NDEBUG
     #define NDEBUG /* Disable assertions */
-    #endif
     #define debug(...) /* Nothing */
     #define debugw(...) /* Nothing */
     #define debug_ver(...) /* Nothing */
@@ -543,11 +541,6 @@ struct Config {
     double ai_production_survival_effect_c;
     double ai_production_survival_effect_d;
     double ai_expansion_weight_deep;
-    double ai_mapstat_ocean;
-    double ai_mapstat_rocky;
-    double ai_mapstat_rainfall;
-    double ai_mapstat_rockiness;
-    double ai_mapstat_elevation;
     double ai_expansion_travel_time_scale;
     double ai_expansion_coastal_base_large;
     double ai_expansion_coastal_base_small;
@@ -584,11 +577,12 @@ struct Config {
     double ai_terraforming_bunkerBorderRange;
     double ai_terraforming_landBridgeValue;
     double ai_terraforming_landBridgeRangeScale;
-    double ai_combat_base_threat_coefficient;
-    double ai_combat_base_threat_range;
+    double ai_combat_enemy_unit_value_coefficient;
+    double ai_combat_unit_value_offense_coefficient;
+    double ai_combat_unit_value_defense_coefficient;
+    double ai_combat_unit_value_speed_coefficient;
     double ai_base_threat_travel_time_scale;
     double ai_combat_travel_time_scale;
-    double ai_combat_travel_time_scale_base_protection;
     double ai_combat_priority_escape;
     double ai_combat_priority_repair;
     double ai_combat_priority_repair_partial;
@@ -602,16 +596,16 @@ struct Config {
     double ai_combat_attack_bonus_alien_fungal_tower;
     double ai_combat_attack_bonus_hostile;
     double ai_combat_priority_pod;
-    double ai_combat_base_protection_superiority;
+    double ai_combat_advantage;
     int ai_combat_field_attack_base_proximity_scale;
-    double ai_combat_field_attack_superiority_required;
-    double ai_combat_field_attack_superiority_desired;
-    double ai_combat_base_attack_superiority_required;
-    double ai_combat_base_attack_superiority_desired;
     double ai_combat_strength_increase_value;
     double ai_combat_winning_probability_a;
     double ai_combat_winning_probability_b;
     double ai_combat_sea_base_threat_coefficient;
+    double ai_combat_strength_destruction_gain;
+    double ai_combat_healing_chance;
+    double ai_combat_proximity_dest_time_coefficient;
+    double ai_combat_damage_destruction_value_coefficient;
     double ai_production_global_combat_superiority_land;
     double ai_production_global_combat_superiority_sea;
     double ai_production_combat_unit_proportions[3];

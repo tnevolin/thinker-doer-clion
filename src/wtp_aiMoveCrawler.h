@@ -1,7 +1,7 @@
 #pragma once
 
-#include "wtp_game.h"
-#include "wtp_mod.h"
+#include "main.h"
+#include "engine.h"
 
 struct TileConvoyInfo
 {

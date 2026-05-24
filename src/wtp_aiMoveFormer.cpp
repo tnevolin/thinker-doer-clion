@@ -1,20 +1,16 @@
 #pragma GCC diagnostic ignored "-Wshadow"
 
+#include "wtp_aiMoveFormer.h"
+
 #include <float.h>
 #include <math.h>
 #include <vector>
 #include <set>
 #include <map>
 #include <map>
-#include "game.h"
-#include "wtp_terranx.h"
-#include "wtp_mod.h"
-#include "wtp_ai.h"
-#include "wtp_aiData.h"
-#include "wtp_aiMove.h"
-#include "wtp_aiMoveFormer.h"
-#include "wtp_aiProduction.h"
+
 #include "wtp_aiRoute.h"
+#include "wtp_aiMove.h"
 
 // variables
 
@@ -2685,12 +2681,12 @@ bool isTerraformingAvailable(MAP *tile, int action)
 		// raise land should not disturb other faction bases
 		if (!isRaiseLandSafe(tile))
 			return false;
-		// raise land should not be built near another building raise
+		// raising land should not be built near another building raise
 		if (isNearbyRaiseUnderConstruction(x, y))
 			return false;
 		break;
 	case FORMER_LOWER_LAND:
-		// lower land should not disturb other faction bases
+		// lowering land should not disturb other faction bases
 		// TODO
 		return false;
 		break;
@@ -2746,16 +2742,6 @@ bool isLevelTerrainRequired(bool ocean, int action)
 {
 	return !ocean && (action == FORMER_FARM || action == FORMER_SOIL_ENR || action == FORMER_FOREST);
 
-}
-
-bool isVehicleConvoying(int vehicleId)
-{
-	return Vehs[vehicleId].order == ORDER_CONVOY;
-}
-
-bool isVehicleTerraforming(VEH *vehicle)
-{
-	return vehicle->order >= ORDER_FARM && vehicle->order <= ORDER_PLACE_MONOLITH;
 }
 
 bool isNearbyForestUnderConstruction(int x, int y)
@@ -3566,9 +3552,9 @@ double estimateSensorIncome(MAP *tile)
 		
 	}
 	
-	for (robin_hood::pair<MAP *, ProtectCombatData> const &bunkerCombatDataEntry : aiData.bunkerCombatDatas)
+	for (robin_hood::pair<MAP *, BunkerInfo> const &bunkerInfoEntry : aiData.bunkerInfos)
 	{
-		MAP *bunkerTile = bunkerCombatDataEntry.first;
+		MAP *bunkerTile = bunkerInfoEntry.first;
 		
 		// within being constructing sensor range
 		
@@ -4888,9 +4874,9 @@ void removeUnusedBunkers()
 	debug("removeUnusedBunkers - %s\n", MFactions[aiFactionId].noun_faction);
 	
 	robin_hood::unordered_flat_set<MAP *> unusedBunkers;
-	for (robin_hood::pair<MAP *, ProtectCombatData> &bunkerCombatDataEntry : aiData.bunkerCombatDatas)
+	for (robin_hood::pair<MAP *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
 	{
-		MAP *bunkerTile = bunkerCombatDataEntry.first;
+		MAP *bunkerTile = bunkerInfoEntry.first;
 		
 		if (estimateBunkerIncome(bunkerTile, true) <= 0.0)
 		{
@@ -4902,7 +4888,8 @@ void removeUnusedBunkers()
 	for (MAP *unusedBunkerTile : unusedBunkers)
 	{
 		unusedBunkerTile->items &= (~BIT_BUNKER);
-		aiData.bunkerCombatDatas.erase(unusedBunkerTile);
+		aiData.getTileInfo(unusedBunkerTile).bunker = false;
+		aiData.bunkerInfos.erase(unusedBunkerTile);
 		debug("\t%s\n", getLocationString(unusedBunkerTile));
 	}
 	

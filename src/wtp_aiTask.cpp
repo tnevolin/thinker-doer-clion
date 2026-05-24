@@ -1,14 +1,53 @@
 
 #include "wtp_aiTask.h"
+
 #include "wtp_game.h"
 #include "wtp_aiMove.h"
 
-char const * Task::typeName(TaskType &taskType)
+static char const *taskTypeNames[]
 {
-	return taskTypeNames[taskType];
+	"NONE",				//  0
+	"KILL",				//  1
+	"SKIP",				//  2
+	"BUIL",				// 	3
+	"LOAD",				//  4
+	"BOAR",				//  5
+	"UNLO",				//  6
+	"UNBO",				//  7
+	"TERR",				//  8
+	"ORDE",				//  9
+	"HOLD",				// 10
+	"ALER",				// 11
+	"MOVE",				// 12
+	"ARTC",				// 13
+	"MELE",				// 14
+	"ARTI",				// 15
+	"CONV",				// 16
+};
+
+char const *Task::typeName()
+{
+	return taskTypeNames[this->type];
 }
 
-int Task::getVehicleId()
+int Task::getTaskVehicleId() const
+{
+	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
+	{
+		VEH *vehicle = getVehicle(vehicleId);
+		
+		if (vehicle->pad_0 == vehiclePad0)
+		{
+			return vehicleId;
+		}
+		
+	}
+	
+	return -1;
+	
+}
+
+VEH *Task::getTaskVehicle() const
 {
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
@@ -16,12 +55,12 @@ int Task::getVehicleId()
 
 		if (vehicle->pad_0 == vehiclePad0)
 		{
-			return vehicleId;
+			return vehicle;
 		}
 
 	}
 
-	return -1;
+	return nullptr;
 
 }
 
@@ -41,9 +80,9 @@ void Task::setDestination(MAP *_destination)
 Returns vehicle destination if specified.
 Otherwise, current vehicle location.
 */
-MAP *Task::getDestination()
+MAP *Task::getDestination() const
 {
-	int vehicleId = getVehicleId();
+	int vehicleId = getTaskVehicleId();
 	
 	// unknown vehicle
 	
@@ -63,10 +102,10 @@ MAP *Task::getDestination()
 	
 }
 
-MAP *Task::getAttackTarget()
+MAP *Task::getAttackTarget() const
 {
-	int vehicleId = getVehicleId();
-	
+	int vehicleId = getTaskVehicleId();
+
 	if (vehicleId == -1)
 		return nullptr;
 	
@@ -93,7 +132,7 @@ int Task::getDestinationRange()
 	int x = getX(destination);
 	int y = getY(destination);
 
-	int vehicleId = getVehicleId();
+	int vehicleId = getTaskVehicleId();
 
 	if (vehicleId == -1)
 	{
@@ -108,11 +147,52 @@ int Task::getDestinationRange()
 
 }
 
+/*
+returns reference to static buffer
+not thread-safe, not reentrant
+uses rotating buffers to allow up to 10 calls withing a single debug statement
+*/
+char const *Task::toString()
+{
+	static int constexpr BUFFER_COUNT = 10;
+	static int constexpr BUFFER_SIZE = 100;
+	
+    static char buffers[BUFFER_COUNT][BUFFER_SIZE];
+    static int index = 0;
+    
+    int i = index;
+    index = (index + 1) % BUFFER_COUNT;
+    
+    int vehicleId = getVehicleIdByPad0(vehiclePad0);
+    
+    if (vehicleId == -1)
+	{
+		snprintf(buffers[i], sizeof(buffers[i]), "ERROR: vehicleId is not found for pad0: {%4d}", vehiclePad0);
+	}
+	else
+	{
+		VEH &vehicle = Vehs[vehicleId];
+		snprintf
+		(
+			buffers[i],
+			sizeof(buffers[i]),
+			"{%4d} (%3d,%3d) %-32s %-4s -> %s/%s"
+			, getInitialVehicleIdByPad0(vehiclePad0), vehicle.x, vehicle.y, vehicle.name()
+			, typeName()
+			, getLocationString(destination)
+			, getLocationString(attackTarget)
+		);
+	}
+	
+    return buffers[i];
+    
+}
+
 int Task::execute()
 {
 	debug("Task::execute()\n");
 
-	int vehicleId = getVehicleId();
+	int vehicleId = getTaskVehicleId();
 
 	if (vehicleId == -1)
 	{
@@ -141,7 +221,7 @@ int Task::execute(int vehicleId)
 
 		if (isCombatVehicle(vehicleId))
 		{
-			setCombatMoveTo(vehicleId, destination);
+			setMoveTo(vehicleId, destination);
 		}
 		else
 		{
@@ -150,7 +230,7 @@ int Task::execute(int vehicleId)
 
 		// make sure to declare vendetta if moving into neutral base
 
-		if (getRange(vehicleTile, destination) == 1 && getVehicleRemainingMovement(vehicleId) >= Rules->move_rate_roads && isBaseAt(destination))
+		if (getRange(vehicleTile, destination) == 1 && getVehicleRemainingMoves(vehicleId) >= Rules->move_rate_roads && isBaseAt(destination))
 		{
 			int destinationOwner = destination->owner;
 
@@ -237,7 +317,7 @@ int Task::executeAction(int vehicleId)
 		return executeAttack(vehicleId);
 		break;
 	
-	case TT_LONG_RANGE_FIRE:
+	case TT_ARTILLERY_ATTACK:
 		return executeLongRangeFire(vehicleId);
 		break;
 	
@@ -588,33 +668,10 @@ int Task::executeAttack(int vehicleId)
 	if (defenderVehicleId == -1)
 		return EM_DONE;
 	
-	// compute battle odds accounting for hasty attack
+	// proceed with attack
 	
-	int remainingMovement = getVehicleRemainingMovement(vehicleId);
-	double hastyCoefficient = std::min(1.0, (double)remainingMovement / (double)Rules->move_rate_roads);
-	double battleOdds = getBattleOdds(vehicleId, defenderVehicleId, false);
-	double adjustedBattleOdds = battleOdds * hastyCoefficient;
-	
-	// attack if good odds
-	
-	if (adjustedBattleOdds >= 1.25)
-	{
-		setMoveTo(vehicleId, attackTarget);
-		return EM_SYNC;
-	}
-	
-	// otherwise attack only if not hasty
-	
-	if (hastyCoefficient == 1.0)
-	{
-		setMoveTo(vehicleId, attackTarget);
-		return EM_SYNC;
-	}
-	
-	// otherwise skip
-	
-	mod_veh_skip(vehicleId);
-	return EM_DONE;
+	setMoveTo(vehicleId, attackTarget);
+	return EM_SYNC;
 	
 }
 
@@ -671,41 +728,22 @@ int Task::executeConvoy(int vehicleId)
 	
 }
 
-// TaskList
-
-void TaskList::setTasks(const std::vector<Task> _tasks)
-{
-	this->tasks.clear();
-	this->tasks.insert(this->tasks.end(), _tasks.begin(), _tasks.end());
-}
-std::vector<Task> &TaskList::getTasks()
-{
-	return this->tasks;
-}
-void TaskList::setTask(Task _task)
-{
-	this->tasks.clear();
-	this->tasks.push_back(_task);
-}
-Task *TaskList::getTask()
-{
-	return (this->tasks.size() >= 1 ? &(this->tasks.front()) : nullptr);
-}
-void TaskList::addTask(Task _task)
-{
-	this->tasks.push_back(_task);
-}
-
 // static functions
 
-void setTask(Task task)
+bool compareTaskPriorityDescending(Task const &a, Task const &b)
 {
-	int vehicleId = task.getVehicleId();
-	VEH *vehicle = getVehicle(vehicleId);
+	return a.priority > b.priority;
+}
 
-	if (aiData.tasks.count(vehicle->pad_0) == 0)
+void setTask(Task const &task)
+{
+	int vehicleId = task.getTaskVehicleId();
+	VEH *vehicle = getVehicle(vehicleId);
+	debug("setTask( vehicleId=%4d type=%2d )\n", vehicleId, task.type);
+
+	if (aiData.tasks.find(vehicle->pad_0) == aiData.tasks.end())
 	{
-		aiData.tasks.insert({vehicle->pad_0, task});
+		aiData.tasks.emplace(vehicle->pad_0, task);
 	}
 	else
 	{
@@ -716,38 +754,12 @@ void setTask(Task task)
 
 bool hasTask(int vehicleId)
 {
-	VEH *vehicle = getVehicle(vehicleId);
-	return (aiData.tasks.count(vehicle->pad_0) != 0);
+	return (aiData.tasks.find(Vehs[vehicleId].pad_0) != aiData.tasks.end());
 }
 
-bool hasExecutableTask(int vehicleId)
+bool hasTacticalTask(int vehicleId)
 {
-	// no task
-	
-	if (!hasTask(vehicleId))
-		return false;
-	
-	// get task
-	
-	Task *task = getTask(vehicleId);
-	
-	// special task type that is NO task
-	
-	if (task->type == TT_NONE)
-		return false;
-	
-	// do not attack no longer hostile vehicles
-	
-	MAP *attackTarget = task->getAttackTarget();
-	if (attackTarget != nullptr)
-	{
-		int vehicleFactionId = veh_at(getX(attackTarget), getY(attackTarget));
-		if (isVendettaStoppedWith(vehicleFactionId))
-			return false;
-	}
-	
-	return true;
-	
+	return (aiData.tacticalTasks.find(Vehs[vehicleId].pad_0) != aiData.tacticalTasks.end());
 }
 
 void deleteTask(int vehicleId)
@@ -760,24 +772,12 @@ void deleteTask(int vehicleId)
 
 Task *getTask(int vehicleId)
 {
-	VEH *vehicle = getVehicle(vehicleId);
+	int vehiclePad0 = Vehs[vehicleId].pad_0;
 	
-	robin_hood::unordered_flat_map<int, Task>::iterator taskIterator = aiData.tasks.find(vehicle->pad_0);
+	robin_hood::unordered_flat_map<int, Task>::iterator tacticalTaskIterator = aiData.tacticalTasks.find(vehiclePad0);
+	robin_hood::unordered_flat_map<int, Task>::iterator taskIterator = aiData.tasks.find(vehiclePad0);
 	
-	return taskIterator == aiData.tasks.end() ? nullptr : &(taskIterator->second);
+	return tacticalTaskIterator != aiData.tacticalTasks.end() ? &(tacticalTaskIterator->second) : taskIterator != aiData.tasks.end() ? &(taskIterator->second) : nullptr;
 	
-}
-
-int executeTask(int vehicleId)
-{
-	debug("executeTask\n");
-
-	Task *task = getTask(vehicleId);
-
-	if (task == nullptr)
-		return EM_DONE;
-	
-	return task->execute(vehicleId);
-
 }
 
