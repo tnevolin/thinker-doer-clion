@@ -6,3 +6,7 @@ releases/
 *.layout
 *.depend
 *.cscope_file_list
+cmake-build-*/
+.idea/
+.output.txt
+base.obj
