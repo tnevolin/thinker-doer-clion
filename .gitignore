@@ -1,0 +1,8 @@
+build/
+rel/
+patch/
+utils/
+releases/
+*.layout
+*.depend
+*.cscope_file_list
