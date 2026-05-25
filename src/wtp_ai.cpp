@@ -4748,6 +4748,12 @@ Updates AI precomputed data after vehicle kill.
 */
 void vehicleKill(int vehicleId)
 {
+	// do nothing if AI faction is not set
+	if (aiFactionId == -1)
+	{
+		return;
+	}
+
 	VEH &vehicle = aiData.savedVehicles.at(vehicleId);
 	int vehiclePad0 = vehicle.pad_0;
 	MAP *vehicleTile = getMapTile(vehicle.x, vehicle.y);
