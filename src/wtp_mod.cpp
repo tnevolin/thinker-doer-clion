@@ -3734,8 +3734,8 @@ int __cdecl wtp_mod_enemy_move(int vehicleId)
 	
 	// run original function
 	// which also wraps AI logic
-	
-	int returnValue = aiEnemyMove(vehicleId);
+
+	int const returnValue = aiEnemyMove(vehicleId);
 	
 	// set probe moves
 	
