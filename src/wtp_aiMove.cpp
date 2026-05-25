@@ -314,7 +314,7 @@ int enemyMoveVehicle(const int vehicleId)
 	
 	enemyMoveVehicleUpdateMapData();
 	
-	VEH *vehicle = getVehicle(vehicleId);
+	VEH const * vehicle = getVehicle(vehicleId);
 	
 	// fall over to default if vehicle did not move since last iteration
 	
@@ -331,14 +331,14 @@ int enemyMoveVehicle(const int vehicleId)
 	
 	// execute task
 	
-	Task *task = getTask(vehicleId);
+	Task * task = getTask(vehicleId);
 	
 	if (task != nullptr && task->type != TT_NONE)
 	{
 		return task->execute();
 	}
 	
-	// unhandled cases handled by default
+	// unhandled cases fall to default
 	
 	return enemy_move(vehicleId);
 	
@@ -644,7 +644,7 @@ Modified vehicle movement.
 */
 int aiEnemyMove(const int vehicleId)
 {
-	VEH *vehicle = getVehicle(vehicleId);
+	VEH const *vehicle = getVehicle(vehicleId);
 	
 	int returnValue;
 	

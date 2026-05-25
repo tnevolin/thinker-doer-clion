@@ -772,10 +772,10 @@ void deleteTask(int vehicleId)
 
 Task *getTask(int vehicleId)
 {
-	int vehiclePad0 = Vehs[vehicleId].pad_0;
+	int const vehiclePad0 = Vehs[vehicleId].pad_0;
 	
-	robin_hood::unordered_flat_map<int, Task>::iterator tacticalTaskIterator = aiData.tacticalTasks.find(vehiclePad0);
-	robin_hood::unordered_flat_map<int, Task>::iterator taskIterator = aiData.tasks.find(vehiclePad0);
+	robin_hood::unordered_flat_map<int, Task>::iterator const tacticalTaskIterator = aiData.tacticalTasks.find(vehiclePad0);
+	robin_hood::unordered_flat_map<int, Task>::iterator const taskIterator = aiData.tasks.find(vehiclePad0);
 	
 	return tacticalTaskIterator != aiData.tacticalTasks.end() ? &(tacticalTaskIterator->second) : taskIterator != aiData.tasks.end() ? &(taskIterator->second) : nullptr;
 	
