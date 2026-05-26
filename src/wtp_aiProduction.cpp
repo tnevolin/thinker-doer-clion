@@ -3823,11 +3823,11 @@ double getDevelopmentScoreGrowth(int turn)
 
 /**
 Computes development scale at current point in time.
-Approximate time when faction power growth 2 times.
+Approximate time when faction power growth e times.
 */
 double getDevelopmentScale()
 {
-	return std::min(conf.ai_development_scale_max, conf.ai_development_scale_min + (conf.ai_development_scale_max - conf.ai_development_scale_min) * (*CurrentTurn / conf.ai_development_scale_max_turn));
+	return conf.ai_characteristic_time_a + conf.ai_characteristic_time_b * *CurrentTurn;
 }
 
 /*

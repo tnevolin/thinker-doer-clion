@@ -2187,15 +2187,15 @@ void populateLandTransportedClusters()
 			
 	}
 	
-//	if (DEBUG)
-//	{
-//		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
-//		{
-//			debug("\t%s %2d\n", getLocationString(*MapTiles + tileIndex), landTransportedClusters.at(tileIndex));
-//			
-//		}
-//		
-//	}
+	if (DEBUG)
+	{
+		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
+		{
+			debug("\t%s %2d\n", getLocationString(*MapTiles + tileIndex), landTransportedClusters.at(tileIndex));
+
+		}
+
+	}
 	
 	Profiling::stop("populateLandTransportedClusters");
 	

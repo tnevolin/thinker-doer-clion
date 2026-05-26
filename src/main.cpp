@@ -947,6 +947,14 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_resource_score_energy = atof(value);
     }
+    else if (MATCH("ai_characteristic_time_a"))
+    {
+        cf->ai_characteristic_time_a = atof(value);
+    }
+    else if (MATCH("ai_characteristic_time_b"))
+    {
+        cf->ai_characteristic_time_b = atof(value);
+    }
     else if (MATCH("ai_faction_mineral_a0"))
     {
         cf->ai_faction_mineral_a0 = atof(value);
@@ -1090,18 +1098,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     else if (MATCH("ai_production_priority_coefficient"))
     {
         cf->ai_production_priority_coefficient = atof(value);
-    }
-    else if (MATCH("ai_development_scale_min"))
-    {
-        cf->ai_development_scale_min = atof(value);
-    }
-    else if (MATCH("ai_development_scale_max"))
-    {
-        cf->ai_development_scale_max = atof(value);
-    }
-    else if (MATCH("ai_development_scale_max_turn"))
-    {
-        cf->ai_development_scale_max_turn = atof(value);
     }
     else if (MATCH("ai_production_vanilla_priority_unit"))
     {

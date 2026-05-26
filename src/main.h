@@ -35,7 +35,9 @@
 #else
     #define MOD_DATE __DATE__
     #define DEBUG 0
+    #ifndef NDEBUG
     #define NDEBUG /* Disable assertions */
+    #endif
     #define debug(...) /* Nothing */
     #define debugw(...) /* Nothing */
     #define debug_ver(...) /* Nothing */
@@ -468,6 +470,8 @@ struct Config {
     double ai_resource_score_nutrient;
     double ai_resource_score_mineral;
     double ai_resource_score_energy;
+    double ai_characteristic_time_a;
+    double ai_characteristic_time_b;
     double ai_faction_mineral_a0;
     double ai_faction_mineral_a1;
     double ai_faction_mineral_a2;
@@ -504,9 +508,6 @@ struct Config {
     double ai_statistics_base_growth_b;
     double ai_citizen_income;
     double ai_production_priority_coefficient;
-    double ai_development_scale_min;
-    double ai_development_scale_max;
-    double ai_development_scale_max_turn;
     double ai_production_vanilla_priority_unit;
     double ai_production_vanilla_priority_facility;
     double ai_production_vanilla_priority_project;

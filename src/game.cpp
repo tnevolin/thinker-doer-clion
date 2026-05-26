@@ -1,6 +1,8 @@
 
 #include "game.h"
 
+#include <iostream>
+
 #include "wtp_mod.h"
 
 static uint32_t custom_game_rules = 0;
@@ -423,8 +425,6 @@ int __cdecl mod_replay_base(int event, int x, int y, int faction_id) {
     return *ReplayEventSize;
 }
 
-#include <iostream>
-#include <ctime>
 void __cdecl mod_faction_upkeep(int faction_id) {
     Faction* f = &Factions[faction_id];
     MFaction* m = &MFactions[faction_id];

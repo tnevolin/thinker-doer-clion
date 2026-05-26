@@ -1568,8 +1568,8 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 				// assailant attacks because protector does not want to
 				trace("\t\tassailant attacks because protector does not want to\n");
 				
-				playerCombattant = this->playerAssaults ? bestProtectorAssailantEffect.attacker : bestProtectorAssailantEffect.defender;
-				enemyCombattant = this->playerAssaults ? bestProtectorAssailantEffect.defender : bestProtectorAssailantEffect.attacker;
+				playerCombattant = this->playerAssaults ? bestAssailantProtectorEffect.attacker : bestAssailantProtectorEffect.defender;
+				enemyCombattant = this->playerAssaults ? bestAssailantProtectorEffect.defender : bestAssailantProtectorEffect.attacker;
 				selectedCombattantEffect = &bestAssailantProtectorEffect;
 				
 			}

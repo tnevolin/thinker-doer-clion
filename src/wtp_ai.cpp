@@ -118,12 +118,12 @@ void __cdecl wtp_mod_enemy_turn(int factionId)
 		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 		{
 			VEH *vehicle = getVehicle(vehicleId);
-			uint8_t vehicleMoveRate = (uint8_t)getVehicleMaxMoves(vehicleId);
+			uint8_t vehicleMaxMove = (uint8_t)getVehicleMaxMoves(vehicleId);
 			
 			if (vehicle->faction_id != factionId)
 				continue;
 			
-			vehicle->moves_spent = std::max(vehicle->moves_spent, vehicleMoveRate);
+			vehicle->moves_spent = std::max(vehicle->moves_spent, vehicleMaxMove);
 			
 		}
 		
@@ -209,7 +209,7 @@ void executeTasks()
 		
 		if (aiFactionId == *CurrentPlayerFaction && !(conf.manage_player_units && ((vehicle->state & VSTATE_ON_ALERT) != 0) && vehicle->movement_turns == 0))
 			continue;
-		
+
 		// do not execute combat tasks immediatelly
 		
 		if (task.type == TT_MELEE_ATTACK || task.type == TT_ARTILLERY_ATTACK)
@@ -255,15 +255,12 @@ void populateAIData()
 	
 	populateRouteData();
 	
-	// player info
+	// player faction info
 	
 	populatePlayerGlobalVariables();
 	populatePlayerBaseIds();
-debug(">populatePlayerBaseRanges\n");flushlog();
 	populatePlayerBaseRanges();
-debug(">populateUnits\n");flushlog();
 	populateUnits();
-//	saveVehicles();
 	populateVehicles();
 	populateEmptyEnemyBaseTiles();
 	populateDangerZones();
@@ -276,7 +273,7 @@ debug(">populateUnits\n");flushlog();
 	computeUnitDestructionGains();
 	populateCombatEffects();
 	
-	// enemy info
+	// enemy faction info
 	
 	populateEnemyBaseInfos();
 	populateEnemyStacks();
