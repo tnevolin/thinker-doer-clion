@@ -125,7 +125,7 @@ MAP *Task::getAttackTarget() const
 	
 }
 
-int Task::getDestinationRange()
+int Task::getDestinationRange() const
 {
 	// no range for no destination
 

@@ -1,9 +1,5 @@
 #pragma once
 
-#include <vector>
-#include <string>
-
-#include "main.h"
 #include "engine.h"
 
 enum TaskType
@@ -58,7 +54,7 @@ struct Task
 	void setDestination(MAP *_destination);
 	MAP *getDestination() const;
 	MAP *getAttackTarget() const;
-	int getDestinationRange();
+	int getDestinationRange() const;
 	char const *toString();
 
 	int execute();
