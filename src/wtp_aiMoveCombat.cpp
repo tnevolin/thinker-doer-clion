@@ -1177,7 +1177,7 @@ void moveCombat()
 					"\n"
 					, taskPriority.vehicleId
 					, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
-					, Task::typeName(taskPriority.taskType.typeName)
+					, Task::getTaskTypeName(taskPriority.taskType)
 					, getLocationString(taskPriority.destination)
 					, getLocationString(taskPriority.attackTarget)
 					, taskPriority.combatMode

@@ -25,7 +25,7 @@ static char const *taskTypeNames[]
 	"CONV",				// 16
 };
 
-char const *Task::getTaskTypeName(TaskType const taskType) const
+char const *Task::getTaskTypeName(TaskType const taskType)
 {
 	return taskTypeNames[taskType];
 }

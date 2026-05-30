@@ -50,7 +50,7 @@ struct Task
 	: Task(_vehicleId, _type, nullptr, nullptr, -1, -1)
 	{}
 
-	static char const *getTaskTypeName(TaskType taskType) const;
+	static char const *getTaskTypeName(TaskType taskType);
 	char const *typeName() const;
 	int getTaskVehicleId() const;
 	VEH *getTaskVehicle() const;
