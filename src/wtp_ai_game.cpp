@@ -79,6 +79,12 @@ double CombatStrength::getAttackEffect(int vehicleId)
 	
 }
 
+// TileTransit
+
+TileTransit::TileTransit(int _angle, TileInfo *_tileInfo)
+: angle(_angle), tileInfo(_tileInfo)
+{}
+
 // TileInfo
 
 double TileInfo::getOffenseMultiplier(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId)
@@ -2271,32 +2277,6 @@ void MutualLoss::accumulate(MutualLoss &mutualLoss)
 	foe += mutualLoss.foe;
 }
 
-bool isBlocked(int tileIndex)
-{
-	assert(tileIndex >= 0 && tileIndex < *MapAreaTiles);
-	return aiData.tileInfos.at(tileIndex).blocked;
-}
-
-bool isBlocked(MAP *tile)
-{
-	assert(isOnMap(tile));
-	return aiData.tileInfos.at(tile - *MapTiles).blocked;
-}
-
-bool isZoc(int orgTileIndex, int dstTileIndex)
-{
-	assert(orgTileIndex >= 0 && orgTileIndex < *MapAreaTiles);
-	assert(dstTileIndex >= 0 && dstTileIndex < *MapAreaTiles);
-	return aiData.tileInfos.at(orgTileIndex).orgZoc && aiData.tileInfos.at(dstTileIndex).dstZoc;
-}
-
-bool isZoc(MAP *orgTile, MAP *dstTile)
-{
-	assert(isOnMap(orgTile) && isOnMap(dstTile));
-	return aiData.tileInfos.at(orgTile - *MapTiles).orgZoc && aiData.tileInfos.at(dstTile - *MapTiles).dstZoc;
-	
-}
-
 bool isVendettaStoppedWith(int enemyFactionId)
 {
 	return (aiFactionInfo->diplo_status[enemyFactionId] & DIPLO_VENDETTA) != 0 && (aiFaction->diplo_status[enemyFactionId] & DIPLO_VENDETTA) == 0;
@@ -2814,17 +2794,16 @@ std::vector<MoveAction> getMoveActions(MovementType movementType, MAP *origin, i
 			TileInfo const &currentTileInfo = aiData.getTileInfo(currentTileIndex);
 			int currentMovementAllowance = movementAllowances.at(currentTileIndex);
 			
-			for (AngleTileInfo const &adjacentAngleTileInfo : currentTileInfo.adjacentAngleTileInfos)
+			for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
 			{
-				int angle = adjacentAngleTileInfo.angle;
-				TileInfo const *adjacentTileInfo = adjacentAngleTileInfo.tileInfo;
+				TileInfo const *adjacentTileInfo = tileTransit.tileInfo;
 				int adjacentTileIndex = adjacentTileInfo->tile - *MapTiles;
 				
 				// regard obstacle and ZoC
 				
 				if (regardObstacle)
 				{
-					if (adjacentTileInfo->blocked)
+					if (adjacentTileInfo->blocks.at(aiFactionId))
 						continue;
 				}
 				
@@ -2832,13 +2811,13 @@ std::vector<MoveAction> getMoveActions(MovementType movementType, MAP *origin, i
 				
 				if (regardZoc)
 				{
-					if (currentTileInfo.orgZoc && adjacentTileInfo->dstZoc)
+					if (tileTransit.zocs.at(aiFactionId))
 						continue;
 				}
 				
 				// hexCost
 				
-				int hexCost = currentTileInfo.hexCosts.at(movementType).at(angle);
+				int const hexCost = tileTransit.hexCosts.at(movementType);
 				if (hexCost == -1)
 					continue;
 				
@@ -3023,9 +3002,9 @@ std::vector<AttackAction> getMeleeAttackActions(int vehicleId, bool regardObstac
 		
 		// explore adjacent tiles
 		
-		for (AngleTileInfo const &adjacentAngleTileInfo : aiData.getTileInfo(tile).adjacentAngleTileInfos)
+		for (TileTransit const &tileTransit : aiData.getTileInfo(tile).tileTransits)
 		{
-			MAP *targetTile = adjacentAngleTileInfo.tileInfo->tile;
+			MAP *targetTile = tileTransit.tileInfo->tile;
 			
 			// enemy in tile if required
 			
@@ -3160,27 +3139,26 @@ robin_hood::unordered_flat_map<int, double> getMeleeAttackLocations(int vehicleI
 			
 			// iterate adjacent tiles
 			
-			for (AngleTileInfo const &adjacentAngleTileInfo : currentTileInfo.adjacentAngleTileInfos)
+			for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
 			{
-				int angle = adjacentAngleTileInfo.angle;
-				TileInfo &adjacentTileInfo = *(adjacentAngleTileInfo.tileInfo);
+				TileInfo &adjacentTileInfo = *(tileTransit.tileInfo);
 				int adjacentTileIndex = adjacentTileInfo.index;
 				MAP *adjacentTile = *MapTiles + adjacentTileIndex;
 				
 				// not blocked
 				
-				if (adjacentTileInfo.blocked)
+				if (adjacentTileInfo.blocks.at(vehicle.faction_id))
 					continue;
 				
 				// hexCost
 				
-				int hexCost = currentTileInfo.hexCosts.at(movementType).at(angle);
+				int const hexCost = tileTransit.hexCosts.at(movementType);
 				if (hexCost == -1)
 					continue;
 				
 				// new movementAllowance
 				
-				int adjacentTileMovementAllowance = currentTileMovementAllowance - hexCost;
+				int const adjacentTileMovementAllowance = currentTileMovementAllowance - hexCost;
 				
 				// update value
 				
@@ -3289,20 +3267,19 @@ robin_hood::unordered_flat_set<int> getArtilleryAttackLocations(int vehicleId)
 			
 			// iterate adjacent tiles
 			
-			for (AngleTileInfo const &adjacentAngleTileInfo : currentTileInfo.adjacentAngleTileInfos)
+			for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
 			{
-				int angle = adjacentAngleTileInfo.angle;
-				TileInfo &adjacentTileInfo = *(adjacentAngleTileInfo.tileInfo);
+				TileInfo &adjacentTileInfo = *(tileTransit.tileInfo);
 				int adjacentTileIndex = adjacentTileInfo.index;
 				
 				// not blocked
 				
-				if (adjacentTileInfo.blocked)
+				if (adjacentTileInfo.blocks.at(vehicle.faction_id))
 					continue;
 				
 				// hexCost
 				
-				int hexCost = currentTileInfo.hexCosts.at(movementType).at(angle);
+				int const hexCost = tileTransit.hexCosts.at(movementType);
 				if (hexCost == -1)
 					continue;
 				
@@ -3335,22 +3312,6 @@ robin_hood::unordered_flat_set<int> getArtilleryAttackLocations(int vehicleId)
 	Profiling::stop("- getArtilleryAttackLocations");
 	return attackLocations;
 	
-}
-
-bool isVehicleAllowedMove(int vehicleId, MAP *from, MAP *to)
-{
-	VEH *vehicle = getVehicle(vehicleId);
-	bool toTileBlocked = isBlocked(to);
-	bool zoc = isZoc(from, to);
-
-	if (toTileBlocked)
-		return false;
-
-	if (vehicle->triad() == TRIAD_LAND && !is_ocean(from) && !is_ocean(to) && zoc)
-		return false;
-
-	return true;
-
 }
 
 /*
@@ -4225,9 +4186,8 @@ MapDoubleValue getMeleeAttackPosition(int unitId, MAP *origin, MAP *target)
 	
 	MapDoubleValue closestAttackPosition(nullptr, INF);
 	
-	for (AngleTileInfo const &positionAdjacentAngleTileInfo : targetTileInfo.adjacentAngleTileInfos)
+	for (TileInfo const *positionTileInfo : targetTileInfo.adjacentTileInfos)
 	{
-		TileInfo *positionTileInfo = positionAdjacentAngleTileInfo.tileInfo;
 		MAP *positionTile = positionTileInfo->tile;
 		
 		// reachable
@@ -4237,7 +4197,7 @@ MapDoubleValue getMeleeAttackPosition(int unitId, MAP *origin, MAP *target)
 		
 		// not blocked
 		
-		if (positionTileInfo->blocked)
+		if (positionTileInfo->blocks.at(aiFactionId))
 			continue;
 		
 		// can melee attack
@@ -4278,7 +4238,7 @@ MapDoubleValue getArtilleryAttackPosition(int unitId, MAP *origin, MAP *target)
 	
 	MapDoubleValue closestAttackPosition(nullptr, INF);
 	
-	for (TileInfo *positionTileInfo : targetTileInfo.range2NoCenterTileInfos)
+	for (TileInfo const *positionTileInfo : targetTileInfo.range2NoCenterTileInfos)
 	{
 		MAP *positionTile = positionTileInfo->tile;
 		
@@ -4289,7 +4249,7 @@ MapDoubleValue getArtilleryAttackPosition(int unitId, MAP *origin, MAP *target)
 		
 		// not blocked
 		
-		if (positionTileInfo->blocked)
+		if (positionTileInfo->blocks.at(aiFactionId))
 			continue;
 		
 		// can artillery attack
@@ -4562,41 +4522,6 @@ int getBasePoliceRequiredPower(int baseId)
 	
 }
 
-void setTileBlockedAndZoc(TileInfo &tileInfo)
-{
-	// blocked
-	
-	tileInfo.blocked =
-		// unfriendly base blocks
-		tileInfo.unfriendlyBase
-		||
-		// unfriendly vehicle blocks
-		tileInfo.unfriendlyVehicle
-	;
-	
-	// zoc
-	
-	tileInfo.orgZoc =
-		// not base
-		!tileInfo.base
-		&&
-		// unfriendly vehicle zoc
-		tileInfo.unfriendlyVehicleZoc
-	;
-	
-	tileInfo.dstZoc =
-		// not base
-		!tileInfo.base
-		&&
-		// not friendly vehicle
-		!tileInfo.friendlyVehicle
-		&&
-		// unfriendly vehicle zoc
-		tileInfo.unfriendlyVehicleZoc
-	;
-	
-}
-
 /*
 Estimates unit destruction gain.
 */
@@ -4690,132 +4615,6 @@ void populateVehiclePad0Map(bool initialize)
 	}
 	
 	Profiling::stop("- populateVehiclePad0Map");
-	
-}
-
-/*
-Repopulates vehicle locations and corresponding blocked and zoc after vehicle moved/created/destroyed.
-*/
-void updateVehicleTileBlockedAndZocs()
-{
-	Profiling::start("- updateVehicleTileBlockedAndZocs");
-	
-	// reset values
-	
-	for (TileInfo &tileInfo : aiData.tileInfos)
-	{
-		tileInfo.vehicleIds.clear();
-		tileInfo.playerVehicleIds.clear();
-		std::fill(tileInfo.factionNeedlejetInFlights.begin(), tileInfo.factionNeedlejetInFlights.end(), false);
-		std::fill(tileInfo.unfriendlyNeedlejetInFlights.begin(), tileInfo.unfriendlyNeedlejetInFlights.end(), false);
-		
-		tileInfo.playerVehicle = false;
-		tileInfo.friendlyVehicle = false;
-		tileInfo.unfriendlyVehicle = false;
-		tileInfo.unfriendlyVehicleZoc = false;
-		
-		tileInfo.blocked = false;
-		tileInfo.orgZoc = false;
-		tileInfo.dstZoc = false;
-		
-	}
-	
-	// vehicles
-		
-	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
-	{
-		VEH &vehicle = Vehs[vehicleId];
-		TileInfo &tileInfo = aiData.getVehicleTileInfo(vehicleId);
-		
-		// tile vehicles
-		
-		tileInfo.vehicleIds.push_back(vehicleId);
-		
-		// tile player vehicles
-		
-		if (Vehs[vehicleId].faction_id == aiFactionId)
-		{
-			tileInfo.playerVehicleIds.push_back(vehicleId);
-		}
-		
-		// tile faction needlejet in flight
-		
-		if (!tileInfo.airbase && isNeedlejetVehicle(vehicleId))
-		{
-			tileInfo.factionNeedlejetInFlights.at(vehicle.faction_id) = true;
-		}
-		
-		// friendly/unfriendly vehicles
-		
-		if (isFriendly(aiFactionId, vehicle.faction_id))
-		{
-			tileInfo.friendlyVehicle = true;
-			if (vehicle.faction_id == aiFactionId)
-			{
-				tileInfo.playerVehicle = true;
-			}
-		}
-		else
-		{
-			tileInfo.unfriendlyVehicle = true;
-			
-			// zoc is exerted only from land
-			
-			if (tileInfo.land)
-			{
-				for (AngleTileInfo const &adjacentAngleTileInfo : tileInfo.adjacentAngleTileInfos)
-				{
-					TileInfo *adjacentTileInfo = adjacentAngleTileInfo.tileInfo;
-					
-					// zoc is exerted only to land
-					
-					if (adjacentTileInfo->ocean)
-						continue;
-					
-					// zoc is not exerted to base
-					
-					if (adjacentTileInfo->base)
-						continue;
-					
-					// zoc
-					
-					adjacentTileInfo->unfriendlyVehicleZoc = true;
-					
-				}
-				
-			}
-			
-		}
-		
-	}
-	
-	// blocked and zoc
-	
-	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
-	{
-		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
-		setTileBlockedAndZoc(tileInfo);
-	}
-	
-	// needlejet in flight
-	
-	for (TileInfo &tileInfo : aiData.tileInfos)
-	{
-		for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
-		{
-			for (int otherFactionId = 0; otherFactionId < MaxPlayerNum; otherFactionId++)
-			{
-				if (isUnfriendly(factionId, otherFactionId) && tileInfo.factionNeedlejetInFlights.at(otherFactionId))
-				{
-					tileInfo.unfriendlyNeedlejetInFlights.at(factionId) = true;
-				}
-			}
-			
-		}
-		
-	}
-	
-	Profiling::stop("- updateVehicleTileBlockedAndZocs");
 	
 }
 

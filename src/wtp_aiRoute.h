@@ -263,7 +263,7 @@ double getVehicleTravelTime(int vehicleId, MAP *dst, bool attackDestination = tr
 // A* path finding algorithm
 // ==================================================
 
-double getATravelTime(MovementType movementType, int speed, MAP *org, MAP *dst, bool attackDestination);
+double getATravelTime(MovementType movementType, int vehicleSpeed, MAP *org, MAP *dst, bool attackDestination);
 //double getUnitATravelTime(int unitId, int speed, MAP *org, MAP *dst, bool attackDestination);
 //double getUnitATravelTime(int unitId, MAP *org, MAP *dst, bool attackDestination);
 //double getSeaUnitATravelTime(int unitId, int speed, MAP *org, MAP *dst, bool attackDestination);

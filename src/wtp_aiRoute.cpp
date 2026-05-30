@@ -932,46 +932,45 @@ void populateSeaTransportWaitTimes(int factionId)
 		openNodes.clear();
 		newOpenNodes.clear();
 		
-		
-		double waitTime = (double)initialTile.buildTime;
-		if (waitTime < seaTransportWaitTimes.at(tileIndex))
 		{
-			seaTransportWaitTimes.at(tileIndex) = waitTime;
-			openNodes.insert(tile);
+			auto const waitTime = static_cast<double>(initialTile.buildTime);
+			if (waitTime < seaTransportWaitTimes.at(tileIndex))
+			{
+				seaTransportWaitTimes.at(tileIndex) = waitTime;
+				openNodes.insert(tile);
+			}
 		}
-		
+
 		while (!openNodes.empty())
 		{
 			for (MAP * currentTile : openNodes)
 			{
 				int currentTileIndex = currentTile - *MapTiles;
 				double currentTileWaitTime = seaTransportWaitTimes.at(currentTileIndex);
+				TileInfo &currentTileInfo = aiData.getTileInfo(currentTile);
 				
-				for (MapAngle mapAngle : getAdjacentMapAngles(tile))
+				for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
 				{
-					MAP *adjacentTile = mapAngle.tile;
-					int adjacentTileAngle = mapAngle.angle;
-					
-					int adjacentTileIndex = adjacentTile - *MapTiles;
-					TileInfo &adjacentTileInfo = aiData.getTileInfo(adjacentTile);
-					
+					TileInfo const &adjacentTileInfo = *tileTransit.tileInfo;
+					MAP *adjacentTile = adjacentTileInfo.tile;
+					int const adjacentTileIndex = adjacentTileInfo.index;
+
 					// sea or friendly base
 					
-					if (!(is_ocean(adjacentTile) || isFriendlyBaseAt(adjacentTile, factionId)))
+					if (!(adjacentTileInfo.ocean || (adjacentTileInfo.base && isFriendly(factionId, Bases[adjacentTileInfo.baseId].faction_id))))
 						continue;
 					
 					// hexCost
 					
-					int hexCost = adjacentTileInfo.averageHexCosts.at(initialTile.movementType).at(adjacentTileAngle);
-					
+					int const hexCost = tileTransit.averageHexCosts.at(initialTile.movementType);
 					if (hexCost == -1)
 						continue;
 					
-					double stepCost = (double)hexCost + impediments.at(adjacentTileIndex);
+					double const stepCost = (double)hexCost + impediments.at(adjacentTileIndex);
 					
-					double moveTime = stepCost / (double)initialTile.moveRate;
-					double waitTime = WAIT_TIME_MULTIPLIER * capacityCoefficient * moveTime;
-					double adjacentTileWaitTime = currentTileWaitTime + waitTime;
+					double const moveTime = stepCost / (double)initialTile.moveRate;
+					double const waitTime = WAIT_TIME_MULTIPLIER * capacityCoefficient * moveTime;
+					double const adjacentTileWaitTime = currentTileWaitTime + waitTime;
 					
 					if (adjacentTileWaitTime < seaTransportWaitTimes.at(adjacentTileIndex))
 					{
@@ -1104,9 +1103,9 @@ void populateSeaCombatClusters(int factionId)
 			{
 				TileInfo &currentTileInfo = aiData.tileInfos.at(currentTileIndex);
 				
-				for (AngleTileInfo const &adjacentAngleTileInfo : currentTileInfo.adjacentAngleTileInfos)
+				for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
 				{
-					int adjacentTileIndex = adjacentAngleTileInfo.tileInfo->index;
+					int adjacentTileIndex = tileTransit.tileInfo->index;
 					
 					// available
 					
@@ -1211,9 +1210,9 @@ void populateLandCombatClusters(int factionId)
 			{
 				TileInfo &currentTileInfo = aiData.tileInfos[currentTileIndex];
 				
-				for (AngleTileInfo const &adjacentAngleTileInfo : currentTileInfo.adjacentAngleTileInfos)
+				for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
 				{
-					int adjacentTileIndex = adjacentAngleTileInfo.tileInfo->index;
+					int adjacentTileIndex = tileTransit.tileInfo->index;
 					
 					// available
 					
@@ -1349,29 +1348,28 @@ void populateSeaLandmarks(int factionId)
 						
 						bool endNode = true;
 						
-						for (AngleTileInfo const &adjacentAngleTileInfo : currentTileInfo.adjacentAngleTileInfos)
+						for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
 						{
-							int angle = adjacentAngleTileInfo.angle;
-							TileInfo *adjacentTileInfo = adjacentAngleTileInfo.tileInfo;
-							int adjacentTileIndex = adjacentTileInfo->index;
-							int hexCost = currentTileInfo.averageHexCosts.at(movementType).at(angle);
+							TileInfo const *adjacentTileInfo = tileTransit.tileInfo;
+							int const adjacentTileIndex = adjacentTileInfo->index;
+							int const hexCost = tileTransit.averageHexCosts.at(movementType);
 							
 							if (hexCost == -1)
 								continue;
 							
-							int adjacentTileSeaCluster = seaCombatClusters.at(adjacentTileIndex);
+							int const adjacentTileSeaCluster = seaCombatClusters.at(adjacentTileIndex);
 							
 							if (adjacentTileSeaCluster != seaCluster)
 								continue;
 							
-							double stepCost = (double)hexCost + impediments.at(adjacentTileIndex);
+							double const stepCost = static_cast<double>(hexCost) + impediments.at(adjacentTileIndex);
 							
 							// update value
 							
 							SeaLandmarkTileInfo &adjacentTileSeaLandmarkTileInfo = landmark.tileInfos.at(adjacentTileIndex);
 							
-							double oldMovementCost = adjacentTileSeaLandmarkTileInfo.movementCost;
-							double newMovementCost = currentTileSeaLandmarkTileInfo.movementCost + stepCost;
+							double const oldMovementCost = adjacentTileSeaLandmarkTileInfo.movementCost;
+							double const newMovementCost = currentTileSeaLandmarkTileInfo.movementCost + stepCost;
 							
 							if (newMovementCost < oldMovementCost)
 							{
@@ -1575,10 +1573,9 @@ void populateLandLandmarks(int factionId)
 						
 						bool endNode = true;
 						
-						for (AngleTileInfo const &adjacentAngleTileInfo : currentTileInfo.adjacentAngleTileInfos)
+						for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
 						{
-							int angle = adjacentAngleTileInfo.angle;
-							TileInfo *adjacentTileInfo = adjacentAngleTileInfo.tileInfo;
+							TileInfo *adjacentTileInfo = tileTransit.tileInfo;
 							int adjacentTileIndex = adjacentTileInfo->index;
 							
 							// should be in same land transported cluster
@@ -1592,7 +1589,7 @@ void populateLandLandmarks(int factionId)
 							{
 								// sensible land movement cost
 								
-								int hexCost = currentTileInfo.averageHexCosts.at(movementType).at(angle);
+								int hexCost = tileTransit.averageHexCosts.at(movementType);
 								if (hexCost == -1)
 									continue;
 								
@@ -1653,20 +1650,20 @@ void populateLandLandmarks(int factionId)
 							{
 								// sensible sea movement cost
 								
-								int hexCost = currentTileInfo.averageHexCosts.at(MT_SEA).at(angle);
+								int const hexCost = tileTransit.averageHexCosts.at(MT_SEA);
 								if (hexCost == -1)
 									continue;
 								
 								LandLandmarkTileInfo &adjacentTileLandLandmarkTileInfo = landmark.tileInfos.at(adjacentTileIndex);
 								
-								double stepCost = (double)hexCost + impediments.at(adjacentTileIndex);
+								double const stepCost = static_cast<double>(hexCost) + impediments.at(adjacentTileIndex);
 								
 								// update value
 								
-								double oldTravelTime = adjacentTileLandLandmarkTileInfo.travelTime;
+								double const oldTravelTime = adjacentTileLandLandmarkTileInfo.travelTime;
 								
-								double newSeaMovementCost = currentTileLandLandmarkTileInfo.seaMovementCost + stepCost;
-								double newTravelTime = currentTileLandLandmarkTileInfo.travelTime + stepCost / (double)(Rules->move_rate_roads * factionInfo.bestSeaTransportUnitSpeed);
+								double const newSeaMovementCost = currentTileLandLandmarkTileInfo.seaMovementCost + stepCost;
+								double const newTravelTime = currentTileLandLandmarkTileInfo.travelTime + stepCost / static_cast<double>(Rules->move_rate_roads * factionInfo.bestSeaTransportUnitSpeed);
 								
 								if (newTravelTime < oldTravelTime)
 								{
@@ -1804,7 +1801,7 @@ void populateLandLandmarks(int factionId)
 	
 }
 
-void populateSeaClusters(int factionId)
+void populateSeaClusters(int const factionId)
 {
 	Profiling::start("populateSeaClusters", "precomputeRouteData");
 	
@@ -1820,11 +1817,12 @@ void populateSeaClusters(int factionId)
 	
 	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
+		TileInfo const &tileInfo = aiData.tileInfos.at(tileIndex);
 		MAP *tile = *MapTiles + tileIndex;
 		
 		// sea and not blocked
 		
-		if (is_ocean(tile) && !isBlocked(tile))
+		if (is_ocean(tile) && !tileInfo.blocks.at(factionId))
 		{
 			seaClusters.at(tileIndex) = -2;
 		}
@@ -1891,13 +1889,14 @@ void populateSeaClusters(int factionId)
 		
 		while (!borderTiles.empty())
 		{
-			for (int currentTileIndex : borderTiles)
+			for (int const currentTileIndex : borderTiles)
 			{
-				TileInfo &currentTileInfo = aiData.tileInfos[currentTileIndex];
+				TileInfo const &currentTileInfo = aiData.tileInfos.at(currentTileIndex);
 				
-				for (AngleTileInfo const &adjacentAngleTileInfo : currentTileInfo.adjacentAngleTileInfos)
+				for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
 				{
-					int adjacentTileIndex = adjacentAngleTileInfo.tileInfo->index;
+					TileInfo const &adjacentTileInfo = *tileTransit.tileInfo;
+					int const adjacentTileIndex = adjacentTileInfo.index;
 					
 					// available
 					
@@ -1976,11 +1975,11 @@ void populateLandClusters()
 	
 	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
-		MAP *tile = *MapTiles + tileIndex;
-		
+		TileInfo const &tileInfo = aiData.tileInfos.at(tileIndex);
+
 		// land and not blocked
 		
-		if (!is_ocean(tile) && !isBlocked(tile))
+		if (tileInfo.land && !tileInfo.blocks.at(aiFactionId))
 		{
 			landClusters.at(tileIndex) = -2;
 		}
@@ -2019,11 +2018,12 @@ void populateLandClusters()
 		{
 			for (int currentTileIndex : borderTiles)
 			{
-				TileInfo &currentTileInfo = aiData.tileInfos[currentTileIndex];
+				TileInfo &currentTileInfo = aiData.tileInfos.at(currentTileIndex);
 				
-				for (AngleTileInfo const &adjacentAngleTileInfo : currentTileInfo.adjacentAngleTileInfos)
+				for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
 				{
-					int adjacentTileIndex = adjacentAngleTileInfo.tileInfo->index;
+					TileInfo const &adjacentAngleTileInfo = *tileTransit.tileInfo;
+					int adjacentTileIndex = adjacentAngleTileInfo.index;
 					
 					// available
 					
@@ -2032,7 +2032,7 @@ void populateLandClusters()
 					
 					// not zoc
 					
-					if (isZoc(currentTileIndex, adjacentTileIndex))
+					if (tileTransit.zocs.at(aiFactionId))
 						continue;
 					
 					// insert adjacent tile
@@ -2071,14 +2071,14 @@ void populateLandClusters()
 		
 	}
 	
-//	if (DEBUG)
-//	{
-//		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
-//		{
-//			debug("\t%s %2d\n", getLocationString(*MapTiles + tileIndex), landClusters.at(tileIndex));
-//		}
-//		
-//	}
+	if (DEBUG)
+	{
+		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
+		{
+			debug("\t%s %2d\n", getLocationString(*MapTiles + tileIndex), landClusters.at(tileIndex));
+		}
+
+	}
 	
 	Profiling::stop("populateLandClusters");
 	
@@ -2099,11 +2099,11 @@ void populateLandTransportedClusters()
 	
 	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
-		MAP *tile = *MapTiles + tileIndex;
-		
+		TileInfo const &tileInfo = aiData.tileInfos.at(tileIndex);
+
 		// land and not blocked
 		
-		if (!is_ocean(tile) && !isBlocked(tile))
+		if (tileInfo.land && !tileInfo.blocks.at(aiFactionId))
 		{
 			landTransportedClusters.at(tileIndex) = -2;
 		}
@@ -2150,9 +2150,10 @@ void populateLandTransportedClusters()
 			{
 				TileInfo &currentTileInfo = aiData.tileInfos[currentTileIndex];
 				
-				for (AngleTileInfo const &adjacentAngleTileInfo : currentTileInfo.adjacentAngleTileInfos)
+				for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
 				{
-					int adjacentTileIndex = adjacentAngleTileInfo.tileInfo->index;
+					TileInfo const &adjacentTileInfo = *tileTransit.tileInfo;
+					int adjacentTileIndex = adjacentTileInfo.index;
 					
 					// available
 					
@@ -2161,7 +2162,7 @@ void populateLandTransportedClusters()
 					
 					// not zoc on land
 					
-					if (isZoc(currentTileIndex, adjacentTileIndex))
+					if (tileTransit.zocs.at(aiFactionId))
 						continue;
 					
 					// insert adjacent tile
@@ -2240,7 +2241,7 @@ void populateTransfers(int factionId)
 		
 		// not blocked
 		
-		if (tileInfo.blocked)
+		if (tileInfo.blocks.at(factionId))
 			continue;
 		
 		// assigned cluster
@@ -2250,22 +2251,22 @@ void populateTransfers(int factionId)
 		
 		// iterate adjacent tiles
 		
-		for (AngleTileInfo const &adjacentAngleTileInfo : tileInfo.adjacentAngleTileInfos)
+		for (TileTransit const &tileTransit : tileInfo.tileTransits)
 		{
-			TileInfo *adjacentTileInfo = adjacentAngleTileInfo.tileInfo;
-			int adjacentTileIndex = adjacentTileInfo->index;
-			MAP *adjacentTile = adjacentTileInfo->tile;
+			TileInfo const &adjacentTileInfo = *tileTransit.tileInfo;
+			int const adjacentTileIndex = adjacentTileInfo.index;
+			MAP *adjacentTile = adjacentTileInfo.tile;
 			
 			// sea
 			
-			if (!adjacentTileInfo->ocean)
+			if (!adjacentTileInfo.ocean)
 				continue;
 			
 			int seaClusterIndex = seaClusters.at(adjacentTileIndex);
 			
 			// not blocked
 			
-			if (adjacentTileInfo->blocked)
+			if (adjacentTileInfo.blocks.at(factionId))
 				continue;
 			
 			// assigned cluster
@@ -2312,9 +2313,9 @@ void populateTransfers(int factionId)
 		
 		// process adjacent tiles
 		
-		for (AngleTileInfo const &adjacentAngleTileInfo : baseTileInfo.adjacentAngleTileInfos)
+		for (TileTransit const &tileTransit : baseTileInfo.tileTransits)
 		{
-			TileInfo *adjacentTileInfo = adjacentAngleTileInfo.tileInfo;
+			TileInfo const *adjacentTileInfo = tileTransit.tileInfo;
 			MAP *adjacentTile = adjacentTileInfo->tile;
 			
 			// ocean
@@ -3007,7 +3008,7 @@ double getVehicleTravelTime(int vehicleId, MAP *dst, bool attackDestination)
 /**
 Computes A* travel time for *player* faction.
 */
-double getATravelTime(MovementType movementType, int speed, MAP *org, MAP *dst, bool attackDestination)
+double getATravelTime(MovementType movementType, int const vehicleSpeed, MAP *org, MAP *dst, bool const attackDestination)
 {
 //	debug("getATravelTime movementType=%d speed=%d %s->%s\n", movementType, speed, getLocationString(org), getLocationString(dst));
 	
@@ -3061,7 +3062,7 @@ double getATravelTime(MovementType movementType, int speed, MAP *org, MAP *dst, 
 	std::priority_queue<FValue, std::vector<FValue>, FValueComparator> openNodes;
 	
 	travelTimes[orgIndex] = 0.0;
-	double orgF = getRouteVectorDistance(org, dst) / (double)speed;
+	double orgF = getRouteVectorDistance(org, dst) / (double)vehicleSpeed;
 	openNodes.push({orgIndex, orgF});
 	
 	// process path
@@ -3084,12 +3085,11 @@ double getATravelTime(MovementType movementType, int speed, MAP *org, MAP *dst, 
 		
 		// check surrounding tiles
 		
-		for (AngleTileInfo const &adjacentAngleTileInfo : currentTileInfo.adjacentAngleTileInfos)
+		for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
 		{
-			int angle = adjacentAngleTileInfo.angle;
-			TileInfo *adjacentTileInfo = adjacentAngleTileInfo.tileInfo;
-			int adjacentTileIndex = adjacentTileInfo->index;
-			MAP *adjacentTile = adjacentTileInfo->tile;
+			TileInfo const &adjacentTileInfo = *tileTransit.tileInfo;
+			int adjacentTileIndex = adjacentTileInfo.index;
+			MAP *adjacentTile = adjacentTileInfo.tile;
 			
 			// within cluster for surface vehicle
 			
@@ -3126,7 +3126,7 @@ double getATravelTime(MovementType movementType, int speed, MAP *org, MAP *dst, 
 			
 			// not blocked
 			
-			if (isBlocked(adjacentTileIndex))
+			if (adjacentTileInfo.blocks.at(aiFactionId))
 				continue;
 			
 			// stepTime and movement restrictions by movementType
@@ -3141,7 +3141,7 @@ double getATravelTime(MovementType movementType, int speed, MAP *org, MAP *dst, 
 				{
 					// hexCost
 					
-					int hexCost = currentTileInfo.averageHexCosts.at(movementType).at(angle);
+					int hexCost = tileTransit.averageHexCosts.at(movementType);
 					
 					// sensible hexCost
 					
@@ -3150,7 +3150,7 @@ double getATravelTime(MovementType movementType, int speed, MAP *org, MAP *dst, 
 					
 					// stepTime
 					
-					stepTime = (double)hexCost / (double)(Rules->move_rate_roads * speed);
+					stepTime = (double)hexCost / (double)(Rules->move_rate_roads * vehicleSpeed);
 					
 				}
 				
@@ -3164,17 +3164,17 @@ double getATravelTime(MovementType movementType, int speed, MAP *org, MAP *dst, 
 				
 				// movement restrictions by surface type
 				
-				if (!currentTileInfo.ocean && !adjacentTileInfo->ocean) // land-land
+				if (!currentTileInfo.ocean && !adjacentTileInfo.ocean) // land-land
 				{
 					// not zoc (could be within the cluster but specific movement can still be restricted by zoc)
 					
-					if (isZoc(currentTileIndex, adjacentTileIndex))
+					if (tileTransit.zocs.at(aiFactionId))
 						continue;
 					
 					// hexCost
 					// single road turn if attacking
 					
-					int hexCost = adjacentTileInfo->tile == dst && attackDestination ? Rules->move_rate_roads : currentTileInfo.averageHexCosts.at(movementType).at(angle);
+					int hexCost = adjacentTileInfo.tile == dst && attackDestination ? Rules->move_rate_roads : tileTransit.averageHexCosts.at(movementType);
 					
 					// sensible hexCost
 					
@@ -3183,14 +3183,14 @@ double getATravelTime(MovementType movementType, int speed, MAP *org, MAP *dst, 
 					
 					// stepTime
 					
-					stepTime = (double)hexCost / (double)(Rules->move_rate_roads * speed);
+					stepTime = (double)hexCost / (double)(Rules->move_rate_roads * vehicleSpeed);
 					
 				}
-				else if (currentTileInfo.ocean && adjacentTileInfo->ocean) // sea-sea transport movement
+				else if (currentTileInfo.ocean && adjacentTileInfo.ocean) // sea-sea transport movement
 				{
 					// hexCost for transport movement
 					
-					int hexCost = currentTileInfo.averageHexCosts.at(MT_SEA).at(angle);
+					int hexCost = tileTransit.averageHexCosts.at(MT_SEA);
 					
 					// sensible hexCost
 					
@@ -3202,7 +3202,7 @@ double getATravelTime(MovementType movementType, int speed, MAP *org, MAP *dst, 
 					stepTime = (double)hexCost / (double)(Rules->move_rate_roads * aiFactionInfo->bestSeaTransportUnitSpeed);
 					
 				}
-				else if (!currentTileInfo.ocean && adjacentTileInfo->ocean) // boarding
+				else if (!currentTileInfo.ocean && adjacentTileInfo.ocean) // boarding
 				{
 					// transport is available
 					
@@ -3216,11 +3216,11 @@ double getATravelTime(MovementType movementType, int speed, MAP *org, MAP *dst, 
 					stepTime = seaTransportWaitTime;
 					
 				}
-				else if (currentTileInfo.ocean && !adjacentTileInfo->ocean) // unboarding
+				else if (currentTileInfo.ocean && !adjacentTileInfo.ocean) // unboarding
 				{
 					// stepTime
 					
-					stepTime = (double)Rules->move_rate_roads / (double)(Rules->move_rate_roads * speed);
+					stepTime = static_cast<double>(Rules->move_rate_roads) / static_cast<double>(Rules->move_rate_roads * vehicleSpeed);
 					
 				}
 				
@@ -3249,7 +3249,7 @@ double getATravelTime(MovementType movementType, int speed, MAP *org, MAP *dst, 
 				
 				// f value
 				
-				double adjacentTileF = travelTime + getRouteVectorDistance(adjacentTile, dst) / (double)speed;
+				double adjacentTileF = travelTime + getRouteVectorDistance(adjacentTile, dst) / (double)vehicleSpeed;
 				openNodes.push({adjacentTileIndex, adjacentTileF});
 				
 			}

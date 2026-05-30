@@ -4472,6 +4472,8 @@ bool isValidConventionalTerraformingSite(MAP *tile)
 
 bool isValidTerraformingSite(MAP *tile)
 {
+	TileInfo const &tileInfo = aiData.getTileInfo(tile);
+
 	if (tile == nullptr)
 		return false;
 	
@@ -4492,7 +4494,7 @@ bool isValidTerraformingSite(MAP *tile)
 	
 	// exclude blocked locations
 	
-	if (isBlocked(tile))
+	if (tileInfo.blocks.at(aiFactionId))
 		return false;
 	
 	// all conditions met

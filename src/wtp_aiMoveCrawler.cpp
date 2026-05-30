@@ -196,7 +196,7 @@ void populateConvoyData()
 		
 		// not blocked
 		
-		if (tileInfo.blocked)
+		if (tileInfo.blocks.at(aiFactionId))
 			continue;
 		
 		// not base

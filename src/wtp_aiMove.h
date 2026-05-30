@@ -43,7 +43,6 @@ Transfer getOptimalDropoffTransfer(MAP *org, MAP *dst, int passengerVehicleId, i
 void setSafeMoveTo(int vehicleId, MAP *destination);
 MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoidWarzone);
 MAP *getSafeLocation(int vehicleId, bool hostile);
-void enemyMoveVehicleUpdateMapData();
 int setMoveTo(int vehicleId, MAP *destination);
 int setMoveTo(int vehicleId, const std::vector<MAP *> &waypoints);
 void aiEnemyMoveVehicles();

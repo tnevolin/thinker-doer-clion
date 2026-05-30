@@ -310,11 +310,7 @@ int enemyMoveVehicle(const int vehicleId)
 {
 	debug("enemyMoveVehicle %s remaningMoves=%2d\n", getVehiclePad0LocationNameString(vehicleId), getVehicleRemainingMoves(vehicleId));
 	
-	// update map data
-	
-	enemyMoveVehicleUpdateMapData();
-	
-	VEH const * vehicle = getVehicle(vehicleId);
+	VEH const *vehicle = getVehicle(vehicleId);
 	
 	// fall over to default if vehicle did not move since last iteration
 	
@@ -990,16 +986,15 @@ MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoid
 	
 	for (MAP *tile : aiData.monoliths)
 	{
+		TileInfo &tileInfo = aiData.getTileInfo(tile);
 		int range = getRange(vehicleTile, tile);
 		
 		if (range > maxSearchRange)
 			continue;
 		
-		bool ocean = is_ocean(tile);
-		
 		// corresponding realm
 		
-		if ((triad == TRIAD_LAND && ocean) || (triad == TRIAD_SEA && !ocean))
+		if ((triad == TRIAD_LAND && !tileInfo.land) || (triad == TRIAD_SEA && !tileInfo.ocean))
 			continue;
 		
 		// item
@@ -1009,7 +1004,7 @@ MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoid
 		
 		// exclude blocked location
 		
-		if (isBlocked(tile))
+		if (tileInfo.blocks.at(aiFactionId))
 			continue;
 		
 		// exclude warzone if requested
@@ -1107,7 +1102,7 @@ MAP *getSafeLocation(int vehicleId, bool unfriendly)
 			return tile;
 		}
 		
-		if ((triad == TRIAD_LAND || triad == TRIAD_SEA) && map_has_item(tile, BIT_BUNKER) && !isBlocked(tile))
+		if ((triad == TRIAD_LAND || triad == TRIAD_SEA) && map_has_item(tile, BIT_BUNKER) && !tileInfo.blocks.at(vehicle.faction_id))
 		{
 			// not blocked bunker is a safe location for surface vehicle
 			Profiling::stop("- getSafeLocation");
@@ -1121,7 +1116,7 @@ MAP *getSafeLocation(int vehicleId, bool unfriendly)
 		
 		// not blocked
 		
-		if (tileInfo.blocked)
+		if (tileInfo.blocks.at(aiFactionId))
 			continue;
 		
 		// not danger zone
@@ -1138,18 +1133,6 @@ MAP *getSafeLocation(int vehicleId, bool unfriendly)
 	
 	Profiling::stop("- getSafeLocation");
 	return nullptr;
-	
-}
-
-void enemyMoveVehicleUpdateMapData()
-{
-	Profiling::start("- enemyMoveVehicleUpdateMapData");
-	
-	// update vehicle related tileInfos
-	
-	updateVehicleTileBlockedAndZocs();
-	
-	Profiling::stop("- enemyMoveVehicleUpdateMapData");
 	
 }
 

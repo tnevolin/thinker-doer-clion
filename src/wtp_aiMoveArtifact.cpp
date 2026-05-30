@@ -74,16 +74,16 @@ void moveArtifactStrategy()
 			
 			for (MAP *baseRadiusTile : getBaseRadiusTiles(baseTile, false))
 			{
-				bool baseRadiusTileOcean = is_ocean(baseRadiusTile);
-				
+				TileInfo &tileInfo = aiData.getTileInfo(baseRadiusTile);
+
 				// land
 				
-				if (baseRadiusTileOcean)
+				if (!tileInfo.land)
 					continue;
 				
 				// blocked
 				
-				if (isBlocked(baseRadiusTile))
+				if (tileInfo.blocks.at(aiFactionId))
 				{
 					blocked = true;
 					break;
@@ -139,16 +139,16 @@ void moveArtifactStrategy()
 			
 			for (MAP *baseRadiusTile : getBaseRadiusTiles(baseTile, false))
 			{
-				bool baseRadiusTileOcean = is_ocean(baseRadiusTile);
-				
+				TileInfo &tileInfo = aiData.getTileInfo(baseRadiusTile);
+
 				// land
 				
-				if (baseRadiusTileOcean)
+				if (!tileInfo.land)
 					continue;
 				
 				// blocked
 				
-				if (isBlocked(baseRadiusTile))
+				if (tileInfo.blocks.at(aiFactionId))
 				{
 					blocked = true;
 					break;

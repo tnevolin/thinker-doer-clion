@@ -1044,29 +1044,29 @@ void moveCombat()
 	
 	std::sort(taskPriorities.begin(), taskPriorities.end(), compareTaskPriorityDescending);
 	
-//	if (DEBUG)
-//	{
-//		debug("\tsortedTasks\n");
-//		
-//		for (TaskPriority &taskPriority : taskPriorities)
-//		{
-//			debug
-//			(
-//				"\t\t%5.2f:"
-//				" [%4d] %s"
-//				" -> %s"
-//				" / %s"
-//				"\n"
-//				, taskPriority.priority
-//				, taskPriority.vehicleId
-//				, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
-//				, getLocationString(taskPriority.destination)
-//				, getLocationString(taskPriority.attackTarget)
-//			);
-//			
-//		}
-//		
-//	}
+	if (DEBUG)
+	{
+		debug("\tsortedTasks\n");
+
+		for (TaskPriority &taskPriority : taskPriorities)
+		{
+			debug
+			(
+				"\t\t%5.2f:"
+				" [%4d] %s"
+				" -> %s"
+				" / %s"
+				"\n"
+				, taskPriority.priority
+				, taskPriority.vehicleId
+				, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
+				, getLocationString(taskPriority.destination)
+				, getLocationString(taskPriority.attackTarget)
+			);
+
+		}
+
+	}
 	
 	// select tasks
 	
@@ -1162,29 +1162,29 @@ void moveCombat()
 				
 			}
 			
-//			if (DEBUG)
-//			{
-//				debug
-//				(
-//					"\t\t[%4d]"
-//					" %s"
-//					" %s"
-//					" -> %s"
-//					" / %s"
-//					" combatMode=%d"
-//					" destructive=%d"
-//					" effect=%5.2f"
-//					"\n"
-//					, taskPriority.vehicleId
-//					, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
-//					, Task::typeName(taskPriority.taskType)
-//					, getLocationString(taskPriority.destination)
-//					, getLocationString(taskPriority.attackTarget)
-//					, taskPriority.combatMode
-//					, taskPriority.destructive
-//					, taskPriority.effect
-//				);
-//			}
+			if (DEBUG)
+			{
+				debug
+				(
+					"\t\t[%4d]"
+					" %s"
+					" %s"
+					" -> %s"
+					" / %s"
+					" combatMode=%d"
+					" destructive=%d"
+					" effect=%5.2f"
+					"\n"
+					, taskPriority.vehicleId
+					, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
+					, Task::typeName(taskPriority.taskType.typeName)
+					, getLocationString(taskPriority.destination)
+					, getLocationString(taskPriority.attackTarget)
+					, taskPriority.combatMode
+					, taskPriority.destructive
+					, taskPriority.effect
+				);
+			}
 			
 		}
 		
@@ -1684,7 +1684,7 @@ void populateRepairTasks(std::vector<TaskPriority> &taskPriorities)
 		for (MAP *tile : getRangeTiles(vehicleTile, MAX_REPAIR_DISTANCE, true))
 		{
 			int x = getX(tile), y = getY(tile);
-			TileInfo &tileInfo = aiData.getTileInfo(tile);
+			TileInfo const &tileInfo = aiData.getTileInfo(tile);
 			
 			// exclude monolith, they are handled by monolith function
 			
@@ -1693,7 +1693,7 @@ void populateRepairTasks(std::vector<TaskPriority> &taskPriorities)
 			
 			// exclude blocked
 			
-			if (isBlocked(tile))
+			if (tileInfo.blocks.at(aiFactionId))
 				continue;
 			
 			// exclude warzone
@@ -1999,6 +1999,8 @@ void populatePodPoppingTasks(std::vector<TaskPriority> &taskPriorities)
 	
 	for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
 	{
+		TileInfo const &tileInfo = aiData.getTileInfo(tile);
+
 		// pod
 		
 		if (isPodAt(tile) == 0)
@@ -2011,7 +2013,7 @@ void populatePodPoppingTasks(std::vector<TaskPriority> &taskPriorities)
 		
 		// not blocked
 		
-		if (isBlocked(tile))
+		if (tileInfo.blocks.at(aiFactionId))
 			continue;
 		
 		if (is_ocean(tile))

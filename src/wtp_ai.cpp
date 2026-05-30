@@ -339,6 +339,8 @@ void populateTileInfos()
 		// set tileIndex
 		
 		tileInfo.index = tileIndex;
+		tileInfo.x = getX(tileIndex);
+		tileInfo.y = getY(tileIndex);
 		tileInfo.tile = tile;
 		
 		// set ocean
@@ -490,18 +492,12 @@ void populateTileInfos()
 	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
 		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
-		tileInfo.adjacentAngleTileInfos.clear();
 		
-		for (int angle = 0; angle < ANGLE_COUNT; angle++)
+		tileInfo.adjacentTileInfos.clear();
+		for (int adjacentTileIndex : getAdjacentTileIndexes(tileIndex))
 		{
-			int adjacentTileIndex = getTileIndexByAngle(tileIndex, angle);
-			
-			if (adjacentTileIndex != -1)
-			{
-				TileInfo &adjacentTileInfo = aiData.tileInfos.at(adjacentTileIndex);
-				tileInfo.adjacentAngleTileInfos.push_back({angle, &adjacentTileInfo});
-			}
-			
+			TileInfo &adjacentTileInfo = aiData.tileInfos.at(adjacentTileIndex);
+			tileInfo.adjacentTileInfos.push_back(&adjacentTileInfo);
 		}
 		
 	}
@@ -531,80 +527,86 @@ void populateTileInfos()
 		}
 		
 	}
-	
+
 	Profiling::stop("range tiles");
+	
+	// tile transits
+
+	Profiling::start("tile transits", "populateTileInfos");
+	
+	for (TileInfo &tileInfo : aiData.tileInfos)
+	{
+		tileInfo.tileTransits.clear();
+		
+		for (int angle = 0; angle < ANGLE_COUNT; angle++)
+		{
+			MAP *adjacentTile = getTileByAngle(tileInfo.tile, angle);
+			if (adjacentTile == nullptr)
+				continue;
+			
+			TileInfo &adjacentTileInfo = aiData.getTileInfo(adjacentTile);
+			
+			tileInfo.tileTransits.emplace_back(angle, &adjacentTileInfo);
+			
+		}
+		
+	}
+	
+	Profiling::stop("tile transits");
 	
 	// hexCosts
 	
 	Profiling::start("hexCosts", "populateTileInfos");
 	
+	// helper values
+		
+	int approximateSeaFungusHexCost = divideIntegerRoundUp(Rules->move_rate_roads * 5, 2);
+	int approximateLandRoughHexCost = divideIntegerRoundUp(Rules->move_rate_roads * 5, 4);
+	int approximateLandFungusHexCost = Rules->move_rate_roads * 3;
+		
 	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
 		int tileX = getX(tileIndex);
 		int tileY = getY(tileIndex);
 		TileInfo &tileInfo = aiData.getTileInfo(tileIndex);
 		
-		// clear values
-		
-		for (std::array<int, ANGLE_COUNT> &movementTypeHexCosts : tileInfo.hexCosts)
+		for (TileTransit &tileTransit : tileInfo.tileTransits)
 		{
-			for (int angle = 0; angle < ANGLE_COUNT; angle++)
-			{
-				movementTypeHexCosts.at(angle) = -1;
-			}
-		}
-		
-		for (std::array<int, ANGLE_COUNT> &movementTypeHexCosts : tileInfo.averageHexCosts)
-		{
-			for (int angle = 0; angle < ANGLE_COUNT; angle++)
-			{
-				movementTypeHexCosts.at(angle) = -1;
-			}
-		}
-		
-		// compute values
-		
-		int approximateSeaFungusHexCost = divideIntegerRoundUp(Rules->move_rate_roads * 5, 2);
-		int approximateLandRoughHexCost = divideIntegerRoundUp(Rules->move_rate_roads * 5, 4);
-		int approximateLandFungusHexCost = Rules->move_rate_roads * 3;
-		
-		for (int angle = 0; angle < ANGLE_COUNT; angle++)
-		{
-			int adjacentTileIndex = getTileIndexByAngle(tileIndex, angle);
+			// clear values
 			
-			if (adjacentTileIndex == -1)
-				continue;
-			
-			MAP *adjacentTile = *MapTiles + adjacentTileIndex;
-			int adjacentTileX = getX(adjacentTileIndex);
-			int adjacentTileY = getY(adjacentTileIndex);
-			TileInfo *adjacentTileInfo = &aiData.getTileInfo(adjacentTileIndex);
+			tileTransit.hexCosts.fill(-1);
+			tileTransit.averageHexCosts.fill(-1);
+		
+			TileInfo &adjacentTileInfo = *tileTransit.tileInfo;
+			MAP *adjacentTile = adjacentTileInfo.tile;
+			int adjacentTileX = getX(adjacentTile);
+			int adjacentTileY = getY(adjacentTile);
 			
 			// air movement type
 			
 			int airHexCost = Rules->move_rate_roads;
 			
-			tileInfo.hexCosts.at(MT_AIR).at(angle)			= airHexCost;
+			tileTransit.hexCosts.at(MT_AIR)			= airHexCost;
 			
-			tileInfo.averageHexCosts.at(MT_AIR).at(angle)	= airHexCost;
+			tileTransit.averageHexCosts.at(MT_AIR)	= airHexCost;
 			
 			// sea vehicle moves on ocean or from/to base
-			if ((tileInfo.ocean || tileInfo.base) && (adjacentTileInfo->ocean || adjacentTileInfo->base))
+			if ((tileInfo.ocean || tileInfo.base) && (adjacentTileInfo.ocean || adjacentTileInfo.base))
 			{
 				int seaHexCost = mod_hex_cost(BSC_UNITY_GUNSHIP, -1, tileX, tileY, adjacentTileX, adjacentTileY, 0);
 				int seaNativeHexCost = mod_hex_cost(BSC_ISLE_OF_THE_DEEP, 0, tileX, tileY, adjacentTileX, adjacentTileY, 0);
 				
 				int approximateSeaHexCost = adjacentTile->is_fungus() ? approximateSeaFungusHexCost : seaHexCost;
 				
-				tileInfo.hexCosts.at(MT_SEA).at(angle)					= seaHexCost;
-				tileInfo.hexCosts.at(MT_SEA_NATIVE).at(angle)			= seaNativeHexCost;
+				tileTransit.hexCosts.at(MT_SEA)					= seaHexCost;
+				tileTransit.hexCosts.at(MT_SEA_NATIVE)			= seaNativeHexCost;
 				
-				tileInfo.averageHexCosts.at(MT_SEA).at(angle)			= approximateSeaHexCost;
-				tileInfo.averageHexCosts.at(MT_SEA_NATIVE).at(angle)	= seaNativeHexCost;
+				tileTransit.averageHexCosts.at(MT_SEA)			= approximateSeaHexCost;
+				tileTransit.averageHexCosts.at(MT_SEA_NATIVE)	= seaNativeHexCost;
 				
 			}
 			// land vehicle moves on land
-			if (tileInfo.land && adjacentTileInfo->land)
+			if (tileInfo.land && adjacentTileInfo.land)
 			{
 				int landHexCost = mod_hex_cost(BSC_UNITY_ROVER, -1, tileX, tileY, adjacentTileX, adjacentTileY, 0);
 				int landNativeHexCost = mod_hex_cost(BSC_MIND_WORMS, 0, tileX, tileY, adjacentTileX, adjacentTileY, 0);
@@ -616,17 +618,17 @@ void populateTileInfos()
 				int approximateLandNativeHexCost = (adjacentTile->is_rocky() || map_has_item(adjacentTile, BIT_FOREST)) ? approximateLandRoughHexCost : landNativeHexCost;
 				int approximateLandEasyHexCost = adjacentTile->is_fungus() ? approximateLandFungusHexCost : landEasyHexCost;
 				
-				tileInfo.hexCosts.at(MT_LAND).at(angle)						= landHexCost;
-				tileInfo.hexCosts.at(MT_LAND_NATIVE).at(angle)				= landNativeHexCost;
-				tileInfo.hexCosts.at(MT_LAND_EASY).at(angle)				= landEasyHexCost;
-				tileInfo.hexCosts.at(MT_LAND_HOVER).at(angle)				= landHoverHexCost;
-				tileInfo.hexCosts.at(MT_LAND_NATIVE_HOVER).at(angle)		= landNativeHoverHexCost;
+				tileTransit.hexCosts.at(MT_LAND)						= landHexCost;
+				tileTransit.hexCosts.at(MT_LAND_NATIVE)				= landNativeHexCost;
+				tileTransit.hexCosts.at(MT_LAND_EASY)				= landEasyHexCost;
+				tileTransit.hexCosts.at(MT_LAND_HOVER)				= landHoverHexCost;
+				tileTransit.hexCosts.at(MT_LAND_NATIVE_HOVER)		= landNativeHoverHexCost;
 				
-				tileInfo.averageHexCosts.at(MT_LAND).at(angle)				= approximateLandHexCost;
-				tileInfo.averageHexCosts.at(MT_LAND_NATIVE).at(angle)		= approximateLandNativeHexCost;
-				tileInfo.averageHexCosts.at(MT_LAND_EASY).at(angle)			= approximateLandEasyHexCost;
-				tileInfo.averageHexCosts.at(MT_LAND_HOVER).at(angle)		= landHoverHexCost;
-				tileInfo.averageHexCosts.at(MT_LAND_NATIVE_HOVER).at(angle)	= landNativeHoverHexCost;
+				tileTransit.averageHexCosts.at(MT_LAND)				= approximateLandHexCost;
+				tileTransit.averageHexCosts.at(MT_LAND_NATIVE)		= approximateLandNativeHexCost;
+				tileTransit.averageHexCosts.at(MT_LAND_EASY)			= approximateLandEasyHexCost;
+				tileTransit.averageHexCosts.at(MT_LAND_HOVER)		= landHoverHexCost;
+				tileTransit.averageHexCosts.at(MT_LAND_NATIVE_HOVER)	= landNativeHoverHexCost;
 				
 			}
 			
@@ -636,101 +638,89 @@ void populateTileInfos()
 	
 	Profiling::stop("hexCosts");
 	
-	// blocked and zoc
+	// block and zoc
 	
-	Profiling::start("blocked and zoc", "populateTileInfos");
+	Profiling::start("block and zoc", "populateTileInfos");
 	
-	// reset values
-	
-	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
+	// block
+
+	for (TileInfo &tileInfo : aiData.tileInfos)
 	{
-		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
-		tileInfo.friendlyBase = false;
-		tileInfo.unfriendlyBase = false;
-		tileInfo.playerVehicle = false;
-		tileInfo.friendlyVehicle = false;
-		tileInfo.unfriendlyVehicle = false;
-		tileInfo.unfriendlyVehicleZoc = false;
-	}
-	
-	// bases
-	
-	for (int baseId = 0; baseId < *BaseCount; baseId++)
-	{
-		BASE *base = getBase(baseId);
-		TileInfo &tileInfo = aiData.getBaseTileInfo(baseId);
-		
-		if (isFriendly(aiFactionId, base->faction_id))
+		tileInfo.blocks.fill(false);
+
+		for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
 		{
-			tileInfo.friendlyBase = true;
-		}
-		else
-		{
-			tileInfo.unfriendlyBase = true;
-		}
-		
-	}
-	
-	// vehicles
-	
-	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
-	{
-		VEH &vehicle = Vehs[vehicleId];
-		TileInfo &tileInfo = aiData.getVehicleTileInfo(vehicleId);
-		
-		// block and zoc
-		
-		if (isFriendly(aiFactionId, vehicle.faction_id))
-		{
-			tileInfo.friendlyVehicle = true;
-			if (vehicle.faction_id == aiFactionId)
+			// unfriendly base blocks
+
+			if (tileInfo.base && isUnfriendly(factionId, Bases[tileInfo.baseId].faction_id))
 			{
-				tileInfo.playerVehicle = true;
+				tileInfo.blocks.at(factionId) = true;
 			}
-		}
-		else
-		{
-			tileInfo.unfriendlyVehicle = true;
-			
-			// zoc is exerted only from land
-			
-			if (tileInfo.land)
+
+			// unfriendly vehicle blocks
+
+			for (int vehicleId : tileInfo.vehicleIds)
 			{
-				for (AngleTileInfo const &adjacentAngleTileInfo : tileInfo.adjacentAngleTileInfos)
+				if (isUnfriendly(factionId, Vehs[vehicleId].faction_id))
 				{
-					TileInfo *adjacentTileInfo = adjacentAngleTileInfo.tileInfo;
-					
-					// zoc is exerted only to land
-					
-					if (adjacentTileInfo->ocean)
-						continue;
-					
-					// zoc is not exerted to base
-					
-					if (adjacentTileInfo->base)
-						continue;
-					
-					// zoc
-					
-					adjacentTileInfo->unfriendlyVehicleZoc = true;
-					
+					tileInfo.blocks.at(factionId) = true;
+					break;
 				}
-				
+
 			}
-			
+
 		}
-		
+
 	}
-	
-	// set values
-	
-	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
+
+	// zoc
+
+	for (TileInfo &srcTileInfo : aiData.tileInfos)
 	{
-		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
-		setTileBlockedAndZoc(tileInfo);
+		int srcX = getX(srcTileInfo.index);
+		int srcY = getY(srcTileInfo.index);
+
+		for (TileTransit &tileTransit : srcTileInfo.tileTransits)
+		{
+			TileInfo &dstTileInfo = *tileTransit.tileInfo;
+
+			int dstX = getX(dstTileInfo.index);
+			int dstY = getY(dstTileInfo.index);
+
+			tileTransit.zocs.fill(false);
+
+			for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
+			{
+				// friendly vehicle at destination disables zoc
+
+				bool dstFriendlyVehicle = false;
+				for (int vehicleId : dstTileInfo.vehicleIds)
+				{
+					if (isFriendly(factionId, Vehs[vehicleId].faction_id))
+					{
+						dstFriendlyVehicle = true;
+						break;
+					}
+
+				}
+
+				if (dstFriendlyVehicle)
+					continue;
+
+				// compute zoc
+
+				bool srcZoc = mod_zoc_move(srcX, srcY, factionId);
+				bool dstZoc = mod_zoc_move(dstX, dstY, factionId);
+
+				tileTransit.zocs.at(factionId) = srcZoc && dstZoc;
+
+			}
+
+		}
+
 	}
-	
-	Profiling::stop("blocked and zoc");
+
+	Profiling::stop("block and zoc");
 	
 	// sensors
 	
@@ -1157,19 +1147,15 @@ void populatePlayerBaseRanges()
 		{
 			TileInfo &tileInfo = aiData.getTileInfo(tile);
 			
-			for (AngleTileInfo const &adjacentAngleTileInfo : tileInfo.adjacentAngleTileInfos)
+			for (TileTransit const &tileTransit : tileInfo.tileTransits)
 			{
-//				int angle = adjacentAngleTileInfo.angle;
-				TileInfo *adjacentTileInfo = adjacentAngleTileInfo.tileInfo;
+				TileInfo *adjacentTileInfo = tileTransit.tileInfo;
 				
 				if (baseRange < adjacentTileInfo->baseRanges.at(TRIAD_AIR))
 				{
 					adjacentTileInfo->baseRanges.at(TRIAD_AIR) = baseRange;
 					newOpenNodes.push_back(adjacentTileInfo->tile);
 				}
-				
-//				double baseDistance = tileInfo.baseDistances.at(TRIAD_AIR) + (angle % 2 == 0 ? 1.0 : 1.5);
-//				adjacentTileInfo->baseDistances.at(TRIAD_AIR) = std::min(adjacentTileInfo->baseDistances.at(TRIAD_AIR), baseDistance);
 				
 			}
 			
@@ -1211,19 +1197,15 @@ void populatePlayerBaseRanges()
 		{
 			TileInfo &tileInfo = aiData.getTileInfo(tile);
 			
-			for (AngleTileInfo const &adjacentAngleTileInfo : tileInfo.adjacentAngleTileInfos)
+			for (TileTransit const &tileTransit : tileInfo.tileTransits)
 			{
-//				int angle = adjacentAngleTileInfo.angle;
-				TileInfo *adjacentTileInfo = adjacentAngleTileInfo.tileInfo;
+				TileInfo *adjacentTileInfo = tileTransit.tileInfo;
 				
 				if (baseRange < adjacentTileInfo->baseRanges.at(TRIAD_SEA))
 				{
 					adjacentTileInfo->baseRanges.at(TRIAD_SEA) = baseRange;
 					newOpenNodes.push_back(adjacentTileInfo->tile);
 				}
-				
-//				double baseDistance = tileInfo.baseDistances.at(TRIAD_SEA) + (angle % 2 == 0 ? 1.0 : 1.5);
-//				adjacentTileInfo->baseDistances.at(TRIAD_SEA) = std::min(adjacentTileInfo->baseDistances.at(TRIAD_SEA), baseDistance);
 				
 			}
 			
@@ -1265,19 +1247,15 @@ void populatePlayerBaseRanges()
 		{
 			TileInfo &tileInfo = aiData.getTileInfo(tile);
 			
-			for (AngleTileInfo const &adjacentAngleTileInfo : tileInfo.adjacentAngleTileInfos)
+			for (TileTransit const &tileTransit : tileInfo.tileTransits)
 			{
-//				int angle = adjacentAngleTileInfo.angle;
-				TileInfo *adjacentTileInfo = adjacentAngleTileInfo.tileInfo;
+				TileInfo *adjacentTileInfo = tileTransit.tileInfo;
 				
 				if (baseRange < adjacentTileInfo->baseRanges.at(TRIAD_LAND))
 				{
 					adjacentTileInfo->baseRanges.at(TRIAD_LAND) = baseRange;
 					newOpenNodes.push_back(adjacentTileInfo->tile);
 				}
-				
-//				double baseDistance = tileInfo.baseDistances.at(TRIAD_LAND) + (angle % 2 == 0 ? 1.0 : 1.5);
-//				adjacentTileInfo->baseDistances.at(TRIAD_LAND) = std::min(adjacentTileInfo->baseDistances.at(TRIAD_LAND), baseDistance);
 				
 			}
 			
@@ -1714,14 +1692,14 @@ void populateBunkerInfos()
 		
 		if (tileInfo.bunker)
 		{
-			// player territory - not occupied by unfriendly
-			if (tile->owner == aiFactionId && !tileInfo.unfriendlyVehicle)
+			// player territory - not block
+			if (tile->owner == aiFactionId && !tileInfo.blocks.at(aiFactionId))
 			{
 				aiData.bunkerInfos.emplace(tile, BunkerInfo());
 				aiData.getBunkerInfo(tile).playerTerritory = true;
 			}
-			// hostile territory - player occupied
-			else if (isHostile(aiFactionId, tile->owner) && tileInfo.playerVehicle)
+			// hostile territory - not block
+			else if (isHostile(aiFactionId, tile->owner) && !tileInfo.blocks.at(aiFactionId))
 			{
 				aiData.bunkerInfos.emplace(tile, BunkerInfo());
 				aiData.getBunkerInfo(tile).playerTerritory = false;
@@ -1865,10 +1843,10 @@ void populatePlayerGlobalVariables()
 			double labsMultiplier = getBaseLabsMultiplier(baseId);
 			double psychMultiplier = getBasePsychMultiplier(baseId);
 			
-			double baseSquareMineralIntake = (double)ResInfo->base_sq.mineral;
-			double baseSquareEconomyIntake = (double)ResInfo->base_sq.energy * energyEfficiencyCoefficient * economyAllocation;
-			double baseSquareLabsIntake = (double)ResInfo->base_sq.energy * energyEfficiencyCoefficient * labsAllocation;
-			double baseSquarePsychIntake = (double)ResInfo->base_sq.energy * energyEfficiencyCoefficient * psychAllocation;
+			double const baseSquareMineralIntake = static_cast<double>(ResInfo->base_sq.mineral) * 1.0;
+			double const baseSquareEconomyIntake = static_cast<double>(ResInfo->base_sq.energy) * energyEfficiencyCoefficient * economyAllocation;
+			double const baseSquareLabsIntake = static_cast<double>(ResInfo->base_sq.energy) * energyEfficiencyCoefficient * labsAllocation;
+			double const baseSquarePsychIntake = static_cast<double>(ResInfo->base_sq.energy) * energyEfficiencyCoefficient * psychAllocation;
 			
 			double baseCitizensMineralIntake = base->mineral_intake - baseSquareMineralIntake;
 			double baseCitizensEconomyIntake = base->energy_intake_2 * energyEfficiencyCoefficient * economyAllocation - baseSquareEconomyIntake;

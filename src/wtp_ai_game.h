@@ -74,12 +74,6 @@ struct Transfer
 	
 };
 
-struct AngleTileInfo
-{
-	int angle;
-	TileInfo *tileInfo;
-};
-
 struct PotentialAttack
 {
 	int vehiclePad0;
@@ -217,9 +211,23 @@ public:
 	
 };
 
+struct TileTransit
+{
+	int angle;
+	TileInfo *tileInfo;
+	std::array<int, MOVEMENT_TYPE_COUNT> hexCosts {};
+	std::array<int, MOVEMENT_TYPE_COUNT> averageHexCosts {};
+	std::array<bool, MaxPlayerNum> zocs {};
+
+	TileTransit(int _angle, TileInfo *_tileInfo);
+
+};
+
 struct TileInfo
 {
 	int index;
+	int x;
+	int y;
 	MAP *tile;
 	
 	// surface type (in boolean and numeric form)
@@ -257,27 +265,15 @@ struct TileInfo
 	std::array<bool, MaxPlayerNum> unfriendlyNeedlejetInFlights;
 	
 	// adjacent tiles
-	std::vector<AngleTileInfo> adjacentAngleTileInfos;
+	std::vector<TileInfo *> adjacentTileInfos;
 	// range tiles
 	std::vector<TileInfo *> range2CenterTileInfos;
 	std::vector<TileInfo *> range2NoCenterTileInfos;
-	
-	// hex costs
-	// [movementType][angle]
-	std::array<std::array<int, ANGLE_COUNT>, MOVEMENT_TYPE_COUNT> hexCosts;
-	std::array<std::array<int, ANGLE_COUNT>, MOVEMENT_TYPE_COUNT> averageHexCosts;
-	
-	// movement data
-	
-	bool friendlyBase;
-	bool unfriendlyBase;
-	bool playerVehicle;
-	bool friendlyVehicle;
-	bool unfriendlyVehicle;
-	bool unfriendlyVehicleZoc;
-	bool blocked;
-	bool orgZoc;
-	bool dstZoc;
+
+	// blocks
+	std::array<bool, MaxPlayerNum> blocks;
+	// tile transits
+	std::vector<TileTransit> tileTransits;
 	
 	// danger zones
 	// artifact or empty base can be captured
@@ -989,10 +985,6 @@ struct MutualLoss
 	
 };
 
-bool isBlocked(int tileIndex);
-bool isBlocked(MAP *tile);
-bool isZoc(int orgTileIndex, int dstTileIndex);
-bool isZoc(MAP *orgTile, MAP *dstTile);
 bool isVendettaStoppedWith(int enemyFactionId);
 double getVehicleDestructionGain(int vehicleId);
 
@@ -1041,7 +1033,6 @@ std::vector<AttackAction> getMeleeAttackActions(int vehicleId, bool regardObstac
 std::vector<AttackAction> getArtilleryAttackActions(int vehicleId, bool regardObstacle, bool requireEnemy);
 robin_hood::unordered_flat_map<int, double> getMeleeAttackLocations(int vehicleId);
 robin_hood::unordered_flat_set<int> getArtilleryAttackLocations(int vehicleId);
-bool isVehicleAllowedMove(int vehicleId, MAP *from, MAP *to);
 void disbandOrversupportedVehicles(int factionId);
 void disbandUnneededVehicles();
 bool isUnitCanCaptureBase(int unitId, MAP *baseTile);
@@ -1087,13 +1078,11 @@ double getSensorDefenseMultiplier(int factionId, MAP *tile);
 double getUnitMeleeOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP *tile, bool exactLocation);
 double getUnitArtilleryOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP *tile, bool exactLocation);
 int getBasePoliceRequiredPower(int baseId);
-void setTileBlockedAndZoc(TileInfo &tileInfo);
 double getUnitDestructionGain(int unitId);
 double getProportionalCoefficient(double minValue, double maxValue, double value);
 int generatePad0FromVehicleId(int vehicleId);
 int getInitialVehicleIdByPad0(int pad0);
 void populateVehiclePad0Map(bool initialize = false);
-void updateVehicleTileBlockedAndZocs();
 double getCombatGain(int attackerVehicleId, int defenderVehicleId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile, double attackerHealth, double defenderHealth);
 char const *getVehiclePad0LocationNameString(int vehicleId);
 double getCNDProbability(double value);

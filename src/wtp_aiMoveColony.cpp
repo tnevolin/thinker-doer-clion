@@ -883,7 +883,7 @@ bool isValidBuildSite(MAP *tile, int factionId)
 	
 	int x = getX(tile);
 	int y = getY(tile);
-	TileInfo &tileInfo = aiData.getTileInfo(tile);
+	TileInfo const &tileInfo = aiData.getTileInfo(tile);
 	
 	// cannot build at volcano
 	
@@ -945,7 +945,7 @@ bool isValidBuildSite(MAP *tile, int factionId)
 	
 	// not blocked
 	
-	if (isBlocked(tile))
+	if (tileInfo.blocks.at(factionId))
 		return false;
 	
 	// not dangerous
