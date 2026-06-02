@@ -27,7 +27,7 @@ bool operator!=(const Location &o1, const Location &o2)
 	return o1.x != o2.x || o1.y != o2.y;
 }
 
-char const * getLocationString(Location location)
+char const * getLocationString(Location const location)
 {
 	static constexpr size_t BUFFER_COUNT = 8;
     static constexpr size_t BUFFER_SIZE  = 20;
@@ -39,12 +39,15 @@ char const * getLocationString(Location location)
 	
     // fill buffer
     std::snprintf(buffer, BUFFER_SIZE, "(%3d,%3d)", location.x, location.y);
-	
+
+	// rotate buffer index
+	index = (index + 1) % BUFFER_COUNT;
+
     return buffer;
     
 }
 
-char const * getLocationString(int tileIndex)
+char const * getLocationString(int const tileIndex)
 {
 	// allow returning for incorrect index
 	
@@ -55,7 +58,7 @@ char const * getLocationString(int tileIndex)
 	
 }
 
-char const * getLocationString(MAP *tile)
+char const * getLocationString(MAP *const tile)
 {
 	// allow returning for nullptr
 	

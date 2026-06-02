@@ -215,16 +215,16 @@ void populateConvoyData()
 		int bestBaseResTypeBaseId = -1;
 		double bestBaseResTypeGain = 0.0;
 		
-		for (BaseResType baseResType : {RSC_NUTRIENT, RSC_MINERAL, RSC_ENERGY})
+		for (BaseResType const baseResType : {RSC_NUTRIENT, RSC_MINERAL, RSC_ENERGY})
 		{
-			int yield = resource_yield(baseResType, aiFactionId, -1, tileX, tileY);
+			int const yield = resource_yield(baseResType, aiFactionId, -1, tileX, tileY);
 			int bestBaseId = bestBaseResourceGainBaseId.at(baseResType);
-			double bestGain = (double) yield * bestBaseResourceGain.at(baseResType);
+			double bestGain = static_cast<double>(yield) * bestBaseResourceGain.at(baseResType);
 			
-			for (int baseId : coveredBaseIds.at(tileIndex))
+			for (int const baseId : coveredBaseIds.at(tileIndex))
 			{
-				int baseYield = resource_yield(baseResType, aiFactionId, baseId, tileX, tileY);
-				double baseGain = (double) baseYield * baseResourceGains.at(baseId).at(baseResType);
+				int const baseYield = resource_yield(baseResType, aiFactionId, baseId, tileX, tileY);
+				double const baseGain = static_cast<double>(baseYield) * baseResourceGains.at(baseId).at(baseResType);
 				
 				if (baseGain > bestGain)
 				{
@@ -288,10 +288,10 @@ void assignCrawlerOrders()
 	
 	robin_hood::unordered_flat_set<MAP *> assignments;
 	
-	for (int vehicleId : crawlerIds)
+	for (int const vehicleId : crawlerIds)
 	{
 		VEH &vehicle = Vehs[vehicleId];
-		int triad = vehicle.triad();
+		int const triad = vehicle.triad();
 		
 		// find best assignment location
 		
@@ -338,6 +338,7 @@ void assignCrawlerOrders()
 			double travelTime = getVehicleApproachTime(vehicleId, tile, true);
 			if (travelTime == INF)
 				continue;
+			travelTime = 0.0;
 			
 			// gain
 			
@@ -364,9 +365,9 @@ void assignCrawlerOrders()
 		
 		TileConvoyInfo const &tileConvoyInfo = tileConvoyInfos.at(bestTile - *MapTiles);
 		
-		int oldHomeBaseId = vehicle.home_base_id;
-		int newHomeBaseId = tileConvoyInfo.baseid;
-		vehicle.home_base_id = newHomeBaseId;
+		int const oldHomeBaseId = vehicle.home_base_id;
+		int const newHomeBaseId = tileConvoyInfo.baseid;
+		vehicle.home_base_id = static_cast<int16_t>(newHomeBaseId);
 		if (oldHomeBaseId != -1)
 		{
 			computeBase(oldHomeBaseId, false);
