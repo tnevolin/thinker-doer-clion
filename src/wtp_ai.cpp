@@ -189,40 +189,6 @@ void strategy(bool computer)
 	
 }
 
-void executeTasks()
-{
-	Profiling::start("executeTasks", "strategy");
-	
-	for (robin_hood::pair<int, Task> &taskEntry : aiData.tasks)
-	{
-		Task &task = taskEntry.second;
-		
-		int vehicleId = task.getTaskVehicleId();
-		if (vehicleId == -1)
-			continue;
-		
-		VEH *vehicle = getVehicle(vehicleId);
-		if (vehicle == nullptr)
-			continue;
-		
-		// skip not fully automated human player units
-		
-		if (aiFactionId == *CurrentPlayerFaction && !(conf.manage_player_units && ((vehicle->state & VSTATE_ON_ALERT) != 0) && vehicle->movement_turns == 0))
-			continue;
-
-		// do not execute combat tasks immediatelly
-		
-		if (task.type == TT_MELEE_ATTACK || task.type == TT_ARTILLERY_ATTACK)
-			continue;
-		
-		task.execute();
-		
-	}
-	
-	Profiling::stop("executeTasks");
-	
-}
-
 void populateAIData()
 {
 	Profiling::start("populateAIData", "strategy");

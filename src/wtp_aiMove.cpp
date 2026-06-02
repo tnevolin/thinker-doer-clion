@@ -348,7 +348,7 @@ bool transitVehicle(Task const &task)
 {
 	const bool TRACE = DEBUG && false;
 
-	int vehicleId = task.getTaskVehicleId();
+	int vehicleId = task.getVehicleId();
 	VEH *vehicle = getVehicle(vehicleId);
 	MAP *vehicleTile = getVehicleMapTile(vehicleId);
 	MAP *destination = task.getDestination();
@@ -438,7 +438,7 @@ bool transitVehicle(Task const &task)
 
 bool transitLandVehicle(Task const &task)
 {
-	int vehicleId = task.getTaskVehicleId();
+	int vehicleId = task.getVehicleId();
 	MAP *destination = task.getDestination();
 	
 	assert(vehicleId >= 0 && vehicleId < *VehCount);

@@ -3,6 +3,7 @@
 
 #include "wtp_game.h"
 #include "wtp_aiMove.h"
+#include "wtp_aiMoveCombat.h"
 
 static char const *taskTypeNames[]
 {
@@ -25,6 +26,26 @@ static char const *taskTypeNames[]
 	"CONV",				// 16
 };
 
+// TaskHeap
+
+bool TaskHeap::compare(const Task &a, const Task &b)
+{
+	return a.priority < b.priority;
+}
+
+void TaskHeap::add(Task const &task)
+{
+	tasks.push_back(task);
+}
+
+Task &TaskHeap::get()
+{
+	Task &highestPriorityTask = *std::max_element(tasks.begin(), tasks.end(), compare);
+	return highestPriorityTask;
+}
+
+// Task
+
 char const *Task::getTaskTypeName(TaskType const taskType)
 {
 	return taskTypeNames[taskType];
@@ -35,7 +56,7 @@ char const *Task::typeName() const
 	return taskTypeNames[this->type];
 }
 
-int Task::getTaskVehicleId() const
+int Task::getVehicleId() const
 {
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
@@ -87,7 +108,7 @@ Otherwise, current vehicle location.
 */
 MAP *Task::getDestination() const
 {
-	int vehicleId = getTaskVehicleId();
+	int vehicleId = getVehicleId();
 	
 	// unknown vehicle
 	
@@ -109,7 +130,7 @@ MAP *Task::getDestination() const
 
 MAP *Task::getAttackTarget() const
 {
-	int vehicleId = getTaskVehicleId();
+	int vehicleId = getVehicleId();
 
 	if (vehicleId == -1)
 		return nullptr;
@@ -137,7 +158,7 @@ int Task::getDestinationRange() const
 	int x = getX(destination);
 	int y = getY(destination);
 
-	int vehicleId = getTaskVehicleId();
+	int vehicleId = getVehicleId();
 
 	if (vehicleId == -1)
 	{
@@ -157,7 +178,7 @@ returns reference to static buffer
 not thread-safe, not reentrant
 uses rotating buffers to allow up to 10 calls withing a single debug statement
 */
-char const *Task::toString()
+char const *Task::toString() const
 {
 	static int constexpr BUFFER_COUNT = 10;
 	static int constexpr BUFFER_SIZE = 100;
@@ -170,7 +191,7 @@ char const *Task::toString()
     
     int vehicleId = getVehicleIdByPad0(vehiclePad0);
     
-    if (vehicleId == -1)
+	if (vehicleId == -1)
 	{
 		snprintf(buffers[i], sizeof(buffers[i]), "ERROR: vehicleId is not found for pad0: {%4d}", vehiclePad0);
 	}
@@ -197,7 +218,7 @@ int Task::execute()
 {
 	debug("Task::execute()\n");
 
-	int vehicleId = getTaskVehicleId();
+	int vehicleId = getVehicleId();
 
 	if (vehicleId == -1)
 	{
@@ -237,7 +258,7 @@ int Task::execute(int vehicleId)
 
 		if (getRange(vehicleTile, destination) == 1 && getVehicleRemainingMoves(vehicleId) >= Rules->move_rate_roads && isBaseAt(destination))
 		{
-			int destinationOwner = destination->owner;
+			int const destinationOwner = static_cast<uint8_t>(destination->owner);
 
 			if (destinationOwner != -1 && isNeutral(vehicle->faction_id, destinationOwner))
 			{
@@ -256,7 +277,7 @@ int Task::execute(int vehicleId)
 
 }
 
-int Task::executeAction(int vehicleId)
+int Task::executeAction(int const vehicleId)
 {
 	debug("Task::executeAction(%d)\n", vehicleId);
 	
@@ -264,72 +285,55 @@ int Task::executeAction(int vehicleId)
 	{
 	case TT_NONE:
 		return executeNone(vehicleId);
-		break;
-	
+
 	case TT_KILL:
 		return executeKill(vehicleId);
-		break;
-	
+
 	case TT_SKIP:
 		return executeSkip(vehicleId);
-		break;
-	
+
 	case TT_BUILD:
 		return executeBuild(vehicleId);
-		break;
-	
+
 	case TT_LOAD:
 		return executeLoad(vehicleId);
-		break;
-	
+
 	case TT_BOARD:
 		return executeBoard(vehicleId);
-		break;
-	
+
 	case TT_UNLOAD:
 		return executeUnload(vehicleId);
-		break;
-	
+
 	case TT_UNBOARD:
 		return executeUnboard(vehicleId);
-		break;
-	
+
 	case TT_TERRAFORM:
 		return executeTerraformingAction(vehicleId);
-		break;
-	
+
 	case TT_ORDER:
 		return executeOrder(vehicleId);
-		break;
-	
+
 	case TT_HOLD:
 		return executeHold(vehicleId);
-		break;
-	
+
 	case TT_ALERT:
 		return executeAlert(vehicleId);
-		break;
-	
+
 	case TT_MOVE:
 		return executeMove(vehicleId);
-		break;
-	
+
 	case TT_ARTIFACT_CONTRIBUTE:
 		return executeArtifactContribute(vehicleId);
-		break;
-	
+
 	case TT_MELEE_ATTACK:
 		return executeAttack(vehicleId);
-		break;
-	
+
 	case TT_ARTILLERY_ATTACK:
 		return executeLongRangeFire(vehicleId);
-		break;
-	
+
 	case TT_CONVOY:
 		return executeConvoy(vehicleId);
-		break;
-	
+
 	default:
 		return EM_DONE;
 	
@@ -742,47 +746,40 @@ bool compareTaskPriorityDescending(Task const &a, Task const &b)
 
 void setTask(Task const &task)
 {
-	int vehicleId = task.getTaskVehicleId();
-	VEH *vehicle = getVehicle(vehicleId);
+	int const vehicleId = task.getVehicleId();
+	VEH const &vehicle = Vehs[vehicleId];
 	debug("setTask( vehicleId=%4d type=%2d )\n", vehicleId, task.type);
 
-	if (aiData.tasks.find(vehicle->pad_0) == aiData.tasks.end())
+	if (aiData.tasks.find(vehicle.pad_0) == aiData.tasks.end())
 	{
-		aiData.tasks.emplace(vehicle->pad_0, task);
+		aiData.tasks.emplace(vehicle.pad_0, TaskHeap());
 	}
-	else
-	{
-		aiData.tasks.at(vehicle->pad_0) = task;
-	}
-	
+
+	TaskHeap &vehicleTaskHeap = aiData.tasks.at(vehicle.pad_0);
+	vehicleTaskHeap.add(task);
+
 }
 
-bool hasTask(int vehicleId)
+bool hasTask(int const vehicleId)
 {
 	return (aiData.tasks.find(Vehs[vehicleId].pad_0) != aiData.tasks.end());
 }
 
-bool hasTacticalTask(int vehicleId)
+void deleteVehicleTasks(int const vehicleId)
 {
-	return (aiData.tacticalTasks.find(Vehs[vehicleId].pad_0) != aiData.tacticalTasks.end());
+	VEH const &vehicle = Vehs[vehicleId];
+	aiData.tasks.erase(vehicle.pad_0);
 }
 
-void deleteTask(int vehicleId)
-{
-	VEH *vehicle = getVehicle(vehicleId);
-
-	aiData.tasks.erase(vehicle->pad_0);
-
-}
-
-Task *getTask(int vehicleId)
+// Returns highest priority task.
+Task *getTask(int const vehicleId)
 {
 	int const vehiclePad0 = Vehs[vehicleId].pad_0;
-	
-	robin_hood::unordered_flat_map<int, Task>::iterator const tacticalTaskIterator = aiData.tacticalTasks.find(vehiclePad0);
-	robin_hood::unordered_flat_map<int, Task>::iterator const taskIterator = aiData.tasks.find(vehiclePad0);
-	
-	return tacticalTaskIterator != aiData.tacticalTasks.end() ? &(tacticalTaskIterator->second) : taskIterator != aiData.tasks.end() ? &(taskIterator->second) : nullptr;
-	
+
+	if (aiData.tasks.find(vehiclePad0) == aiData.tasks.end())
+		return nullptr;
+
+	return &aiData.tasks.at(vehiclePad0).get();
+
 }
 

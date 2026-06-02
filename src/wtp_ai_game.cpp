@@ -148,7 +148,6 @@ void Data::clear()
 	seaTransportRequestCounts.clear();
 	transportControl.clear();
 	tasks.clear();
-	tacticalTasks.clear();
 
 }
 

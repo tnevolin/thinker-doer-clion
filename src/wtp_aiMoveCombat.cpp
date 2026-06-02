@@ -3470,14 +3470,14 @@ void aiEnemyMoveCombatVehicles()
 	
 	while (true)
 	{
-		// select best action
-		
-		CombatAction bestCombatAction;
-		bestCombatAction.gain = -DBL_MAX;
+		// select highest priority task
+
+		int bestVehicleId = -1;
+		double bestVehicleTaskPriority = -DBL_MAX;
 		
 		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 		{
-			VEH &vehicle = Vehs[vehicleId];
+			VEH const &vehicle = Vehs[vehicleId];
 			
 			if (vehicle.faction_id != aiFactionId)
 				continue;
@@ -3490,14 +3490,15 @@ void aiEnemyMoveCombatVehicles()
 			
 			debug("\t%s\n", getVehiclePad0LocationNameString(vehicleId));
 			
-			CombatAction combatAction = selectVehicleCombatAction(vehicleId);
-			debug("\tselected\n");
-			debug("\t\t->%s/%s gain = %+5.2f", getLocationString(combatAction.destination), getLocationString(combatAction.target), combatAction.gain);
-			
-			if (combatAction.gain > bestCombatAction.gain)
+			Task *task = getTask(vehicleId);
+			if (task == nullptr)
+				continue;
+
+			if (task->priority > bestVehicleTaskPriority)
 			{
-				bestCombatAction = combatAction;
-				debug("\t- best vehicle\n");
+				bestVehicleId = vehicleId;
+				bestVehicleTaskPriority = task->priority;
+				debug("\t- best task\n");
 			}
 			else
 			{
@@ -3507,12 +3508,10 @@ void aiEnemyMoveCombatVehicles()
 			
 		}
 		
-		if (bestCombatAction.vehicleId == -1)
+		if (bestVehicleId == -1)
 			break;
 		
-		TaskType taskType = bestCombatAction.target == nullptr ? TT_MOVE : bestCombatAction.engagementMode == EM_MELEE ? TT_MELEE_ATTACK : TT_ARTILLERY_ATTACK;
-		aiData.tacticalTasks.emplace(Vehs[bestCombatAction.vehicleId].pad_0, Task(bestCombatAction.vehicleId, taskType, bestCombatAction.destination, bestCombatAction.target));
-		mod_enemy_veh(bestCombatAction.vehicleId);
+		mod_enemy_veh(bestVehicleId);
 		
 	}
 	

@@ -23,6 +23,18 @@ enum TaskType
 	TT_CONVOY,					// 16
 };
 
+struct Task;
+
+struct TaskHeap
+{
+	std::vector<Task> tasks {};
+
+	static bool compare(const Task &a, const Task &b);
+	void add(Task const&task);
+	Task &get();
+
+};
+
 struct Task
 {
 	int vehiclePad0;
@@ -48,14 +60,14 @@ struct Task
 
 	static char const *getTaskTypeName(TaskType taskType);
 	char const *typeName() const;
-	int getTaskVehicleId() const;
+	int getVehicleId() const;
 	VEH *getTaskVehicle() const;
 	void clearDestination();
 	void setDestination(MAP *_destination);
 	MAP *getDestination() const;
 	MAP *getAttackTarget() const;
 	int getDestinationRange() const;
-	char const *toString();
+	char const *toString() const;
 
 	int execute();
 	int execute(int vehicleId);
@@ -82,6 +94,6 @@ struct Task
 
 void setTask(Task const &task);
 bool hasTask(int vehicleId);
-void deleteTask(int vehicleId);
+void deleteVehicleTasks(int vehicleId);
 Task *getTask(int vehicleId);
 
