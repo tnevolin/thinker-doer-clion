@@ -29,10 +29,10 @@ void Profile::start()
 			debug("ERROR: Profile::start. Profile is RUNNING: %s\n", name.c_str());flushlog();
 			abort();
 		}
-		
+
 		running = true;
 		startTime = clock();
-		
+
 	}
 }
 void Profile::pause()
@@ -44,10 +44,10 @@ void Profile::pause()
 			debug("ERROR: Profile::pause. Profile is NOT RUNNING: %s\n", name.c_str());flushlog();
 			abort();
 		}
-		
+
 		running = false;
 		totalTime += clock() - startTime;
-		
+
 	}
 }
 void Profile::resume()
@@ -59,10 +59,10 @@ void Profile::resume()
 			debug("ERROR: Profile::resume. Profile is RUNNING: %s\n", name.c_str());flushlog();
 			abort();
 		}
-		
+
 		running = true;
 		startTime = clock();
-		
+
 	}
 }
 void Profile::stop()
@@ -74,18 +74,18 @@ void Profile::stop()
 			debug("ERROR: Profile::stop. Profile is NOT RUNNING: %s\n", name.c_str());flushlog();
 			abort();
 		}
-		
+
 		running = false;
 		executionCount++;
 		totalTime += clock() - startTime;
-		
+
 	}
 }
-	
+
 Profile *Profiling::getProfile(std::string name)
 {
 	Profile *profile = nullptr;
-	
+
 	for (tree<ProfileName>::iterator iterator = profiles.begin(); iterator != profiles.end(); iterator++)
 	{
 		if (iterator->name == name)
@@ -99,14 +99,14 @@ Profile *Profiling::getProfile(std::string name)
 		debug("ERROR: Profile::getProfile. Profile is NOT FOUND: %s\n", name.c_str());flushlog();
 		abort();
 	}
-	
+
 	return profile;
-	
+
 }
 Profile *Profiling::addTopProfile(std::string name)
 {
 	Profile *profile = nullptr;
-	
+
 	for (tree<ProfileName>::sibling_iterator iterator = profiles.begin(); iterator != profiles.end(); iterator++)
 	{
 		if (iterator->name == name)
@@ -115,22 +115,22 @@ Profile *Profiling::addTopProfile(std::string name)
 			break;
 		}
 	}
-	
+
 	if (profile == nullptr)
 	{
 		profile = &(profiles.insert(profiles.end(), {name, {}})->profile);
 		profile->name = name;
 	}
-	
+
 	return profile;
-	
+
 }
 Profile *Profiling::addChildProfile(std::string name, std::string parentName)
 {
 	// find parent iterator
-	
+
 	tree<ProfileName>::iterator parentIterator = nullptr;
-	
+
 	for (tree<ProfileName>::iterator iterator = profiles.begin(); iterator != profiles.end(); iterator++)
 	{
 		if (iterator->name == parentName)
@@ -140,11 +140,11 @@ Profile *Profiling::addChildProfile(std::string name, std::string parentName)
 		}
 	}
 	assert(parentIterator != nullptr);
-	
+
 	// find child profile
-	
+
 	Profile *profile = nullptr;
-	
+
 	for (tree<ProfileName>::sibling_iterator iterator = profiles.begin(parentIterator); iterator != profiles.end(parentIterator); iterator++)
 	{
 		if (iterator->name == name)
@@ -153,15 +153,15 @@ Profile *Profiling::addChildProfile(std::string name, std::string parentName)
 			break;
 		}
 	}
-	
+
 	if (profile == nullptr)
 	{
 		profile = &(profiles.append_child(parentIterator, {name, {}})->profile);
 		profile->name = name;
 	}
-	
+
 	return profile;
-	
+
 }
 void Profiling::reset()
 {
@@ -175,11 +175,11 @@ void Profiling::start(std::string name)
 		{
 			profiles.insert(profiles.end(), {"", {}});
 		}
-		
+
 //			debug("Profiling(%s) - start\n", name.c_str());flushlog();
 		Profile *profile = addTopProfile(name);
 		profile->start();
-		
+
 	}
 }
 void Profiling::start(std::string name, std::string parentName)
@@ -190,11 +190,11 @@ void Profiling::start(std::string name, std::string parentName)
 		{
 			profiles.insert(profiles.end(), {"", {}});
 		}
-		
+
 //			debug("Profiling(%s) - start\n", name.c_str());flushlog();
 		Profile *profile = addChildProfile(name, parentName);
 		profile->start();
-		
+
 	}
 }
 void Profiling::pause(std::string name)
@@ -224,19 +224,19 @@ void Profiling::stop(std::string name)
 void Profiling::print()
 {
 	debug("executionProfiles\n");
-	
+
 	for (tree<ProfileName>::iterator iterator = profiles.begin(); iterator != profiles.end(); iterator++)
 	{
 		int depth = profiles.depth(iterator);
 		std::string const name = iterator->name;
 		Profile const &profile = iterator->profile;
-		
+
 		std::string prefixedName = std::string(4 * depth, ' ') + name;
 		std::string displayName = prefixedName + " " + std::string(std::max(0, NAME_LENGTH - 1 - (int)prefixedName.length()), '.');
 		int executionCount = profile.executionCount;
 		double totalExecutionTime = (double)profile.totalTime / (double)CLOCKS_PER_SEC;
 		double averageExecutionTime = (executionCount == 0 ? 0.0 : totalExecutionTime / (double)executionCount);
-		
+
 		debug
 		(
 			"\t%-*s"
@@ -249,11 +249,11 @@ void Profiling::print()
 			, totalExecutionTime
 			, averageExecutionTime
 		);
-		
+
 	}
-	
+
 	flushlog();
-	
+
 }
 
 tree<ProfileName> Profiling::profiles;
@@ -268,12 +268,12 @@ FactionUnit::encodeKey(int factionId, int unitId)
 {
 	assert(factionId >= 0 && factionId < MaxPlayerNum);
 	assert(unitId >= 0 && unitId < MaxProtoNum);
-	
+
 	int unitSlot = unitId < MaxProtoFactionNum ? unitId : MaxProtoFactionNum + unitId % MaxProtoFactionNum;
 	int key = factionId * (2 * MaxProtoFactionNum) + unitSlot;
-	
+
 	return key;
-	
+
 }
 
 /*
@@ -283,34 +283,34 @@ Converts vehicleId into key.
 FactionUnit::encodeKey(int vehicleId)
 {
 	assert(vehicleId >= 0 && vehicleId < *VehCount);
-	
+
 	VEH &vehicle = Vehs[vehicleId];
-	
+
 	return encodeKey(vehicle.faction_id, vehicle.unit_id);
-	
+
 }
 
 FactionUnit::FactionUnit(int _factionId, int _unitId)
 {
 	assert(_factionId >= 0 && _factionId < MaxPlayerNum);
 	assert(_unitId >= 0 && _unitId < MaxProtoNum);
-	
+
 	this->factionId = _factionId;
 	this->unitId = _unitId;
-	
+
 }
 
 FactionUnit::FactionUnit(int _key)
 {
 	assert(_key >= 0 && _key < MaxPlayerNum * (2 * MaxProtoFactionNum));
-	
+
 	this->key = _key;
-	
+
 	this->factionId = _key / (2 * MaxProtoFactionNum);
-	
+
 	int unitSlot = _key % (2 * MaxProtoFactionNum);
 	this->unitId = unitSlot < MaxProtoFactionNum ? unitSlot : factionId * MaxProtoFactionNum + (unitSlot - MaxProtoFactionNum);
-	
+
 }
 
 FactionUnit::encodeKey()
@@ -320,9 +320,9 @@ FactionUnit::encodeKey()
 		int unitSlot = unitId < MaxProtoFactionNum ? unitId : MaxProtoFactionNum + unitId % MaxProtoFactionNum;
 		this->key = factionId * (2 * MaxProtoFactionNum) + unitSlot;
 	}
-	
+
 	return this->key;
-	
+
 }
 
 // FactionUnitCombat
@@ -366,7 +366,7 @@ bool operator!=(const Location &o1, const Location &o2)
 	return o1.x != o2.x || o1.y != o2.y;
 }
 
-char const * getLocationString(Location location)
+char const * getLocationString(Location const location)
 {
 	static constexpr size_t BUFFER_COUNT = 8;
     static constexpr size_t BUFFER_SIZE  = 20;
@@ -380,11 +380,14 @@ char const * getLocationString(Location location)
     // fill buffer
     std::snprintf(buffer, BUFFER_SIZE, "(%3d,%3d)", location.x, location.y);
 
+	// rotate buffer index
+	index = (index + 1) % BUFFER_COUNT;
+
     return buffer;
 
 }
 
-char const * getLocationString(int tileIndex)
+char const * getLocationString(int const tileIndex)
 {
 	// allow returning for incorrect index
 
@@ -395,7 +398,7 @@ char const * getLocationString(int tileIndex)
 
 }
 
-char const * getLocationString(MAP *tile)
+char const * getLocationString(MAP *const tile)
 {
 	// allow returning for nullptr
 
@@ -8062,73 +8065,73 @@ char * getAbilitiesString(int ability_flags)
 
     char* buffer = buffers[index];
     index = (index + 1) % BUFFER_COUNT;
-	
+
     // fill buffer
-    
+
     buffer[0] = '\x0';
-	
+
 	if ((ability_flags & ABL_AMPHIBIOUS) != 0)
 	{
 		strcpy_n(buffer + strlen(buffer), BUFFER_SIZE - strlen(buffer) - 1, " AMPHIBIOUS");
 	}
-	
+
 	if ((ability_flags & ABL_AIR_SUPERIORITY) != 0)
 	{
 		strcpy_n(buffer + strlen(buffer), BUFFER_SIZE - strlen(buffer) - 1, " AIR_SUPERIORITY");
 	}
-	
+
 	if ((ability_flags & ABL_AAA) != 0)
 	{
 		strcpy_n(buffer + strlen(buffer), BUFFER_SIZE - strlen(buffer) - 1, " AAA");
 	}
-	
+
 	if ((ability_flags & ABL_COMM_JAMMER) != 0)
 	{
 		strcpy_n(buffer + strlen(buffer), BUFFER_SIZE - strlen(buffer) - 1, " ECM");
 	}
-	
+
 	if ((ability_flags & ABL_EMPATH) != 0)
 	{
 		strcpy_n(buffer + strlen(buffer), BUFFER_SIZE - strlen(buffer) - 1, " EMPATH");
 	}
-	
+
 	if ((ability_flags & ABL_ARTILLERY) != 0)
 	{
 		strcpy_n(buffer + strlen(buffer), BUFFER_SIZE - strlen(buffer) - 1, " ARTILLERY");
 	}
-	
+
 	if ((ability_flags & ABL_BLINK_DISPLACER) != 0)
 	{
 		strcpy_n(buffer + strlen(buffer), BUFFER_SIZE - strlen(buffer) - 1, " BLINK_DISPLACER");
 	}
-	
+
 	if ((ability_flags & ABL_TRANCE) != 0)
 	{
 		strcpy_n(buffer + strlen(buffer), BUFFER_SIZE - strlen(buffer) - 1, " TRANCE");
 	}
-	
+
 	if ((ability_flags & ABL_NERVE_GAS) != 0)
 	{
 		strcpy_n(buffer + strlen(buffer), BUFFER_SIZE - strlen(buffer) - 1, " NERVE_GAS");
 	}
-	
+
 	if ((ability_flags & ABL_POLICE_2X) != 0)
 	{
 		strcpy_n(buffer + strlen(buffer), BUFFER_SIZE - strlen(buffer) - 1, " POLICE_2X");
 	}
-	
+
 	if ((ability_flags & ABL_SOPORIFIC_GAS) != 0)
 	{
 		strcpy_n(buffer + strlen(buffer), BUFFER_SIZE - strlen(buffer) - 1, " SOPORIFIC_GAS");
 	}
-	
+
 	if ((ability_flags & ABL_DISSOCIATIVE_WAVE) != 0)
 	{
 		strcpy_n(buffer + strlen(buffer), BUFFER_SIZE - strlen(buffer) - 1, " DISSOCIATIVE_WAVE");
 	}
-	
+
     return buffer;
-    
+
 }
 
 /*
@@ -8137,14 +8140,14 @@ Computes number of turns to build given item at given base.
 int getBaseItemBuildTime(int baseId, int item, bool countAccumulatedMinerals)
 {
 	BASE *base = &(Bases[baseId]);
-	
+
 	if (base->mineral_surplus <= 0)
 		return 9999;
-	
+
 	int mineralCost = std::max(0, getBaseMineralCost(baseId, item) - (countAccumulatedMinerals ? base->minerals_accumulated : 0));
-	
+
 	return divideIntegerRoundUp(mineralCost, base->mineral_surplus);
-	
+
 }
 
 bool isVehicleConvoying(int vehicleId)
@@ -8160,15 +8163,15 @@ bool isVehicleTerraforming(VEH *vehicle)
 double getValueSum(robin_hood::unordered_flat_map<int, double> map)
 {
 	double sum = 0.0;
-	
+
 	for (robin_hood::pair<int, double> const &mapEntry : map)
 	{
 		double value = mapEntry.second;
 		sum += value;
 	}
-	
+
 	return sum;
-	
+
 }
 
 bool isValidFactionId(int factionId)
