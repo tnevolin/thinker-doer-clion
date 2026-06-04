@@ -1052,7 +1052,7 @@ double getMeanBaseIncome(double age);
 double getMeanBaseGain(double age);
 double getNewBaseGain();
 double getLandColonyGain();
-double getBaseGain(int popSize, int nutrientCostFactor, Resource baseIntake2);
+double getBaseGain(int popSize, int nutrientCostFactor, Resource const& baseIntake2);
 double getBaseGain(int baseId, Resource baseIntake2);
 double getBaseGain(int baseId);
 double getBaseValue(int baseId);

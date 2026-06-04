@@ -2993,7 +2993,7 @@ double getVehicleTravelTime(int vehicleId, MAP *org, MAP *dst, bool attackDestin
 	int speed = getVehicleSpeed(vehicleId);
 	return getUnitTravelTime(vehicle.faction_id, vehicle.unit_id, speed, org, dst, attackDestination);
 }
-double getVehicleTravelTime(int vehicleId, MAP *dst, bool attackDestination)
+double getVehicleTravelTime(int const vehicleId, MAP const *dst, bool const attackDestination)
 {
 	VEH &vehicle = Vehs[vehicleId];
 	int speed = getVehicleSpeed(vehicleId);
@@ -3355,7 +3355,7 @@ double getATravelTime(MovementType movementType, int const vehicleSpeed, MAP *or
 // Reachability
 // ============================================================
 
-bool isUnitDestinationReachable(int unitId, MAP *origin, MAP *dst)
+bool isUnitDestinationReachable(int const unitId, MAP const *org, MAP const *dst)
 {
 	UNIT *unit = getUnit(unitId);
 	int chassisId = unit->chassis_id;
@@ -3374,16 +3374,16 @@ bool isUnitDestinationReachable(int unitId, MAP *origin, MAP *dst)
 	case CHS_NEEDLEJET:
 	case CHS_COPTER:
 	case CHS_MISSILE:
-		reachable = isSameAirCluster(chassisId, speed, origin, dst);
+		reachable = isSameAirCluster(chassisId, speed, org, dst);
 		break;
 	case CHS_FOIL:
 	case CHS_CRUISER:
-		reachable = isSameSeaCluster(origin, dst);
+		reachable = isSameSeaCluster(org, dst);
 		break;
 	case CHS_INFANTRY:
 	case CHS_SPEEDER:
 	case CHS_HOVERTANK:
-		reachable = isSameLandTransportedCluster(origin, dst);
+		reachable = isSameLandTransportedCluster(org, dst);
 		break;
 	}
 	
@@ -3391,18 +3391,18 @@ bool isUnitDestinationReachable(int unitId, MAP *origin, MAP *dst)
 	
 }
 
-bool isVehicleDestinationReachable(int vehicleId, MAP *origin, MAP *dst)
+bool isVehicleDestinationReachable(int const vehicleId, MAP const *org, MAP const *dst)
 {
-	VEH *vehicle = getVehicle(vehicleId);
+	VEH const *vehicle = getVehicle(vehicleId);
 	int unitId = vehicle->unit_id;
 	
-	return isUnitDestinationReachable(unitId, origin, dst);
+	return isUnitDestinationReachable(unitId, org, dst);
 	
 }
 
-bool isVehicleDestinationReachable(int vehicleId, MAP *dst)
+bool isVehicleDestinationReachable(int const vehicleId, MAP const *dst)
 {
-	MAP *vehicleTile = getVehicleMapTile(vehicleId);
+	MAP const *vehicleTile = getVehicleMapTile(vehicleId);
 	
 	return isVehicleDestinationReachable(vehicleId, vehicleTile, dst);
 	

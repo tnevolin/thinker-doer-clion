@@ -257,7 +257,7 @@ double getLandLMovementCost(int factionId, MovementType movementType, MAP *org, 
 double getUnitTravelTime(int factionId, int unitId, int speed, MAP *org, MAP *dst, bool attackDestination = true);
 double getUnitTravelTime(int factionId, int unitId, MAP *org, MAP *dst, bool attackDestination = true);
 double getVehicleTravelTime(int vehicleId, MAP *org, MAP *dst, bool attackDestination = true);
-double getVehicleTravelTime(int vehicleId, MAP *dst, bool attackDestination = true);
+double getVehicleTravelTime(int vehicleId, MAP const *dst, bool attackDestination = true);
 
 // ==================================================
 // A* path finding algorithm
@@ -276,9 +276,9 @@ double getATravelTime(MovementType movementType, int vehicleSpeed, MAP *org, MAP
 // Reachability
 // ============================================================
 
-bool isUnitDestinationReachable(int unitId, MAP *org, MAP *dst);
-bool isVehicleDestinationReachable(int vehicleId, MAP *org, MAP *dst);
-bool isVehicleDestinationReachable(int vehicleId, MAP *dst);
+bool isUnitDestinationReachable(int unitId, MAP const *org, MAP const *dst);
+bool isVehicleDestinationReachable(int vehicleId, MAP const *org, MAP const *dst);
+bool isVehicleDestinationReachable(int vehicleId, MAP const *dst);
 
 // ==================================================
 // Helper functions

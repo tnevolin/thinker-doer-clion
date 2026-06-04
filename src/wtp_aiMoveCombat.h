@@ -139,7 +139,7 @@ void moveInterceptors();
 void moveBaseProtectors();
 void moveBunkerProtectors();
 void moveCombat();
-void populateDefensiveProbeTasks(std::vector<TaskPriority> &taskPriorities);
+void populateDefensiveProbeTasks();
 void populateRepairTasks(std::vector<TaskPriority> &taskPriorities);
 void populateMonolithTasks(std::vector<TaskPriority> &taskPriorities);
 void populatePodPoppingTasks(std::vector<TaskPriority> &taskPriorities);

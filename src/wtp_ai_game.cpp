@@ -3696,18 +3696,18 @@ double getAverageBaseIncome()
 /**
 Computes expected base gain adjusting for current base income.
 */
-double getBaseGain(int popSize, int nutrientCostFactor, Resource baseIntake2)
+double getBaseGain(int const popSize, int const nutrientCostFactor, Resource const &baseIntake2)
 {
 	// gain
 	
-	double income = getResourceScore(baseIntake2.mineral, baseIntake2.energy);
-	double incomeGain = getGainIncome(income);
+	double const income = getResourceScore(baseIntake2.mineral, baseIntake2.energy);
+	double const incomeGain = getGainIncome(income);
 	
-	double popualtionGrowth = baseIntake2.nutrient / (double)(nutrientCostFactor * (1 + popSize));
-	double incomeGrowth = aiData.averageCitizenResourceIncome * popualtionGrowth;
-	double incomeGrowthGain = getGainIncomeGrowth(incomeGrowth);
+	double const popualtionGrowth = baseIntake2.nutrient / static_cast<double>(nutrientCostFactor * (1 + popSize));
+	double const incomeGrowth = aiData.averageCitizenResourceIncome * popualtionGrowth;
+	double const incomeGrowthGain = getGainIncomeGrowth(incomeGrowth);
 	
-	double gain =
+	double const gain =
 		+ incomeGain
 		+ incomeGrowthGain
 	;
@@ -3745,10 +3745,10 @@ double getBaseGain(int popSize, int nutrientCostFactor, Resource baseIntake2)
 	
 }
 
-double getBaseGain(int baseId, Resource baseIntake2)
+double getBaseGain(int const baseId, Resource baseIntake2)
 {
-	BASE *base = getBase(baseId);
-	int nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, baseId);
+	BASE const *base = getBase(baseId);
+	int const nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, baseId);
 	
 	return getBaseGain(base->pop_size, nutrientCostFactor, baseIntake2);
 	
@@ -3757,25 +3757,25 @@ double getBaseGain(int baseId, Resource baseIntake2)
 /**
 Computes expected base gain adjusting for current base income.
 */
-double getBaseGain(int baseId)
+double getBaseGain(int const baseId)
 {
-	BASE *base = getBase(baseId);
-	int nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, baseId);
-	Resource baseIntake2 = getBaseResourceIntake2(baseId);
+	BASE const *base = getBase(baseId);
+	int const nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, baseId);
+	Resource const baseIntake2 = getBaseResourceIntake2(baseId);
 	
 	return getBaseGain(base->pop_size, nutrientCostFactor, baseIntake2);
 	
 }
 
 /**
-Computes base value for keeping or capturing.
+Computes base value.
 Base gain + SP values.
 */
-double getBaseValue(int baseId)
+double getBaseValue(int const baseId)
 {
 	// base gain
 	
-	double baseGain = getBaseGain(baseId);
+	double const baseGain = getBaseGain(baseId);
 	
 	// SP value
 	
@@ -3785,7 +3785,7 @@ double getBaseValue(int baseId)
 	{
 		if (isBaseHasFacility(baseId, spFacilityId))
 		{
-			double spCost = Rules->mineral_cost_multi * getFacility(spFacilityId)->cost;
+			double const spCost = Rules->mineral_cost_multi * getFacility(spFacilityId)->cost;
 			spValue += getGainBonus(spCost);
 		}
 		

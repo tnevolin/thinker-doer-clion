@@ -58,14 +58,14 @@ void moveCombatStrategy()
 	// compute strategy
 	
 	moveDefensiveProbes();
-	
+	moveCombat();
+
 //	immediateAttack();
 	
 	movePolice2x();
 	moveBaseProtectors();
 	movePolice();
 	moveBunkerProtectors();
-	moveCombat();
 //	coordinateAttack();
 	
 	Profiling::stop("moveCombatStrategy");
@@ -78,8 +78,7 @@ void moveDefensiveProbes()
 	
 	// populate tasks
 	
-	std::vector<TaskPriority> taskPriorities;
-	populateDefensiveProbeTasks(taskPriorities);
+	populateDefensiveProbeTasks();
 	
 	// sort vehicle available tasks
 	
@@ -1545,7 +1544,7 @@ protection priority:
 - base total threat
 - travel time
 */
-void populateDefensiveProbeTasks(std::vector<TaskPriority> &taskPriorities)
+void populateDefensiveProbeTasks()
 {
 	debug("\tpopulateDefensiveProbeTasks\n");
 	
@@ -1554,16 +1553,11 @@ void populateDefensiveProbeTasks(std::vector<TaskPriority> &taskPriorities)
 	
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
-		VEH *vehicle = getVehicle(vehicleId);
+		VEH const *vehicle = getVehicle(vehicleId);
 		
 		// AI faction
 		
 		if (vehicle->faction_id != aiFactionId)
-			continue;
-		
-		// exclude unavailable
-		
-		if (hasTask(vehicleId))
 			continue;
 		
 		// defensive probe
@@ -1571,22 +1565,22 @@ void populateDefensiveProbeTasks(std::vector<TaskPriority> &taskPriorities)
 		if (!(isInfantryVehicle(vehicleId) && isProbeVehicle(vehicleId)))
 			continue;
 		
-		// process bases
+		// iterate bases
 		
-		for (int baseId : aiData.baseIds)
+		for (int const baseId : aiData.baseIds)
 		{
-			BASE *base = &(Bases[baseId]);
-			MAP *baseTile = getBaseMapTile(baseId);
-			BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
+			BASE const *base = &Bases[baseId];
+			MAP const *baseTile = getBaseMapTile(baseId);
+			BaseInfo const &baseInfo = aiData.getBaseInfo(baseId);
 			
-			// exclude not reachable destination
+			// destination reachable
 			
 			if (!isVehicleDestinationReachable(vehicleId, baseTile))
 				continue;
 			
 			// required protection
 			
-			double requiredEffect = baseInfo.probeData.requiredEffect;
+			double const requiredEffect = baseInfo.probeData.requiredEffect;
 			
 			if (requiredEffect <= 0.0)
 				continue;
@@ -1597,7 +1591,7 @@ void populateDefensiveProbeTasks(std::vector<TaskPriority> &taskPriorities)
 			if (travelTime == INF)
 				continue;
 			
-			double travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, travelTime);
+			double const travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, travelTime);
 			
 			// combat effect
 			
