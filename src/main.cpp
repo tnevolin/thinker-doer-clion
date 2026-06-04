@@ -928,6 +928,22 @@ int option_handler(void* user, const char* section, const char* name, const char
             }
         }
     }
+	else if (MATCH("merchant_exchange_energy_yield"))
+    {
+        cf->merchant_exchange_energy_yield = atoi(value);
+    }
+	else if (MATCH("merchant_exchange_energy_yield_all_tiles"))
+    {
+        cf->merchant_exchange_energy_yield_all_tiles = (atoi(value) == 0 ? false : true);
+    }
+	else if (MATCH("merchant_exchange_energy_yield_all_bases"))
+    {
+        cf->merchant_exchange_energy_yield_all_bases = (atoi(value) == 0 ? false : true);
+    }
+	else if (MATCH("merchant_exchange_commerce_bonus"))
+    {
+        cf->merchant_exchange_commerce_bonus = atoi(value);
+    }
 	else if (MATCH("ai_useWTPAlgorithms"))
     {
         cf->ai_useWTPAlgorithms = (atoi(value) == 0 ? false : true);

@@ -1250,9 +1250,29 @@ int __cdecl mod_energy_yield(int faction_id, int base_id, int x, int y, int flag
         || sq->landmarks & (LM_URANIUM|LM_GEOTHERMAL|LM_RIDGE)) {
             value += !(sq->landmarks & LM_DISABLE);
         }
+
+    	// [WTP]
+    	// Merchant Exchange bonus redefenition
+    	/*
         if (base_id >= 0 && project_base(FAC_MERCHANT_EXCHANGE) == base_id) {
             value++;
         }
+        */
+    	if (base_id >= 0)
+    	{
+    		if (conf.merchant_exchange_energy_yield > 0)
+    		{
+    			if (project_base(FAC_MERCHANT_EXCHANGE) == base_id || (conf.merchant_exchange_energy_yield_all_bases && has_project(FAC_MERCHANT_EXCHANGE, faction_id)))
+    			{
+    				if (sq->is_base() || conf.merchant_exchange_energy_yield_all_tiles)
+    				{
+	    				value += conf.merchant_exchange_energy_yield;
+    				}
+    			}
+    		}
+    	}
+    	//
+
         if (economy >= 2) {
             value++;
         }

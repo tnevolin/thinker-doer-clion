@@ -1,3 +1,7 @@
+# Version 409
+
+* Merchant Exchange increases commerce by 1. Other Merchant Exchange effects are configurable with `merchant_exchange_` options.
+
 # Version 406
 
 * Combat report window UI change.
