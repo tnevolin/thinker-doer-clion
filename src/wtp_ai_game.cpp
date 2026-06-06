@@ -823,7 +823,7 @@ Combattant::Combattant(int vehicleId, double weight, bool airbase)
 	
 }
 
-void Combattant::initialize(robin_hood::unordered_flat_map<int, double> const &damageCoefficients)
+void Combattant::initialize(robin_hood::unordered_flat_map<int, double>  &damageCoefficients)
 {
 	robin_hood::unordered_flat_map<int, double>::const_iterator damageCoefficientIterator = damageCoefficients.find(pad0);
 	double damageCoefficient = damageCoefficientIterator == damageCoefficients.end() ? 0.0 : damageCoefficientIterator->second;
@@ -859,7 +859,7 @@ double CombatData::getUnitCombatEffect(int attackerFactionId, int attackerUnitId
 	;
 }
 
-double CombatData::getCombattantCombatEffect(Combattant const &attacker, Combattant const &defender, ENGAGEMENT_MODE engagementMode, bool attackerAtTile, bool defenderAtTile)
+double CombatData::getCombattantCombatEffect(Combattant  &attacker, Combattant  &defender, ENGAGEMENT_MODE engagementMode, bool attackerAtTile, bool defenderAtTile)
 {
 	return
 		getUnitCombatEffect(attacker.factionId, attacker.unitId, defender.factionId, defender.unitId, engagementMode, attackerAtTile, defenderAtTile)
@@ -890,32 +890,32 @@ void CombatData::removeLastProtector()
 
 double CombatData::getAssailantWeightSum()
 {
-	return std::accumulate(assailants.begin(), assailants.end(), 0.0, [](double sum, Combattant const &combattant) { return sum + combattant.weight; });
+	return std::accumulate(assailants.begin(), assailants.end(), 0.0, [](double sum, Combattant  &combattant) { return sum + combattant.weight; });
 }
 
 double CombatData::getProtectorWeightSum()
 {
-	return std::accumulate(protectors.begin(), protectors.end(), 0.0, [](double sum, Combattant const &combattant) { return sum + combattant.weight; });
+	return std::accumulate(protectors.begin(), protectors.end(), 0.0, [](double sum, Combattant  &combattant) { return sum + combattant.weight; });
 }
 
 double CombatData::getAssailantHealthSum(bool range)
 {
-	return std::accumulate(assailants.begin(), assailants.end(), 0.0, [range](double sum, Combattant const &combattant) { return sum + (!range || combattant.range ? combattant.health : 0.0); });
+	return std::accumulate(assailants.begin(), assailants.end(), 0.0, [range](double sum, Combattant  &combattant) { return sum + (!range || combattant.range ? combattant.health : 0.0); });
 }
 
 double CombatData::getProtectorHealthSum(bool range)
 {
-	return std::accumulate(protectors.begin(), protectors.end(), 0.0, [range](double sum, Combattant const &combattant) { return sum + (!range || combattant.range ? combattant.health : 0.0); });
+	return std::accumulate(protectors.begin(), protectors.end(), 0.0, [range](double sum, Combattant  &combattant) { return sum + (!range || combattant.range ? combattant.health : 0.0); });
 }
 
 double CombatData::getAssailantRemainingHealthSum(bool range)
 {
-	return std::accumulate(assailants.begin(), assailants.end(), 0.0, [range](double sum, Combattant const &combattant) { return sum + (!range || combattant.range ? combattant.remainingHealth : 0.0); });
+	return std::accumulate(assailants.begin(), assailants.end(), 0.0, [range](double sum, Combattant  &combattant) { return sum + (!range || combattant.range ? combattant.remainingHealth : 0.0); });
 }
 
 double CombatData::getProtectorRemainingHealthSum(bool range)
 {
-	return std::accumulate(protectors.begin(), protectors.end(), 0.0, [range](double sum, Combattant const &combattant) { return sum + (!range || combattant.range ? combattant.remainingHealth : 0.0); });
+	return std::accumulate(protectors.begin(), protectors.end(), 0.0, [range](double sum, Combattant  &combattant) { return sum + (!range || combattant.range ? combattant.remainingHealth : 0.0); });
 }
 
 double CombatData::getAssaultSufficiency(bool range)
@@ -1590,8 +1590,8 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 		
 		// remove destroyed combattants
 		
-		meleeAssailants.remove_if([](Combattant const *combattant) { return combattant->remainingHealth <= 0.0; });
-		meleeProtectors.remove_if([](Combattant const *combattant) { return combattant->remainingHealth <= 0.0; });
+		meleeAssailants.remove_if([](Combattant  *combattant) { return combattant->remainingHealth <= 0.0; });
+		meleeProtectors.remove_if([](Combattant  *combattant) { return combattant->remainingHealth <= 0.0; });
 		
 	}
 	
@@ -1724,7 +1724,7 @@ Computes opponent relative health bonus to ensure player 80% win chance sufficie
 */
 double CombatData::getEnemyRelativeHealthBonus(std::vector<Combattant> opponentCombattants)
 {
-	double opponentTotalHealth = std::accumulate(opponentCombattants.begin(), opponentCombattants.end(), 0.0, [](double sum, Combattant const &combattant) { return sum + combattant.health; });
+	double opponentTotalHealth = std::accumulate(opponentCombattants.begin(), opponentCombattants.end(), 0.0, [](double sum, Combattant  &combattant) { return sum + combattant.health; });
 	double opponentTotalHP = std::max(1.0, 10.0 * opponentTotalHealth);
 	
 	return std::max(MIN_OPPONENT_RELATIVE_HEALTH_BONUS, sqrt(1.0 / opponentTotalHP));
@@ -2526,22 +2526,22 @@ bool isWtpEnabledFaction(int factionId)
 	return (factionId != 0 && !is_human(factionId) && thinker_enabled(factionId) && conf.ai_useWTPAlgorithms && conf.wtp_enabled_factions[factionId]);
 }
 
-bool compareIdIntValueAscending(const IdIntValue &a, const IdIntValue &b)
+bool compareIdIntValueAscending( IdIntValue &a,  IdIntValue &b)
 {
 	return a.value < b.value;
 }
 
-bool compareIdIntValueDescending(const IdIntValue &a, const IdIntValue &b)
+bool compareIdIntValueDescending( IdIntValue &a,  IdIntValue &b)
 {
 	return a.value > b.value;
 }
 
-bool compareIdDoubleValueAscending(const IdDoubleValue &a, const IdDoubleValue &b)
+bool compareIdDoubleValueAscending( IdDoubleValue &a,  IdDoubleValue &b)
 {
 	return a.value < b.value;
 }
 
-bool compareIdDoubleValueDescending(const IdDoubleValue &a, const IdDoubleValue &b)
+bool compareIdDoubleValueDescending( IdDoubleValue &a,  IdDoubleValue &b)
 {
 	return a.value > b.value;
 }
@@ -3696,7 +3696,7 @@ double getAverageBaseIncome()
 /**
 Computes expected base gain adjusting for current base income.
 */
-double getBaseGain(int const popSize, int const nutrientCostFactor, Resource const &baseIntake2)
+double getBaseGain(int  popSize, int  nutrientCostFactor, Resource  &baseIntake2)
 {
 	// gain
 	
@@ -3745,7 +3745,7 @@ double getBaseGain(int const popSize, int const nutrientCostFactor, Resource con
 	
 }
 
-double getBaseGain(int const baseId, Resource baseIntake2)
+double getBaseGain(int  baseId, Resource baseIntake2)
 {
 	BASE *base = getBase(baseId);
 	int nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, baseId);
@@ -3757,7 +3757,7 @@ double getBaseGain(int const baseId, Resource baseIntake2)
 /**
 Computes expected base gain adjusting for current base income.
 */
-double getBaseGain(int const baseId)
+double getBaseGain(int  baseId)
 {
 	BASE *base = getBase(baseId);
 	int nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, baseId);
@@ -3771,7 +3771,7 @@ double getBaseGain(int const baseId)
 Computes base value.
 Base gain + SP values.
 */
-double getBaseValue(int const baseId)
+double getBaseValue(int  baseId)
 {
 	// base gain
 	
@@ -4224,7 +4224,7 @@ MapDoubleValue getMeleeAttackPosition(int unitId, MAP *origin, MAP *target)
 	
 }
 
-MapDoubleValue getMeleeAttackPosition(int const vehicleId, MAP const *target)
+MapDoubleValue getMeleeAttackPosition(int  vehicleId, MAP  *target)
 {
 	return getMeleeAttackPosition(getVehicle(vehicleId)->unit_id, getVehicleMapTile(vehicleId), target);
 }
@@ -4621,7 +4621,7 @@ void populateVehiclePad0Map(bool initialize)
 Evaluates combat gain for attacker.
 Could be positive or negative.
 */
-double getCombatGain(int const attackerVehicleId, int const defenderVehicleId, ENGAGEMENT_MODE const engagementMode, MAP const *attackerTile, MAP const *defenderTile, double const attackerHealth, double const defenderHealth)
+double getCombatGain(int  attackerVehicleId, int  defenderVehicleId, ENGAGEMENT_MODE  engagementMode, MAP  *attackerTile, MAP  *defenderTile, double  attackerHealth, double  defenderHealth)
 {
 	int defenderUnitId = Vehs[defenderVehicleId].unit_id;
 	Triad defenderTriad = static_cast<Triad>(Units[defenderUnitId].triad());

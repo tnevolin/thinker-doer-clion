@@ -357,16 +357,16 @@ FactionUnitCombatEffect::FactionUnitCombatEffect(FactionUnitCombat _factionUnitC
 
 // Location
 
-bool operator==(const Location &o1, const Location &o2)
+bool operator==( Location &o1,  Location &o2)
 {
 	return o1.x == o2.x && o1.y == o2.y;
 }
-bool operator!=(const Location &o1, const Location &o2)
+bool operator!=( Location &o1,  Location &o2)
 {
 	return o1.x != o2.x || o1.y != o2.y;
 }
 
-char const * getLocationString(Location const location)
+char const * getLocationString(Location  location)
 {
 	static constexpr size_t BUFFER_COUNT = 8;
     static constexpr size_t BUFFER_SIZE  = 20;
@@ -387,7 +387,7 @@ char const * getLocationString(Location const location)
 
 }
 
-char const * getLocationString(int const tileIndex)
+char const * getLocationString(int  tileIndex)
 {
 	// allow returning for incorrect index
 
@@ -398,7 +398,7 @@ char const * getLocationString(int const tileIndex)
 
 }
 
-char const * getLocationString(MAP *const tile)
+char const * getLocationString(MAP * tile)
 {
 	// allow returning for nullptr
 
@@ -565,11 +565,11 @@ int getY(int tileIndex)
 /**
 Computes location coordinates by map tile.
 */
-int getX(MAP const *tile)
+int getX(MAP  *tile)
 {
 	return getX(tile - *MapTiles);
 }
-int getY(MAP const *tile)
+int getY(MAP  *tile)
 {
 	return getY(tile - *MapTiles);
 }
@@ -4297,7 +4297,7 @@ bool isMineBonus(MAP *tile)
 
 }
 
-std::vector<int> selectVehicles(const VehicleFilter filter)
+std::vector<int> selectVehicles( VehicleFilter filter)
 {
 	std::vector<int> vehicleIds;
 
@@ -5119,7 +5119,7 @@ bool isCommlink(int factionId1, int factionId2)
 Factions have vendetta.
 Aliens are always at war with other factions.
 */
-bool isVendetta(int const factionId1, int const factionId2)
+bool isVendetta(int  factionId1, int  factionId2)
 {
 	assert(factionId1 >= 0 && factionId1 < MaxPlayerNum);
 	assert(factionId2 >= 0 && factionId2 < MaxPlayerNum);
@@ -5156,7 +5156,7 @@ bool isTreaty(int factionId1, int factionId2)
 Factions can collocate with each other vehicles.
 Any faction is friendly to itself.
 */
-bool isFriendly(int const factionId1, int const factionId2)
+bool isFriendly(int  factionId1, int  factionId2)
 {
 	return factionId1 == factionId2 || isPact(factionId1, factionId2);
 }
@@ -5164,7 +5164,7 @@ bool isFriendly(int const factionId1, int const factionId2)
 /**
 Factions can NOT collocate with each other vehicles.
 */
-bool isUnfriendly(int const factionId1, int const factionId2)
+bool isUnfriendly(int  factionId1, int  factionId2)
 {
 	return !isFriendly(factionId1, factionId2);
 }
@@ -5173,7 +5173,7 @@ bool isUnfriendly(int const factionId1, int const factionId2)
 Factions have vendetta.
 Aliens are always at war with other factions.
 */
-bool isHostile(int const factionId1, int const factionId2)
+bool isHostile(int  factionId1, int  factionId2)
 {
 	return factionId1 == 0 || factionId2 == 0 || isVendetta(factionId1, factionId2);
 }
@@ -5181,7 +5181,7 @@ bool isHostile(int const factionId1, int const factionId2)
 /**
 Factions do not have pact and do not have vendetta.
 */
-bool isNeutral(int const factionId1, int const factionId2)
+bool isNeutral(int  factionId1, int  factionId2)
 {
 	return factionId1 != 0 && factionId2 != 0 && factionId1 != factionId2 && !isPact(factionId1, factionId2) && !isVendetta(factionId1, factionId2);
 }
@@ -6423,29 +6423,29 @@ bool isBombardmentVehicle(int vehicleId)
 	return isSurfaceVehicle(vehicleId) && !isArtilleryVehicle(vehicleId);
 }
 
-void setVehicleWaypoints(int vehicleId, const std::vector<MAP *> &waypoints)
+void setVehicleWaypoints(int vehicleId,  std::vector<MAP *> waypoints)
 {
 	VEH *vehicle = getVehicle(vehicleId);
 
-	if (waypoints.size() >= 1)
+	if (!waypoints.empty())
 	{
-		vehicle->waypoint_x[0] = getX(waypoints.at(0));
-		vehicle->waypoint_y[0] = getY(waypoints.at(0));
+		vehicle->waypoint_x[0] = static_cast<int16_t>(getX(waypoints.at(0)));
+		vehicle->waypoint_y[0] = static_cast<int16_t>(getY(waypoints.at(0)));
 	}
 	if (waypoints.size() >= 2)
 	{
-		vehicle->waypoint_x[1] = getX(waypoints.at(1));
-		vehicle->waypoint_y[1] = getY(waypoints.at(1));
+		vehicle->waypoint_x[1] = static_cast<int16_t>(getX(waypoints.at(1)));
+		vehicle->waypoint_y[1] = static_cast<int16_t>(getY(waypoints.at(1)));
 	}
 	if (waypoints.size() >= 3)
 	{
-		vehicle->waypoint_x[2] = getX(waypoints.at(2));
-		vehicle->waypoint_y[2] = getY(waypoints.at(2));
+		vehicle->waypoint_x[2] = static_cast<int16_t>(getX(waypoints.at(2)));
+		vehicle->waypoint_y[2] = static_cast<int16_t>(getY(waypoints.at(2)));
 	}
 	if (waypoints.size() >= 4)
 	{
-		vehicle->waypoint_x[3] = getX(waypoints.at(3));
-		vehicle->waypoint_y[3] = getY(waypoints.at(3));
+		vehicle->waypoint_x[3] = static_cast<int16_t>(getX(waypoints.at(3)));
+		vehicle->waypoint_y[3] = static_cast<int16_t>(getY(waypoints.at(3)));
 	}
 
 }
@@ -6697,7 +6697,7 @@ int getRange(int tile1Index, int tile2Index)
 	return getRange(x1, y1, x2, y2);
 
 }
-int getRange(MAP const *tile1, MAP const *tile2)
+int getRange(MAP  *tile1, MAP  *tile2)
 {
 	return getRange(getX(tile1), getY(tile1), getX(tile2), getY(tile2));
 }
@@ -6723,7 +6723,7 @@ int getVectorDist(int tile1Index, int tile2Index)
 	return getVectorDist(x1, y1, x2, y2);
 
 }
-int getVectorDist(MAP const *tile1, MAP const *tile2)
+int getVectorDist(MAP  *tile1, MAP  *tile2)
 {
 	assert(tile1 >= *MapTiles && tile1 < *MapTiles + *MapAreaTiles);
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
@@ -6940,7 +6940,7 @@ std::vector<int> getTransportPassengers(int transportVehicleId)
 Returns max relative bombardment damage for location and triad.
 If tile is not specified, the matching realsm is assumed.
 */
-double getMaxBombardmentDamage(Triad const triad, MAP const *tile)
+double getMaxBombardmentDamage(Triad  triad, MAP  *tile)
 {
 	int maxBombardmentDamagePercentage;
 
@@ -7968,7 +7968,7 @@ double getVehicleBombardmentStrenghtMultiplier(int vehicleId)
 	return getVehicleMoraleMultiplier(vehicleId);
 }
 
-bool isMapValueEmpty(robin_hood::unordered_flat_map<int, double> const &map, int key)
+bool isMapValueEmpty(robin_hood::unordered_flat_map<int, double>  &map, int key)
 {
 	return
 		map.find(key) == map.end()

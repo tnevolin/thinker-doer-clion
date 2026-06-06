@@ -40,7 +40,7 @@ AI Faction upkeep entry point.
 This is called for WTP AI enabled factions only.
 This is an additional code and DOES NOT invoke original function!
 */
-void aiFactionUpkeep(const int factionId)
+void aiFactionUpkeep( int factionId)
 {
 	debug("aiFactionUpkeep - %s\n", MFactions[factionId].noun_faction);
 	

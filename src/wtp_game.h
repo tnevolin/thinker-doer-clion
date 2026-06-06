@@ -335,8 +335,8 @@ struct Location
 	}
 	
 };
-bool operator==(const Location &o1, const Location &o2);
-bool operator!=(const Location &o1, const Location &o2);
+bool operator==( Location &o1,  Location &o2);
+bool operator!=( Location &o1,  Location &o2);
 
 struct RepairInfo
 {
@@ -366,9 +366,9 @@ struct Resource
 	: Resource(0.0, 0.0, 0.0)
 	{}
 	
-	static Resource combine(Resource const &o1, Resource const &o2)
+	static Resource combine(Resource o1, Resource o2)
 	{
-		return Resource(o1.nutrient + o2.nutrient, o1.mineral + o2.mineral, o1.energy + o2.energy);
+		return {o1.nutrient + o2.nutrient, o1.mineral + o2.mineral, o1.energy + o2.energy};
 	}
 	
 };
@@ -842,8 +842,8 @@ Location getLocation(int tileIndex);
 Location getLocation(MAP *tile);
 int getX(int tileIndex);
 int getY(int tileIndex);
-int getX(MAP const *tile);
-int getY(MAP const *tile);
+int getX(MAP  *tile);
+int getY(MAP  *tile);
 int getMapTileIndex(int x, int y);
 MAP *getMapTile(int x, int y);
 Location getDelta(MAP *tile1, MAP *tile2);
@@ -1085,7 +1085,7 @@ bool isRegularCombatUnit(int unitId);
 bool isRegularVehicle(int vehicleId);
 double getPercentageBonusMultiplier(double percentageBonus);
 bool isMineBonus(MAP *tile);
-std::vector<int> selectVehicles(const VehicleFilter filter);
+std::vector<int> selectVehicles( VehicleFilter filter);
 bool isNextToRegion(int x, int y, int region);
 int getSeaTransportInStack(int vehicleId);
 bool isSeaTransportInStack(int vehicleId);
@@ -1235,7 +1235,7 @@ bool isSurfaceUnit(int unitId);
 bool isSurfaceVehicle(int vehicleId);
 bool isBombardmentUnit(int unitId);
 bool isBombardmentVehicle(int vehicleId);
-void setVehicleWaypoints(int vehicleId, const std::vector<MAP *> &waypoints);
+void setVehicleWaypoints(int vehicleId,  std::vector<MAP *> waypoints);
 bool isHoveringLandUnit(int unitId);
 bool isHoveringLandVehicle(int vehicleId);
 bool isEasyFungusEnteringLandUnit(int unitId);
@@ -1249,26 +1249,26 @@ double getBasePsychMultiplier(int baseId);
 bool isLandVechileMoveAllowed(int vehicleId, MAP *from, MAP *to);
 int getRange(int x1, int y1, int x2, int y2);
 int getRange(int tile1Index, int tile2Index);
-int getRange(MAP const *tile1, MAP const *tile2);
+int getRange(MAP  *tile1, MAP  *tile2);
 int getVectorDist(int x1, int y1, int x2, int y2);
 int getVectorDist(int tile1Index, int tile2Index);
-int getVectorDist(MAP const *tile1, MAP const *tile2);
+int getVectorDist(MAP  *tile1, MAP  *tile2);
 int getProximity(int x1, int y1, int x2, int y2);
-double getEuqlideanDistanceSquared(MAP const *origin, MAP const *destination);
-double getEuqlideanDistance(MAP const *origin, MAP const *destination);
-int getDiagonalDistanceDoubled(MAP const *tile1, MAP const *tile2);
+double getEuqlideanDistanceSquared(MAP  *origin, MAP  *destination);
+double getEuqlideanDistance(MAP  *origin, MAP  *destination);
+int getDiagonalDistanceDoubled(MAP  *tile1, MAP  *tile2);
 Location getLocationByAngle(int x, int y, int angle);
 int getTileIndexByAngle(int tileIndex, int angle);
-MAP const *getTileByAngle(MAP const *tile, int angle);
-int getAngleByTile(MAP const *tile, MAP const *anotherTile);
-bool isPodAt(MAP const *tile);
+MAP *getTileByAngle(MAP  *tile, int angle);
+int getAngleByTile(MAP  *tile, MAP  *anotherTile);
+bool isPodAt(MAP  *tile);
 std::vector<int> getTransportPassengers(int transportVehicleId);
-double getMaxBombardmentDamage(Triad triad, MAP const *tile);
-double isLethalBombardment(Triad triad, MAP const *tile);
+double getMaxBombardmentDamage(Triad triad, MAP  *tile);
+double isLethalBombardment(Triad triad, MAP  *tile);
 double getVehicleRemainingBombardmentDamage(int vehicleId);
 int getBasePopulationLimit(int baseId);
 bool isWithinBaseRadius(int x1, int y1, int x2, int y2);
-bool isWithinBaseRadius(MAP const *tile1, MAP const *tile2);
+bool isWithinBaseRadius(MAP  *tile1, MAP  *tile2);
 bool isFactionHasProject(int factionId, int facilityId);
 Budget getBaseBudgetIntake(int baseId);
 Budget getBaseBudgetIntake2(int baseId);
@@ -1331,7 +1331,7 @@ bool isMutualCombat(ENGAGEMENT_MODE engagementMode, int defenderUnitId);
 bool isBombardment(ENGAGEMENT_MODE engagementMode, int defenderUnitId);
 double getVehicleStrenghtMultiplier(int vehicleId);
 double getVehicleBombardmentStrenghtMultiplier(int vehicleId);
-bool isMapValueEmpty(robin_hood::unordered_flat_map<int, double> const &map, int key);
+bool isMapValueEmpty(robin_hood::unordered_flat_map<int, double>  &map, int key);
 int getBaseDoctorCount(int baseId);
 int getBaseSpecialistPsych(int baseId);
 bool isFriendlyBaseInRangeHasFacility(int factionId, int x, int y, int range, FacilityId facilityId);

@@ -221,7 +221,7 @@ double getBaseStatisticalBudgetIntake2(double age);
 double getBaseStatisticalBudgetMultiplier(double age);
 double getFlatMineralIntakeGain(int delay, double value);
 double getFlatBudgetIntakeGain(int delay, double value);
-double getBasePopulationGain(int baseId, const Interval &baseSizeInterval);
+double getBasePopulationGain(int baseId,  Interval &baseSizeInterval);
 double getBasePopulationGrowthGain(int baseId, int delay, double proportionalGrowthIncrease);
 double getBaseProportionalMineralIntakeGain(int baseId, int delay, double proportion);
 double getBaseProportionalBudgetIntakeGain(int baseId, int delay, double proportion);

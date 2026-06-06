@@ -159,7 +159,7 @@ struct TerraformingRequestAssignment
 struct TerraformingImprovement
 {
 	MAP *tile;
-	TERRAFORMING_OPTION *option;
+	TERRAFORMING_OPTION const *option;
 	int action = -1;
 	int nutrient;
 	int mineral;
@@ -170,7 +170,7 @@ struct TerraformingImprovement
 struct TERRAFORMING_SCORE
 {
 	MAP *tile;
-	TERRAFORMING_OPTION *option;
+	TERRAFORMING_OPTION const *option;
 	
 	int action = -1;
 	double score = 0.0;
@@ -186,12 +186,12 @@ struct TERRAFORMING_SCORE
 struct TERRAFORMING_REQUEST
 {
 	MAP *tile;
-	TERRAFORMING_OPTION *option;
+	TERRAFORMING_OPTION const *option;
 	
 	// conventional terraforming (tile items modification resulting in yield change)
 	bool conventional = false;
 	// a target map state with all option improvements
-	MapState improvedMapState;
+	MapState improvedMapState{};
 	// first former action
 	int firstAction = -1;
 	// combined option actions terraforming time
@@ -241,7 +241,7 @@ void assignFormerOrders();
 void finalizeFormerOrders();
 double computeBaseTileImprovementGain(int baseId, MAP *tile, MapState &improvedMapState, bool areaEffect);
 double computeBaseImprovementYieldScore(int baseId, MAP *tile, MAP *currentMapState, MAP *improvedMapState);
-TERRAFORMING_REQUEST calculateConventionalTerraformingScore(int baseId, MAP *tile, TERRAFORMING_OPTION const *option);
+TERRAFORMING_REQUEST calculateConventionalTerraformingScore(int baseId, MAP *tile, TERRAFORMING_OPTION  *option);
 TERRAFORMING_REQUEST calculateAquiferTerraformingScore(MAP *tile);
 TERRAFORMING_REQUEST calculateRaiseLandTerraformingScore(MAP *tile);
 TERRAFORMING_REQUEST calculateNetworkTerraformingScore(MAP *tile);
@@ -284,8 +284,8 @@ double getTerraformingResourceScore(double nutrient, double mineral, double ener
 double getTerraformingResourceScore(TileYield yield);
 void generateTerraformingChange(MapState &mapState, int action);
 double getTerraformingGain(double income, double terraformingTime);
-bool compareTerraformingRequests(TERRAFORMING_REQUEST const &terraformingRequest1, TERRAFORMING_REQUEST const &terraformingRequest2);
-bool compareConventionalTerraformingRequests(TERRAFORMING_REQUEST const &terraformingRequest1, TERRAFORMING_REQUEST const &terraformingRequest2);
+bool compareTerraformingRequests(TERRAFORMING_REQUEST  &terraformingRequest1, TERRAFORMING_REQUEST  &terraformingRequest2);
+bool compareConventionalTerraformingRequests(TERRAFORMING_REQUEST  &terraformingRequest1, TERRAFORMING_REQUEST  &terraformingRequest2);
 void setMapState(MapState &mapState, MAP *tile);
 void applyMapState(MapState &mapState, MAP *tile);
 void restoreTileMapState(MAP *tile);

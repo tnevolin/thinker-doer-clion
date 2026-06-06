@@ -83,19 +83,19 @@ double avg_range(const Points& S, int x, int y) {
     return (n > 0 ? (1.0*sum)/n : 0);
 }
 
-bool is_ocean(MAP const *sq) {
+bool is_ocean(MAP* sq) {
     return (!sq || (sq->climate >> 5) < ALT_SHORE_LINE);
 }
 
-bool is_ocean(BASE const *base) {
+bool is_ocean(BASE* base) {
     return is_ocean(mapsq(base->x, base->y));
 }
 
-bool is_ocean_shelf(MAP const *sq) {
+bool is_ocean_shelf(MAP* sq) {
     return (sq && (sq->climate >> 5) == ALT_OCEAN_SHELF);
 }
 
-bool is_shore_level(MAP const *sq) {
+bool is_shore_level(MAP* sq) {
     return (sq && (sq->climate >> 5) == ALT_SHORE_LINE);
 }
 

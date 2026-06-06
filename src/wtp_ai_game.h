@@ -131,7 +131,7 @@ struct Combattant
 	
 	Combattant(int factionId, int unitId, double weight, bool airbase);
 	Combattant(int vehicleId, double weight, bool airbase);
-	void initialize(robin_hood::unordered_flat_map<int, double> const &damageCoefficients);
+	void initialize(robin_hood::unordered_flat_map<int, double>  &damageCoefficients);
 	
 };
 struct CombattantEffect
@@ -161,7 +161,7 @@ public:
 	void initialize(MAP *tile, bool playerAssaults, double targetGain);
 	
 	double getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, bool attackerAtTile, bool defenderAtTile);
-	double getCombattantCombatEffect(Combattant const &attacker, Combattant const &defender, ENGAGEMENT_MODE engagementMode, bool attackerAtTile, bool defenderAtTile);
+	double getCombattantCombatEffect(Combattant  &attacker, Combattant  &defender, ENGAGEMENT_MODE engagementMode, bool attackerAtTile, bool defenderAtTile);
 	
 	Combattant &addAssailant(int vehicleId, double weight = 1.0);
 	Combattant &addProtector(int vehicleId, double weight = 1.0);
@@ -375,7 +375,7 @@ struct BaseProbeData
 		providedEffectPresent = 0.0;
 	}
 	
-	void addVehicle(int const vehicleId, bool const present)
+	void addVehicle(int  vehicleId, bool  present)
 	{
 		double vehicleEffect = getVehicleMoraleMultiplier(vehicleId);
 		
@@ -388,12 +388,12 @@ struct BaseProbeData
 		
 	}
 	
-	bool isSatisfied(bool const present) const
+	bool isSatisfied(bool  present) const
 	{
 		return (present ? providedEffectPresent : providedEffect) >= requiredEffect;
 	}
 	
-	double getDemand(bool const present) const
+	double getDemand(bool  present) const
 	{
 		double required = requiredEffect;
 		double provided = (present ? providedEffectPresent : providedEffect);
@@ -636,7 +636,7 @@ public:
 struct TERRAFORMING_OPTION
 {
 	// recognizable name
-	char *name;
+	char const *name;
 	// land or ocean
 	bool ocean;
 	// applies to rocky tile only
@@ -654,7 +654,7 @@ struct TERRAFORMING_OPTION
 struct FormerRequest
 {
 	MAP *tile;
-	TERRAFORMING_OPTION *option;
+	TERRAFORMING_OPTION const *option;
 	double terraformingTime;
 	double income;
 };
@@ -801,7 +801,7 @@ struct Data
 	// base infos
 	
 	std::array<BaseInfo, MaxBaseNum> baseInfos;
-	void resetBase(int const baseId)
+	void resetBase(int  baseId)
 	{
 		baseInfos.at(baseId).reset();
 	}
@@ -866,15 +866,15 @@ struct Data
 	
 	// enemy stacks
 	robin_hood::unordered_flat_map<MAP *, EnemyStackInfo> enemyStacks;
-	bool hasEnemyStack(MAP const *tile)
+	bool hasEnemyStack(MAP  *tile)
 	{
 		return enemyStacks.find(tile) != enemyStacks.end();
 	}
-	bool isEnemyStackAt(MAP const *tile)
+	bool isEnemyStackAt(MAP  *tile)
 	{
 		return enemyStacks.find(tile) != enemyStacks.end();
 	}
-	EnemyStackInfo &getEnemyStackInfo(MAP const *tile)
+	EnemyStackInfo &getEnemyStackInfo(MAP  *tile)
 	{
 		return enemyStacks.at(tile);
 	}
@@ -882,7 +882,7 @@ struct Data
 	// unprotected enemy bases
 	std::vector<int> emptyEnemyBaseIds;
 	robin_hood::unordered_flat_set<MAP *> emptyEnemyBaseTiles;
-	bool isEmptyEnemyBaseAt(MAP const *tile)
+	bool isEmptyEnemyBaseAt(MAP  *tile)
 	{
 		return emptyEnemyBaseTiles.find(tile) != emptyEnemyBaseTiles.end();
 	}
@@ -952,16 +952,16 @@ struct Data
 	// access global data arrays
 	
 	TileInfo &getTileInfo(int tileIndex);
-	TileInfo &getTileInfo(MAP const *tile);
+	TileInfo &getTileInfo(MAP  *tile);
 	TileInfo &getBaseTileInfo(int baseId);
 	TileInfo &getVehicleTileInfo(int vehicleId);
-	bool isSea(MAP const *tile);
-	bool isLand(MAP const *tile);
-	bool isSeaUnitAllowed(MAP const *tile, int factionId);
-	bool isLandUnitAllowed(MAP const *tile);
+	bool isSea(MAP  *tile);
+	bool isLand(MAP  *tile);
+	bool isSeaUnitAllowed(MAP  *tile, int factionId);
+	bool isLandUnitAllowed(MAP  *tile);
 	
 	BaseInfo &getBaseInfo(int baseId);
-	BunkerInfo &getBunkerInfo(MAP const *tile);
+	BunkerInfo &getBunkerInfo(MAP  *tile);
 	
 	// utility methods
 	
@@ -971,9 +971,9 @@ struct Data
 
 extern Data aiData;
 extern int aiFactionId;
-extern MFaction &aiMFaction;
-extern Faction &aiFaction;
-extern FactionInfo &aiFactionInfo;
+extern MFaction *aiMFaction;
+extern Faction *aiFaction;
+extern FactionInfo *aiFactionInfo;
 
 bool isWarzone(MAP *tile);
 
@@ -1004,10 +1004,10 @@ int getFactionMaxConDefenseValue(int factionId);
 std::array<int, 3> getFactionFastestTriadChassisIds(int factionId);
 bool isWithinAlienArtilleryRange(int vehicleId);
 bool isWtpEnabledFaction(int factionId);
-bool compareIdIntValueAscending(const IdIntValue &a, const IdIntValue &b);
-bool compareIdIntValueDescending(const IdIntValue &a, const IdIntValue &b);
-bool compareIdDoubleValueAscending(const IdDoubleValue &a, const IdDoubleValue &b);
-bool compareIdDoubleValueDescending(const IdDoubleValue &a, const IdDoubleValue &b);
+bool compareIdIntValueAscending( IdIntValue &a,  IdIntValue &b);
+bool compareIdIntValueDescending( IdIntValue &a,  IdIntValue &b);
+bool compareIdDoubleValueAscending( IdDoubleValue &a,  IdDoubleValue &b);
+bool compareIdDoubleValueDescending( IdDoubleValue &a,  IdDoubleValue &b);
 bool isOffensiveUnit(int unitId, int factionId);
 bool isOffensiveVehicle(int vehicleId);
 double getExponentialCoefficient(double scale, double value);
@@ -1054,7 +1054,7 @@ double getMeanBaseIncome(double age);
 double getMeanBaseGain(double age);
 double getNewBaseGain();
 double getLandColonyGain();
-double getBaseGain(int popSize, int nutrientCostFactor, Resource const& baseIntake2);
+double getBaseGain(int popSize, int nutrientCostFactor, Resource & baseIntake2);
 double getBaseGain(int baseId, Resource baseIntake2);
 double getBaseGain(int baseId);
 double getBaseValue(int baseId);
@@ -1069,22 +1069,22 @@ bool isUnitCanArtilleryAttack(int unitId, MAP *position);
 bool isVehicleCanArtilleryAttack(int vehicleId, MAP *position);
 double getBaseExtraWorkerGain(int baseId);
 MapDoubleValue getMeleeAttackPosition(int unitId, MAP *origin, MAP *target);
-MapDoubleValue getMeleeAttackPosition(int vehicleId, MAP const *target);
+MapDoubleValue getMeleeAttackPosition(int vehicleId, MAP  *target);
 MapDoubleValue getArtilleryAttackPosition(int unitId, MAP *origin, MAP *target);
-MapDoubleValue getArtilleryAttackPosition(int vehicleId, MAP const *target);
+MapDoubleValue getArtilleryAttackPosition(int vehicleId, MAP  *target);
 double getWinningProbability(double combatEffect);
 double getWinningHealthRatio(double combatEffect);
-double getSensorOffenseMultiplier(int factionId, MAP const *tile);
-double getSensorDefenseMultiplier(int factionId, MAP const *tile);
-double getUnitMeleeOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP const *tile, bool exactLocation);
-double getUnitArtilleryOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP const *tile, bool exactLocation);
+double getSensorOffenseMultiplier(int factionId, MAP  *tile);
+double getSensorDefenseMultiplier(int factionId, MAP  *tile);
+double getUnitMeleeOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP  *tile, bool exactLocation);
+double getUnitArtilleryOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP  *tile, bool exactLocation);
 int getBasePoliceRequiredPower(int baseId);
 double getUnitDestructionGain(int unitId);
 double getProportionalCoefficient(double minValue, double maxValue, double value);
 int generatePad0FromVehicleId(int vehicleId);
 int getInitialVehicleIdByPad0(int pad0);
 void populateVehiclePad0Map(bool initialize = false);
-double getCombatGain(int attackerVehicleId, int defenderVehicleId, ENGAGEMENT_MODE engagementMode, MAP const *attackerTile, MAP const *defenderTile, double attackerHealth, double defenderHealth);
+double getCombatGain(int attackerVehicleId, int defenderVehicleId, ENGAGEMENT_MODE engagementMode, MAP  *attackerTile, MAP  *defenderTile, double attackerHealth, double defenderHealth);
 char const *getVehiclePad0LocationNameString(int vehicleId);
 double getCNDProbability(double value);
 double getWinProbability(double destroyedWeight1, double destroyedWeight2, double remainingWeight1);

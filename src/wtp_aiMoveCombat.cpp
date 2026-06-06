@@ -113,7 +113,7 @@ void moveDefensiveProbes()
 			std::remove_if
 			(
 				tasks.begin(), tasks.end(),
-				[vehiclePad0](Task const &task)
+				[vehiclePad0](Task  &task)
 				{
 					return task.vehiclePad0 == vehiclePad0;
 				}
@@ -134,7 +134,7 @@ void moveDefensiveProbes()
 				std::remove_if
 				(
 					tasks.begin(), tasks.end(),
-					[baseId](Task const &task)
+					[baseId](Task  &task)
 					{
 						return task.baseId == baseId;
 					}
@@ -1595,7 +1595,7 @@ void populateDefensiveProbeTasks(std::vector<Task> &tasks)
 			// priority
 			
 			double priority =
-				aiFactionInfo.stolenTechnologyGain
+				aiFactionInfo->stolenTechnologyGain
 				* requiredEffectProportion
 				* travelTimeCoefficient
 			;
@@ -2915,7 +2915,7 @@ bool isVehicleAvailable(int vehicleId)
 /*
 Determines how far from base vehicle should be to effectivelly protect it.
 */
-int getVehicleProtectionRange(int const vehicleId)
+int getVehicleProtectionRange(int  vehicleId)
 {
 	int protectionRange;
 
@@ -2936,7 +2936,7 @@ int getVehicleProtectionRange(int const vehicleId)
 
 }
 
-bool compareTaskPriorityDescending(const TaskPriority &a, const TaskPriority &b)
+bool compareTaskPriorityDescending( TaskPriority &a,  TaskPriority &b)
 {
 	return a.priority > b.priority;
 }
@@ -3081,7 +3081,7 @@ bool isPrimaryEffect(int vehicleId, MAP *enemyStackTile, EnemyStackInfo &enemySt
 Estimates the gain of vehicle defending at this location.
 Gain is composed of estimated losses at both sides times unit cost.
 */
-double getDefendGain(int const defenderVehicleId, MAP const *tile, double defenderHealth, int const excludeEnemyVehiclePad0)
+double getDefendGain(int  defenderVehicleId, MAP  *tile, double defenderHealth, int  excludeEnemyVehiclePad0)
 {
 	VEH &defenderVehicle = Vehs[defenderVehicleId];
 	
@@ -3190,7 +3190,7 @@ double getDefendGain(int const defenderVehicleId, MAP const *tile, double defend
 Estimates the gain of vehicle melee attacking and then defending at this location.
 Gain is composed of estimated losses at both sides times unit cost.
 */
-double getMeleeAttackGain(int const vehicleId, MAP const *destination, MAP const *target, double const hastyCoefficient)
+double getMeleeAttackGain(int  vehicleId, MAP  *destination, MAP  *target, double  hastyCoefficient)
 {
 	if (!aiData.hasEnemyStack(target))
 		return 0.0;
@@ -3328,7 +3328,7 @@ CombatAction selectVehicleCombatAction(int vehicleId)
 		std::sort
 		(
 			moveActions.begin(), moveActions.end(),
-			[](MoveAction const &a, MoveAction const &b) { return a.remainingMovementPoints > b.remainingMovementPoints; }
+			[](MoveAction  &a, MoveAction  &b) { return a.remainingMovementPoints > b.remainingMovementPoints; }
 		);
 	}
 	for (MoveAction &moveAction : moveActions)

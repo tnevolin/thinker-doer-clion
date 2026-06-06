@@ -306,7 +306,7 @@ When at or next unload location it stops and explicitly commands passenger to un
 int lastEnemyMoveVehicleId = -1;
 int lastEnemyMoveVehicleX = -1;
 int lastEnemyMoveVehicleY = -1;
-int enemyMoveVehicle(const int vehicleId)
+int enemyMoveVehicle( int vehicleId)
 {
 	debug("enemyMoveVehicle %s remaningMoves=%2d\n", getVehiclePad0LocationNameString(vehicleId), getVehicleRemainingMoves(vehicleId));
 	
@@ -344,7 +344,8 @@ int enemyMoveVehicle(const int vehicleId)
 Creates tasks to transit vehicle to destination.
 Returns true on successful task creation.
 */
-bool transitVehicle(Task const &task)
+// pass copy
+bool transitVehicle(Task  task)
 {
 	bool TRACE = DEBUG && false;
 
@@ -436,7 +437,8 @@ bool transitVehicle(Task const &task)
 
 }
 
-bool transitLandVehicle(Task const &task)
+// pass copy
+bool transitLandVehicle(Task task)
 {
 	int vehicleId = task.getVehicleId();
 	MAP *destination = task.getDestination();
@@ -638,7 +640,7 @@ void balanceVehicleSupport()
 /*
 Modified vehicle movement.
 */
-int aiEnemyMove(const int vehicleId)
+int aiEnemyMove( int vehicleId)
 {
 	VEH *vehicle = getVehicle(vehicleId);
 	
@@ -779,7 +781,7 @@ MAP *getNearestMonolith(int x, int y, int triad)
 
 }
 
-Transfer getOptimalPickupTransfer(MAP const *org, MAP const *dst)
+Transfer getOptimalPickupTransfer(MAP  *org, MAP  *dst)
 {
 	debug("getOptimalPickupTransfer %s -> %s\n", getLocationString(org), getLocationString(dst));
 	
@@ -830,7 +832,7 @@ Transfer getOptimalPickupTransfer(MAP const *org, MAP const *dst)
 	
 }
 
-Transfer getOptimalDropoffTransfer(MAP const *org, MAP const *dst, int const passengerVehicleId, int const transportVehicleId)
+Transfer getOptimalDropoffTransfer(MAP  *org, MAP  *dst, int  passengerVehicleId, int  transportVehicleId)
 {
 	debug("getOptimalDropoffTransfer %s -> %s\n", getLocationString(org), getLocationString(dst));
 	
@@ -962,7 +964,7 @@ void setSafeMoveTo(int vehicleId, MAP *destination)
 	}
 	else
 	{
-		setMoveTo(vehicleId, {bestTile, destination});
+		setMoveTo(vehicleId, std::vector<MAP *>{bestTile, destination});
 	}
 	
 }
@@ -999,7 +1001,7 @@ MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoid
 		
 		// item
 		
-		if (!map_has_item(const_cast<MAP *>(tile), BIT_MONOLITH))
+		if (!map_has_item(tile, BIT_MONOLITH))
 			continue;
 		
 		// exclude blocked location
@@ -1243,7 +1245,7 @@ int setMoveTo(int vehicleId, MAP *destination)
 	
 }
 
-int setMoveTo(int vehicleId, const std::vector<MAP *> &waypoints)
+int setMoveTo(int vehicleId, std::vector<MAP *> waypoints)
 {
     VEH* vehicle = getVehicle(vehicleId);
 	

@@ -130,7 +130,7 @@ Compares terraforming requests by improvementIncome then by fitnessScore.
 1. compare by yield: superior yield goes first.
 2. compare by gain.
 */
-bool compareFormerRequests(FormerRequest const &formerRequest1, FormerRequest const &formerRequest2)
+bool compareFormerRequests(FormerRequest  &formerRequest1, FormerRequest  &formerRequest2)
 {
 	return formerRequest1.income > formerRequest2.income;
 }
@@ -4162,7 +4162,7 @@ double getFlatBudgetIntakeGain(int delay, double value)
 Estimates base extra population gain.
 Contributing population: (minSize, maxSize].
 */
-double getBasePopulationGain(int baseId, const Interval &baseSizeInterval)
+double getBasePopulationGain(int baseId,  Interval &baseSizeInterval)
 {
 	bool TRACE = DEBUG & false;
 

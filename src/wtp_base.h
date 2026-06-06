@@ -24,9 +24,9 @@ struct BaseEnergy
 };
 
 void __cdecl wtp_mod_base_yield();
-void mod_base_yield_base_energy(BaseEnergy const &baseEnergy, int energyIntake);
+void mod_base_yield_base_energy(BaseEnergy  &baseEnergy, int energyIntake);
 size_t populateBaseYieldsAndTiles(int baseId, std::array<TileValue, 21> &tiles);
-void base_update_reset(BASE* base, int Ns, int Ms, int Es, std::array<TileValue, 21> &tiles, int const tileCount);
+void base_update_reset(BASE* base, int Ns, int Ms, int Es, std::array<TileValue, 21> &tiles, int  tileCount);
 void wtp_normalize_happiness(BASE *base, bool subtractSpecialists = false);
 void wtp_add_psych_row(BASE *base, int num);
 void __cdecl wtp_mod_base_psych(int base_id);

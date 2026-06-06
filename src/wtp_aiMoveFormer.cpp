@@ -1347,7 +1347,7 @@ void applyProximityRules()
 		terraformingRequestsIterator != terraformingRequests.end();
 	)
 	{
-		TERRAFORMING_REQUEST *terraformingRequest = &(*terraformingRequestsIterator);
+		TERRAFORMING_REQUEST const *terraformingRequest = &(*terraformingRequestsIterator);
 		
 		assert(isOnMap(terraformingRequest->tile));
 
@@ -1358,7 +1358,7 @@ void applyProximityRules()
 		robin_hood::unordered_flat_map<int, PROXIMITY_RULE>::const_iterator proximityRulesIterator = PROXIMITY_RULES.find(terraformingRequest->firstAction);
 		if (proximityRulesIterator != PROXIMITY_RULES.end())
 		{
-			PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+			PROXIMITY_RULE const *proximityRule = &(proximityRulesIterator->second);
 
 			// there is higher ranked similar action
 
@@ -1646,7 +1646,7 @@ void assignFormerOrders()
 	
 	for (TERRAFORMING_REQUEST &terraformingRequest : terraformingRequests)
 	{
-		formerRequests.push_back({terraformingRequest.tile, terraformingRequest.option, terraformingRequest.terraformingTime, terraformingRequest.income});
+		formerRequests.push_back(FormerRequest{terraformingRequest.tile, terraformingRequest.option, terraformingRequest.terraformingTime, terraformingRequest.income});
 	}
 	
 	flushlog();
@@ -1693,7 +1693,7 @@ void finalizeFormerOrders()
 /**
 Selects best terraforming option around given base and calculates its terraforming score.
 */
-TERRAFORMING_REQUEST calculateConventionalTerraformingScore(int baseId, MAP *tile, TERRAFORMING_OPTION const *option)
+TERRAFORMING_REQUEST calculateConventionalTerraformingScore(int baseId, MAP *tile, TERRAFORMING_OPTION  *option)
 {
 	assert(isOnMap(tile));
 	
@@ -1928,7 +1928,7 @@ TERRAFORMING_REQUEST calculateAquiferTerraformingScore(MAP *tile)
 {
 	bool ocean = is_ocean(tile);
 	
-	TERRAFORMING_OPTION *option = &TO_AQUIFER;
+	TERRAFORMING_OPTION const *option = &TO_AQUIFER;
 	TERRAFORMING_REQUEST terraformingRequest(tile, option);
 	
 	// initialize variables
@@ -2009,7 +2009,7 @@ TERRAFORMING_REQUEST calculateRaiseLandTerraformingScore(MAP *tile)
 	int y = getY(tile);
 	bool ocean = is_ocean(tile);
 	
-	TERRAFORMING_OPTION *option = &TO_RAISE_LAND;
+	TERRAFORMING_OPTION const *option = &TO_RAISE_LAND;
 	TERRAFORMING_REQUEST terraformingRequest(tile, option);
 	
 	// land only
@@ -2109,7 +2109,7 @@ TERRAFORMING_REQUEST calculateNetworkTerraformingScore(MAP *tile)
 	int y = getY(tile);
 	bool ocean = is_ocean(tile);
 	
-	TERRAFORMING_OPTION *option = &TO_NETWORK;
+	TERRAFORMING_OPTION const *option = &TO_NETWORK;
 	TERRAFORMING_REQUEST terraformingRequest(tile, option);
 	
 	// land only
@@ -2247,7 +2247,7 @@ TERRAFORMING_REQUEST calculateSensorTerraformingScore(MAP *tile)
 	bool ocean = is_ocean(tile);
 	TileTerraformingInfo &tileTerraformingInfo = getTileTerraformingInfo(tile);
 	
-	TERRAFORMING_OPTION *option = ocean ? &TO_SEA_SENSOR : &TO_LAND_SENSOR;
+	TERRAFORMING_OPTION const *option = ocean ? &TO_SEA_SENSOR : &TO_LAND_SENSOR;
 	TERRAFORMING_REQUEST terraformingRequest(tile, option);
 	
 	// initialize variables
@@ -2373,7 +2373,7 @@ TERRAFORMING_REQUEST calculateBunkerTerraformingScore(MAP *tile)
 	bool ocean = is_ocean(tile);
 	TileTerraformingInfo &tileTerraformingInfo = getTileTerraformingInfo(tile);
 	
-	TERRAFORMING_OPTION *option = &TO_LAND_BUNKER;
+	TERRAFORMING_OPTION const *option = &TO_LAND_BUNKER;
 	TERRAFORMING_REQUEST terraformingRequest(tile, option);
 	
 	if (ocean)
@@ -2755,7 +2755,7 @@ bool isNearbyForestUnderConstruction(int x, int y)
 
 	// get proximity rule
 
-	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE const *proximityRule = &(proximityRulesIterator->second);
 	int range = proximityRule->buildingDistance;
 
 	// check building item
@@ -2794,7 +2794,7 @@ bool isNearbyCondeserUnderConstruction(int x, int y)
 
 	// get proximity rule
 
-	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE const *proximityRule = &(proximityRulesIterator->second);
 	int range = proximityRule->buildingDistance;
 
 	// check terraformed condensers
@@ -2833,7 +2833,7 @@ bool isNearbyMirrorUnderConstruction(int x, int y)
 
 	// get proximity rule
 
-	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE const *proximityRule = &(proximityRulesIterator->second);
 	int range = proximityRule->buildingDistance;
 
 	// check terraformed mirrors
@@ -2878,7 +2878,7 @@ bool isNearbyBoreholePresentOrUnderConstruction(int x, int y)
 
 	// get proximity rule
 
-	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE const *proximityRule = &(proximityRulesIterator->second);
 
 	// check existing items
 
@@ -2923,7 +2923,7 @@ bool isNearbyRiverPresentOrUnderConstruction(int x, int y)
 
 	// get proximity rule
 
-	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE const *proximityRule = &(proximityRulesIterator->second);
 
 	// check existing items
 
@@ -2968,7 +2968,7 @@ bool isNearbyRaiseUnderConstruction(int x, int y)
 
 	// get proximity rule
 
-	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE const *proximityRule = &(proximityRulesIterator->second);
 
 	// check building items
 
@@ -3008,7 +3008,7 @@ bool isNearbySensorPresentOrUnderConstruction(int x, int y)
 	
 	// get proximity rule
 	
-	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE const *proximityRule = &(proximityRulesIterator->second);
 	
 	// check existing items
 	
@@ -3053,7 +3053,7 @@ bool isNearbyBunkerPresentOrUnderConstruction(int x, int y)
 	
 	// get proximity rule
 	
-	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE const *proximityRule = &(proximityRulesIterator->second);
 	
 	// check existing items
 	
@@ -4581,7 +4581,7 @@ double getTerraformingGain(double income, double terraformingTime)
 /**
 Compares terraforming requests by gain.
 */
-bool compareTerraformingRequests(TERRAFORMING_REQUEST const &terraformingRequest1, TERRAFORMING_REQUEST const &terraformingRequest2)
+bool compareTerraformingRequests(TERRAFORMING_REQUEST  &terraformingRequest1, TERRAFORMING_REQUEST  &terraformingRequest2)
 {
 	return (terraformingRequest1.gain > terraformingRequest2.gain);
 }
@@ -4591,7 +4591,7 @@ Compares terraforming requests by improvementIncome then by fitnessScore.
 1. compare by yield: superior yield goes first.
 2. compare by gain.
 */
-bool compareConventionalTerraformingRequests(TERRAFORMING_REQUEST const &terraformingRequest1, TERRAFORMING_REQUEST const &terraformingRequest2)
+bool compareConventionalTerraformingRequests(TERRAFORMING_REQUEST  &terraformingRequest1, TERRAFORMING_REQUEST  &terraformingRequest2)
 {
 	return terraformingRequest1.gain == terraformingRequest2.gain ? terraformingRequest1.tile < terraformingRequest2.tile : terraformingRequest1.gain > terraformingRequest2.gain;
 }

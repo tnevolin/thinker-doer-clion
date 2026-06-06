@@ -28,7 +28,7 @@ static char const *taskTypeNames[]
 
 // TaskHeap
 
-void TaskHeap::add(Task const &task)
+void TaskHeap::add(Task  &task)
 {
 	tasks.push_back(task);
 }
@@ -45,35 +45,35 @@ Task *TaskHeap::get()
 
 // Task
 
-Task::Task(int const _vehicleId, TaskType const _type, MAP const *_destination, MAP const *_attackTarget, int const _order, int const _terraformingAction)
+Task::Task(int  _vehicleId, TaskType  _type, MAP  *_destination, MAP  *_attackTarget, int  _order, int  _terraformingAction)
 : vehiclePad0(Vehs[_vehicleId].pad_0), type(_type), destination(_destination), attackTarget(_attackTarget), order(_order), terraformingAction(_terraformingAction)
 {}
-Task::Task(int const _vehicleId, TaskType const _type, MAP const *_destination, MAP const *_attackTarget)
+Task::Task(int  _vehicleId, TaskType  _type, MAP  *_destination, MAP  *_attackTarget)
 : Task(_vehicleId, _type, _destination, _attackTarget, -1, -1)
 {}
-Task::Task(int const _vehicleId, TaskType const _type, MAP const *_destination)
+Task::Task(int  _vehicleId, TaskType  _type, MAP  *_destination)
 : Task(_vehicleId, _type, _destination, nullptr, -1, -1)
 {}
-Task::Task(int const _vehicleId, TaskType const _type)
+Task::Task(int  _vehicleId, TaskType  _type)
 : Task(_vehicleId, _type, nullptr, nullptr, -1, -1)
 {}
 
-bool Task::operator<(Task const &other) const
+bool Task::operator<(Task  &other)
 {
 	return priority < other.priority;
 }
 
-char const *Task::getTaskTypeName(TaskType const taskType)
+char const *Task::getTaskTypeName(TaskType  taskType)
 {
 	return taskTypeNames[taskType];
 }
 
-char const *Task::typeName() const
+char const *Task::typeName()
 {
 	return taskTypeNames[this->type];
 }
 
-int Task::getVehicleId() const
+int Task::getVehicleId()
 {
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
@@ -90,7 +90,7 @@ int Task::getVehicleId() const
 	
 }
 
-VEH *Task::getTaskVehicle() const
+VEH *Task::getTaskVehicle()
 {
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
@@ -113,7 +113,7 @@ void Task::clearDestination()
 	attackTarget = nullptr;
 }
 
-void Task::setDestination(MAP const *_destination)
+void Task::setDestination(MAP  *_destination)
 {
 	assert(_destination >= *MapTiles && _destination < *MapTiles + *MapAreaTiles);
 	this->destination = _destination;
@@ -123,7 +123,7 @@ void Task::setDestination(MAP const *_destination)
 Returns vehicle destination if specified.
 Otherwise, current vehicle location.
 */
-MAP const *Task::getDestination() const
+MAP *Task::getDestination()
 {
 	int vehicleId = getVehicleId();
 	
@@ -145,7 +145,7 @@ MAP const *Task::getDestination() const
 	
 }
 
-MAP const *Task::getAttackTarget() const
+MAP *Task::getAttackTarget()
 {
 	int vehicleId = getVehicleId();
 
@@ -163,7 +163,7 @@ MAP const *Task::getAttackTarget() const
 	
 }
 
-int Task::getDestinationRange() const
+int Task::getDestinationRange()
 {
 	// no range for no destination
 
@@ -195,7 +195,7 @@ returns reference to static buffer
 not thread-safe, not reentrant
 uses rotating buffers to allow up to 10 calls withing a single debug statement
 */
-char const *Task::toString() const
+char *Task::toString()
 {
 	static int constexpr BUFFER_COUNT = 10;
 	static int constexpr BUFFER_SIZE = 100;
@@ -231,7 +231,7 @@ char const *Task::toString() const
     
 }
 
-int Task::execute() const
+int Task::execute()
 {
 	debug("Task::execute()\n");
 
@@ -247,7 +247,7 @@ int Task::execute() const
 
 }
 
-int Task::execute(int vehicleId) const
+int Task::execute(int vehicleId)
 {
 	debug("Task::execute(%d)\n", vehicleId);
 
@@ -294,7 +294,7 @@ int Task::execute(int vehicleId) const
 
 }
 
-int Task::executeAction(int const vehicleId)
+int Task::executeAction(int  vehicleId)
 {
 	debug("Task::executeAction(%d)\n", vehicleId);
 	
@@ -756,12 +756,13 @@ int Task::executeConvoy(int vehicleId)
 
 // static functions
 
-bool compareTaskPriorityDescending(Task const &a, Task const &b)
+bool compareTaskPriorityDescending(Task  &a, Task  &b)
 {
 	return a.priority > b.priority;
 }
 
-void setTask(Task const &task)
+// pass copy
+void setTask(Task task)
 {
 	int vehicleId = task.getVehicleId();
 	VEH &vehicle = Vehs[vehicleId];
@@ -777,12 +778,12 @@ void setTask(Task const &task)
 
 }
 
-bool hasTask(int const vehicleId)
+bool hasTask(int  vehicleId)
 {
 	return (aiData.tasks.find(Vehs[vehicleId].pad_0) != aiData.tasks.end());
 }
 
-void deleteVehicleTasks(int const vehicleId)
+void deleteVehicleTasks(int  vehicleId)
 {
 	VEH &vehicle = Vehs[vehicleId];
 	aiData.tasks.erase(vehicle.pad_0);
@@ -790,7 +791,7 @@ void deleteVehicleTasks(int const vehicleId)
 
 // returns vehicle task heap
 // automatically constructs TaskHeap if was not exist
-TaskHeap &getTaskHeap(int const vehicleId)
+TaskHeap &getTaskHeap(int  vehicleId)
 {
 	int vehiclePad0 = Vehs[vehicleId].pad_0;
 
@@ -804,7 +805,7 @@ TaskHeap &getTaskHeap(int const vehicleId)
 }
 
 // returns highest priority task
-Task *getTask(int const vehicleId)
+Task *getTask(int  vehicleId)
 {
 	int vehiclePad0 = Vehs[vehicleId].pad_0;
 

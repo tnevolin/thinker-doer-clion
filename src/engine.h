@@ -1924,7 +1924,7 @@ extern fp_3int morale_veh;
 extern fp_3int offense_proto;
 extern fp_3int armor_proto;
 extern fp_1int speed_proto; // replaced by proto_speed
-extern fp_2int speed; // replaced by veh_speed
+extern fp_2int unitSpeed; // replaced by veh_speed
 //extern fp_1int veh_cargo;
 //extern fp_1int prototype_factor;
 extern Fveh_cost veh_cost;

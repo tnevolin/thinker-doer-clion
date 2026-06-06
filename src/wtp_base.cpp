@@ -382,7 +382,7 @@ void __cdecl wtp_mod_base_yield()
 /*
 Minimal and fast drone computation for base_yeild.
 */
-void mod_base_yield_base_energy(BaseEnergy const &baseEnergy, int energyIntake)
+void mod_base_yield_base_energy(BaseEnergy  &baseEnergy, int energyIntake)
 {
 	Profiling::start("~ mod_base_yield_base_energy");
 	
@@ -675,7 +675,7 @@ size_t populateBaseYieldsAndTiles(int baseId, std::array<TileValue, 21> &tiles)
 /*
 Resets and updates base.
 */
-void base_update_reset(BASE* base, int Ns, int Ms, int Es, std::array<TileValue, 21> &tiles, int const tileCount)
+void base_update_reset(BASE* base, int Ns, int Ms, int Es, std::array<TileValue, 21> &tiles, int  tileCount)
 {
 	assert(tiles.at(0).x == base->x && tiles.at(0).y == base->y);
 	assert(base->pop_size + 1 == __builtin_popcount(base->worked_tiles) + base->specialist_total);

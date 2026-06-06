@@ -29,7 +29,7 @@ struct TaskHeap
 {
 	std::vector<Task> tasks {};
 
-	void add(Task const&task);
+	void add(Task &task);
 	Task *get();
 
 };
@@ -46,25 +46,25 @@ struct Task
 	int baseId = -1;
 
 	Task(int _vehicleId, TaskType _type, MAP *_destination, MAP *_attackTarget, int _order, int _terraformingAction);
-	Task(int const _vehicleId, TaskType const _type, MAP const *_destination, MAP const *_attackTarget);
-	Task(int const _vehicleId, TaskType const _type, MAP const *_destination);
-	Task(int const _vehicleId, TaskType const _type);
+	Task(int  _vehicleId, TaskType  _type, MAP  *_destination, MAP  *_attackTarget);
+	Task(int  _vehicleId, TaskType  _type, MAP  *_destination);
+	Task(int  _vehicleId, TaskType  _type);
 
-	bool operator<(Task const &other) const;
+	bool operator<(Task  &other);
 
 	static char const *getTaskTypeName(TaskType taskType);
-	char const *typeName() const;
-	int getVehicleId() const;
-	VEH *getTaskVehicle() const;
+	char const *typeName();
+	int getVehicleId();
+	VEH *getTaskVehicle();
 	void clearDestination();
-	void setDestination(MAP const *_destination);
-	MAP const *getDestination() const;
-	MAP const *getAttackTarget() const;
-	int getDestinationRange() const;
-	char const *toString() const;
+	void setDestination(MAP  *_destination);
+	MAP *getDestination();
+	MAP *getAttackTarget();
+	int getDestinationRange();
+	char *toString();
 
-	int execute() const;
-	int execute(int vehicleId) const;
+	int execute();
+	int execute(int vehicleId);
 	int executeAction(int vehicleId);
 	int executeNone(int vehicleId);
 	int executeKill(int vehicleId);
@@ -86,8 +86,8 @@ struct Task
 
 };
 
-TaskHeap &getTaskHeap(int const vehicleId);
-void setTask(Task const &task);
+TaskHeap &getTaskHeap(int  vehicleId);
+void setTask(Task task);
 bool hasTask(int vehicleId);
 void deleteVehicleTasks(int vehicleId);
 Task *getTask(int vehicleId);

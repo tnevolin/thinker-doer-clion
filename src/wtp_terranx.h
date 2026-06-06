@@ -12,7 +12,7 @@ typedef void	(__cdecl *fp_5void				)(int, int, int, int, int);
 typedef void	(__cdecl *fp_6void				)(int, int, int, int, int, int);
 typedef void	(__cdecl *fp_7void				)(int, int, int, int, int, int, int);
 typedef int		(__cdecl *fp_0int				)();
-typedef int		(__cdecl *fp_7intstr			)(int, int, int, int, int, int, int, const char*);
+typedef int		(__cdecl *fp_7intstr			)(int, int, int, int, int, int, int,  char*);
 typedef char *	(__cdecl *fp_str_void			)();
 typedef char *	(__cdecl *fp_str_void			)();
 typedef void	(__cdecl *fp_2int_void			)(int, int);

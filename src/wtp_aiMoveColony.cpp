@@ -12,7 +12,7 @@ std::vector<std::array<int, 2>> a1 = {{1, 2}};
 
 // YieldScore comparator
 
-bool compareYieldInfoByScoreAndResourceScore(const YieldInfo &a, const YieldInfo &b)
+bool compareYieldInfoByScoreAndResourceScore( YieldInfo &a,  YieldInfo &b)
 {
     return a.score > b.score || (a.score == b.score && a.resourceScore > b.resourceScore);
 }

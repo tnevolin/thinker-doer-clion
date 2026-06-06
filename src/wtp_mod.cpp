@@ -194,7 +194,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 				{
 					// assign label and multiplier
 					
-					char *label = nullptr;
+					char const *label = nullptr;
 					int multiplier = 100;
 					
 					switch (attackerTriad)
@@ -264,7 +264,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 				{
 					// assign label and multiplier
 					
-					char *label = nullptr;
+					char const *label = nullptr;
 					int multiplier = 100;
 					
 					switch (attackerTriad)
@@ -458,9 +458,10 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
     // ----------------------------------------------------------------------------------------------------
     // defense facilities extend their effect 2 tiles outside of the base
     // ----------------------------------------------------------------------------------------------------
-	
-	constexpr char *triadFacilityFieldLabels[3] = {"PD - field", "NY - field", "AC - field", };
-	constexpr char *tachyonFieldFieldLabel = "TF - field";
+
+// ReSharper disable once CppTooWideScope
+char const *triadFacilityFieldLabels[3] = {"PD - field", "NY - field", "AC - field", };
+	char const *tachyonFieldFieldLabel = "TF - field";
 	
 	// blink displacer ignores defensive facilities
 	if (!has_abil(attackerVehicle.unit_id, ABL_BLINK_DISPLACER))
@@ -469,7 +470,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 		if (defenderMapTile != nullptr && !defenderMapTile->is_base())
 		{
 			int facilityFieldBonus = 0;
-			char *facilityFieldLabel = nullptr;
+			char const *facilityFieldLabel = nullptr;
 			if (isFriendlyBaseInRangeHasFacility(defenderVehicle.faction_id, defenderVehicle.x, defenderVehicle.y, 2, TRIAD_DEFENSIVE_FACILITIES[attackerTriad]))
 			{
 				facilityFieldBonus += conf.facility_field_defense_bonus[attackerTriad];
@@ -1546,7 +1547,7 @@ __cdecl int modifiedBestDefender(int defenderVehicleId, int attackerVehicleId, i
 
 __cdecl void appendAbilityCostTextInWorkshop(int output_string_pointer, int input_string_pointer)
 {
-	char *COST_PREFIX = "Cost: ";
+	char const *COST_PREFIX = "Cost: ";
 	
     debug
     (
@@ -1736,7 +1737,7 @@ __cdecl int modifiedVehicleCargoForAirTransportUnload(int vehicleId)
 /*
 Overrides faction_upkeep calls to amend vanilla and Thinker AI functionality.
 */
-__cdecl void modifiedFactionUpkeep(const int factionId)
+__cdecl void modifiedFactionUpkeep( int factionId)
 {
 	debug("modifiedFactionUpkeep - %s\n", getMFaction(factionId)->noun_faction);
 	
@@ -3167,11 +3168,11 @@ void addBattleBonus(int side, int *strengthPointer, double bonus, char const *la
 	add_bat(side, static_cast<int>(floor(bonus)), label);
 	
 }
-void addAttackerBonus(int *strengthPointer, double bonus, const char *label)
+void addAttackerBonus(int *strengthPointer, double bonus,  char const *label)
 {
 	addBattleBonus(0, strengthPointer, bonus, label);
 }
-void addDefenderBonus(int *strengthPointer, double bonus, const char *label)
+void addDefenderBonus(int *strengthPointer, double bonus,  char const *label)
 {
 	addBattleBonus(1, strengthPointer, bonus, label);
 }
@@ -3330,7 +3331,7 @@ void __cdecl displayPartialHurryCostToCompleteNextTurnInformation(int input_stri
 /*
 Reverts Thinker modification.
 */
-int __thiscall wtp_BaseWin_popup_start(Win* This, const char* filename, const char* label, int a4, int a5, int a6, int a7)
+int __thiscall wtp_BaseWin_popup_start(Win* This,  char* filename,  char* label, int a4, int a5, int a6, int a7)
 {
 	return Popup_start(This, filename, label, a4, a5, a6, a7);
 }
@@ -3338,7 +3339,7 @@ int __thiscall wtp_BaseWin_popup_start(Win* This, const char* filename, const ch
 /*
 Reverts Thinker modification.
 */
-int __cdecl wtp_BaseWin_ask_number(const char* label, int value, int a3)
+int __cdecl wtp_BaseWin_ask_number( char* label, int value, int a3)
 {
     return pop_ask_number(ScriptFile, label, value, a3);
 }
@@ -3403,7 +3404,7 @@ int __thiscall wtp_mod_BaseWin_psych_row(Win* This, int horizontal_pos, int vert
 BaseWin pop click.
 Displays popup for base size >= min_base_size_specialists.
 */
-int __thiscall wtp_mod_BaseWin_pop_click_popup_start(Win* This, const char* filename, const char* label, int a4, int a5, int a6, int a7)
+int __thiscall wtp_mod_BaseWin_pop_click_popup_start(Win* This,  char* filename,  char* label, int a4, int a5, int a6, int a7)
 {
 	BASE *base = *CurrentBase;
 	
@@ -3421,7 +3422,7 @@ int __thiscall wtp_mod_BaseWin_pop_click_popup_start(Win* This, const char* file
 //Disable specialist selection if no content citizens.
 //*/
 //int basewin_pop_click_citizen_id = 0;
-//char * __cdecl wtp_mod_BaseWin_pop_click_specialist_cycle_strcat(char *dst, char const *src)
+//char * __cdecl wtp_mod_BaseWin_pop_click_specialist_cycle_strcat(char *dst, char  *src)
 //{
 //	basewin_pop_click_citizen_id = 0;
 //	return strcat(dst, src);
@@ -3890,7 +3891,7 @@ int __cdecl wtp_mod_tech_achieved(int factionId, int techId, int targetFactionId
 /*
 Does not initialize disabled popup.
 */
-int __cdecl mod_popb(char const *label, int flags, int sound_id, char const *pcx_filename, int a5)
+int __cdecl mod_popb(char  *label, int flags, int sound_id, char  *pcx_filename, int a5)
 {
 	if ((*GameWarnings & flags) == 0)
 	{
