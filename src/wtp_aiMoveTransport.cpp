@@ -249,7 +249,7 @@ void moveSeaTransportStrategy(int vehicleId)
 			return;
 		
 		MAP *vehicleTile = getVehicleMapTile(vehicleId);
-		MAP *destination = task->getDestination();
+		MAP const *destination = task->getDestination();
 		double currentTravelTime = getVehicleTravelTime(vehicleId, destination);
 		if (currentTravelTime == INF)
 			return;

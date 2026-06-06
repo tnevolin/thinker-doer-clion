@@ -4224,7 +4224,7 @@ MapDoubleValue getMeleeAttackPosition(int unitId, MAP *origin, MAP *target)
 	
 }
 
-MapDoubleValue getMeleeAttackPosition(int vehicleId, MAP *target)
+MapDoubleValue getMeleeAttackPosition(int const vehicleId, MAP const *target)
 {
 	return getMeleeAttackPosition(getVehicle(vehicleId)->unit_id, getVehicleMapTile(vehicleId), target);
 }
@@ -4621,7 +4621,7 @@ void populateVehiclePad0Map(bool initialize)
 Evaluates combat gain for attacker.
 Could be positive or negative.
 */
-double getCombatGain(int attackerVehicleId, int defenderVehicleId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile, double attackerHealth, double defenderHealth)
+double getCombatGain(int const attackerVehicleId, int const defenderVehicleId, ENGAGEMENT_MODE const engagementMode, MAP const *attackerTile, MAP const *defenderTile, double const attackerHealth, double const defenderHealth)
 {
 	int defenderUnitId = Vehs[defenderVehicleId].unit_id;
 	Triad defenderTriad = static_cast<Triad>(Units[defenderUnitId].triad());

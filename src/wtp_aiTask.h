@@ -29,9 +29,8 @@ struct TaskHeap
 {
 	std::vector<Task> tasks {};
 
-	static bool compare(const Task &a, const Task &b);
 	void add(Task const&task);
-	Task &get();
+	Task *get();
 
 };
 
@@ -39,38 +38,33 @@ struct Task
 {
 	int vehiclePad0;
 	TaskType type;
-	MAP *destination;
-	MAP *attackTarget;
+	MAP const *destination;
+	MAP const *attackTarget;
 	int order;
 	int terraformingAction;
-	double priority = 1.0;
+	double priority = 0.0;
+	int baseId = -1;
 
-	Task(int _vehicleId, TaskType _type, MAP *_destination, MAP *_attackTarget, int _order, int _terraformingAction)
-	: vehiclePad0(Vehs[_vehicleId].pad_0), type(_type), destination(_destination), attackTarget(_attackTarget), order(_order), terraformingAction(_terraformingAction)
-	{}
-	Task(int _vehicleId, TaskType _type, MAP *_destination, MAP *_attackTarget)
-	: Task(_vehicleId, _type, _destination, _attackTarget, -1, -1)
-	{}
-	Task(int _vehicleId, TaskType _type, MAP *_destination)
-	: Task(_vehicleId, _type, _destination, nullptr, -1, -1)
-	{}
-	Task(int _vehicleId, TaskType _type)
-	: Task(_vehicleId, _type, nullptr, nullptr, -1, -1)
-	{}
+	Task(int const _vehicleId, TaskType const _type, MAP const *_destination, MAP const *_attackTarget, int const _order, int const _terraformingAction);
+	Task(int const _vehicleId, TaskType const _type, MAP const *_destination, MAP const *_attackTarget);
+	Task(int const _vehicleId, TaskType const _type, MAP const *_destination);
+	Task(int const _vehicleId, TaskType const _type);
+
+	bool operator<(Task const &other) const;
 
 	static char const *getTaskTypeName(TaskType taskType);
 	char const *typeName() const;
 	int getVehicleId() const;
 	VEH *getTaskVehicle() const;
 	void clearDestination();
-	void setDestination(MAP *_destination);
-	MAP *getDestination() const;
-	MAP *getAttackTarget() const;
+	void setDestination(MAP const *_destination);
+	MAP const *getDestination() const;
+	MAP const *getAttackTarget() const;
 	int getDestinationRange() const;
 	char const *toString() const;
 
-	int execute();
-	int execute(int vehicleId);
+	int execute() const;
+	int execute(int vehicleId) const;
 	int executeAction(int vehicleId);
 	int executeNone(int vehicleId);
 	int executeKill(int vehicleId);
@@ -92,6 +86,7 @@ struct Task
 
 };
 
+TaskHeap &getTaskHeap(int const vehicleId);
 void setTask(Task const &task);
 bool hasTask(int vehicleId);
 void deleteVehicleTasks(int vehicleId);

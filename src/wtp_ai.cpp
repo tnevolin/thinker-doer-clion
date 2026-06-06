@@ -1564,6 +1564,50 @@ void populateFactionInfos()
 	
 	aiData.avgConOffenseValue = countConOffenseValue == 0 ? 1.0 : (double)sumConOffenseValue / (double)countConOffenseValue;
 	aiData.avgConDefenseValue = countConDefenseValue == 0 ? 1.0 : (double)sumConDefenseValue / (double)countConDefenseValue;
+
+	// stolenTechnologyGain
+	// = 0.5 * most expensive stoleable tech cost
+	// 0.5 coefficient is because the advantafe of having not stolen tech not always can be converted to tangible bonus
+
+	for (int factionId = 1; factionId < MaxPlayerNum; factionId++)
+	{
+		// find most expensive cheapest stoleable tech cost among all other factions
+
+		int expensivestCheapestStoleableTechCost = 0;
+
+		for (int otherFactionId = 1; otherFactionId < MaxPlayerNum; otherFactionId++)
+		{
+			if (otherFactionId == factionId)
+				continue;
+
+			// find cheapest stoleable tech cost by other faction
+
+			int cheapestStoleableTechCost = INT_MAX;
+
+			for (int techId = 0; techId < MaxTechnologyNum; techId++)
+			{
+				if (!(has_tech(techId, factionId) && !has_tech(techId, otherFactionId)))
+					continue;
+
+				int techCost = tech_cost(techId, factionId);
+
+				if (techCost < cheapestStoleableTechCost)
+				{
+					cheapestStoleableTechCost = techCost;
+				}
+
+			}
+
+			if (cheapestStoleableTechCost != INT_MAX && cheapestStoleableTechCost > expensivestCheapestStoleableTechCost)
+			{
+				expensivestCheapestStoleableTechCost = cheapestStoleableTechCost;
+			}
+
+		}
+
+		aiData.factionInfos.at(factionId).stolenTechnologyGain = 0.5 * getGainBonus(getResourceScore(0.0, expensivestCheapestStoleableTechCost));
+
+	}
 	
 	Profiling::stop("populateFactionInfos");
 	
@@ -1577,7 +1621,7 @@ void populateBaseInfos()
 	
 	for (int baseId = 0; baseId < *BaseCount; baseId++)
 	{
-		BASE *base = getBase(baseId);
+		BASE const *base = getBase(baseId);
 		BaseInfo &baseInfo = aiData.baseInfos.at(baseId);
 		
 		// store base snapshot
@@ -1618,8 +1662,8 @@ void populateBaseInfos()
 		baseGainSummary.clear();
 		for (int baseId = 0; baseId < *BaseCount; baseId++)
 		{
-			BASE *base = getBase(baseId);
-			BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
+			BASE const *base = getBase(baseId);
+			BaseInfo const &baseInfo = aiData.getBaseInfo(baseId);
 			
 			// this faction
 			
@@ -4089,7 +4133,8 @@ void evaluateBaseProbeDefense()
 		Profiling::start("calculate foe strength", "evaluate base threat");
 		
 		debug("\t\tbase foeMilitaryStrength\n");
-		
+
+		double safeTime = DBL_MAX;
 		double totalWeight = 0.0;
 		
 		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
@@ -4209,11 +4254,11 @@ void evaluateBaseProbeDefense()
 			
 			// offense multiplier
 			
-			double offenseMultiplier = getVehicleStrenghtMultiplier(vehicleId);
+			double const offenseMultiplier = getVehicleStrenghtMultiplier(vehicleId);
 			
 			// defense multiplier
 			
-			double defenseMultiplier = 1.0 / (getBaseDefenseMultiplier(baseId, 4) * getSensorDefenseMultiplier(aiFactionId, baseTile));
+			double const defenseMultiplier = 1.0 / (getBaseDefenseMultiplier(baseId, 4) * getSensorDefenseMultiplier(aiFactionId, baseTile));
 			
 			if (defenseMultiplier <= 0.0)
 			{
@@ -4227,11 +4272,15 @@ void evaluateBaseProbeDefense()
 			if (approachTime == INF)
 				continue;
 			
-			double approachTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, approachTime);
+			double const approachTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, approachTime);
+
+			// safeTime
+
+			safeTime = std::min(safeTime, approachTime);
 			
 			// weight
 			
-			double weight = threatCoefficient * offenseMultiplier * defenseMultiplier * approachTimeCoefficient;
+			double const weight = threatCoefficient * offenseMultiplier * defenseMultiplier * approachTimeCoefficient;
 			totalWeight += weight;
 			
 			debug
@@ -4241,12 +4290,14 @@ void evaluateBaseProbeDefense()
 				" offenseMultiplier=%5.2f"
 				" defenseMultiplier=%5.2f"
 				" approachTime=%7.2f approachTimeCoefficient=%5.2f"
+				" safeTime=%7.2f"
 				"\n"
 				, vehicle->x, vehicle->y, Units[vehicle->unit_id].name
 				, weight
 				, offenseMultiplier
 				, defenseMultiplier
 				, approachTime, approachTimeCoefficient
+				, safeTime
 			);
 			
 		}
@@ -4257,7 +4308,7 @@ void evaluateBaseProbeDefense()
 		
 		Profiling::start("compute required protection", "evaluate base threat");
 		
-		double requiredEffect = sqrt(totalWeight);
+		double const requiredEffect = sqrt(totalWeight);
 		baseInfo.probeData.requiredEffect = requiredEffect;
 		
 		debug
@@ -4265,10 +4316,12 @@ void evaluateBaseProbeDefense()
 			"\t\trequiredEffect=%5.2f"
 			" conf.ai_combat_advantage=%5.2f"
 			" totalWeight=%5.2f"
+			" safeTime=%7.2f"
 			"\n"
 			, requiredEffect
 			, conf.ai_combat_advantage
 			, totalWeight
+			, safeTime
 		);
 		
 		Profiling::stop("compute required protection");
@@ -4291,13 +4344,13 @@ void designUnits()
 	
 	// get best values
 	
-	VehWeapon bestWeapon = getFactionBestWeapon(aiFactionId);
-	VehArmor bestArmor = getFactionBestArmor(aiFactionId);
-	VehArmor attackerArmor = getFactionBestArmor(aiFactionId, bestWeapon);
-	VehWeapon defenderWeapon = getFactionBestWeapon(aiFactionId, (bestArmor + 1) / 2);
-	VehChassis fastLandChassis = (has_chassis(aiFactionId, CHS_HOVERTANK) ? CHS_HOVERTANK : CHS_SPEEDER);
-	VehChassis fastSeaChassis = (has_chassis(aiFactionId, CHS_CRUISER) ? CHS_CRUISER : CHS_FOIL);
-	VehReactor bestReactor = best_reactor(aiFactionId);
+	VehWeapon const bestWeapon = getFactionBestWeapon(aiFactionId);
+	VehArmor const bestArmor = getFactionBestArmor(aiFactionId);
+	VehArmor const attackerArmor = getFactionBestArmor(aiFactionId, bestWeapon);
+	VehWeapon const defenderWeapon = getFactionBestWeapon(aiFactionId, (bestArmor + 1) / 2);
+	VehChassis const fastLandChassis = (has_chassis(aiFactionId, CHS_HOVERTANK) ? CHS_HOVERTANK : CHS_SPEEDER);
+	VehChassis const fastSeaChassis = (has_chassis(aiFactionId, CHS_CRUISER) ? CHS_CRUISER : CHS_FOIL);
+	VehReactor const bestReactor = best_reactor(aiFactionId);
 	
 	// fast colony
 	

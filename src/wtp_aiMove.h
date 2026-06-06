@@ -23,7 +23,7 @@ struct SeaTransit
 struct VehicleDestination
 {
 	int vehicleId;
-	MAP *destination;
+	MAP const *destination;
 };
 
 void moveStrategy();
@@ -31,19 +31,19 @@ void fixUndesiredTransportDropoff();
 void fixUndesiredTransportPickup();
 void moveAllStrategy();
 void healStrategy();
-int enemyMoveVehicle(const int vehicleId);
+int enemyMoveVehicle(int vehicleId);
 bool transitVehicle(Task const &task);
 bool transitLandVehicle(Task const &task);
 void balanceVehicleSupport();
-int aiEnemyMove(const int vehicleId);
+int aiEnemyMove(int vehicleId);
 MAP *getNearestFriendlyBase(int vehicleId);
 MAP *getNearestMonolith(int x, int y, int triad);
-Transfer getOptimalPickupTransfer(MAP *org, MAP *dst);
-Transfer getOptimalDropoffTransfer(MAP *org, MAP *dst, int passengerVehicleId, int transportVehicleId);
-void setSafeMoveTo(int vehicleId, MAP *destination);
+Transfer getOptimalPickupTransfer(MAP const *org, MAP const *dst);
+Transfer getOptimalDropoffTransfer(MAP const *org, MAP const *dst, int passengerVehicleId, int transportVehicleId);
+void setSafeMoveTo(int vehicleId, MAP const *destination);
 MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoidWarzone);
 MAP *getSafeLocation(int vehicleId, bool hostile);
-int setMoveTo(int vehicleId, MAP *destination);
-int setMoveTo(int vehicleId, const std::vector<MAP *> &waypoints);
+int setMoveTo(int vehicleId, MAP const *destination);
+int setMoveTo(int vehicleId, const std::vector<MAP const *> &waypoints);
 void aiEnemyMoveVehicles();
 

@@ -2636,28 +2636,28 @@ void populateSharedSeas()
 	
 }
 
-double getVehicleApproachTime(int vehicleId, MAP *dst)
+double getVehicleApproachTime(int vehicleId, MAP const *dst)
 {
 	VEH *vehicle = &Vehs[vehicleId];
-	MAP *vehicleTile = getVehicleMapTile(vehicleId);
+	MAP const *vehicleTile = getVehicleMapTile(vehicleId);
 	return getUnitApproachTime(vehicle->faction_id, vehicle->unit_id, vehicleTile, dst);
 }
-double getVehicleApproachTime(int vehicleId, MAP *org, MAP *dst)
+double getVehicleApproachTime(int vehicleId, MAP const *org, MAP const *dst)
 {
 	VEH *vehicle = &Vehs[vehicleId];
 	return getUnitApproachTime(vehicle->faction_id, vehicle->unit_id, org, dst);
 }
-double getUnitApproachTime(int factionId, int unitId, MAP *org, MAP *dst)
+double getUnitApproachTime(int const factionId, int const unitId, MAP const *org, MAP const *dst)
 {
 	Profiling::start("- getUnitApproachTime");
 	
 	UNIT *unit = &Units[unitId];
-	int speed = getUnitSpeed(factionId, unitId);
-	MovementType movementType = getUnitBasicMovementType(factionId, unitId);
+	int const unitSpeed = getUnitSpeed(factionId, unitId);
+	MovementType const movementType = getUnitBasicMovementType(factionId, unitId);
 	
 	// check cached values
 	
-	double cachedUnitApproachTime = getCachedUnitApproachTime(factionId, movementType, org, dst);
+	double const cachedUnitApproachTime = getCachedUnitApproachTime(factionId, movementType, org, dst);
 	if (cachedUnitApproachTime >= 0)
 	{
 		Profiling::stop("- getUnitApproachTime");
@@ -2966,7 +2966,7 @@ double getLandLMovementCost(int factionId, MovementType movementType, MAP *org, 
 	
 }
 
-double getUnitTravelTime(int factionId, int unitId, int speed, MAP *org, MAP *dst, bool attackDestination)
+double getUnitTravelTime(int const factionId, int const unitId, int unitSpeed, MAP const *org, MAP const *dst, bool const attackDestination)
 {
 	if (!isUnitDestinationReachable(unitId, org, dst))
 		return INF;
@@ -2977,7 +2977,7 @@ double getUnitTravelTime(int factionId, int unitId, int speed, MAP *org, MAP *ds
 	
 	if (travelTime < A_TRAVEL_TIME)
 	{
-		travelTime = getATravelTime(getUnitMovementType(factionId, unitId), speed, org, dst, attackDestination);
+		travelTime = getATravelTime(getUnitMovementType(factionId, unitId), unitSpeed, org, dst, attackDestination);
 	}
 	
 	return travelTime;
@@ -3631,41 +3631,41 @@ int getBaseSeaCluster(MAP *baseTile)
 	
 }
 
-bool isSameSeaCluster(int tile1SeaCluster, MAP *tile2)
+bool isSameSeaCluster(int const tile1SeaCluster, MAP const *tile2)
 {
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	
-	int tile2SeaCluster = getSeaCluster(tile2);
+	int const tile2SeaCluster = getSeaCluster(tile2);
 	
 	return tile1SeaCluster != -1 && tile2SeaCluster != -1 && tile1SeaCluster == tile2SeaCluster;
 	
 }
 
-bool isSameSeaCluster(MAP *tile1, MAP *tile2)
+bool isSameSeaCluster(MAP const *tile1, MAP const *tile2)
 {
 	assert(tile1 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	
-	int tile1SeaCluster = getSeaCluster(tile1);
-	int tile2SeaCluster = getSeaCluster(tile2);
+	int const tile1SeaCluster = getSeaCluster(tile1);
+	int const tile2SeaCluster = getSeaCluster(tile2);
 	
 	return tile1SeaCluster != -1 && tile2SeaCluster != -1 && tile1SeaCluster == tile2SeaCluster;
 	
 }
 
-bool isVehicleSameSeaCluster(int vehicleId, MAP *dst)
+bool isVehicleSameSeaCluster(int const vehicleId, MAP const *dst)
 {
 	return(isSameSeaCluster(getVehicleMapTile(vehicleId), dst));
 }
 
-bool isMeleeAttackableFromSeaCluster(MAP *origin, MAP *target)
+bool isMeleeAttackableFromSeaCluster(MAP const *origin, MAP const *target)
 {
 	assert(origin >= *MapTiles && origin < *MapTiles + *MapAreaTiles);
 	assert(target >= *MapTiles && target < *MapTiles + *MapAreaTiles);
 	
-	int originSeaCluster = getSeaCluster(origin);
+	int const originSeaCluster = getSeaCluster(origin);
 	
-	for (MAP *adjacentTile : getAdjacentTiles(target))
+	for (MAP const *adjacentTile : getAdjacentTiles(target))
 	{
 		if (getSeaCluster(adjacentTile) == originSeaCluster)
 			return true;
@@ -3675,18 +3675,18 @@ bool isMeleeAttackableFromSeaCluster(MAP *origin, MAP *target)
 	
 }
 
-bool isVehicleMeleeAttackableFromSeaCluster(int vehicleId, MAP *target)
+bool isVehicleMeleeAttackableFromSeaCluster(int const vehicleId, MAP const *target)
 {
 	return isMeleeAttackableFromSeaCluster(getVehicleMapTile(vehicleId), target);
 }
 
-bool isArtilleryAttackableFromSeaCluster(MAP *origin, MAP *target)
+bool isArtilleryAttackableFromSeaCluster(MAP const *origin, MAP const *target)
 {
 	assert(origin >= *MapTiles && origin < *MapTiles + *MapAreaTiles);
 	assert(target >= *MapTiles && target < *MapTiles + *MapAreaTiles);
 	
-	TileInfo &targetTileInfo = aiData.getTileInfo(target);
-	int originSeaCluster = getSeaCluster(origin);
+	TileInfo const &targetTileInfo = aiData.getTileInfo(target);
+	int const originSeaCluster = getSeaCluster(origin);
 	
 	for (TileInfo const *rangeTileInfo : targetTileInfo.range2NoCenterTileInfos)
 	{
@@ -3698,50 +3698,50 @@ bool isArtilleryAttackableFromSeaCluster(MAP *origin, MAP *target)
 	
 }
 
-bool isVehicleArtilleryAttackableFromSeaCluster(int vehicleId, MAP *target)
+bool isVehicleArtilleryAttackableFromSeaCluster(int const vehicleId, MAP const *target)
 {
 	return isArtilleryAttackableFromSeaCluster(getVehicleMapTile(vehicleId), target);
 }
 
-int getLandCluster(MAP *tile)
+int getLandCluster(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	
-	int tileIndex = tile - *MapTiles;
+	int const tileIndex = tile - *MapTiles;
 	return aiFactionMovementInfo.landClusters.at(tileIndex);
 	
 }
 
-int getVehicleLandCluster(int vehicleId)
+int getVehicleLandCluster(int const vehicleId)
 {
 	return(getLandCluster(getVehicleMapTile(vehicleId)));
 }
 
-bool isSameLandCluster(MAP *tile1, MAP *tile2)
+bool isSameLandCluster(MAP const *tile1, MAP const *tile2)
 {
 	assert(tile1 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	
-	int tile1LandCluster = getLandCluster(tile1);
-	int tile2LandCluster = getLandCluster(tile2);
+	int const tile1LandCluster = getLandCluster(tile1);
+	int const tile2LandCluster = getLandCluster(tile2);
 	
 	return tile1LandCluster != -1 && tile2LandCluster != -1 && tile1LandCluster == tile2LandCluster;
 	
 }
 
-bool isVehicleSameLandCluster(int vehicleId, MAP *dst)
+bool isVehicleSameLandCluster(int const vehicleId, MAP const *dst)
 {
 	return(isSameLandCluster(getVehicleMapTile(vehicleId), dst));
 }
 
-bool isMeleeAttackableFromLandCluster(MAP *origin, MAP *target)
+bool isMeleeAttackableFromLandCluster(MAP const *origin, MAP const *target)
 {
 	assert(origin >= *MapTiles && origin < *MapTiles + *MapAreaTiles);
 	assert(target >= *MapTiles && target < *MapTiles + *MapAreaTiles);
 	
-	int originLandCluster = getLandCluster(origin);
+	int const originLandCluster = getLandCluster(origin);
 	
-	for (MAP *adjacentTile : getAdjacentTiles(target))
+	for (MAP const *adjacentTile : getAdjacentTiles(target))
 	{
 		if (getLandCluster(adjacentTile) == originLandCluster)
 			return true;
@@ -3751,18 +3751,18 @@ bool isMeleeAttackableFromLandCluster(MAP *origin, MAP *target)
 	
 }
 
-bool isVehicleMeleeAttackableFromLandCluster(int vehicleId, MAP *target)
+bool isVehicleMeleeAttackableFromLandCluster(int const vehicleId, MAP const *target)
 {
 	return isMeleeAttackableFromLandCluster(getVehicleMapTile(vehicleId), target);
 }
 
-bool isArtilleryAttackableFromLandCluster(MAP *origin, MAP *target)
+bool isArtilleryAttackableFromLandCluster(MAP const *origin, MAP const *target)
 {
 	assert(origin >= *MapTiles && origin < *MapTiles + *MapAreaTiles);
 	assert(target >= *MapTiles && target < *MapTiles + *MapAreaTiles);
 	
-	TileInfo &targetTileInfo = aiData.getTileInfo(target);
-	int originLandCluster = getLandCluster(origin);
+	TileInfo const &targetTileInfo = aiData.getTileInfo(target);
+	int const originLandCluster = getLandCluster(origin);
 	
 	for (TileInfo const *targetTileInfo : targetTileInfo.range2NoCenterTileInfos)
 	{
@@ -3774,50 +3774,50 @@ bool isArtilleryAttackableFromLandCluster(MAP *origin, MAP *target)
 	
 }
 
-bool isVehicleArtilleryAttackableFromLandCluster(int vehicleId, MAP *target)
+bool isVehicleArtilleryAttackableFromLandCluster(int const vehicleId, MAP const *target)
 {
 	return isArtilleryAttackableFromLandCluster(getVehicleMapTile(vehicleId), target);
 }
 
-int getLandTransportedCluster(MAP *tile)
+int getLandTransportedCluster(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	
-	int tileIndex = tile - *MapTiles;
+	int const tileIndex = tile - *MapTiles;
 	return aiFactionMovementInfo.landTransportedClusters.at(tileIndex);
 	
 }
 
-int getVehicleLandTransportedCluster(int vehicleId)
+int getVehicleLandTransportedCluster(int const vehicleId)
 {
 	return(getLandTransportedCluster(getVehicleMapTile(vehicleId)));
 }
 
-bool isSameLandTransportedCluster(MAP *tile1, MAP *tile2)
+bool isSameLandTransportedCluster(MAP const *tile1, MAP const *tile2)
 {
 	assert(tile1 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	
-	int tile1LandTransportedCluster = getLandTransportedCluster(tile1);
-	int tile2LandTransportedCluster = getLandTransportedCluster(tile2);
+	int const tile1LandTransportedCluster = getLandTransportedCluster(tile1);
+	int const tile2LandTransportedCluster = getLandTransportedCluster(tile2);
 	
 	return tile1LandTransportedCluster != -1 && tile2LandTransportedCluster != -1 && tile1LandTransportedCluster == tile2LandTransportedCluster;
 	
 }
 
-bool isVehicleSameLandTransportedCluster(int vehicleId, MAP *dst)
+bool isVehicleSameLandTransportedCluster(int const vehicleId, MAP const *dst)
 {
 	return(isSameLandTransportedCluster(getVehicleMapTile(vehicleId), dst));
 }
 
-bool isMeleeAttackableFromLandTransportedCluster(MAP *origin, MAP *target)
+bool isMeleeAttackableFromLandTransportedCluster(MAP const *origin, MAP const *target)
 {
 	assert(origin >= *MapTiles && origin < *MapTiles + *MapAreaTiles);
 	assert(target >= *MapTiles && target < *MapTiles + *MapAreaTiles);
 	
-	int originLandTransportedCluster = getLandTransportedCluster(origin);
+	int const originLandTransportedCluster = getLandTransportedCluster(origin);
 	
-	for (MAP *adjacentTile : getAdjacentTiles(target))
+	for (MAP const *adjacentTile : getAdjacentTiles(target))
 	{
 		if (getLandTransportedCluster(adjacentTile) == originLandTransportedCluster)
 			return true;
@@ -3827,18 +3827,18 @@ bool isMeleeAttackableFromLandTransportedCluster(MAP *origin, MAP *target)
 	
 }
 
-bool isVehicleMeleeAttackableFromLandTransportedCluster(int vehicleId, MAP *target)
+bool isVehicleMeleeAttackableFromLandTransportedCluster(int const vehicleId, MAP const *target)
 {
 	return isMeleeAttackableFromLandTransportedCluster(getVehicleMapTile(vehicleId), target);
 }
 
-bool isArtilleryAttackableFromLandTransportedCluster(MAP *origin, MAP *target)
+bool isArtilleryAttackableFromLandTransportedCluster(MAP const *origin, MAP const *target)
 {
 	assert(origin >= *MapTiles && origin < *MapTiles + *MapAreaTiles);
 	assert(target >= *MapTiles && target < *MapTiles + *MapAreaTiles);
 	
-	TileInfo &targetTileInfo = aiData.getTileInfo(target);
-	int originLandTransportedCluster = getLandTransportedCluster(origin);
+	TileInfo const &targetTileInfo = aiData.getTileInfo(target);
+	int const originLandTransportedCluster = getLandTransportedCluster(origin);
 	
 	for (TileInfo const *targetTileInfo : targetTileInfo.range2NoCenterTileInfos)
 	{
@@ -3850,48 +3850,48 @@ bool isArtilleryAttackableFromLandTransportedCluster(MAP *origin, MAP *target)
 	
 }
 
-bool isVehicleArtilleryAttackableFromLandTransportedCluster(int vehicleId, MAP *target)
+bool isVehicleArtilleryAttackableFromLandTransportedCluster(int const vehicleId, MAP const *target)
 {
 	return isArtilleryAttackableFromLandTransportedCluster(getVehicleMapTile(vehicleId), target);
 }
 
-int getSeaCombatCluster(MAP *tile)
+int getSeaCombatCluster(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	
-	int tileIndex = tile - *MapTiles;
+	int const tileIndex = tile - *MapTiles;
 	return factionMovementInfos.at(aiFactionId).seaCombatClusters.at(tileIndex);
 	
 }
 
-bool isSameSeaCombatCluster(MAP *tile1, MAP *tile2)
+bool isSameSeaCombatCluster(MAP const *tile1, MAP const *tile2)
 {
 	assert(tile1 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	
-	int tile1SeaCluster = getSeaCombatCluster(tile1);
-	int tile2SeaCluster = getSeaCombatCluster(tile2);
+	int const tile1SeaCluster = getSeaCombatCluster(tile1);
+	int const tile2SeaCluster = getSeaCombatCluster(tile2);
 	
 	return tile1SeaCluster != -1 && tile2SeaCluster != -1 && tile1SeaCluster == tile2SeaCluster;
 	
 }
 
-int getLandCombatCluster(MAP *tile)
+int getLandCombatCluster(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	
-	int tileIndex = tile - *MapTiles;
+	int const tileIndex = tile - *MapTiles;
 	return factionMovementInfos.at(aiFactionId).landCombatClusters.at(tileIndex);
 	
 }
 
-bool isSameLandCombatCluster(MAP *tile1, MAP *tile2)
+bool isSameLandCombatCluster(MAP const *tile1, MAP const *tile2)
 {
 	assert(tile1 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	
-	int tile1LandCluster = getLandCombatCluster(tile1);
-	int tile2LandCluster = getLandCombatCluster(tile2);
+	int const tile1LandCluster = getLandCombatCluster(tile1);
+	int const tile2LandCluster = getLandCombatCluster(tile2);
 	
 	return tile1LandCluster != -1 && tile2LandCluster != -1 && tile1LandCluster == tile2LandCluster;
 	
@@ -3900,11 +3900,11 @@ bool isSameLandCombatCluster(MAP *tile1, MAP *tile2)
 /**
 Gets cluster based on surface type.
 */
-int getCluster(MAP *tile)
+int getCluster(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	
-	TileInfo &tileInfo = aiData.getTileInfo(tile);
+	TileInfo const &tileInfo = aiData.getTileInfo(tile);
 	
 	return (tileInfo.ocean ? getSeaCluster(tile) : getLandCluster(tile));
 	
@@ -3913,15 +3913,15 @@ int getCluster(MAP *tile)
 /**
 Gets vehicle cluster based on triad.
 */
-int getVehicleCluster(int vehicleId)
+int getVehicleCluster(int const vehicleId)
 {
 	assert(vehicleId >= 0 && vehicleId < *VehCount);
 	
-	VEH *vehicle = getVehicle(vehicleId);
-	MAP *vehicleTile = getVehicleMapTile(vehicleId);
-	int triad = vehicle->triad();
+	VEH const *vehicle = getVehicle(vehicleId);
+	MAP const *vehicleTile = getVehicleMapTile(vehicleId);
+	int const triad = vehicle->triad();
 	
-	int cluster = -1;
+	int const cluster = -1;
 	
 	switch (triad)
 	{
@@ -3939,53 +3939,53 @@ int getVehicleCluster(int vehicleId)
 	
 }
 
-std::vector<Transfer> &getTransfers(int landCluster, int seaCluster)
+std::vector<Transfer> &getTransfers(int const landCluster, int const seaCluster)
 {
 	return aiFactionMovementInfo.transfers[landCluster][seaCluster];
 }
 
-std::vector<Transfer> &getOceanBaseTransfers(MAP *baseTile)
+std::vector<Transfer> &getOceanBaseTransfers(MAP const *baseTile)
 {
 	return aiFactionMovementInfo.oceanBaseTransfers[baseTile];
 }
 
-robin_hood::unordered_flat_set<int> &getConnectedClusters(int cluster)
+robin_hood::unordered_flat_set<int> &getConnectedClusters(int const cluster)
 {
 	return aiFactionMovementInfo.connectedClusters[cluster];
 }
 
-robin_hood::unordered_flat_set<int> &getConnectedSeaClusters(MAP *landTile)
+robin_hood::unordered_flat_set<int> &getConnectedSeaClusters(MAP const *landTile)
 {
-	int landCluster = getLandCluster(landTile);
+	int const landCluster = getLandCluster(landTile);
 	return getConnectedClusters(landCluster);
 }
 
-robin_hood::unordered_flat_set<int> &getConnectedLandClusters(MAP *seaTile)
+robin_hood::unordered_flat_set<int> &getConnectedLandClusters(MAP const *seaTile)
 {
-	int seaCluster = getSeaCluster(seaTile);
+	int const seaCluster = getSeaCluster(seaTile);
 	return getConnectedClusters(seaCluster);
 }
 
-robin_hood::unordered_flat_set<int> &getFirstConnectedClusters(int originCluster, int dstCluster)
+robin_hood::unordered_flat_set<int> &getFirstConnectedClusters(int const originCluster, int const dstCluster)
 {
 	return aiFactionMovementInfo.firstConnectedClusters[originCluster][dstCluster];
 }
 
-robin_hood::unordered_flat_set<int> &getFirstConnectedClusters(MAP *origin, MAP *dst)
+robin_hood::unordered_flat_set<int> &getFirstConnectedClusters(MAP const *origin, MAP const *dst)
 {
-	int originCluster = getCluster(origin);
-	int dstCluster = getCluster(dst);
+	int const originCluster = getCluster(origin);
+	int const dstCluster = getCluster(dst);
 	
 	return getFirstConnectedClusters(originCluster, dstCluster);
 }
 
-int getEnemyAirCluster(int factionId, int chassisId, int speed, MAP *tile)
+int getEnemyAirCluster(int const factionId, int const chassisId, int const speed, MAP const *tile)
 {
 	assert(isOnMap(tile));
 	
-	int tileIndex = tile - *MapTiles;
+	int const tileIndex = tile - *MapTiles;
 	
-	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusters = factionMovementInfos.at(factionId).airClusters;
+	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> const &airClusters = factionMovementInfos.at(factionId).airClusters;
 	
 	// safely return -1 if no key
 	

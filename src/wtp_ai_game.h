@@ -67,7 +67,7 @@ struct Transfer
 	, transportStop{_transportStop}
 	{}
 	
-	bool valid()
+	bool valid() const
 	{
 		return passengerStop != nullptr && transportStop != nullptr;
 	}
@@ -357,6 +357,7 @@ struct BasePoliceData
 
 struct BaseProbeData
 {
+	double safeTime = 0.0;
 	double requiredEffect = 0.0;
 	double providedEffect = 0.0;
 	double providedEffectPresent = 0.0;
@@ -374,9 +375,9 @@ struct BaseProbeData
 		providedEffectPresent = 0.0;
 	}
 	
-	void addVehicle(int vehicleId, bool present)
+	void addVehicle(int const vehicleId, bool const present)
 	{
-		double vehicleEffect = getVehicleMoraleMultiplier(vehicleId);
+		double const vehicleEffect = getVehicleMoraleMultiplier(vehicleId);
 		
 		providedEffect += vehicleEffect;
 		
@@ -387,15 +388,15 @@ struct BaseProbeData
 		
 	}
 	
-	bool isSatisfied(bool present) const
+	bool isSatisfied(bool const present) const
 	{
 		return (present ? providedEffectPresent : providedEffect) >= requiredEffect;
 	}
 	
-	double getDemand(bool present) const
+	double getDemand(bool const present) const
 	{
-		double required = requiredEffect;
-		double provided = (present ? providedEffectPresent : providedEffect);
+		double const required = requiredEffect;
+		double const provided = (present ? providedEffectPresent : providedEffect);
 		return ((required > 0.0 && provided < required) ? 1.0 - provided / required : 0.0);
 	}
 	
@@ -495,7 +496,8 @@ struct FactionInfo
 	// economical data
 	
 	double averageBaseGain;
-	
+	double stolenTechnologyGain;
+
 	// terraforming data
 	
 	int airFormerCount;
@@ -786,8 +788,8 @@ struct Data
 	std::vector<TileInfo> tileInfos;
 	robin_hood::unordered_flat_map<int, int> regionAreas;
 	robin_hood::unordered_flat_set<int> enemyRegions;
-	std::vector<MAP *> monoliths;
-	std::vector<MAP *> pods;
+	std::vector<MAP const *> monoliths;
+	std::vector<MAP const *> pods;
 	
 	// pad_0 to vehicleId mapping
 	// [pad0] = vehicleId
@@ -799,14 +801,14 @@ struct Data
 	// base infos
 	
 	std::array<BaseInfo, MaxBaseNum> baseInfos;
-	void resetBase(int baseId)
+	void resetBase(int const baseId)
 	{
 		baseInfos.at(baseId).reset();
 	}
 	
 	// bunkers
 	
-	robin_hood::unordered_flat_map<MAP *, BunkerInfo> bunkerInfos;
+	robin_hood::unordered_flat_map<MAP const *, BunkerInfo> bunkerInfos;
 	
 	// faction infos
 	
@@ -863,24 +865,24 @@ struct Data
 	CombatEffectTable combatEffectTable;
 	
 	// enemy stacks
-	robin_hood::unordered_flat_map<MAP *, EnemyStackInfo> enemyStacks;
-	bool hasEnemyStack(MAP *tile)
+	robin_hood::unordered_flat_map<MAP const *, EnemyStackInfo> enemyStacks;
+	bool hasEnemyStack(MAP const *tile)
 	{
 		return enemyStacks.find(tile) != enemyStacks.end();
 	}
-	bool isEnemyStackAt(MAP *tile)
+	bool isEnemyStackAt(MAP const *tile)
 	{
 		return enemyStacks.find(tile) != enemyStacks.end();
 	}
-	EnemyStackInfo &getEnemyStackInfo(MAP *tile)
+	EnemyStackInfo &getEnemyStackInfo(MAP const *tile)
 	{
 		return enemyStacks.at(tile);
 	}
 	
 	// unprotected enemy bases
 	std::vector<int> emptyEnemyBaseIds;
-	robin_hood::unordered_flat_set<MAP *> emptyEnemyBaseTiles;
-	bool isEmptyEnemyBaseAt(MAP *tile)
+	robin_hood::unordered_flat_set<MAP const *> emptyEnemyBaseTiles;
+	bool isEmptyEnemyBaseAt(MAP const *tile)
 	{
 		return emptyEnemyBaseTiles.find(tile) != emptyEnemyBaseTiles.end();
 	}
@@ -950,16 +952,16 @@ struct Data
 	// access global data arrays
 	
 	TileInfo &getTileInfo(int tileIndex);
-	TileInfo &getTileInfo(MAP *tile);
+	TileInfo &getTileInfo(MAP const *tile);
 	TileInfo &getBaseTileInfo(int baseId);
 	TileInfo &getVehicleTileInfo(int vehicleId);
-	bool isSea(MAP *tile);
-	bool isLand(MAP *tile);
-	bool isSeaUnitAllowed(MAP *tile, int factionId);
-	bool isLandUnitAllowed(MAP *tile);
+	bool isSea(MAP const *tile);
+	bool isLand(MAP const *tile);
+	bool isSeaUnitAllowed(MAP const *tile, int factionId);
+	bool isLandUnitAllowed(MAP const *tile);
 	
 	BaseInfo &getBaseInfo(int baseId);
-	BunkerInfo &getBunkerInfo(MAP *tile);
+	BunkerInfo &getBunkerInfo(MAP const *tile);
 	
 	// utility methods
 	
@@ -969,9 +971,9 @@ struct Data
 
 extern Data aiData;
 extern int aiFactionId;
-extern MFaction *aiMFaction;
-extern Faction *aiFaction;
-extern FactionInfo *aiFactionInfo;
+extern MFaction &aiMFaction;
+extern Faction &aiFaction;
+extern FactionInfo &aiFactionInfo;
 
 bool isWarzone(MAP *tile);
 
@@ -1067,22 +1069,22 @@ bool isUnitCanArtilleryAttack(int unitId, MAP *position);
 bool isVehicleCanArtilleryAttack(int vehicleId, MAP *position);
 double getBaseExtraWorkerGain(int baseId);
 MapDoubleValue getMeleeAttackPosition(int unitId, MAP *origin, MAP *target);
-MapDoubleValue getMeleeAttackPosition(int vehicleId, MAP *target);
+MapDoubleValue getMeleeAttackPosition(int vehicleId, MAP const *target);
 MapDoubleValue getArtilleryAttackPosition(int unitId, MAP *origin, MAP *target);
-MapDoubleValue getArtilleryAttackPosition(int vehicleId, MAP *target);
+MapDoubleValue getArtilleryAttackPosition(int vehicleId, MAP const *target);
 double getWinningProbability(double combatEffect);
 double getWinningHealthRatio(double combatEffect);
-double getSensorOffenseMultiplier(int factionId, MAP *tile);
-double getSensorDefenseMultiplier(int factionId, MAP *tile);
-double getUnitMeleeOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP *tile, bool exactLocation);
-double getUnitArtilleryOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP *tile, bool exactLocation);
+double getSensorOffenseMultiplier(int factionId, MAP const *tile);
+double getSensorDefenseMultiplier(int factionId, MAP const *tile);
+double getUnitMeleeOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP const *tile, bool exactLocation);
+double getUnitArtilleryOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP const *tile, bool exactLocation);
 int getBasePoliceRequiredPower(int baseId);
 double getUnitDestructionGain(int unitId);
 double getProportionalCoefficient(double minValue, double maxValue, double value);
 int generatePad0FromVehicleId(int vehicleId);
 int getInitialVehicleIdByPad0(int pad0);
 void populateVehiclePad0Map(bool initialize = false);
-double getCombatGain(int attackerVehicleId, int defenderVehicleId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile, double attackerHealth, double defenderHealth);
+double getCombatGain(int attackerVehicleId, int defenderVehicleId, ENGAGEMENT_MODE engagementMode, MAP const *attackerTile, MAP const *defenderTile, double attackerHealth, double defenderHealth);
 char const *getVehiclePad0LocationNameString(int vehicleId);
 double getCNDProbability(double value);
 double getWinProbability(double destroyedWeight1, double destroyedWeight2, double remainingWeight1);

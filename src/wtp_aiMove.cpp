@@ -327,7 +327,7 @@ int enemyMoveVehicle(const int vehicleId)
 	
 	// execute task
 	
-	Task * task = getTask(vehicleId);
+	Task const * task = getTask(vehicleId);
 	
 	if (task != nullptr && task->type != TT_NONE)
 	{
@@ -351,7 +351,7 @@ bool transitVehicle(Task const &task)
 	int vehicleId = task.getVehicleId();
 	VEH *vehicle = getVehicle(vehicleId);
 	MAP *vehicleTile = getVehicleMapTile(vehicleId);
-	MAP *destination = task.getDestination();
+	MAP const *destination = task.getDestination();
 
 	if (destination == nullptr)
 		return false;
@@ -439,13 +439,13 @@ bool transitVehicle(Task const &task)
 bool transitLandVehicle(Task const &task)
 {
 	int vehicleId = task.getVehicleId();
-	MAP *destination = task.getDestination();
+	MAP const *destination = task.getDestination();
 	
 	assert(vehicleId >= 0 && vehicleId < *VehCount);
 	assert(destination >= *MapTiles && destination < *MapTiles + *MapAreaTiles);
 	
 	VEH *vehicle = getVehicle(vehicleId);
-	MAP *vehicleTile = getVehicleMapTile(vehicleId);
+	MAP const *vehicleTile = getVehicleMapTile(vehicleId);
 	TileInfo &vehicleTileInfo = aiData.getVehicleTileInfo(vehicleId);
 	
 	// land vehicle
@@ -460,7 +460,7 @@ bool transitLandVehicle(Task const &task)
 	
 	// transport
 	
-	int transportId = getVehicleTransportId(vehicleId);
+	int const transportId = getVehicleTransportId(vehicleId);
 	
 	if (transportId != -1)
 	{
@@ -471,7 +471,7 @@ bool transitLandVehicle(Task const &task)
 		
 		// find dropoff transfer
 		
-		Transfer transfer = getOptimalDropoffTransfer(vehicleTile, destination, vehicleId, transportId);
+		Transfer const transfer = getOptimalDropoffTransfer(vehicleTile, destination, vehicleId, transportId);
 		
 		if (!transfer.valid())
 			return false;
@@ -779,11 +779,11 @@ MAP *getNearestMonolith(int x, int y, int triad)
 
 }
 
-Transfer getOptimalPickupTransfer(MAP *org, MAP *dst)
+Transfer getOptimalPickupTransfer(MAP const *org, MAP const *dst)
 {
 	debug("getOptimalPickupTransfer %s -> %s\n", getLocationString(org), getLocationString(dst));
 	
-	TileInfo &orgTileInfo = aiData.getTileInfo(org);
+	TileInfo const &orgTileInfo = aiData.getTileInfo(org);
 	
 	// populate available transfers
 	
@@ -830,7 +830,7 @@ Transfer getOptimalPickupTransfer(MAP *org, MAP *dst)
 	
 }
 
-Transfer getOptimalDropoffTransfer(MAP *org, MAP *dst, int passengerVehicleId, int transportVehicleId)
+Transfer getOptimalDropoffTransfer(MAP const *org, MAP const *dst, int const passengerVehicleId, int const transportVehicleId)
 {
 	debug("getOptimalDropoffTransfer %s -> %s\n", getLocationString(org), getLocationString(dst));
 	
@@ -979,14 +979,14 @@ MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoid
 	
 	VEH *vehicle = getVehicle(vehicleId);
 	int triad = vehicle->triad();
-	MAP *vehicleTile = getVehicleMapTile(vehicleId);
+	MAP const *vehicleTile = getVehicleMapTile(vehicleId);
 	
-	MAP *closestMonolith = nullptr;
+	MAP const *closestMonolith = nullptr;
 	double closestMonolithTravelTime = INF;
 	
-	for (MAP *tile : aiData.monoliths)
+	for (MAP const *tile : aiData.monoliths)
 	{
-		TileInfo &tileInfo = aiData.getTileInfo(tile);
+		TileInfo const &tileInfo = aiData.getTileInfo(tile);
 		int range = getRange(vehicleTile, tile);
 		
 		if (range > maxSearchRange)
@@ -999,7 +999,7 @@ MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoid
 		
 		// item
 		
-		if (!map_has_item(tile, BIT_MONOLITH))
+		if (!map_has_item(const_cast<MAP *>(tile), BIT_MONOLITH))
 			continue;
 		
 		// exclude blocked location

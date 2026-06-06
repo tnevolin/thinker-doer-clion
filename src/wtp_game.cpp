@@ -6940,7 +6940,7 @@ std::vector<int> getTransportPassengers(int transportVehicleId)
 Returns max relative bombardment damage for location and triad.
 If tile is not specified, the matching realsm is assumed.
 */
-double getMaxBombardmentDamage(Triad triad, MAP *tile)
+double getMaxBombardmentDamage(Triad const triad, MAP const *tile)
 {
 	int maxBombardmentDamagePercentage;
 
