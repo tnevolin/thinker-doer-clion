@@ -158,8 +158,8 @@ struct TerraformingRequestAssignment
 
 struct TerraformingImprovement
 {
-	const MAP *tile;
-	TERRAFORMING_OPTION const *option;
+	MAP *tile;
+	TERRAFORMING_OPTION *option;
 	int action = -1;
 	int nutrient;
 	int mineral;
@@ -170,7 +170,7 @@ struct TerraformingImprovement
 struct TERRAFORMING_SCORE
 {
 	MAP *tile;
-	TERRAFORMING_OPTION const *option;
+	TERRAFORMING_OPTION *option;
 	
 	int action = -1;
 	double score = 0.0;
@@ -186,7 +186,7 @@ struct TERRAFORMING_SCORE
 struct TERRAFORMING_REQUEST
 {
 	MAP *tile;
-	TERRAFORMING_OPTION const *option;
+	TERRAFORMING_OPTION *option;
 	
 	// conventional terraforming (tile items modification resulting in yield change)
 	bool conventional = false;
@@ -211,7 +211,7 @@ struct TERRAFORMING_REQUEST
 	: tile{_tile}, option{_option}
 	{}
 	
-//	TERRAFORMING_REQUEST(MAP *_tile, TERRAFORMING_OPTION const *_option, double _terraformingTime, int _firstAction, double _score)
+//	TERRAFORMING_REQUEST(MAP *_tile, TERRAFORMING_OPTION *_option, double _terraformingTime, int _firstAction, double _score)
 //	: tile{_tile}, option{_option}, terraformingTime(_terraformingTime), firstAction{_firstAction}, score{_score}
 //	{}
 //	

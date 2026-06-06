@@ -219,16 +219,16 @@ void populateConvoyData()
 		int bestBaseResTypeBaseId = -1;
 		double bestBaseResTypeGain = 0.0;
 		
-		for (BaseResType const baseResType : {RSC_NUTRIENT, RSC_MINERAL, RSC_ENERGY})
+		for (BaseResType baseResType : {RSC_NUTRIENT, RSC_MINERAL, RSC_ENERGY})
 		{
-			int const yield = resource_yield(baseResType, aiFactionId, -1, tileX, tileY);
+			int yield = resource_yield(baseResType, aiFactionId, -1, tileX, tileY);
 			int bestBaseId = bestBaseResourceGainBaseId.at(baseResType);
 			double bestGain = static_cast<double>(yield) * bestBaseResourceGain.at(baseResType);
 			
-			for (int const baseId : coveredBaseIds.at(tileIndex))
+			for (int baseId : coveredBaseIds.at(tileIndex))
 			{
-				int const baseYield = resource_yield(baseResType, aiFactionId, baseId, tileX, tileY);
-				double const baseGain = static_cast<double>(baseYield) * baseResourceGains.at(baseId).at(baseResType);
+				int baseYield = resource_yield(baseResType, aiFactionId, baseId, tileX, tileY);
+				double baseGain = static_cast<double>(baseYield) * baseResourceGains.at(baseId).at(baseResType);
 				
 				if (baseGain > bestGain)
 				{
@@ -292,10 +292,10 @@ void assignCrawlerOrders()
 	
 	robin_hood::unordered_flat_set<MAP *> assignments;
 	
-	for (int const vehicleId : crawlerIds)
+	for (int vehicleId : crawlerIds)
 	{
 		VEH &vehicle = Vehs[vehicleId];
-		int const triad = vehicle.triad();
+		int triad = vehicle.triad();
 		
 		// find best assignment location
 		
@@ -305,7 +305,7 @@ void assignCrawlerOrders()
 		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 		{
 			MAP *tile = *MapTiles + tileIndex;
-			TileConvoyInfo const &tileConvoyInfo = tileConvoyInfos.at(tileIndex);
+			TileConvoyInfo &tileConvoyInfo = tileConvoyInfos.at(tileIndex);
 			
 			debug("\t%s\n", getLocationString(tile));
 			
@@ -367,10 +367,10 @@ void assignCrawlerOrders()
 		
 		// set other parameters
 		
-		TileConvoyInfo const &tileConvoyInfo = tileConvoyInfos.at(bestTile - *MapTiles);
+		TileConvoyInfo &tileConvoyInfo = tileConvoyInfos.at(bestTile - *MapTiles);
 		
-		int const oldHomeBaseId = vehicle.home_base_id;
-		int const newHomeBaseId = tileConvoyInfo.baseid;
+		int oldHomeBaseId = vehicle.home_base_id;
+		int newHomeBaseId = tileConvoyInfo.baseid;
 		vehicle.home_base_id = static_cast<int16_t>(newHomeBaseId);
 		if (oldHomeBaseId != -1)
 		{
@@ -401,7 +401,7 @@ void assignCrawlerOrders()
 	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
 		MAP *tile = *MapTiles + tileIndex;
-		TileConvoyInfo const &tileConvoyInfo = tileConvoyInfos.at(tileIndex);
+		TileConvoyInfo &tileConvoyInfo = tileConvoyInfos.at(tileIndex);
 		
 		if (!tileConvoyInfo.available)
 			continue;

@@ -3269,7 +3269,7 @@ void patch_datalinks()
 	// text
 	if (strcmp(conf.datalinks_text_font_name, "Arial") != 0)
 	{
-		static const char* datalinkTextFontNamePointer = conf.datalinks_text_font_name;
+		static char* datalinkTextFontNamePointer = conf.datalinks_text_font_name;
 		uint32_t datalinkTextFontNamePointerPointer = reinterpret_cast<uintptr_t>(&datalinkTextFontNamePointer);
 		write_word(0x0042986A + 0x2, 0x00691B2C, datalinkTextFontNamePointerPointer);
 		write_word(0x00429895 + 0x2, 0x00691B2C, datalinkTextFontNamePointerPointer);
@@ -3288,7 +3288,7 @@ void patch_datalinks()
 	// menu
 	if (strcmp(conf.datalinks_menu_font_name, "Arial") != 0)
 	{
-		static const char* datalinkMenuFontNamePointer = conf.datalinks_menu_font_name;
+		static char* datalinkMenuFontNamePointer = conf.datalinks_menu_font_name;
 		uint32_t datalinkMenuFontNamePointerPointer = reinterpret_cast<uintptr_t>(&datalinkMenuFontNamePointer);
 		write_word(0x004298CA + 0x2, 0x00691B2C, datalinkMenuFontNamePointerPointer);
 	}
@@ -3302,8 +3302,8 @@ void patch_datalinks()
 	}
 	
 	// tech info links
-//		static const char techInfoLinkFontName[] = "Audiowide";
-//		static const char* techInfoLinkFontNamePointer = techInfoLinkFontName;
+//		static char techInfoLinkFontName[] = "Audiowide";
+//		static char* techInfoLinkFontNamePointer = techInfoLinkFontName;
 //		write_word(0x004297EB + 0x1, 0x00691B2C, reinterpret_cast<uintptr_t>(&techInfoLinkFontNamePointer));
 //		write_byte(0x004297F0 + 0x1, static_cast<uint8_t>(0x0E), static_cast<uint8_t>(0x0E + conf.datalinks_normal_font_extra_size));
 	// tech info groups (do not change)

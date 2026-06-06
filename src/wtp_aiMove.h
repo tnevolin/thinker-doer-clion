@@ -23,7 +23,7 @@ struct SeaTransit
 struct VehicleDestination
 {
 	int vehicleId;
-	MAP const *destination;
+	MAP *destination;
 };
 
 void moveStrategy();

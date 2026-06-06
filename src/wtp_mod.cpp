@@ -194,7 +194,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 				{
 					// assign label and multiplier
 					
-					const char *label = nullptr;
+					char *label = nullptr;
 					int multiplier = 100;
 					
 					switch (attackerTriad)
@@ -264,7 +264,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 				{
 					// assign label and multiplier
 					
-					const char *label = nullptr;
+					char *label = nullptr;
 					int multiplier = 100;
 					
 					switch (attackerTriad)
@@ -459,8 +459,8 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
     // defense facilities extend their effect 2 tiles outside of the base
     // ----------------------------------------------------------------------------------------------------
 	
-	constexpr char const *triadFacilityFieldLabels[3] = {"PD - field", "NY - field", "AC - field", };
-	constexpr char const *tachyonFieldFieldLabel = "TF - field";
+	constexpr char *triadFacilityFieldLabels[3] = {"PD - field", "NY - field", "AC - field", };
+	constexpr char *tachyonFieldFieldLabel = "TF - field";
 	
 	// blink displacer ignores defensive facilities
 	if (!has_abil(attackerVehicle.unit_id, ABL_BLINK_DISPLACER))
@@ -469,7 +469,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 		if (defenderMapTile != nullptr && !defenderMapTile->is_base())
 		{
 			int facilityFieldBonus = 0;
-			char const *facilityFieldLabel = nullptr;
+			char *facilityFieldLabel = nullptr;
 			if (isFriendlyBaseInRangeHasFacility(defenderVehicle.faction_id, defenderVehicle.x, defenderVehicle.y, 2, TRIAD_DEFENSIVE_FACILITIES[attackerTriad]))
 			{
 				facilityFieldBonus += conf.facility_field_defense_bonus[attackerTriad];
@@ -1546,7 +1546,7 @@ __cdecl int modifiedBestDefender(int defenderVehicleId, int attackerVehicleId, i
 
 __cdecl void appendAbilityCostTextInWorkshop(int output_string_pointer, int input_string_pointer)
 {
-	const char *COST_PREFIX = "Cost: ";
+	char *COST_PREFIX = "Cost: ";
 	
     debug
     (
@@ -3735,7 +3735,7 @@ int __cdecl wtp_mod_enemy_move(int vehicleId)
 	// run original function
 	// which also wraps AI logic
 
-	int const returnValue = aiEnemyMove(vehicleId);
+	int returnValue = aiEnemyMove(vehicleId);
 	
 	// set probe moves
 	

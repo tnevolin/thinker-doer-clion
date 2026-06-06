@@ -310,7 +310,7 @@ int enemyMoveVehicle(const int vehicleId)
 {
 	debug("enemyMoveVehicle %s remaningMoves=%2d\n", getVehiclePad0LocationNameString(vehicleId), getVehicleRemainingMoves(vehicleId));
 	
-	VEH const *vehicle = getVehicle(vehicleId);
+	VEH *vehicle = getVehicle(vehicleId);
 	
 	// fall over to default if vehicle did not move since last iteration
 	
@@ -327,7 +327,7 @@ int enemyMoveVehicle(const int vehicleId)
 	
 	// execute task
 	
-	Task const * task = getTask(vehicleId);
+	Task * task = getTask(vehicleId);
 	
 	if (task != nullptr && task->type != TT_NONE)
 	{
@@ -346,12 +346,12 @@ Returns true on successful task creation.
 */
 bool transitVehicle(Task const &task)
 {
-	const bool TRACE = DEBUG && false;
+	bool TRACE = DEBUG && false;
 
 	int vehicleId = task.getVehicleId();
 	VEH *vehicle = getVehicle(vehicleId);
 	MAP *vehicleTile = getVehicleMapTile(vehicleId);
-	MAP const *destination = task.getDestination();
+	MAP *destination = task.getDestination();
 
 	if (destination == nullptr)
 		return false;
@@ -439,13 +439,13 @@ bool transitVehicle(Task const &task)
 bool transitLandVehicle(Task const &task)
 {
 	int vehicleId = task.getVehicleId();
-	MAP const *destination = task.getDestination();
+	MAP *destination = task.getDestination();
 	
 	assert(vehicleId >= 0 && vehicleId < *VehCount);
 	assert(destination >= *MapTiles && destination < *MapTiles + *MapAreaTiles);
 	
 	VEH *vehicle = getVehicle(vehicleId);
-	MAP const *vehicleTile = getVehicleMapTile(vehicleId);
+	MAP *vehicleTile = getVehicleMapTile(vehicleId);
 	TileInfo &vehicleTileInfo = aiData.getVehicleTileInfo(vehicleId);
 	
 	// land vehicle
@@ -460,7 +460,7 @@ bool transitLandVehicle(Task const &task)
 	
 	// transport
 	
-	int const transportId = getVehicleTransportId(vehicleId);
+	int transportId = getVehicleTransportId(vehicleId);
 	
 	if (transportId != -1)
 	{
@@ -471,7 +471,7 @@ bool transitLandVehicle(Task const &task)
 		
 		// find dropoff transfer
 		
-		Transfer const transfer = getOptimalDropoffTransfer(vehicleTile, destination, vehicleId, transportId);
+		Transfer transfer = getOptimalDropoffTransfer(vehicleTile, destination, vehicleId, transportId);
 		
 		if (!transfer.valid())
 			return false;
@@ -640,7 +640,7 @@ Modified vehicle movement.
 */
 int aiEnemyMove(const int vehicleId)
 {
-	VEH const *vehicle = getVehicle(vehicleId);
+	VEH *vehicle = getVehicle(vehicleId);
 	
 	int returnValue;
 	
@@ -783,7 +783,7 @@ Transfer getOptimalPickupTransfer(MAP const *org, MAP const *dst)
 {
 	debug("getOptimalPickupTransfer %s -> %s\n", getLocationString(org), getLocationString(dst));
 	
-	TileInfo const &orgTileInfo = aiData.getTileInfo(org);
+	TileInfo &orgTileInfo = aiData.getTileInfo(org);
 	
 	// populate available transfers
 	
@@ -791,7 +791,7 @@ Transfer getOptimalPickupTransfer(MAP const *org, MAP const *dst)
 	
 	if (orgTileInfo.ocean && orgTileInfo.base) // org is sea base
 	{
-		std::vector<Transfer> const &oceanBaseTransfers = getOceanBaseTransfers(org);
+		std::vector<Transfer> &oceanBaseTransfers = getOceanBaseTransfers(org);
 		transfers.insert(transfers.end(), oceanBaseTransfers.begin(), oceanBaseTransfers.end());
 		
 	}
@@ -801,7 +801,7 @@ Transfer getOptimalPickupTransfer(MAP const *org, MAP const *dst)
 		
 		for (int firstConnectedCluster : getFirstConnectedClusters(org, dst))
 		{
-			std::vector<Transfer> const &firstConnectedClusterTransfers = getTransfers(orgCluster, firstConnectedCluster);
+			std::vector<Transfer> &firstConnectedClusterTransfers = getTransfers(orgCluster, firstConnectedCluster);
 			transfers.insert(transfers.end(), firstConnectedClusterTransfers.begin(), firstConnectedClusterTransfers.end());
 		}
 		
@@ -812,7 +812,7 @@ Transfer getOptimalPickupTransfer(MAP const *org, MAP const *dst)
 	Transfer bestTransfer;
 	int bestTransferTotalRange = INT_MAX;
 	
-	for (Transfer const &transfer : transfers)
+	for (Transfer &transfer : transfers)
 	{
 		int passengerStopRange = getRange(org, transfer.passengerStop);
 		int transportStopRange = getRange(transfer.transportStop, dst);
@@ -844,7 +844,7 @@ Transfer getOptimalDropoffTransfer(MAP const *org, MAP const *dst, int const pas
 	
 	if (isSameSeaCluster(org, dst) && dstTileInfo.ocean && dstTileInfo.base) // dst is in same sea cluster and dst is sea base
 	{
-		std::vector<Transfer> const &oceanBaseTransfers = getOceanBaseTransfers(dst);
+		std::vector<Transfer> &oceanBaseTransfers = getOceanBaseTransfers(dst);
 		transfers.insert(transfers.end(), oceanBaseTransfers.begin(), oceanBaseTransfers.end());
 		
 	}
@@ -854,7 +854,7 @@ Transfer getOptimalDropoffTransfer(MAP const *org, MAP const *dst, int const pas
 		
 		for (int firstConnectedCluster : getFirstConnectedClusters(org, dst))
 		{
-			std::vector<Transfer> const &firstConnectedClusterTransfers = getTransfers(firstConnectedCluster, orgCluster);
+			std::vector<Transfer> &firstConnectedClusterTransfers = getTransfers(firstConnectedCluster, orgCluster);
 			transfers.insert(transfers.end(), firstConnectedClusterTransfers.begin(), firstConnectedClusterTransfers.end());
 		}
 		
@@ -865,7 +865,7 @@ Transfer getOptimalDropoffTransfer(MAP const *org, MAP const *dst, int const pas
 	Transfer bestTransfer;
 	double bestTransferTotalTravelTime = DBL_MAX;
 	
-	for (Transfer const &transfer : transfers)
+	for (Transfer &transfer : transfers)
 	{
 		// range to corresponding stops
 		
@@ -921,7 +921,7 @@ void setSafeMoveTo(int vehicleId, MAP *destination)
 	bool dangerous = false;
 	
 	Profiling::start("- setSafeMoveTo - getVehicleReachableLocations");
-	for (MoveAction const &moveAction : getVehicleMoveActions(vehicleId, false))
+	for (MoveAction &moveAction : getVehicleMoveActions(vehicleId, false))
 	{
 		MAP *tile = moveAction.destination;
 		TileInfo &tileInfo = aiData.getTileInfo(tile);
@@ -979,14 +979,14 @@ MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoid
 	
 	VEH *vehicle = getVehicle(vehicleId);
 	int triad = vehicle->triad();
-	MAP const *vehicleTile = getVehicleMapTile(vehicleId);
+	MAP *vehicleTile = getVehicleMapTile(vehicleId);
 	
-	MAP const *closestMonolith = nullptr;
+	MAP *closestMonolith = nullptr;
 	double closestMonolithTravelTime = INF;
 	
-	for (MAP const *tile : aiData.monoliths)
+	for (MAP *tile : aiData.monoliths)
 	{
-		TileInfo const &tileInfo = aiData.getTileInfo(tile);
+		TileInfo &tileInfo = aiData.getTileInfo(tile);
 		int range = getRange(vehicleTile, tile);
 		
 		if (range > maxSearchRange)

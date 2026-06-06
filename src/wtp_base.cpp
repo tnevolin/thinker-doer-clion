@@ -68,13 +68,13 @@ void __cdecl wtp_mod_base_yield()
 	int alloc_psych = faction->SE_alloc_psych;
 	int allocationPenalty = clamp(4 - SE_effic, 0, 8) * (2 * (abs(alloc_econ - alloc_labs) / 2));
 	
-	double const efficiency = (double)(16 - wtp_mod_energy_intake_lost(base_id, 16, 0)) / 16.0;
-	double const econValue = allocationPenalty == 0 ? 1.0 : 1.0 - (double)((alloc_econ > alloc_labs ? 1 : 2) * allocationPenalty) / 100.0;
-	double const labsValue = allocationPenalty == 0 ? 1.0 : 1.0 - (double)((alloc_labs > alloc_econ ? 1 : 2) * allocationPenalty) / 100.0 / (has_fac_built(FAC_PUNISHMENT_SPHERE, base_id) ? 2.0 : 1.0);
-	double const psychValue = 1.0;
-	double const energyValue = conf.worker_algorithm_energy_weight * (efficiency * (econValue * (double)alloc_econ / 10.0 + labsValue * (double)alloc_labs / 10.0 + psychValue * (double)alloc_psych / 10.0));
+	double efficiency = (double)(16 - wtp_mod_energy_intake_lost(base_id, 16, 0)) / 16.0;
+	double econValue = allocationPenalty == 0 ? 1.0 : 1.0 - (double)((alloc_econ > alloc_labs ? 1 : 2) * allocationPenalty) / 100.0;
+	double labsValue = allocationPenalty == 0 ? 1.0 : 1.0 - (double)((alloc_labs > alloc_econ ? 1 : 2) * allocationPenalty) / 100.0 / (has_fac_built(FAC_PUNISHMENT_SPHERE, base_id) ? 2.0 : 1.0);
+	double psychValue = 1.0;
+	double energyValue = conf.worker_algorithm_energy_weight * (efficiency * (econValue * (double)alloc_econ / 10.0 + labsValue * (double)alloc_labs / 10.0 + psychValue * (double)alloc_psych / 10.0));
 	
-	double const growthFactor = 1.0 / (double)((1 + base->pop_size) * mod_cost_factor(base->faction_id, RSC_NUTRIENT, base_id)) / (double)base->pop_size;
+	double growthFactor = 1.0 / (double)((1 + base->pop_size) * mod_cost_factor(base->faction_id, RSC_NUTRIENT, base_id)) / (double)base->pop_size;
 	
 	// specialists
 	
@@ -418,7 +418,7 @@ void mod_base_yield_base_energy(BaseEnergy const &baseEnergy, int energyIntake)
 				if (their_rank < 0)
 					continue;
 				
-				Faction const &otherFaction = Factions[otherFactionId];
+				Faction &otherFaction = Factions[otherFactionId];
 				
 				BaseCommerceImport[otherFactionId] = 0;
 				BaseCommerceExport[otherFactionId] = 0;
@@ -723,7 +723,7 @@ Ensures normal distribution of talents, drones, superdrones.
 */
 void wtp_normalize_happiness(BASE *base, bool subtractSpecialists)
 {
-	int const worker_count = base->pop_size - (subtractSpecialists ? base->specialist_total : 0);
+	int worker_count = base->pop_size - (subtractSpecialists ? base->specialist_total : 0);
 	
 	// limit talents by base size
 	
@@ -846,9 +846,9 @@ void __cdecl wtp_mod_base_psych(int base_id)
 	//  1, Can use up to 2 military units as police
 	//  2, Can use up to 3 military units as police!
 	//  3, 3 units as police. Police effect doubled!!
-	const int SE_police = base->SE_police(SE_Pending);
-	const int num_police = clamp((SE_police == -1) + SE_police + 1, 0, 3);
-	const int val_police = 1 + (SE_police >= 3);
+	int SE_police = base->SE_police(SE_Pending);
+	int num_police = clamp((SE_police == -1) + SE_police + 1, 0, 3);
+	int val_police = 1 + (SE_police >= 3);
 
 	int drone_value = 0;
 	int talent_value = 0;
@@ -1046,7 +1046,7 @@ int getBestSpecialist(int factionId, int basePopSize, double econValue, double l
 	double bestScore = 0.0;
 	for (int citizenId = 0; citizenId < MaxSpecialistNum; citizenId++)
 	{
-		CCitizen const &citizen = Citizen[citizenId];
+		CCitizen &citizen = Citizen[citizenId];
 		
 		if (has_tech(citizen.preq_tech, factionId) && !has_tech(citizen.obsol_tech, factionId) && (basePopSize >= Rules->min_base_size_specialists || citizen.psych_bonus > 0))
 		{

@@ -311,7 +311,7 @@ void evaluateGlobalSeaTransportDemand()
 	
 	// demand and best base by cluster
 	
-	const int transportFoilSpeed = getUnitSpeed(aiFactionId, BSC_TRANSPORT_FOIL);
+	int transportFoilSpeed = getUnitSpeed(aiFactionId, BSC_TRANSPORT_FOIL);
 	
 	for (robin_hood::pair<int, int> seaTransportRequestCountEntry : aiData.seaTransportRequestCounts)
 	{
@@ -1046,7 +1046,7 @@ void evaluateIncomeFacilities()
 		FAC_CENTAURI_PRESERVE, FAC_TEMPLE_OF_PLANET,
 	};
 	
-	const robin_hood::unordered_flat_map<int, int> facilityLifecycles
+	robin_hood::unordered_flat_map<int, int> facilityLifecycles
 	{
 		{FAC_BIOLOGY_LAB, 1},
 		{FAC_BROOD_PIT, 3}, // +1 lifecycle and -25% of the cost
@@ -1313,14 +1313,14 @@ void evaluateMilitaryFacilities()
 	};
 	
 	// how much each defense structure level increases defense
-	const double defenseStructureMultipliers[2] =
+	double defenseStructureMultipliers[2] =
 	{
 		(1.0 + (double)conf.facility_defense_bonus[0] / 2.0) / getPercentageBonusMultiplier(Rules->combat_bonus_intrinsic_base_def),
 		(1.0 + (double)conf.facility_defense_bonus[3] / 2.0) / (1.0 + (double)conf.facility_defense_bonus[0] / 2.0),
 	};
 	
 	// how often land/ocean base experiences each triad attack
-	const double attackTriadWeights[2][4] =
+	double attackTriadWeights[2][4] =
 	{
 		{0.6, 0.0, 0.2, 0.2, },
 		{0.0, 0.6, 0.2, 0.2, },
@@ -1864,8 +1864,7 @@ void evaluateTerraformUnits()
 		double time;
 		double income;
 		double gain;
-		bool operator<(TerraformingGain const &other) const
-		{
+		bool operator<(TerraformingGain &other) 		{
 			return this->gain > other.gain;
 		}
 	};
@@ -2181,7 +2180,7 @@ void evaluateConvoyUnits()
 		// iterate convoy requests
 		
 		double bestGain = 0.0;
-		for (ConvoyRequest const &convoyRequest : aiData.production.convoyRequests)
+		for (ConvoyRequest &convoyRequest : aiData.production.convoyRequests)
 		{
 			// matching surface
 			
@@ -2253,7 +2252,7 @@ void evaluatePodPoppingUnits()
 	
 	debug("evaluatePodPoppingUnits\n");
 	
-	std::array<int, 2> const podRanges {10, 20};
+	std::array<int, 2> podRanges {10, 20};
 	std::array<SurfacePodData, 2> surfacePodDatas;
 	
 	for (int surface = 0; surface < 2; surface++)

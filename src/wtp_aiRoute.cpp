@@ -235,7 +235,7 @@ void populateMapSnapshot()
 			
 		}
 		
-		for (robin_hood::pair<MAP *, int> const &mapBase : mapSnapshot.mapBases)
+		for (robin_hood::pair<MAP *, int> &mapBase : mapSnapshot.mapBases)
 		{
 			MAP *baseTile = mapBase.first;
 			int baseFactionId = mapBase.second;
@@ -490,7 +490,7 @@ void populateAirClusters(int factionId)
 	
 	debug("populateAirClusters aiFactionId=%d factionId=%d\n", aiFactionId, factionId);
 	
-	std::vector<MAP *> const &airbases = factionMovementInfos.at(factionId).airbases;
+	std::vector<MAP *> &airbases = factionMovementInfos.at(factionId).airbases;
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusters = factionMovementInfos.at(factionId).airClusters;
 	
 	airClusters.clear();
@@ -651,17 +651,17 @@ void populateAirClusters(int factionId)
 	
 	if (DEBUG)
 	{
-		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> const &airClusterEntry : airClusters)
+		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusterEntry : airClusters)
 		{
 			int chassisId = airClusterEntry.first;
-			robin_hood::unordered_flat_map<int, std::vector<int>> const &chassisAirClusters = airClusterEntry.second;
+			robin_hood::unordered_flat_map<int, std::vector<int>> &chassisAirClusters = airClusterEntry.second;
 			
 			debug("\tchassisId=%2d\n", chassisId);
 			
-			for (robin_hood::pair<int, std::vector<int>> const &chassisAirClusterEntry : chassisAirClusters)
+			for (robin_hood::pair<int, std::vector<int>> &chassisAirClusterEntry : chassisAirClusters)
 			{
 				int speed = chassisAirClusterEntry.first;
-				std::vector<int> const &chassisAirSpeedAirClusters = chassisAirClusterEntry.second;
+				std::vector<int> &chassisAirSpeedAirClusters = chassisAirClusterEntry.second;
 				
 				debug("\t\tspeed=%2d\n", speed);
 				
@@ -686,7 +686,7 @@ void populateAirCluster(int factionId, int chassisId, int speed)
 	
 	debug("populateAirCluster aiFactionId=%d factionId=%d chassisId=%d speed=%d\n", aiFactionId, factionId, chassisId, speed);
 	
-	std::vector<MAP *> const &airbases = factionMovementInfos.at(factionId).airbases;
+	std::vector<MAP *> &airbases = factionMovementInfos.at(factionId).airbases;
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusters = factionMovementInfos.at(factionId).airClusters;
 	
 	// create new cluster
@@ -787,17 +787,17 @@ void populateAirCluster(int factionId, int chassisId, int speed)
 	
 	if (DEBUG)
 	{
-		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> const &airClusterEntry : airClusters)
+		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusterEntry : airClusters)
 		{
 			int chassisId = airClusterEntry.first;
-			robin_hood::unordered_flat_map<int, std::vector<int>> const &chassisAirClusters = airClusterEntry.second;
+			robin_hood::unordered_flat_map<int, std::vector<int>> &chassisAirClusters = airClusterEntry.second;
 			
 			debug("\tchassisId=%2d\n", chassisId);
 			
-			for (robin_hood::pair<int, std::vector<int>> const &chassisAirClusterEntry : chassisAirClusters)
+			for (robin_hood::pair<int, std::vector<int>> &chassisAirClusterEntry : chassisAirClusters)
 			{
 				int speed = chassisAirClusterEntry.first;
-				std::vector<int> const &chassisAirSpeedAirClusters = chassisAirClusterEntry.second;
+				std::vector<int> &chassisAirSpeedAirClusters = chassisAirClusterEntry.second;
 				
 				debug("\t\tspeed=%2d\n", speed);
 				
@@ -822,14 +822,14 @@ void populateSeaTransportWaitTimes(int factionId)
 	
 	debug("populateSeaTransportWaitTimes aiFactionId=%d factionId=%d\n", aiFactionId, factionId);
 	
-	int const WAIT_TIME_MULTIPLIER = 2.0;
+	int WAIT_TIME_MULTIPLIER = 2.0;
 	
-	FactionInfo const &factionInfo = aiData.factionInfos.at(factionId);
+	FactionInfo &factionInfo = aiData.factionInfos.at(factionId);
 	
 	std::vector<double> &seaTransportWaitTimes = factionMovementInfos.at(factionId).seaTransportWaitTimes;
 	seaTransportWaitTimes.resize(*MapAreaTiles); std::fill(seaTransportWaitTimes.begin(), seaTransportWaitTimes.end(), INF);
 	
-	std::vector<double> const &impediments = factionMovementInfos.at(factionId).impediments;
+	std::vector<double> &impediments = factionMovementInfos.at(factionId).impediments;
 	
 	robin_hood::unordered_flat_set<MAP *> openNodes;
 	robin_hood::unordered_flat_set<MAP *> newOpenNodes;
@@ -933,7 +933,7 @@ void populateSeaTransportWaitTimes(int factionId)
 		newOpenNodes.clear();
 		
 		{
-			auto const waitTime = static_cast<double>(initialTile.buildTime);
+			auto waitTime = static_cast<double>(initialTile.buildTime);
 			if (waitTime < seaTransportWaitTimes.at(tileIndex))
 			{
 				seaTransportWaitTimes.at(tileIndex) = waitTime;
@@ -949,11 +949,11 @@ void populateSeaTransportWaitTimes(int factionId)
 				double currentTileWaitTime = seaTransportWaitTimes.at(currentTileIndex);
 				TileInfo &currentTileInfo = aiData.getTileInfo(currentTile);
 				
-				for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
+				for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 				{
-					TileInfo const &adjacentTileInfo = *tileTransit.tileInfo;
+					TileInfo &adjacentTileInfo = *tileTransit.tileInfo;
 					MAP *adjacentTile = adjacentTileInfo.tile;
-					int const adjacentTileIndex = adjacentTileInfo.index;
+					int adjacentTileIndex = adjacentTileInfo.index;
 
 					// sea or friendly base
 					
@@ -962,15 +962,15 @@ void populateSeaTransportWaitTimes(int factionId)
 					
 					// hexCost
 					
-					int const hexCost = tileTransit.averageHexCosts.at(initialTile.movementType);
+					int hexCost = tileTransit.averageHexCosts.at(initialTile.movementType);
 					if (hexCost == -1)
 						continue;
 					
-					double const stepCost = (double)hexCost + impediments.at(adjacentTileIndex);
+					double stepCost = (double)hexCost + impediments.at(adjacentTileIndex);
 					
-					double const moveTime = stepCost / (double)initialTile.moveRate;
-					double const waitTime = WAIT_TIME_MULTIPLIER * capacityCoefficient * moveTime;
-					double const adjacentTileWaitTime = currentTileWaitTime + waitTime;
+					double moveTime = stepCost / (double)initialTile.moveRate;
+					double waitTime = WAIT_TIME_MULTIPLIER * capacityCoefficient * moveTime;
+					double adjacentTileWaitTime = currentTileWaitTime + waitTime;
 					
 					if (adjacentTileWaitTime < seaTransportWaitTimes.at(adjacentTileIndex))
 					{
@@ -1103,7 +1103,7 @@ void populateSeaCombatClusters(int factionId)
 			{
 				TileInfo &currentTileInfo = aiData.tileInfos.at(currentTileIndex);
 				
-				for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
+				for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 				{
 					int adjacentTileIndex = tileTransit.tileInfo->index;
 					
@@ -1157,14 +1157,14 @@ void populateLandCombatClusters(int factionId)
 	
 	debug("populateLandCombatClusters aiFactionId=%d factionId=%d\n", aiFactionId, factionId);
 	
-	std::vector<double> const &seaTransportWaitTimes = factionMovementInfos.at(factionId).seaTransportWaitTimes;
+	std::vector<double> &seaTransportWaitTimes = factionMovementInfos.at(factionId).seaTransportWaitTimes;
 	std::vector<int> &landCombatClusters = factionMovementInfos.at(factionId).landCombatClusters;
 	
 	landCombatClusters.resize(*MapAreaTiles); std::fill(landCombatClusters.begin(), landCombatClusters.end(), -1);
 	
 	// availableTileIndexes
 	
-	for (TileInfo const &tileInfo : aiData.tileInfos)
+	for (TileInfo &tileInfo : aiData.tileInfos)
 	{
 		// land or sea with finite wait time
 		
@@ -1210,7 +1210,7 @@ void populateLandCombatClusters(int factionId)
 			{
 				TileInfo &currentTileInfo = aiData.tileInfos[currentTileIndex];
 				
-				for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
+				for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 				{
 					int adjacentTileIndex = tileTransit.tileInfo->index;
 					
@@ -1270,8 +1270,8 @@ void populateSeaLandmarks(int factionId)
 	int minLandmarkDistance = MIN_LANDMARK_DISTANCE * *MapAreaX / 80;
 	debug("\tminLandmarkDistance=%d\n", minLandmarkDistance);
 	
-	std::vector<int> const &seaCombatClusters = factionMovementInfos.at(factionId).seaCombatClusters;
-	std::vector<double> const &impediments = factionMovementInfos.at(factionId).impediments;
+	std::vector<int> &seaCombatClusters = factionMovementInfos.at(factionId).seaCombatClusters;
+	std::vector<double> &impediments = factionMovementInfos.at(factionId).impediments;
 	std::array<std::vector<SeaLandmark>, SEA_MOVEMENT_TYPE_COUNT> &seaLandmarks = factionMovementInfos.at(factionId).seaLandmarks;
 	
 	robin_hood::unordered_flat_set<size_t> openNodes;
@@ -1307,7 +1307,7 @@ void populateSeaLandmarks(int factionId)
 		
 		// iterate seaClusters
 		
-		for (std::pair<int, int> const &initialTileEntry : initialTiles)
+		for (std::pair<int, int> &initialTileEntry : initialTiles)
 		{
 			int seaCluster = initialTileEntry.first;
 			int landmarkTileIndex = initialTileEntry.second;
@@ -1348,28 +1348,28 @@ void populateSeaLandmarks(int factionId)
 						
 						bool endNode = true;
 						
-						for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
+						for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 						{
-							TileInfo const *adjacentTileInfo = tileTransit.tileInfo;
-							int const adjacentTileIndex = adjacentTileInfo->index;
-							int const hexCost = tileTransit.averageHexCosts.at(movementType);
+							TileInfo *adjacentTileInfo = tileTransit.tileInfo;
+							int adjacentTileIndex = adjacentTileInfo->index;
+							int hexCost = tileTransit.averageHexCosts.at(movementType);
 							
 							if (hexCost == -1)
 								continue;
 							
-							int const adjacentTileSeaCluster = seaCombatClusters.at(adjacentTileIndex);
+							int adjacentTileSeaCluster = seaCombatClusters.at(adjacentTileIndex);
 							
 							if (adjacentTileSeaCluster != seaCluster)
 								continue;
 							
-							double const stepCost = static_cast<double>(hexCost) + impediments.at(adjacentTileIndex);
+							double stepCost = static_cast<double>(hexCost) + impediments.at(adjacentTileIndex);
 							
 							// update value
 							
 							SeaLandmarkTileInfo &adjacentTileSeaLandmarkTileInfo = landmark.tileInfos.at(adjacentTileIndex);
 							
-							double const oldMovementCost = adjacentTileSeaLandmarkTileInfo.movementCost;
-							double const newMovementCost = currentTileSeaLandmarkTileInfo.movementCost + stepCost;
+							double oldMovementCost = adjacentTileSeaLandmarkTileInfo.movementCost;
+							double newMovementCost = currentTileSeaLandmarkTileInfo.movementCost + stepCost;
 							
 							if (newMovementCost < oldMovementCost)
 							{
@@ -1455,13 +1455,13 @@ void populateSeaLandmarks(int factionId)
 //	{
 //		for (size_t seaMovementTypeIndex = 0; seaMovementTypeIndex < SEA_MOVEMENT_TYPE_COUNT; seaMovementTypeIndex++)
 //		{
-//			MovementType const movementType = SEA_MOVEMENT_TYPES.at(seaMovementTypeIndex);
+//			MovementType movementType = SEA_MOVEMENT_TYPES.at(seaMovementTypeIndex);
 //			
 //			debug("\tmovementType=%d\n", movementType);
 //			
-//			std::vector<SeaLandmark> const &landmarks = landmarksArray.at(seaMovementTypeIndex);
+//			std::vector<SeaLandmark> &landmarks = landmarksArray.at(seaMovementTypeIndex);
 //			
-//			for (SeaLandmark const &landmark : landmarks)
+//			for (SeaLandmark &landmark : landmarks)
 //			{
 //				debug("\t\t%s\n", getLocationString(landmark.tileIndex));
 //				for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
@@ -1489,14 +1489,14 @@ void populateLandLandmarks(int factionId)
 	
 	debug("populateLandLandmarks - aiFactionId=%d factionId=%d\n", aiFactionId, factionId);
 	
-	FactionInfo const &factionInfo = aiData.factionInfos.at(factionId);
+	FactionInfo &factionInfo = aiData.factionInfos.at(factionId);
 	
 	int minLandmarkDistance = MIN_LANDMARK_DISTANCE * *MapAreaX / 80;
 	debug("\tminLandmarkDistance=%d\n", minLandmarkDistance);
 	
-	std::vector<int> const &landCombatClusters = factionMovementInfos.at(factionId).landCombatClusters;
-	std::vector<double> const &seaTransportWaitTimes = factionMovementInfos.at(factionId).seaTransportWaitTimes;
-	std::vector<double> const &impediments = factionMovementInfos.at(factionId).impediments;
+	std::vector<int> &landCombatClusters = factionMovementInfos.at(factionId).landCombatClusters;
+	std::vector<double> &seaTransportWaitTimes = factionMovementInfos.at(factionId).seaTransportWaitTimes;
+	std::vector<double> &impediments = factionMovementInfos.at(factionId).impediments;
 	std::array<std::vector<LandLandmark>, BASIC_LAND_MOVEMENT_TYPE_COUNT> &landLandmarks = factionMovementInfos.at(factionId).landLandmarks;
 	
 	robin_hood::unordered_flat_set<size_t> openNodes;
@@ -1532,7 +1532,7 @@ void populateLandLandmarks(int factionId)
 		
 		// iterate landClusters
 		
-		for (std::pair<int, int> const &initialTileEntry : initialTiles)
+		for (std::pair<int, int> &initialTileEntry : initialTiles)
 		{
 			int landCluster = initialTileEntry.first;
 			int landmarkTileIndex = initialTileEntry.second;
@@ -1573,7 +1573,7 @@ void populateLandLandmarks(int factionId)
 						
 						bool endNode = true;
 						
-						for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
+						for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 						{
 							TileInfo *adjacentTileInfo = tileTransit.tileInfo;
 							int adjacentTileIndex = adjacentTileInfo->index;
@@ -1650,20 +1650,20 @@ void populateLandLandmarks(int factionId)
 							{
 								// sensible sea movement cost
 								
-								int const hexCost = tileTransit.averageHexCosts.at(MT_SEA);
+								int hexCost = tileTransit.averageHexCosts.at(MT_SEA);
 								if (hexCost == -1)
 									continue;
 								
 								LandLandmarkTileInfo &adjacentTileLandLandmarkTileInfo = landmark.tileInfos.at(adjacentTileIndex);
 								
-								double const stepCost = static_cast<double>(hexCost) + impediments.at(adjacentTileIndex);
+								double stepCost = static_cast<double>(hexCost) + impediments.at(adjacentTileIndex);
 								
 								// update value
 								
-								double const oldTravelTime = adjacentTileLandLandmarkTileInfo.travelTime;
+								double oldTravelTime = adjacentTileLandLandmarkTileInfo.travelTime;
 								
-								double const newSeaMovementCost = currentTileLandLandmarkTileInfo.seaMovementCost + stepCost;
-								double const newTravelTime = currentTileLandLandmarkTileInfo.travelTime + stepCost / static_cast<double>(Rules->move_rate_roads * factionInfo.bestSeaTransportUnitSpeed);
+								double newSeaMovementCost = currentTileLandLandmarkTileInfo.seaMovementCost + stepCost;
+								double newTravelTime = currentTileLandLandmarkTileInfo.travelTime + stepCost / static_cast<double>(Rules->move_rate_roads * factionInfo.bestSeaTransportUnitSpeed);
 								
 								if (newTravelTime < oldTravelTime)
 								{
@@ -1778,13 +1778,13 @@ void populateLandLandmarks(int factionId)
 	{
 		for (size_t landMovementTypeIndex = 0; landMovementTypeIndex < BASIC_LAND_MOVEMENT_TYPE_COUNT; landMovementTypeIndex++)
 		{
-			MovementType const movementType = BASIC_LAND_MOVEMENT_TYPES.at(landMovementTypeIndex);
+			MovementType movementType = BASIC_LAND_MOVEMENT_TYPES.at(landMovementTypeIndex);
 			
 			debug("\tmovementType=%d\n", movementType);
 			
-			std::vector<LandLandmark> const &landmarks = landLandmarks.at(landMovementTypeIndex);
+			std::vector<LandLandmark> &landmarks = landLandmarks.at(landMovementTypeIndex);
 			
-			for (LandLandmark const &landmark : landmarks)
+			for (LandLandmark &landmark : landmarks)
 			{
 				debug("\t\t%s\n", getLocationString(landmark.tileIndex));
 				for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
@@ -1817,7 +1817,7 @@ void populateSeaClusters(int const factionId)
 	
 	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
-		TileInfo const &tileInfo = aiData.tileInfos.at(tileIndex);
+		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
 		MAP *tile = *MapTiles + tileIndex;
 		
 		// sea and not blocked
@@ -1889,14 +1889,14 @@ void populateSeaClusters(int const factionId)
 		
 		while (!borderTiles.empty())
 		{
-			for (int const currentTileIndex : borderTiles)
+			for (int currentTileIndex : borderTiles)
 			{
-				TileInfo const &currentTileInfo = aiData.tileInfos.at(currentTileIndex);
+				TileInfo &currentTileInfo = aiData.tileInfos.at(currentTileIndex);
 				
-				for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
+				for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 				{
-					TileInfo const &adjacentTileInfo = *tileTransit.tileInfo;
-					int const adjacentTileIndex = adjacentTileInfo.index;
+					TileInfo &adjacentTileInfo = *tileTransit.tileInfo;
+					int adjacentTileIndex = adjacentTileInfo.index;
 					
 					// available
 					
@@ -1946,7 +1946,7 @@ void populateSeaClusters(int const factionId)
 			debug("\t%s %2d\n", getLocationString(*MapTiles + tileIndex), seaClusters.at(tileIndex));
 		}
 		
-		for (std::pair<int, int> const &seaClusterAreaEntry : seaClusterAreas)
+		for (std::pair<int, int> &seaClusterAreaEntry : seaClusterAreas)
 		{
 			int seaCluster = seaClusterAreaEntry.first;
 			int seaClusterArea = seaClusterAreaEntry.second;
@@ -1975,7 +1975,7 @@ void populateLandClusters()
 	
 	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
-		TileInfo const &tileInfo = aiData.tileInfos.at(tileIndex);
+		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
 
 		// land and not blocked
 		
@@ -2020,9 +2020,9 @@ void populateLandClusters()
 			{
 				TileInfo &currentTileInfo = aiData.tileInfos.at(currentTileIndex);
 				
-				for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
+				for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 				{
-					TileInfo const &adjacentAngleTileInfo = *tileTransit.tileInfo;
+					TileInfo &adjacentAngleTileInfo = *tileTransit.tileInfo;
 					int adjacentTileIndex = adjacentAngleTileInfo.index;
 					
 					// available
@@ -2090,7 +2090,7 @@ void populateLandTransportedClusters()
 	
 	debug("populateLandTransportedClusters aiFactionId=%d\n", aiFactionId);
 	
-	std::vector<double> const &seaTransportWaitTimes = factionMovementInfos.at(aiFactionId).seaTransportWaitTimes;
+	std::vector<double> &seaTransportWaitTimes = factionMovementInfos.at(aiFactionId).seaTransportWaitTimes;
 	std::vector<int> &landTransportedClusters = aiFactionMovementInfo.landTransportedClusters;
 	
 	landTransportedClusters.resize(*MapAreaTiles); std::fill(landTransportedClusters.begin(), landTransportedClusters.end(), -1);
@@ -2099,7 +2099,7 @@ void populateLandTransportedClusters()
 	
 	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
-		TileInfo const &tileInfo = aiData.tileInfos.at(tileIndex);
+		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
 
 		// land and not blocked
 		
@@ -2150,9 +2150,9 @@ void populateLandTransportedClusters()
 			{
 				TileInfo &currentTileInfo = aiData.tileInfos[currentTileIndex];
 				
-				for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
+				for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 				{
-					TileInfo const &adjacentTileInfo = *tileTransit.tileInfo;
+					TileInfo &adjacentTileInfo = *tileTransit.tileInfo;
 					int adjacentTileIndex = adjacentTileInfo.index;
 					
 					// available
@@ -2208,8 +2208,8 @@ void populateTransfers(int factionId)
 	
 	debug("populateTransfers aiFactionId=%d factionId=%d\n", aiFactionId, factionId);
 	
-	std::vector<int> const &landClusters = aiFactionMovementInfo.landClusters;
-	std::vector<int> const &seaClusters = aiFactionMovementInfo.seaClusters;
+	std::vector<int> &landClusters = aiFactionMovementInfo.landClusters;
+	std::vector<int> &seaClusters = aiFactionMovementInfo.seaClusters;
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<Transfer>>> &transfers = aiFactionMovementInfo.transfers;
 	robin_hood::unordered_flat_map<MAP *, std::vector<Transfer>> &oceanBaseTransfers = aiFactionMovementInfo.oceanBaseTransfers;
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_set<int>> &connectedClusters = aiFactionMovementInfo.connectedClusters;
@@ -2251,10 +2251,10 @@ void populateTransfers(int factionId)
 		
 		// iterate adjacent tiles
 		
-		for (TileTransit const &tileTransit : tileInfo.tileTransits)
+		for (TileTransit &tileTransit : tileInfo.tileTransits)
 		{
-			TileInfo const &adjacentTileInfo = *tileTransit.tileInfo;
-			int const adjacentTileIndex = adjacentTileInfo.index;
+			TileInfo &adjacentTileInfo = *tileTransit.tileInfo;
+			int adjacentTileIndex = adjacentTileInfo.index;
 			MAP *adjacentTile = adjacentTileInfo.tile;
 			
 			// sea
@@ -2313,9 +2313,9 @@ void populateTransfers(int factionId)
 		
 		// process adjacent tiles
 		
-		for (TileTransit const &tileTransit : baseTileInfo.tileTransits)
+		for (TileTransit &tileTransit : baseTileInfo.tileTransits)
 		{
-			TileInfo const *adjacentTileInfo = tileTransit.tileInfo;
+			TileInfo *adjacentTileInfo = tileTransit.tileInfo;
 			MAP *adjacentTile = adjacentTileInfo->tile;
 			
 			// ocean
@@ -2371,7 +2371,7 @@ void populateTransfers(int factionId)
 		
 		while (!openNodes.empty())
 		{
-			for (RemoteConnection const &openNode : openNodes)
+			for (RemoteConnection &openNode : openNodes)
 			{
 				for (int cluster : connectedClusters.at(openNode.remoteCluster))
 				{
@@ -2413,17 +2413,17 @@ void populateTransfers(int factionId)
 //	{
 //		debug("transfers\n");
 //		
-//		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<Transfer>>> const &transferEntry : aiFactionMovementInfo.transfers)
+//		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<Transfer>>> &transferEntry : aiFactionMovementInfo.transfers)
 //		{
 //			int landCluster = transferEntry.first;
 //			
-//			for (robin_hood::pair<int, std::vector<Transfer>> const &landClusterTransferEntry : transferEntry.second)
+//			for (robin_hood::pair<int, std::vector<Transfer>> &landClusterTransferEntry : transferEntry.second)
 //			{
 //				int seaCluster = landClusterTransferEntry.first;
 //				
 //				debug("\t%d -> %d\n", landCluster, seaCluster);
 //				
-//				for (Transfer const &transfer : landClusterTransferEntry.second)
+//				for (Transfer &transfer : landClusterTransferEntry.second)
 //				{
 //					debug("\t\t%s -> %s\n", getLocationString(transfer.passengerStop), getLocationString(transfer.transportStop));
 //				}
@@ -2434,13 +2434,13 @@ void populateTransfers(int factionId)
 //		
 //		debug("oceanBaseTransfers\n");
 //		
-//		for (robin_hood::pair<MAP *, std::vector<Transfer>> const &oceanBaseTransferEntry : aiFactionMovementInfo.oceanBaseTransfers)
+//		for (robin_hood::pair<MAP *, std::vector<Transfer>> &oceanBaseTransferEntry : aiFactionMovementInfo.oceanBaseTransfers)
 //		{
 //			MAP *baseTile = oceanBaseTransferEntry.first;
 //			
 //			debug("\t%s\n", getLocationString(baseTile));
 //			
-//			for (Transfer const &transfer : oceanBaseTransferEntry.second)
+//			for (Transfer &transfer : oceanBaseTransferEntry.second)
 //			{
 //				debug("\t\t%s -> %s\n", getLocationString(transfer.passengerStop), getLocationString(transfer.transportStop));
 //			}
@@ -2449,7 +2449,7 @@ void populateTransfers(int factionId)
 //		
 //		debug("connectedClusters\n");
 //		
-//		for (robin_hood::pair<int, robin_hood::unordered_flat_set<int>> const &connectedClusterEntry : aiFactionMovementInfo.connectedClusters)
+//		for (robin_hood::pair<int, robin_hood::unordered_flat_set<int>> &connectedClusterEntry : aiFactionMovementInfo.connectedClusters)
 //		{
 //			int cluster1 = connectedClusterEntry.first;
 //			
@@ -2468,15 +2468,15 @@ void populateTransfers(int factionId)
 //	{
 //		debug("firstConnectedClusters\n");
 //		
-//		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_set<int>>> const &connectingClusterEntry : firstConnectedClusters)
+//		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_set<int>>> &connectingClusterEntry : firstConnectedClusters)
 //		{
 //			int initialCluster = connectingClusterEntry.first;
-//			robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_set<int>> const &initialConnectingClusters = connectingClusterEntry.second;
+//			robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_set<int>> &initialConnectingClusters = connectingClusterEntry.second;
 //			
-//			for (robin_hood::pair<int, robin_hood::unordered_flat_set<int>> const &initialConnectingClusterEntry : initialConnectingClusters)
+//			for (robin_hood::pair<int, robin_hood::unordered_flat_set<int>> &initialConnectingClusterEntry : initialConnectingClusters)
 //			{
 //				int terminalCluster = initialConnectingClusterEntry.first;
-//				robin_hood::unordered_flat_set<int> const &initialTerminslConnectingClusters = initialConnectingClusterEntry.second;
+//				robin_hood::unordered_flat_set<int> &initialTerminslConnectingClusters = initialConnectingClusterEntry.second;
 //				
 //				for (int firstCluster : initialTerminslConnectingClusters)
 //				{
@@ -2639,7 +2639,7 @@ void populateSharedSeas()
 double getVehicleApproachTime(int vehicleId, MAP const *dst)
 {
 	VEH *vehicle = &Vehs[vehicleId];
-	MAP const *vehicleTile = getVehicleMapTile(vehicleId);
+	MAP *vehicleTile = getVehicleMapTile(vehicleId);
 	return getUnitApproachTime(vehicle->faction_id, vehicle->unit_id, vehicleTile, dst);
 }
 double getVehicleApproachTime(int vehicleId, MAP const *org, MAP const *dst)
@@ -2652,12 +2652,12 @@ double getUnitApproachTime(int const factionId, int const unitId, MAP const *org
 	Profiling::start("- getUnitApproachTime");
 	
 	UNIT *unit = &Units[unitId];
-	int const unitSpeed = getUnitSpeed(factionId, unitId);
-	MovementType const movementType = getUnitBasicMovementType(factionId, unitId);
+	int unitSpeed = getUnitSpeed(factionId, unitId);
+	MovementType movementType = getUnitBasicMovementType(factionId, unitId);
 	
 	// check cached values
 	
-	double const cachedUnitApproachTime = getCachedUnitApproachTime(factionId, movementType, org, dst);
+	double cachedUnitApproachTime = getCachedUnitApproachTime(factionId, movementType, org, dst);
 	if (cachedUnitApproachTime >= 0)
 	{
 		Profiling::stop("- getUnitApproachTime");
@@ -2715,7 +2715,7 @@ double getRangedAirTravelTime(int factionId, int chassisId, int speed, MAP *org,
 	assert(chassisId == CHS_NEEDLEJET || chassisId == CHS_COPTER || chassisId == CHS_MISSILE);
 	assert(speed > 0);
 	
-	std::vector<int> const &airClusters = factionMovementInfos.at(factionId).airClusters.at(chassisId).at(speed);
+	std::vector<int> &airClusters = factionMovementInfos.at(factionId).airClusters.at(chassisId).at(speed);
 	
 	// air clusters
 	
@@ -2742,8 +2742,8 @@ double getSeaLApproachTime(int factionId, MovementType movementType, int speed, 
 	assert(isOnMap(org));
 	assert(isOnMap(dst));
 	
-	FactionMovementInfo const &factionMovementInfo = factionMovementInfos.at(factionId);
-	std::vector<int> const &combatClusters = factionMovementInfo.seaCombatClusters;
+	FactionMovementInfo &factionMovementInfo = factionMovementInfos.at(factionId);
+	std::vector<int> &combatClusters = factionMovementInfo.seaCombatClusters;
 	
 	int seaMovementTypeIndex = movementType - SEA_MOVEMENT_TYPE_FIRST;
 	
@@ -2762,7 +2762,7 @@ double getSeaLApproachTime(int factionId, MovementType movementType, int speed, 
 	int landmarkCount = 0;
 	double maxLandmarkMovementCost = 0.0;
 	
-	for (SeaLandmark const &landmark : factionMovementInfo.seaLandmarks.at(seaMovementTypeIndex))
+	for (SeaLandmark &landmark : factionMovementInfo.seaLandmarks.at(seaMovementTypeIndex))
 	{
 		int landmarkTileIndex = landmark.tileIndex;
 		int landmarkCombatCluster = combatClusters.at(landmarkTileIndex);
@@ -2809,9 +2809,9 @@ double getLandLApproachTime(int factionId, MovementType movementType, int speed,
 	assert(isOnMap(org));
 	assert(isOnMap(dst));
 	
-	FactionInfo const &factionInfo = aiData.factionInfos.at(factionId);
-	FactionMovementInfo const &factionMovementInfo = factionMovementInfos.at(factionId);
-	std::vector<int> const &combatClusters = factionMovementInfo.landCombatClusters;
+	FactionInfo &factionInfo = aiData.factionInfos.at(factionId);
+	FactionMovementInfo &factionMovementInfo = factionMovementInfos.at(factionId);
+	std::vector<int> &combatClusters = factionMovementInfo.landCombatClusters;
 	
 	int landMovementTypeIndex = movementType - LAND_MOVEMENT_TYPE_FIRST;
 	
@@ -2830,7 +2830,7 @@ double getLandLApproachTime(int factionId, MovementType movementType, int speed,
 	int landmarkCount = 0;
 	double maxLandmarkTravelTime = 0.0;
 	
-	for (LandLandmark const &landmark : factionMovementInfo.landLandmarks.at(landMovementTypeIndex))
+	for (LandLandmark &landmark : factionMovementInfo.landLandmarks.at(landMovementTypeIndex))
 	{
 		int landmarkTileIndex = landmark.tileIndex;
 		int landmarkCombatCluster = combatClusters.at(landmarkTileIndex);
@@ -2840,8 +2840,8 @@ double getLandLApproachTime(int factionId, MovementType movementType, int speed,
 		if (landmarkCombatCluster == -1 || landmarkCombatCluster != orgCombatCluster)
 			continue;
 		
-		LandLandmarkTileInfo const &orgLandLandmarkTileInfo = landmark.tileInfos.at(orgTileIndex);
-		LandLandmarkTileInfo const &dstLandLandmarkTileInfo = landmark.tileInfos.at(dstTileIndex);
+		LandLandmarkTileInfo &orgLandLandmarkTileInfo = landmark.tileInfos.at(orgTileIndex);
+		LandLandmarkTileInfo &dstLandLandmarkTileInfo = landmark.tileInfos.at(dstTileIndex);
 		
 		// landmarkApproachTime
 		
@@ -2909,7 +2909,7 @@ double getLandLMovementCost(int factionId, MovementType movementType, MAP *org, 
 	assert(isOnMap(org));
 	assert(isOnMap(dst));
 	
-	FactionMovementInfo const &factionMovementInfo = factionMovementInfos.at(factionId);
+	FactionMovementInfo &factionMovementInfo = factionMovementInfos.at(factionId);
 	
 	int landMovementTypeIndex = movementType - LAND_MOVEMENT_TYPE_FIRST;
 	
@@ -2927,7 +2927,7 @@ double getLandLMovementCost(int factionId, MovementType movementType, MAP *org, 
 	int landmarkCount = 0;
 	double maxLandmarkLandMovementCost = 0.0;
 	
-	for (LandLandmark const &landmark : factionMovementInfo.landLandmarks.at(landMovementTypeIndex))
+	for (LandLandmark &landmark : factionMovementInfo.landLandmarks.at(landMovementTypeIndex))
 	{
 		int landmarkTileIndex = landmark.tileIndex;
 		MAP *landmarkTile = *MapTiles + landmarkTileIndex;
@@ -2937,8 +2937,8 @@ double getLandLMovementCost(int factionId, MovementType movementType, MAP *org, 
 		if (!isSameLandCombatCluster(org, landmarkTile))
 			continue;
 		
-		LandLandmarkTileInfo const &orgLandLandmarkTileInfo = landmark.tileInfos.at(orgTileIndex);
-		LandLandmarkTileInfo const &dstLandLandmarkTileInfo = landmark.tileInfos.at(dstTileIndex);
+		LandLandmarkTileInfo &orgLandLandmarkTileInfo = landmark.tileInfos.at(orgTileIndex);
+		LandLandmarkTileInfo &dstLandLandmarkTileInfo = landmark.tileInfos.at(dstTileIndex);
 		
 		// landmarkLandMovementCost
 		
@@ -3085,9 +3085,9 @@ double getATravelTime(MovementType movementType, int const vehicleSpeed, MAP *or
 		
 		// check surrounding tiles
 		
-		for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
+		for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 		{
-			TileInfo const &adjacentTileInfo = *tileTransit.tileInfo;
+			TileInfo &adjacentTileInfo = *tileTransit.tileInfo;
 			int adjacentTileIndex = adjacentTileInfo.index;
 			MAP *adjacentTile = adjacentTileInfo.tile;
 			
@@ -3393,7 +3393,7 @@ bool isUnitDestinationReachable(int const unitId, MAP const *org, MAP const *dst
 
 bool isVehicleDestinationReachable(int const vehicleId, MAP const *org, MAP const *dst)
 {
-	VEH const *vehicle = getVehicle(vehicleId);
+	VEH *vehicle = getVehicle(vehicleId);
 	int unitId = vehicle->unit_id;
 	
 	return isUnitDestinationReachable(unitId, org, dst);
@@ -3402,7 +3402,7 @@ bool isVehicleDestinationReachable(int const vehicleId, MAP const *org, MAP cons
 
 bool isVehicleDestinationReachable(int const vehicleId, MAP const *dst)
 {
-	MAP const *vehicleTile = getVehicleMapTile(vehicleId);
+	MAP *vehicleTile = getVehicleMapTile(vehicleId);
 	
 	return isVehicleDestinationReachable(vehicleId, vehicleTile, dst);
 	
@@ -3635,7 +3635,7 @@ bool isSameSeaCluster(int const tile1SeaCluster, MAP const *tile2)
 {
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	
-	int const tile2SeaCluster = getSeaCluster(tile2);
+	int tile2SeaCluster = getSeaCluster(tile2);
 	
 	return tile1SeaCluster != -1 && tile2SeaCluster != -1 && tile1SeaCluster == tile2SeaCluster;
 	
@@ -3646,8 +3646,8 @@ bool isSameSeaCluster(MAP const *tile1, MAP const *tile2)
 	assert(tile1 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	
-	int const tile1SeaCluster = getSeaCluster(tile1);
-	int const tile2SeaCluster = getSeaCluster(tile2);
+	int tile1SeaCluster = getSeaCluster(tile1);
+	int tile2SeaCluster = getSeaCluster(tile2);
 	
 	return tile1SeaCluster != -1 && tile2SeaCluster != -1 && tile1SeaCluster == tile2SeaCluster;
 	
@@ -3663,9 +3663,9 @@ bool isMeleeAttackableFromSeaCluster(MAP const *origin, MAP const *target)
 	assert(origin >= *MapTiles && origin < *MapTiles + *MapAreaTiles);
 	assert(target >= *MapTiles && target < *MapTiles + *MapAreaTiles);
 	
-	int const originSeaCluster = getSeaCluster(origin);
+	int originSeaCluster = getSeaCluster(origin);
 	
-	for (MAP const *adjacentTile : getAdjacentTiles(target))
+	for (MAP *adjacentTile : getAdjacentTiles(target))
 	{
 		if (getSeaCluster(adjacentTile) == originSeaCluster)
 			return true;
@@ -3685,10 +3685,10 @@ bool isArtilleryAttackableFromSeaCluster(MAP const *origin, MAP const *target)
 	assert(origin >= *MapTiles && origin < *MapTiles + *MapAreaTiles);
 	assert(target >= *MapTiles && target < *MapTiles + *MapAreaTiles);
 	
-	TileInfo const &targetTileInfo = aiData.getTileInfo(target);
-	int const originSeaCluster = getSeaCluster(origin);
+	TileInfo &targetTileInfo = aiData.getTileInfo(target);
+	int originSeaCluster = getSeaCluster(origin);
 	
-	for (TileInfo const *rangeTileInfo : targetTileInfo.range2NoCenterTileInfos)
+	for (TileInfo *rangeTileInfo : targetTileInfo.range2NoCenterTileInfos)
 	{
 		if (getSeaCluster(rangeTileInfo->tile) == originSeaCluster)
 			return true;
@@ -3707,7 +3707,7 @@ int getLandCluster(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	
-	int const tileIndex = tile - *MapTiles;
+	int tileIndex = tile - *MapTiles;
 	return aiFactionMovementInfo.landClusters.at(tileIndex);
 	
 }
@@ -3722,8 +3722,8 @@ bool isSameLandCluster(MAP const *tile1, MAP const *tile2)
 	assert(tile1 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	
-	int const tile1LandCluster = getLandCluster(tile1);
-	int const tile2LandCluster = getLandCluster(tile2);
+	int tile1LandCluster = getLandCluster(tile1);
+	int tile2LandCluster = getLandCluster(tile2);
 	
 	return tile1LandCluster != -1 && tile2LandCluster != -1 && tile1LandCluster == tile2LandCluster;
 	
@@ -3739,9 +3739,9 @@ bool isMeleeAttackableFromLandCluster(MAP const *origin, MAP const *target)
 	assert(origin >= *MapTiles && origin < *MapTiles + *MapAreaTiles);
 	assert(target >= *MapTiles && target < *MapTiles + *MapAreaTiles);
 	
-	int const originLandCluster = getLandCluster(origin);
+	int originLandCluster = getLandCluster(origin);
 	
-	for (MAP const *adjacentTile : getAdjacentTiles(target))
+	for (MAP *adjacentTile : getAdjacentTiles(target))
 	{
 		if (getLandCluster(adjacentTile) == originLandCluster)
 			return true;
@@ -3761,10 +3761,10 @@ bool isArtilleryAttackableFromLandCluster(MAP const *origin, MAP const *target)
 	assert(origin >= *MapTiles && origin < *MapTiles + *MapAreaTiles);
 	assert(target >= *MapTiles && target < *MapTiles + *MapAreaTiles);
 	
-	TileInfo const &targetTileInfo = aiData.getTileInfo(target);
-	int const originLandCluster = getLandCluster(origin);
+	TileInfo &targetTileInfo = aiData.getTileInfo(target);
+	int originLandCluster = getLandCluster(origin);
 	
-	for (TileInfo const *targetTileInfo : targetTileInfo.range2NoCenterTileInfos)
+	for (TileInfo *targetTileInfo : targetTileInfo.range2NoCenterTileInfos)
 	{
 		if (getLandCluster(targetTileInfo->tile) == originLandCluster)
 			return true;
@@ -3783,7 +3783,7 @@ int getLandTransportedCluster(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	
-	int const tileIndex = tile - *MapTiles;
+	int tileIndex = tile - *MapTiles;
 	return aiFactionMovementInfo.landTransportedClusters.at(tileIndex);
 	
 }
@@ -3798,8 +3798,8 @@ bool isSameLandTransportedCluster(MAP const *tile1, MAP const *tile2)
 	assert(tile1 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	
-	int const tile1LandTransportedCluster = getLandTransportedCluster(tile1);
-	int const tile2LandTransportedCluster = getLandTransportedCluster(tile2);
+	int tile1LandTransportedCluster = getLandTransportedCluster(tile1);
+	int tile2LandTransportedCluster = getLandTransportedCluster(tile2);
 	
 	return tile1LandTransportedCluster != -1 && tile2LandTransportedCluster != -1 && tile1LandTransportedCluster == tile2LandTransportedCluster;
 	
@@ -3815,9 +3815,9 @@ bool isMeleeAttackableFromLandTransportedCluster(MAP const *origin, MAP const *t
 	assert(origin >= *MapTiles && origin < *MapTiles + *MapAreaTiles);
 	assert(target >= *MapTiles && target < *MapTiles + *MapAreaTiles);
 	
-	int const originLandTransportedCluster = getLandTransportedCluster(origin);
+	int originLandTransportedCluster = getLandTransportedCluster(origin);
 	
-	for (MAP const *adjacentTile : getAdjacentTiles(target))
+	for (MAP *adjacentTile : getAdjacentTiles(target))
 	{
 		if (getLandTransportedCluster(adjacentTile) == originLandTransportedCluster)
 			return true;
@@ -3837,10 +3837,10 @@ bool isArtilleryAttackableFromLandTransportedCluster(MAP const *origin, MAP cons
 	assert(origin >= *MapTiles && origin < *MapTiles + *MapAreaTiles);
 	assert(target >= *MapTiles && target < *MapTiles + *MapAreaTiles);
 	
-	TileInfo const &targetTileInfo = aiData.getTileInfo(target);
-	int const originLandTransportedCluster = getLandTransportedCluster(origin);
+	TileInfo &targetTileInfo = aiData.getTileInfo(target);
+	int originLandTransportedCluster = getLandTransportedCluster(origin);
 	
-	for (TileInfo const *targetTileInfo : targetTileInfo.range2NoCenterTileInfos)
+	for (TileInfo *targetTileInfo : targetTileInfo.range2NoCenterTileInfos)
 	{
 		if (getLandTransportedCluster(targetTileInfo->tile) == originLandTransportedCluster)
 			return true;
@@ -3859,7 +3859,7 @@ int getSeaCombatCluster(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	
-	int const tileIndex = tile - *MapTiles;
+	int tileIndex = tile - *MapTiles;
 	return factionMovementInfos.at(aiFactionId).seaCombatClusters.at(tileIndex);
 	
 }
@@ -3869,8 +3869,8 @@ bool isSameSeaCombatCluster(MAP const *tile1, MAP const *tile2)
 	assert(tile1 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	
-	int const tile1SeaCluster = getSeaCombatCluster(tile1);
-	int const tile2SeaCluster = getSeaCombatCluster(tile2);
+	int tile1SeaCluster = getSeaCombatCluster(tile1);
+	int tile2SeaCluster = getSeaCombatCluster(tile2);
 	
 	return tile1SeaCluster != -1 && tile2SeaCluster != -1 && tile1SeaCluster == tile2SeaCluster;
 	
@@ -3880,7 +3880,7 @@ int getLandCombatCluster(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	
-	int const tileIndex = tile - *MapTiles;
+	int tileIndex = tile - *MapTiles;
 	return factionMovementInfos.at(aiFactionId).landCombatClusters.at(tileIndex);
 	
 }
@@ -3890,8 +3890,8 @@ bool isSameLandCombatCluster(MAP const *tile1, MAP const *tile2)
 	assert(tile1 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	assert(tile2 >= *MapTiles && tile2 < *MapTiles + *MapAreaTiles);
 	
-	int const tile1LandCluster = getLandCombatCluster(tile1);
-	int const tile2LandCluster = getLandCombatCluster(tile2);
+	int tile1LandCluster = getLandCombatCluster(tile1);
+	int tile2LandCluster = getLandCombatCluster(tile2);
 	
 	return tile1LandCluster != -1 && tile2LandCluster != -1 && tile1LandCluster == tile2LandCluster;
 	
@@ -3904,7 +3904,7 @@ int getCluster(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	
-	TileInfo const &tileInfo = aiData.getTileInfo(tile);
+	TileInfo &tileInfo = aiData.getTileInfo(tile);
 	
 	return (tileInfo.ocean ? getSeaCluster(tile) : getLandCluster(tile));
 	
@@ -3917,11 +3917,11 @@ int getVehicleCluster(int const vehicleId)
 {
 	assert(vehicleId >= 0 && vehicleId < *VehCount);
 	
-	VEH const *vehicle = getVehicle(vehicleId);
-	MAP const *vehicleTile = getVehicleMapTile(vehicleId);
-	int const triad = vehicle->triad();
+	VEH *vehicle = getVehicle(vehicleId);
+	MAP *vehicleTile = getVehicleMapTile(vehicleId);
+	int triad = vehicle->triad();
 	
-	int const cluster = -1;
+	int cluster = -1;
 	
 	switch (triad)
 	{
@@ -3956,13 +3956,13 @@ robin_hood::unordered_flat_set<int> &getConnectedClusters(int const cluster)
 
 robin_hood::unordered_flat_set<int> &getConnectedSeaClusters(MAP const *landTile)
 {
-	int const landCluster = getLandCluster(landTile);
+	int landCluster = getLandCluster(landTile);
 	return getConnectedClusters(landCluster);
 }
 
 robin_hood::unordered_flat_set<int> &getConnectedLandClusters(MAP const *seaTile)
 {
-	int const seaCluster = getSeaCluster(seaTile);
+	int seaCluster = getSeaCluster(seaTile);
 	return getConnectedClusters(seaCluster);
 }
 
@@ -3973,8 +3973,8 @@ robin_hood::unordered_flat_set<int> &getFirstConnectedClusters(int const originC
 
 robin_hood::unordered_flat_set<int> &getFirstConnectedClusters(MAP const *origin, MAP const *dst)
 {
-	int const originCluster = getCluster(origin);
-	int const dstCluster = getCluster(dst);
+	int originCluster = getCluster(origin);
+	int dstCluster = getCluster(dst);
 	
 	return getFirstConnectedClusters(originCluster, dstCluster);
 }
@@ -3983,9 +3983,9 @@ int getEnemyAirCluster(int const factionId, int const chassisId, int const speed
 {
 	assert(isOnMap(tile));
 	
-	int const tileIndex = tile - *MapTiles;
+	int tileIndex = tile - *MapTiles;
 	
-	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> const &airClusters = factionMovementInfos.at(factionId).airClusters;
+	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusters = factionMovementInfos.at(factionId).airClusters;
 	
 	// safely return -1 if no key
 	
@@ -4103,7 +4103,7 @@ bool isSameEnemyLandCombatCluster(int vehicleId, MAP *tile2)
 
 bool isConnected(int cluster1, int cluster2)
 {
-	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_set<int>> const &connectedClusters = aiFactionMovementInfo.connectedClusters;
+	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_set<int>> &connectedClusters = aiFactionMovementInfo.connectedClusters;
 	
 	if (connectedClusters.find(cluster1) == connectedClusters.end())
 		return false;

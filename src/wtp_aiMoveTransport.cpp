@@ -249,7 +249,7 @@ void moveSeaTransportStrategy(int vehicleId)
 			return;
 		
 		MAP *vehicleTile = getVehicleMapTile(vehicleId);
-		MAP const *destination = task->getDestination();
+		MAP *destination = task->getDestination();
 		double currentTravelTime = getVehicleTravelTime(vehicleId, destination);
 		if (currentTravelTime == INF)
 			return;
@@ -546,7 +546,7 @@ bool deliverFormer(int transportVehicleId, int formerVehicleId)
 	int mostDemandingRegion = -1;
 	double minFormerRatio = DBL_MAX;
 	
-	for (const auto &kv : regionBaseCounts)
+	for (auto &kv : regionBaseCounts)
 	{
 		int region = kv.first;
 		int baseCount = kv.second;

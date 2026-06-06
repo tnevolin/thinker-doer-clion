@@ -87,7 +87,7 @@ void __cdecl wtp_mod_enemy_turn(int factionId)
 		{
 			strategy(true);
 		}
-		catch(const std::exception &e)
+		catch(std::exception &e)
 		{
 			debug(e.what());debug("\n");flushlog();
 			std::rethrow_exception(std::current_exception());
@@ -880,7 +880,7 @@ void populateTileInfoBaseRanges()
 		
 		for (int baseId = 0; baseId < *BaseCount; baseId++)
 		{
-			BASE const &base = Bases[baseId];
+			BASE &base = Bases[baseId];
 			MAP *baseTile = getBaseMapTile(baseId);
 			
 			if (base.faction_id != aiFactionId)
@@ -1002,7 +1002,7 @@ void populateRegionAreas()
 //	{
 //		debug("\tseaRegionAreas\n");
 //		
-//		for (std::pair<int, int> const &seaRegionAreaEntry : aiData.seaRegionAreas)
+//		for (std::pair<int, int> &seaRegionAreaEntry : aiData.seaRegionAreas)
 //		{
 //			int seaRegion = seaRegionAreaEntry.first;
 //			int seaRegionArea = seaRegionAreaEntry.second;
@@ -1011,7 +1011,7 @@ void populateRegionAreas()
 //		
 //		debug("\tadjacentSeaRegions\n");
 //		
-//		for (TileInfo const &tileInfo : aiData.tileInfos)
+//		for (TileInfo &tileInfo : aiData.tileInfos)
 //		{
 //			if (tileInfo.adjacentSeaRegions.empty())
 //				continue;
@@ -1113,7 +1113,7 @@ void populatePlayerBaseRanges()
 		{
 			TileInfo &tileInfo = aiData.getTileInfo(tile);
 			
-			for (TileTransit const &tileTransit : tileInfo.tileTransits)
+			for (TileTransit &tileTransit : tileInfo.tileTransits)
 			{
 				TileInfo *adjacentTileInfo = tileTransit.tileInfo;
 				
@@ -1163,7 +1163,7 @@ void populatePlayerBaseRanges()
 		{
 			TileInfo &tileInfo = aiData.getTileInfo(tile);
 			
-			for (TileTransit const &tileTransit : tileInfo.tileTransits)
+			for (TileTransit &tileTransit : tileInfo.tileTransits)
 			{
 				TileInfo *adjacentTileInfo = tileTransit.tileInfo;
 				
@@ -1213,7 +1213,7 @@ void populatePlayerBaseRanges()
 		{
 			TileInfo &tileInfo = aiData.getTileInfo(tile);
 			
-			for (TileTransit const &tileTransit : tileInfo.tileTransits)
+			for (TileTransit &tileTransit : tileInfo.tileTransits)
 			{
 				TileInfo *adjacentTileInfo = tileTransit.tileInfo;
 				
@@ -1234,7 +1234,7 @@ void populatePlayerBaseRanges()
 	
 	if (DEBUG)
 	{
-		for (TileInfo const &tileInfo : aiData.tileInfos)
+		for (TileInfo &tileInfo : aiData.tileInfos)
 		{
 			debug("\t%s", getLocationString(tileInfo.tile));
 			int range;
@@ -1621,7 +1621,7 @@ void populateBaseInfos()
 	
 	for (int baseId = 0; baseId < *BaseCount; baseId++)
 	{
-		BASE const *base = getBase(baseId);
+		BASE *base = getBase(baseId);
 		BaseInfo &baseInfo = aiData.baseInfos.at(baseId);
 		
 		// store base snapshot
@@ -1662,8 +1662,8 @@ void populateBaseInfos()
 		baseGainSummary.clear();
 		for (int baseId = 0; baseId < *BaseCount; baseId++)
 		{
-			BASE const *base = getBase(baseId);
-			BaseInfo const &baseInfo = aiData.getBaseInfo(baseId);
+			BASE *base = getBase(baseId);
+			BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
 			
 			// this faction
 			
@@ -1853,10 +1853,10 @@ void populatePlayerGlobalVariables()
 			double labsMultiplier = getBaseLabsMultiplier(baseId);
 			double psychMultiplier = getBasePsychMultiplier(baseId);
 			
-			double const baseSquareMineralIntake = static_cast<double>(ResInfo->base_sq.mineral) * 1.0;
-			double const baseSquareEconomyIntake = static_cast<double>(ResInfo->base_sq.energy) * energyEfficiencyCoefficient * economyAllocation;
-			double const baseSquareLabsIntake = static_cast<double>(ResInfo->base_sq.energy) * energyEfficiencyCoefficient * labsAllocation;
-			double const baseSquarePsychIntake = static_cast<double>(ResInfo->base_sq.energy) * energyEfficiencyCoefficient * psychAllocation;
+			double baseSquareMineralIntake = static_cast<double>(ResInfo->base_sq.mineral) * 1.0;
+			double baseSquareEconomyIntake = static_cast<double>(ResInfo->base_sq.energy) * energyEfficiencyCoefficient * economyAllocation;
+			double baseSquareLabsIntake = static_cast<double>(ResInfo->base_sq.energy) * energyEfficiencyCoefficient * labsAllocation;
+			double baseSquarePsychIntake = static_cast<double>(ResInfo->base_sq.energy) * energyEfficiencyCoefficient * psychAllocation;
 			
 			double baseCitizensMineralIntake = base->mineral_intake - baseSquareMineralIntake;
 			double baseCitizensEconomyIntake = base->energy_intake_2 * energyEfficiencyCoefficient * economyAllocation - baseSquareEconomyIntake;
@@ -2466,7 +2466,7 @@ void populateDangerZones()
 	
 	for (int vehicleId : reachingUnfriendlyVehicleIds)
 	{
-		for (MoveAction const &moveAction : getVehicleMoveActions(vehicleId, false))
+		for (MoveAction &moveAction : getVehicleMoveActions(vehicleId, false))
 		{
 			TileInfo &tileInfo = aiData.getTileInfo(moveAction.destination);
 			tileInfo.unfriendlyDangerZone = true;
@@ -2595,7 +2595,7 @@ void populateDangerZones()
 	
 	for (int vehicleId : reachingHostileVehicleIds)
 	{
-		for (MoveAction const &moveAction : getVehicleMoveActions(vehicleId, true))
+		for (MoveAction &moveAction : getVehicleMoveActions(vehicleId, true))
 		{
 			TileInfo &tileInfo = aiData.getTileInfo(moveAction.destination);
 			tileInfo.hostileDangerZone = true;
@@ -2687,7 +2687,7 @@ void populateDangerZones()
 	
 	for (int vehicleId : reachingArtilleryVehicleIds)
 	{
-		for (MoveAction const &moveAction : getVehicleMoveActions(vehicleId, true))
+		for (MoveAction &moveAction : getVehicleMoveActions(vehicleId, true))
 		{
 			TileInfo &tileInfo = aiData.getTileInfo(moveAction.destination);
 			tileInfo.artilleryDangerZone = true;
@@ -2714,7 +2714,7 @@ void populateDangerZones()
 		
 		if (isMeleeVehicle(vehicleId))
 		{
-			for (robin_hood::pair<MAP *, double> const &potentialMeleeAttackTarget : getPotentialMeleeAttackTargets(vehicleId))
+			for (robin_hood::pair<MAP *, double> &potentialMeleeAttackTarget : getPotentialMeleeAttackTargets(vehicleId))
 			{
 				MAP *tile = potentialMeleeAttackTarget.first;
 				double hastyCoefficient = potentialMeleeAttackTarget.second;
@@ -2729,7 +2729,7 @@ void populateDangerZones()
 		
 		if (isArtilleryVehicle(vehicleId))
 		{
-			for (robin_hood::pair<MAP *, double> const &potentialArtilleryAttackTarget : getPotentialArtilleryAttackTargets(vehicleId))
+			for (robin_hood::pair<MAP *, double> &potentialArtilleryAttackTarget : getPotentialArtilleryAttackTargets(vehicleId))
 			{
 				MAP *tile = potentialArtilleryAttackTarget.first;
 				TileInfo &tileInfo = aiData.getTileInfo(tile);
@@ -2758,7 +2758,7 @@ void populateEnemyStacks()
 	{
 		VEH *vehicle = getVehicle(vehicleId);
 		MAP *vehicleTile = getVehicleMapTile(vehicleId);
-		TileInfo const &vehicleTileInfo = aiData.tileInfos.at(vehicleTile - *MapTiles);
+		TileInfo &vehicleTileInfo = aiData.tileInfos.at(vehicleTile - *MapTiles);
 		
 		// ignore sea aliens
 		
@@ -3137,7 +3137,7 @@ void populateEnemyBaseCaptureGains()
 //	{
 //		for (int baseId = 0; baseId < *BaseCount; baseId++)
 //		{
-//			BaseInfo const &baseInfo = aiData.getBaseInfo(baseId);
+//			BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
 //			
 //			debug("\t%-25s\n", getBase(baseId)->name);
 //			
@@ -3332,19 +3332,19 @@ void populateEnemyBaseProtectorWeights()
 //			
 //			for (int baseId : factionInfo.baseIds)
 //			{
-//				BaseInfo const &baseInfo = aiData.getBaseInfo(baseId);
+//				BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
 //				
 //				debug("\t\t%-25s\n", Bases[baseId].name);
 //				
-//				for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, double>> const &protectorUnitWeightEntry : baseInfo.protectorUnitWeights)
+//				for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, double>> &protectorUnitWeightEntry : baseInfo.protectorUnitWeights)
 //				{
-//					int const factionId = protectorUnitWeightEntry.first;
-//					robin_hood::unordered_flat_map<int, double> const &factionProtectorUnitWeights = protectorUnitWeightEntry.second;
+//					int factionId = protectorUnitWeightEntry.first;
+//					robin_hood::unordered_flat_map<int, double> &factionProtectorUnitWeights = protectorUnitWeightEntry.second;
 //					
-//					for (robin_hood::pair<int, double> const &factionProtectorUnitWeightEntry : factionProtectorUnitWeights)
+//					for (robin_hood::pair<int, double> &factionProtectorUnitWeightEntry : factionProtectorUnitWeights)
 //					{
-//						int const unitId = factionProtectorUnitWeightEntry.first;
-//						double const weight = factionProtectorUnitWeightEntry.second;
+//						int unitId = factionProtectorUnitWeightEntry.first;
+//						double weight = factionProtectorUnitWeightEntry.second;
 //						
 //						debug("\t\t\t%-24s %-32s weight=%5.2f\n", MFactions[factionId].noun_faction, Units[unitId].name, weight);
 //						
@@ -3691,7 +3691,7 @@ void evaluateDefense(MAP *tile, CombatData &combatData, double targetGain)
 	Profiling::start("evaluateBaseDefense", "populateAIData");
 	
 	std::array<FactionInfo, MaxPlayerNum> &factionInfos = aiData.factionInfos;
-	std::vector<int> const &unfriendlyFactionIds = aiData.unfriendlyFactionIds;
+	std::vector<int> &unfriendlyFactionIds = aiData.unfriendlyFactionIds;
 	
 	// initialize combat data
 	
@@ -4078,7 +4078,7 @@ void evaluateDefense(MAP *tile, CombatData &combatData, double targetGain)
 	debug("\tassailants\n");
 	for (int foeFactionId : unfriendlyFactionIds)
 	{
-		for (robin_hood::pair<int, double> const &foeVehicleWeightsEntry : foeVehicleWeights.at(foeFactionId))
+		for (robin_hood::pair<int, double> &foeVehicleWeightsEntry : foeVehicleWeights.at(foeFactionId))
 		{
 			int foeVehicleId = foeVehicleWeightsEntry.first;
 			double foeVehicleWeight = foeVehicleWeightsEntry.second;
@@ -4254,11 +4254,11 @@ void evaluateBaseProbeDefense()
 			
 			// offense multiplier
 			
-			double const offenseMultiplier = getVehicleStrenghtMultiplier(vehicleId);
+			double offenseMultiplier = getVehicleStrenghtMultiplier(vehicleId);
 			
 			// defense multiplier
 			
-			double const defenseMultiplier = 1.0 / (getBaseDefenseMultiplier(baseId, 4) * getSensorDefenseMultiplier(aiFactionId, baseTile));
+			double defenseMultiplier = 1.0 / (getBaseDefenseMultiplier(baseId, 4) * getSensorDefenseMultiplier(aiFactionId, baseTile));
 			
 			if (defenseMultiplier <= 0.0)
 			{
@@ -4272,7 +4272,7 @@ void evaluateBaseProbeDefense()
 			if (approachTime == INF)
 				continue;
 			
-			double const approachTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, approachTime);
+			double approachTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, approachTime);
 
 			// safeTime
 
@@ -4280,7 +4280,7 @@ void evaluateBaseProbeDefense()
 			
 			// weight
 			
-			double const weight = threatCoefficient * offenseMultiplier * defenseMultiplier * approachTimeCoefficient;
+			double weight = threatCoefficient * offenseMultiplier * defenseMultiplier * approachTimeCoefficient;
 			totalWeight += weight;
 			
 			debug
@@ -4308,7 +4308,7 @@ void evaluateBaseProbeDefense()
 		
 		Profiling::start("compute required protection", "evaluate base threat");
 		
-		double const requiredEffect = sqrt(totalWeight);
+		double requiredEffect = sqrt(totalWeight);
 		baseInfo.probeData.requiredEffect = requiredEffect;
 		
 		debug
@@ -4344,13 +4344,13 @@ void designUnits()
 	
 	// get best values
 	
-	VehWeapon const bestWeapon = getFactionBestWeapon(aiFactionId);
-	VehArmor const bestArmor = getFactionBestArmor(aiFactionId);
-	VehArmor const attackerArmor = getFactionBestArmor(aiFactionId, bestWeapon);
-	VehWeapon const defenderWeapon = getFactionBestWeapon(aiFactionId, (bestArmor + 1) / 2);
-	VehChassis const fastLandChassis = (has_chassis(aiFactionId, CHS_HOVERTANK) ? CHS_HOVERTANK : CHS_SPEEDER);
-	VehChassis const fastSeaChassis = (has_chassis(aiFactionId, CHS_CRUISER) ? CHS_CRUISER : CHS_FOIL);
-	VehReactor const bestReactor = best_reactor(aiFactionId);
+	VehWeapon bestWeapon = getFactionBestWeapon(aiFactionId);
+	VehArmor bestArmor = getFactionBestArmor(aiFactionId);
+	VehArmor attackerArmor = getFactionBestArmor(aiFactionId, bestWeapon);
+	VehWeapon defenderWeapon = getFactionBestWeapon(aiFactionId, (bestArmor + 1) / 2);
+	VehChassis fastLandChassis = (has_chassis(aiFactionId, CHS_HOVERTANK) ? CHS_HOVERTANK : CHS_SPEEDER);
+	VehChassis fastSeaChassis = (has_chassis(aiFactionId, CHS_CRUISER) ? CHS_CRUISER : CHS_FOIL);
+	VehReactor bestReactor = best_reactor(aiFactionId);
 	
 	// fast colony
 	

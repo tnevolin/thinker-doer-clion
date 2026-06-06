@@ -130,7 +130,7 @@ void populateExpansionData()
 //		
 //		for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
 //		{
-//			TileExpansionInfo const &tileExpansionInfo = getTileExpansionInfo(tile);
+//			TileExpansionInfo &tileExpansionInfo = getTileExpansionInfo(tile);
 //			
 //			if (tileExpansionInfo.validBuildSite)
 //			{
@@ -147,7 +147,7 @@ void populateExpansionData()
 //		
 //		for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
 //		{
-//			TileExpansionInfo const &tileExpansionInfo = getTileExpansionInfo(tile);
+//			TileExpansionInfo &tileExpansionInfo = getTileExpansionInfo(tile);
 //			
 //			if (tileExpansionInfo.validWorkTile)
 //			{
@@ -261,7 +261,7 @@ void analyzeBasePlacementSites()
 	for (int vehicleId : aiData.colonyVehicleIds)
 	{
 		MAP *vehicleTile = getVehicleMapTile(vehicleId);
-		TileInfo const &vehicleTileInfo = aiData.getVehicleTileInfo(vehicleId);
+		TileInfo &vehicleTileInfo = aiData.getVehicleTileInfo(vehicleId);
 		
 		// warzone
 		
@@ -546,7 +546,7 @@ void analyzeBasePlacementSites()
 		int destinationIndex = vehicleDestinations.at(vehicleIndex);
 		MAP *destination = destinations.at(destinationIndex);
 
-		TaskType const taskType = aiData.getTileInfo(destination).unfriendlyDangerZone ? TT_SKIP : TT_BUILD;
+		TaskType taskType = aiData.getTileInfo(destination).unfriendlyDangerZone ? TT_SKIP : TT_BUILD;
 		transitVehicle(Task(vehicleId, taskType, destination));
 		
 	}
@@ -586,11 +586,11 @@ double getBuildSiteBaseGain(MAP *buildSite)
 	
 	for (MAP *tile : buildSiteWorkTiles.at(buildSite))
 	{
-		TileExpansionInfo const &tileExpansionInfo = getTileExpansionInfo(tile);
+		TileExpansionInfo &tileExpansionInfo = getTileExpansionInfo(tile);
 		
 		// compute yieldInfo
 		
-		Resource const &averageYield = tileExpansionInfo.averageYield;
+		Resource &averageYield = tileExpansionInfo.averageYield;
 		double nutrientSurplus = averageYield.nutrient - (double)Rules->nutrient_intake_req_citizen;
 		double mineralIntake = averageYield.mineral;
 		double energyIntake = averageYield.energy;
@@ -640,7 +640,7 @@ double getBuildSiteBaseGain(MAP *buildSite)
 	std::sort(yieldInfos.begin(), yieldInfos.end(), compareYieldInfoByScoreAndResourceScore);
 	Profiling::stop("sort scores");
 	
-	int const nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, -1);
+	int nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, -1);
 	
 	int popSize = 1;
 	int nutrientBoxSize = nutrientCostFactor * (1 + popSize);
@@ -681,7 +681,7 @@ double getBuildSiteBaseGain(MAP *buildSite)
 //	{
 //		debug("\tyieldInfos\n");
 //		
-//		for (YieldInfo const &yieldInfo : yieldInfos)
+//		for (YieldInfo &yieldInfo : yieldInfos)
 //		{
 //			debug
 //			(
@@ -794,7 +794,7 @@ double getBuildSitePlacementScore(MAP *tile)
 		{
 			MAP *baseTile = getBaseMapTile(baseId);
 			int baseTileIndex = baseTile - *MapTiles;
-			TileInfo const &baseTileInfo = aiData.tileInfos.at(baseTileIndex);
+			TileInfo &baseTileInfo = aiData.tileInfos.at(baseTileIndex);
 			
 			if (baseTile->region == tile->region)
 			{
@@ -883,7 +883,7 @@ bool isValidBuildSite(MAP *tile, int factionId)
 	
 	int x = getX(tile);
 	int y = getY(tile);
-	TileInfo const &tileInfo = aiData.getTileInfo(tile);
+	TileInfo &tileInfo = aiData.getTileInfo(tile);
 	
 	// cannot build at volcano
 	
@@ -973,9 +973,9 @@ bool isValidWorkTile(MAP *baseTile, MAP *workTile)
 	int baseTileY = getY(baseTile);
 	int workTileX = getX(workTile);
 	int workTileY = getY(workTile);
-	TileInfo const &baseTileInfo = aiData.getTileInfo(baseTile);
-	TileInfo const &workTileInfo = aiData.getTileInfo(workTile);
-	TileExpansionInfo const &workTileExpansionInfo = getTileExpansionInfo(workTile);
+	TileInfo &baseTileInfo = aiData.getTileInfo(baseTile);
+	TileInfo &workTileInfo = aiData.getTileInfo(workTile);
+	TileExpansionInfo &workTileExpansionInfo = getTileExpansionInfo(workTile);
 	
 	// cannot terraform volcano
 	
@@ -1171,7 +1171,7 @@ Resource getAverageTileYield(MAP *tile)
 		TileYield bestYield;
 		double bestYieldScore = 0.0;
 		
-		for (std::vector<int> const &terraformingOption : terraformingOptions)
+		for (std::vector<int> &terraformingOption : terraformingOptions)
 		{
 			TileYield yield = getTerraformingYield(-1, tile, terraformingOption);
 			double yieldScore = getTerraformingResourceScore(yield);

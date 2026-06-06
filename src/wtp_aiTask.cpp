@@ -175,7 +175,7 @@ int Task::getDestinationRange() const
 	int x = getX(destination);
 	int y = getY(destination);
 
-	int const vehicleId = getVehicleId();
+	int vehicleId = getVehicleId();
 
 	if (vehicleId == -1)
 	{
@@ -184,7 +184,7 @@ int Task::getDestinationRange() const
 		return 0;
 	}
 
-	VEH const *vehicle = getVehicle(vehicleId);
+	VEH *vehicle = getVehicle(vehicleId);
 
 	return map_range(vehicle->x, vehicle->y, x, y);
 
@@ -203,10 +203,10 @@ char const *Task::toString() const
     static char buffers[BUFFER_COUNT][BUFFER_SIZE];
     static int index = 0;
     
-    int const i = index;
+    int i = index;
     index = (index + 1) % BUFFER_COUNT;
     
-    int const vehicleId = getVehicleIdByPad0(vehiclePad0);
+    int vehicleId = getVehicleIdByPad0(vehiclePad0);
     
 	if (vehicleId == -1)
 	{
@@ -214,7 +214,7 @@ char const *Task::toString() const
 	}
 	else
 	{
-		VEH const &vehicle = Vehs[vehicleId];
+		VEH &vehicle = Vehs[vehicleId];
 		snprintf
 		(
 			buffers[i],
@@ -235,7 +235,7 @@ int Task::execute() const
 {
 	debug("Task::execute()\n");
 
-	int const vehicleId = getVehicleId();
+	int vehicleId = getVehicleId();
 
 	if (vehicleId == -1)
 	{
@@ -251,8 +251,8 @@ int Task::execute(int vehicleId) const
 {
 	debug("Task::execute(%d)\n", vehicleId);
 
-	VEH const *vehicle = getVehicle(vehicleId);
-	MAP const *vehicleTile = getVehicleMapTile(vehicleId);
+	VEH *vehicle = getVehicle(vehicleId);
+	MAP *vehicleTile = getVehicleMapTile(vehicleId);
 
 	// move
 
@@ -275,7 +275,7 @@ int Task::execute(int vehicleId) const
 
 		if (getRange(vehicleTile, destination) == 1 && getVehicleRemainingMoves(vehicleId) >= Rules->move_rate_roads && isBaseAt(destination))
 		{
-			int const destinationOwner = static_cast<uint8_t>(destination->owner);
+			int destinationOwner = static_cast<uint8_t>(destination->owner);
 
 			if (destinationOwner != -1 && isNeutral(vehicle->faction_id, destinationOwner))
 			{
@@ -763,8 +763,8 @@ bool compareTaskPriorityDescending(Task const &a, Task const &b)
 
 void setTask(Task const &task)
 {
-	int const vehicleId = task.getVehicleId();
-	VEH const &vehicle = Vehs[vehicleId];
+	int vehicleId = task.getVehicleId();
+	VEH &vehicle = Vehs[vehicleId];
 	debug("setTask( vehicleId=%4d type=%2d )\n", vehicleId, task.type);
 
 	if (aiData.tasks.find(vehicle.pad_0) == aiData.tasks.end())
@@ -784,7 +784,7 @@ bool hasTask(int const vehicleId)
 
 void deleteVehicleTasks(int const vehicleId)
 {
-	VEH const &vehicle = Vehs[vehicleId];
+	VEH &vehicle = Vehs[vehicleId];
 	aiData.tasks.erase(vehicle.pad_0);
 }
 
@@ -792,7 +792,7 @@ void deleteVehicleTasks(int const vehicleId)
 // automatically constructs TaskHeap if was not exist
 TaskHeap &getTaskHeap(int const vehicleId)
 {
-	int const vehiclePad0 = Vehs[vehicleId].pad_0;
+	int vehiclePad0 = Vehs[vehicleId].pad_0;
 
 	if (aiData.tasks.find(vehiclePad0) == aiData.tasks.end())
 	{
@@ -806,7 +806,7 @@ TaskHeap &getTaskHeap(int const vehicleId)
 // returns highest priority task
 Task *getTask(int const vehicleId)
 {
-	int const vehiclePad0 = Vehs[vehicleId].pad_0;
+	int vehiclePad0 = Vehs[vehicleId].pad_0;
 
 	if (aiData.tasks.find(vehiclePad0) == aiData.tasks.end())
 		return nullptr;

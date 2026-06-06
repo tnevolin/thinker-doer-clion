@@ -377,7 +377,7 @@ struct BaseProbeData
 	
 	void addVehicle(int const vehicleId, bool const present)
 	{
-		double const vehicleEffect = getVehicleMoraleMultiplier(vehicleId);
+		double vehicleEffect = getVehicleMoraleMultiplier(vehicleId);
 		
 		providedEffect += vehicleEffect;
 		
@@ -395,8 +395,8 @@ struct BaseProbeData
 	
 	double getDemand(bool const present) const
 	{
-		double const required = requiredEffect;
-		double const provided = (present ? providedEffectPresent : providedEffect);
+		double required = requiredEffect;
+		double provided = (present ? providedEffectPresent : providedEffect);
 		return ((required > 0.0 && provided < required) ? 1.0 - provided / required : 0.0);
 	}
 	
@@ -529,7 +529,7 @@ struct EnemyStackInfo
 {
 private:
 	
-	static int const BOMBARDMENT_ROUNDS = 5;
+	static constexpr int BOMBARDMENT_ROUNDS = 5;
 //	std::array<double, 2 * MaxProtoFactionNum * CombatMode_COUNT> offenseEffects;	// including location bonuses
 //	std::array<double, 2 * MaxProtoFactionNum> defenseEffects;						// excluding location bonuses
 //	std::vector<CombatEffect> unitEffects = std::vector<CombatEffect>(2 * MaxProtoFactionNum * CombatMode_COUNT);
@@ -636,7 +636,7 @@ public:
 struct TERRAFORMING_OPTION
 {
 	// recognizable name
-	const char *name;
+	char *name;
 	// land or ocean
 	bool ocean;
 	// applies to rocky tile only
@@ -654,7 +654,7 @@ struct TERRAFORMING_OPTION
 struct FormerRequest
 {
 	MAP *tile;
-	TERRAFORMING_OPTION const *option;
+	TERRAFORMING_OPTION *option;
 	double terraformingTime;
 	double income;
 };
@@ -788,8 +788,8 @@ struct Data
 	std::vector<TileInfo> tileInfos;
 	robin_hood::unordered_flat_map<int, int> regionAreas;
 	robin_hood::unordered_flat_set<int> enemyRegions;
-	std::vector<MAP const *> monoliths;
-	std::vector<MAP const *> pods;
+	std::vector<MAP *> monoliths;
+	std::vector<MAP *> pods;
 	
 	// pad_0 to vehicleId mapping
 	// [pad0] = vehicleId
@@ -808,7 +808,7 @@ struct Data
 	
 	// bunkers
 	
-	robin_hood::unordered_flat_map<MAP const *, BunkerInfo> bunkerInfos;
+	robin_hood::unordered_flat_map<MAP *, BunkerInfo> bunkerInfos;
 	
 	// faction infos
 	
@@ -865,7 +865,7 @@ struct Data
 	CombatEffectTable combatEffectTable;
 	
 	// enemy stacks
-	robin_hood::unordered_flat_map<MAP const *, EnemyStackInfo> enemyStacks;
+	robin_hood::unordered_flat_map<MAP *, EnemyStackInfo> enemyStacks;
 	bool hasEnemyStack(MAP const *tile)
 	{
 		return enemyStacks.find(tile) != enemyStacks.end();
@@ -881,7 +881,7 @@ struct Data
 	
 	// unprotected enemy bases
 	std::vector<int> emptyEnemyBaseIds;
-	robin_hood::unordered_flat_set<MAP const *> emptyEnemyBaseTiles;
+	robin_hood::unordered_flat_set<MAP *> emptyEnemyBaseTiles;
 	bool isEmptyEnemyBaseAt(MAP const *tile)
 	{
 		return emptyEnemyBaseTiles.find(tile) != emptyEnemyBaseTiles.end();

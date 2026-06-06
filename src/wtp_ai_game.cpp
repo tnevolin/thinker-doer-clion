@@ -1017,12 +1017,12 @@ double CombatData::getProtectSufficiency(bool artillery)
 	if (TRACE)
 	{
 		trace("\tassailants\n")
-		for (Combattant const &assailant : assailants)
+		for (Combattant &assailant : assailants)
 		{
 			trace("\t\t[%4d] weight=%5.2f health=%5.2f remainingHealth=%5.2f\n", getInitialVehicleIdByPad0(assailant.pad0), assailant.weight, assailant.health, assailant.remainingHealth);
 		}
 		trace("\tprotectors\n")
-		for (Combattant const &protector : protectors)
+		for (Combattant &protector : protectors)
 		{
 			trace("\t\t[%4d] weight=%5.2f health=%5.2f remainingHealth=%5.2f\n", getInitialVehicleIdByPad0(protector.pad0), protector.weight, protector.health, protector.remainingHealth);
 		}
@@ -1242,12 +1242,12 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 	if (TRACE)
 	{
 		trace("\tassailants\n")
-		for (Combattant const &assailant : assailants)
+		for (Combattant &assailant : assailants)
 		{
 			trace("\t\t[%4d] weight=%5.2f health=%5.2f remainingHealth=%5.2f\n", getInitialVehicleIdByPad0(assailant.pad0), assailant.weight, assailant.health, assailant.remainingHealth);
 		}
 		trace("\tprotectors\n")
-		for (Combattant const &protector : protectors)
+		for (Combattant &protector : protectors)
 		{
 			trace("\t\t[%4d] weight=%5.2f health=%5.2f remainingHealth=%5.2f\n", getInitialVehicleIdByPad0(protector.pad0), protector.weight, protector.health, protector.remainingHealth);
 		}
@@ -1379,12 +1379,12 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 	if (TRACE)
 	{
 		trace("\tassailants\n")
-		for (Combattant const &assailant : assailants)
+		for (Combattant &assailant : assailants)
 		{
 			trace("\t\t[%4d] weight=%5.2f health=%5.2f remainingHealth=%5.2f\n", getInitialVehicleIdByPad0(assailant.pad0), assailant.weight, assailant.health, assailant.remainingHealth);
 		}
 		trace("\tprotectors\n")
-		for (Combattant const &protector : protectors)
+		for (Combattant &protector : protectors)
 		{
 			trace("\t\t[%4d] weight=%5.2f health=%5.2f remainingHealth=%5.2f\n", getInitialVehicleIdByPad0(protector.pad0), protector.weight, protector.health, protector.remainingHealth);
 		}
@@ -1476,12 +1476,12 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 	if (TRACE)
 	{
 		trace("\tassailants\n")
-		for (Combattant const &assailant : assailants)
+		for (Combattant &assailant : assailants)
 		{
 			trace("\t\t[%4d] weight=%5.2f health=%5.2f remainingHealth=%5.2f\n", getInitialVehicleIdByPad0(assailant.pad0), assailant.weight, assailant.health, assailant.remainingHealth);
 		}
 		trace("\tprotectors\n")
-		for (Combattant const &protector : protectors)
+		for (Combattant &protector : protectors)
 		{
 			trace("\t\t[%4d] weight=%5.2f health=%5.2f remainingHealth=%5.2f\n", getInitialVehicleIdByPad0(protector.pad0), protector.weight, protector.health, protector.remainingHealth);
 		}
@@ -2135,7 +2135,7 @@ void EnemyStackInfo::computeAttackParameters()
 	double accumulatedEffect = 0.0;
 	coordinatorTravelTime = INF;
 	
-	for (IdDoubleValue const &vehicleTravelTime : directVechileTravelTimes)
+	for (IdDoubleValue &vehicleTravelTime : directVechileTravelTimes)
 	{
 		int vehicleId = vehicleTravelTime.id;
 		double travelTime = vehicleTravelTime.value;
@@ -2174,7 +2174,7 @@ void EnemyStackInfo::computeAttackParameters()
 	{
 		BASE *base = getBase(baseId);
 		int factionId = base->faction_id;
-		FactionInfo const &factionInfo = aiData.factionInfos.at(factionId);
+		FactionInfo &factionInfo = aiData.factionInfos.at(factionId);
 		
 		double scoutPatrolBuildTime = getBaseItemBuildTime(baseId, BSC_SCOUT_PATROL);
 		double extraScoutPatrols = scoutPatrolBuildTime <= 0.0 ? 0.0 : coordinatorTravelTime / scoutPatrolBuildTime;
@@ -2790,12 +2790,12 @@ std::vector<MoveAction> getMoveActions(MovementType movementType, MAP *origin, i
 	{
 		for (int currentTileIndex : openNodes)
 		{
-			TileInfo const &currentTileInfo = aiData.getTileInfo(currentTileIndex);
+			TileInfo &currentTileInfo = aiData.getTileInfo(currentTileIndex);
 			int currentMovementAllowance = movementAllowances.at(currentTileIndex);
 			
-			for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
+			for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 			{
-				TileInfo const *adjacentTileInfo = tileTransit.tileInfo;
+				TileInfo *adjacentTileInfo = tileTransit.tileInfo;
 				int adjacentTileIndex = adjacentTileInfo->tile - *MapTiles;
 				
 				// regard obstacle and ZoC
@@ -2816,7 +2816,7 @@ std::vector<MoveAction> getMoveActions(MovementType movementType, MAP *origin, i
 				
 				// hexCost
 				
-				int const hexCost = tileTransit.hexCosts.at(movementType);
+				int hexCost = tileTransit.hexCosts.at(movementType);
 				if (hexCost == -1)
 					continue;
 				
@@ -2910,7 +2910,7 @@ robin_hood::unordered_flat_map<MAP *, double> getPotentialMeleeAttackTargets(int
 	// explore reachable locations
 	
 	Profiling::start("- getPotentialMeleeAttackTargets");
-	for (AttackAction const &attackAction : getMeleeAttackActions(vehicleId, false, false))
+	for (AttackAction &attackAction : getMeleeAttackActions(vehicleId, false, false))
 	{
 		MAP *target = attackAction.target;
 		double hastyCoefficient = attackAction.hastyCoefficient;
@@ -2949,7 +2949,7 @@ robin_hood::unordered_flat_map<MAP *, double> getPotentialArtilleryAttackTargets
 	// explore reachable locations
 	
 	Profiling::start("- getPotentialArtilleryAttackTargets");
-	for (AttackAction const &attackAction : getArtilleryAttackActions(vehicleId, false, false))
+	for (AttackAction &attackAction : getArtilleryAttackActions(vehicleId, false, false))
 	{
 		MAP *target = attackAction.target;
 		
@@ -2982,7 +2982,7 @@ std::vector<AttackAction> getMeleeAttackActions(int vehicleId, bool regardObstac
 	// explore reachable locations
 	
 	Profiling::start("- getMeleeAttackActions - getVehicleReachableLocations");
-	for (MoveAction const &moveAction : getVehicleMoveActions(vehicleId, regardObstacle))
+	for (MoveAction &moveAction : getVehicleMoveActions(vehicleId, regardObstacle))
 	{
 		MAP *tile = moveAction.destination;
 		int remainingMovementPoints = moveAction.remainingMovementPoints;
@@ -3001,7 +3001,7 @@ std::vector<AttackAction> getMeleeAttackActions(int vehicleId, bool regardObstac
 		
 		// explore adjacent tiles
 		
-		for (TileTransit const &tileTransit : aiData.getTileInfo(tile).tileTransits)
+		for (TileTransit &tileTransit : aiData.getTileInfo(tile).tileTransits)
 		{
 			MAP *targetTile = tileTransit.tileInfo->tile;
 			
@@ -3043,7 +3043,7 @@ std::vector<AttackAction> getArtilleryAttackActions(int vehicleId, bool regardOb
 	// explore reachable locations
 	
 	Profiling::start("- getArtilleryAttackActions - getVehicleReachableLocations");
-	for (MoveAction const &moveAction : getVehicleMoveActions(vehicleId, regardObstacle))
+	for (MoveAction &moveAction : getVehicleMoveActions(vehicleId, regardObstacle))
 	{
 		MAP *tile = moveAction.destination;
 		int remainingMovementPoints = moveAction.remainingMovementPoints;
@@ -3057,7 +3057,7 @@ std::vector<AttackAction> getArtilleryAttackActions(int vehicleId, bool regardOb
 		
 		// explore artillery tiles
 		
-		for (TileInfo const *targetTileInfo : tileInfo.range2NoCenterTileInfos)
+		for (TileInfo *targetTileInfo : tileInfo.range2NoCenterTileInfos)
 		{
 			MAP *targetTile = targetTileInfo->tile;
 			
@@ -3138,7 +3138,7 @@ robin_hood::unordered_flat_map<int, double> getMeleeAttackLocations(int vehicleI
 			
 			// iterate adjacent tiles
 			
-			for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
+			for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 			{
 				TileInfo &adjacentTileInfo = *(tileTransit.tileInfo);
 				int adjacentTileIndex = adjacentTileInfo.index;
@@ -3151,13 +3151,13 @@ robin_hood::unordered_flat_map<int, double> getMeleeAttackLocations(int vehicleI
 				
 				// hexCost
 				
-				int const hexCost = tileTransit.hexCosts.at(movementType);
+				int hexCost = tileTransit.hexCosts.at(movementType);
 				if (hexCost == -1)
 					continue;
 				
 				// new movementAllowance
 				
-				int const adjacentTileMovementAllowance = currentTileMovementAllowance - hexCost;
+				int adjacentTileMovementAllowance = currentTileMovementAllowance - hexCost;
 				
 				// update value
 				
@@ -3266,7 +3266,7 @@ robin_hood::unordered_flat_set<int> getArtilleryAttackLocations(int vehicleId)
 			
 			// iterate adjacent tiles
 			
-			for (TileTransit const &tileTransit : currentTileInfo.tileTransits)
+			for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 			{
 				TileInfo &adjacentTileInfo = *(tileTransit.tileInfo);
 				int adjacentTileIndex = adjacentTileInfo.index;
@@ -3278,7 +3278,7 @@ robin_hood::unordered_flat_set<int> getArtilleryAttackLocations(int vehicleId)
 				
 				// hexCost
 				
-				int const hexCost = tileTransit.hexCosts.at(movementType);
+				int hexCost = tileTransit.hexCosts.at(movementType);
 				if (hexCost == -1)
 					continue;
 				
@@ -3700,14 +3700,14 @@ double getBaseGain(int const popSize, int const nutrientCostFactor, Resource con
 {
 	// gain
 	
-	double const income = getResourceScore(baseIntake2.mineral, baseIntake2.energy);
-	double const incomeGain = getGainIncome(income);
+	double income = getResourceScore(baseIntake2.mineral, baseIntake2.energy);
+	double incomeGain = getGainIncome(income);
 	
-	double const popualtionGrowth = baseIntake2.nutrient / static_cast<double>(nutrientCostFactor * (1 + popSize));
-	double const incomeGrowth = aiData.averageCitizenResourceIncome * popualtionGrowth;
-	double const incomeGrowthGain = getGainIncomeGrowth(incomeGrowth);
+	double popualtionGrowth = baseIntake2.nutrient / static_cast<double>(nutrientCostFactor * (1 + popSize));
+	double incomeGrowth = aiData.averageCitizenResourceIncome * popualtionGrowth;
+	double incomeGrowthGain = getGainIncomeGrowth(incomeGrowth);
 	
-	double const gain =
+	double gain =
 		+ incomeGain
 		+ incomeGrowthGain
 	;
@@ -3747,8 +3747,8 @@ double getBaseGain(int const popSize, int const nutrientCostFactor, Resource con
 
 double getBaseGain(int const baseId, Resource baseIntake2)
 {
-	BASE const *base = getBase(baseId);
-	int const nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, baseId);
+	BASE *base = getBase(baseId);
+	int nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, baseId);
 	
 	return getBaseGain(base->pop_size, nutrientCostFactor, baseIntake2);
 	
@@ -3759,9 +3759,9 @@ Computes expected base gain adjusting for current base income.
 */
 double getBaseGain(int const baseId)
 {
-	BASE const *base = getBase(baseId);
-	int const nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, baseId);
-	Resource const baseIntake2 = getBaseResourceIntake2(baseId);
+	BASE *base = getBase(baseId);
+	int nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, baseId);
+	Resource baseIntake2 = getBaseResourceIntake2(baseId);
 	
 	return getBaseGain(base->pop_size, nutrientCostFactor, baseIntake2);
 	
@@ -3775,7 +3775,7 @@ double getBaseValue(int const baseId)
 {
 	// base gain
 	
-	double const baseGain = getBaseGain(baseId);
+	double baseGain = getBaseGain(baseId);
 	
 	// SP value
 	
@@ -3785,7 +3785,7 @@ double getBaseValue(int const baseId)
 	{
 		if (isBaseHasFacility(baseId, spFacilityId))
 		{
-			double const spCost = Rules->mineral_cost_multi * getFacility(spFacilityId)->cost;
+			double spCost = Rules->mineral_cost_multi * getFacility(spFacilityId)->cost;
 			spValue += getGainBonus(spCost);
 		}
 		
@@ -4185,7 +4185,7 @@ MapDoubleValue getMeleeAttackPosition(int unitId, MAP *origin, MAP *target)
 	
 	MapDoubleValue closestAttackPosition(nullptr, INF);
 	
-	for (TileInfo const *positionTileInfo : targetTileInfo.adjacentTileInfos)
+	for (TileInfo *positionTileInfo : targetTileInfo.adjacentTileInfos)
 	{
 		MAP *positionTile = positionTileInfo->tile;
 		
@@ -4237,7 +4237,7 @@ MapDoubleValue getArtilleryAttackPosition(int unitId, MAP *origin, MAP *target)
 	
 	MapDoubleValue closestAttackPosition(nullptr, INF);
 	
-	for (TileInfo const *positionTileInfo : targetTileInfo.range2NoCenterTileInfos)
+	for (TileInfo *positionTileInfo : targetTileInfo.range2NoCenterTileInfos)
 	{
 		MAP *positionTile = positionTileInfo->tile;
 		

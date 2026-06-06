@@ -88,8 +88,8 @@ void moveDefensiveProbes()
 	while (!tasks.empty())
 	{
 		// explicit copy
-		std::vector<Task>::iterator const highestTaskIterator = std::max_element(tasks.begin(), tasks.end());
-		Task const highestTask = *highestTaskIterator;
+		std::vector<Task>::iterator highestTaskIterator = std::max_element(tasks.begin(), tasks.end());
+		Task highestTask = *highestTaskIterator;
 
 		if (highestTask.baseId == -1)
 		{
@@ -102,7 +102,7 @@ void moveDefensiveProbes()
 		setTask(highestTask);
 		int vehiclePad0 = highestTask.vehiclePad0;
 		int vehicleId = highestTask.getVehicleId();
-		MAP const *vehicleTile = getVehicleMapTile(vehicleId);
+		MAP *vehicleTile = getVehicleMapTile(vehicleId);
 		int baseId = highestTask.baseId;
 		BaseInfo &baseInfo = aiData.baseInfos.at(baseId);
 
@@ -182,8 +182,8 @@ void immediateAttack()
 		
 		// collect attackable targets
 		
-		robin_hood::unordered_flat_set<MAP const *> meleeAttackTargets;
-		robin_hood::unordered_flat_set<MAP const *> artilleryAttackTargets;
+		robin_hood::unordered_flat_set<MAP *> meleeAttackTargets;
+		robin_hood::unordered_flat_set<MAP *> artilleryAttackTargets;
 		
 		for (int enemyBaseId : aiData.emptyEnemyBaseIds)
 		{
@@ -202,10 +202,10 @@ void immediateAttack()
 			
 		}
 		
-		for (robin_hood::pair<MAP const *, EnemyStackInfo> const &enemyStackEntry : aiData.enemyStacks)
+		for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 		{
-			MAP const *enemyStackTile = enemyStackEntry.first;
-			EnemyStackInfo const &enemyStackInfo = enemyStackEntry.second;
+			MAP *enemyStackTile = enemyStackEntry.first;
+			EnemyStackInfo &enemyStackInfo = enemyStackEntry.second;
 			
 			if (!enemyStackInfo.hostile)
 				continue;
@@ -235,7 +235,7 @@ void immediateAttack()
 		MAP *selectedTarget;
 		double selectedPriority = 0.0;
 		
-		for (AttackAction const &attackAction : meleeAttackActions)
+		for (AttackAction &attackAction : meleeAttackActions)
 		{
 			TaskType taskType = TT_MELEE_ATTACK;
 			
@@ -254,7 +254,7 @@ void immediateAttack()
 			
 			else if (aiData.isEnemyStackAt(attackAction.target))
 			{
-				EnemyStackInfo const &enemyStackInfo = aiData.getEnemyStackInfo(attackAction.target);
+				EnemyStackInfo &enemyStackInfo = aiData.getEnemyStackInfo(attackAction.target);
 				
 				CombatMode combatMode = CM_MELEE;
 				
@@ -286,7 +286,7 @@ void immediateAttack()
 			
 		}
 		
-		for (AttackAction const &attackAction : artilleryAttackActions)
+		for (AttackAction &attackAction : artilleryAttackActions)
 		{
 			TaskType taskType = TT_ARTILLERY_ATTACK;
 			
@@ -294,7 +294,7 @@ void immediateAttack()
 			
 			if (aiData.isEnemyStackAt(attackAction.target))
 			{
-				EnemyStackInfo const &enemyStackInfo = aiData.getEnemyStackInfo(attackAction.target);
+				EnemyStackInfo &enemyStackInfo = aiData.getEnemyStackInfo(attackAction.target);
 				
 				double combatEffect;
 				double winningProbability;
@@ -386,7 +386,7 @@ void movePolice2x()
 //	{
 //		debug("\tsortedTasks\n");
 //		
-//		for (TaskPriority const &taskPriority : taskPriorities)
+//		for (TaskPriority &taskPriority : taskPriorities)
 //		{
 //			debug
 //			(
@@ -477,7 +477,7 @@ void movePolice()
 //	{
 //		debug("\tsortedTasks\n");
 //		
-//		for (TaskPriority const &taskPriority : taskPriorities)
+//		for (TaskPriority &taskPriority : taskPriorities)
 //		{
 //			debug
 //			(
@@ -568,7 +568,7 @@ void moveInterceptors()
 //	{
 //		debug("\tsortedTasks\n");
 //		
-//		for (TaskPriority const &taskPriority : taskPriorities)
+//		for (TaskPriority &taskPriority : taskPriorities)
 //		{
 //			debug
 //			(
@@ -964,9 +964,9 @@ void moveBunkerProtectors()
 	
 	debug("\thold current bunker protectors\n");
 	
-	for (robin_hood::pair<MAP const *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
+	for (robin_hood::pair<MAP *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
 	{
-		MAP const *bunkerTile = bunkerInfoEntry.first;
+		MAP *bunkerTile = bunkerInfoEntry.first;
 		BunkerInfo &bunkerInfo = bunkerInfoEntry.second;
 		
 		TileInfo &bunkerTileInfo = aiData.getTileInfo(bunkerTile);
@@ -1057,10 +1057,10 @@ void moveCombat()
 	
 	debug("\tselected tasks\n");
 	
-	robin_hood::unordered_flat_set<EnemyStackInfo const *> excludedEnemyStacks;
+	robin_hood::unordered_flat_set<EnemyStackInfo *> excludedEnemyStacks;
 	robin_hood::unordered_flat_map<int, TaskPriority *> vehicleAssignments;
 	
-	robin_hood::unordered_flat_set<MAP const *> targetedLocations;
+	robin_hood::unordered_flat_set<MAP *> targetedLocations;
 	robin_hood::unordered_flat_set<EnemyStackInfo *> targetedEnemyStacks;
 	
 	while (true)
@@ -1072,7 +1072,7 @@ void moveCombat()
 		targetedLocations.clear();
 		targetedEnemyStacks.clear();
 		
-		for (robin_hood::pair<MAP const *, EnemyStackInfo> &enemyStackInfoEntry : aiData.enemyStacks)
+		for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackInfoEntry : aiData.enemyStacks)
 		{
 			EnemyStackInfo &enemyStackInfo = enemyStackInfoEntry.second;
 			enemyStackInfo.resetAttackParameters();
@@ -1394,7 +1394,7 @@ void moveCombat()
 	
 	// store untargeted stacks for production demand
 	
-	for (robin_hood::pair<MAP const *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
+	for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 	{
 		EnemyStackInfo *enemyStackInfo = &(enemyStackEntry.second);
 		
@@ -1409,9 +1409,9 @@ void moveCombat()
 //	{
 //		debug("targetedEnemyStacks - %s\n", aiMFaction->noun_faction);
 //		
-//		for (robin_hood::pair<MAP *, EnemyStackInfo> const &enemyStackEntry : aiData.enemyStacks)
+//		for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 //		{
-//			EnemyStackInfo const &enemyStack = enemyStackEntry.second;
+//			EnemyStackInfo &enemyStack = enemyStackEntry.second;
 //			
 //			debug
 //			(
@@ -1487,7 +1487,7 @@ void moveCombat()
 	
 	// remove fully destroyed stacks from retaliation threat
 	
-	for (robin_hood::pair<MAP const *, EnemyStackInfo> &enemyStackInfoEntry : aiData.enemyStacks)
+	for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackInfoEntry : aiData.enemyStacks)
 	{
 		EnemyStackInfo &enemyStackInfo = enemyStackInfoEntry.second;
 		
@@ -1538,7 +1538,7 @@ void populateDefensiveProbeTasks(std::vector<Task> &tasks)
 
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
-		VEH const *vehicle = getVehicle(vehicleId);
+		VEH *vehicle = getVehicle(vehicleId);
 		
 		// AI faction
 		
@@ -1552,11 +1552,11 @@ void populateDefensiveProbeTasks(std::vector<Task> &tasks)
 
 		// iterate bases
 		
-		for (int const baseId : aiData.baseIds)
+		for (int baseId : aiData.baseIds)
 		{
-			MAP const *baseTile = getBaseMapTile(baseId);
-			BaseInfo const &baseInfo = aiData.getBaseInfo(baseId);
-			BaseProbeData const &probeData = baseInfo.probeData;
+			MAP *baseTile = getBaseMapTile(baseId);
+			BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
+			BaseProbeData &probeData = baseInfo.probeData;
 
 			// destination reachable
 			
@@ -1576,21 +1576,21 @@ void populateDefensiveProbeTasks(std::vector<Task> &tasks)
 			if (travelTime == INF)
 				continue;
 
-			double const criticalTravelTime =
+			double criticalTravelTime =
 				travelTime <= probeData.safeTime
 					? 0.1 * travelTime
 					: 0.1 * probeData.safeTime + (travelTime - probeData.safeTime)
 			;
 			
-			double const travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, criticalTravelTime);
+			double travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, criticalTravelTime);
 			
 			// combat effect
 			
-			double const combatEffect = getVehicleMoraleMultiplier(vehicleId);
+			double combatEffect = getVehicleMoraleMultiplier(vehicleId);
 
 			// requiredEffectProportion
 
-			double const requiredEffectProportion = combatEffect / probeData.requiredEffect;
+			double requiredEffectProportion = combatEffect / probeData.requiredEffect;
 			
 			// priority
 			
@@ -1674,7 +1674,7 @@ void populateRepairTasks(std::vector<TaskPriority> &taskPriorities)
 		for (MAP *tile : getRangeTiles(vehicleTile, MAX_REPAIR_DISTANCE, true))
 		{
 			int x = getX(tile), y = getY(tile);
-			TileInfo const &tileInfo = aiData.getTileInfo(tile);
+			TileInfo &tileInfo = aiData.getTileInfo(tile);
 			
 			// exclude monolith, they are handled by monolith function
 			
@@ -1989,7 +1989,7 @@ void populatePodPoppingTasks(std::vector<TaskPriority> &taskPriorities)
 	
 	for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
 	{
-		TileInfo const &tileInfo = aiData.getTileInfo(tile);
+		TileInfo &tileInfo = aiData.getTileInfo(tile);
 
 		// pod
 		
@@ -2393,9 +2393,9 @@ void populateBunkerProtectorTasks(std::vector<TaskPriority> &taskPriorities)
 		
 		// process bunkers
 		
-		for (robin_hood::pair<MAP const *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
+		for (robin_hood::pair<MAP *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
 		{
-			MAP const *bunkerTile = bunkerInfoEntry.first;
+			MAP *bunkerTile = bunkerInfoEntry.first;
 			BunkerInfo &bunkerInfo = bunkerInfoEntry.second;
 			CombatData &bunkerCombatData = bunkerInfo.combatData;
 			
@@ -2549,9 +2549,9 @@ void populateEnemyStackAttackTasks(std::vector<TaskPriority> &taskPriorities)
 		
 		debug("\t\t[%4d] %s\n", vehicleId, getLocationString(getVehicleMapTile(vehicleId)));
 		
-		for (robin_hood::pair<MAP const *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
+		for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 		{
-			MAP const *enemyStackTile = enemyStackEntry.first;
+			MAP *enemyStackTile = enemyStackEntry.first;
 			EnemyStackInfo &enemyStackInfo = enemyStackEntry.second;
 			
 			// do not attack alien sea vehicles far from bases
@@ -2787,7 +2787,7 @@ void coordinateAttack()
 	
 	// process targetedStacks
 	
-	for (robin_hood::pair<MAP const *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
+	for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 	{
 		EnemyStackInfo &enemyStack = enemyStackEntry.second;
 		
@@ -2807,9 +2807,9 @@ void coordinateAttack()
 		
 		if (enemyStack.breakTreaty)
 		{
-			for (IdDoubleValue const &vehicleTravelTime : enemyStack.bombardmentVechileTravelTimes)
+			for (IdDoubleValue &vehicleTravelTime : enemyStack.bombardmentVechileTravelTimes)
 			{
-				int const vehicleId = vehicleTravelTime.id;
+				int vehicleId = vehicleTravelTime.id;
 				Task *task = getTask(vehicleId);
 				
 				if (task == nullptr)
@@ -2825,7 +2825,7 @@ void coordinateAttack()
 		
 		// hold too early vehicles
 		
-		for (IdDoubleValue const &vehicleTravelTime : enemyStack.directVechileTravelTimes)
+		for (IdDoubleValue &vehicleTravelTime : enemyStack.directVechileTravelTimes)
 		{
 			int vehicleId = vehicleTravelTime.id;
 			double travelTime = vehicleTravelTime.value;
@@ -2863,7 +2863,7 @@ void coordinateAttack()
 		
 		if (enemyStack.getTotalBombardmentEffectRatio() > 0.25)
 		{
-			for (IdDoubleValue const &vehicleTravelTime : enemyStack.directVechileTravelTimes)
+			for (IdDoubleValue &vehicleTravelTime : enemyStack.directVechileTravelTimes)
 			{
 				int vehicleId = vehicleTravelTime.id;
 				double travelTime = vehicleTravelTime.value;
@@ -3087,7 +3087,7 @@ double getDefendGain(int const defenderVehicleId, MAP const *tile, double defend
 	
 	// tileInfo
 	
-	TileInfo const &tileInfo = aiData.getTileInfo(tile);
+	TileInfo &tileInfo = aiData.getTileInfo(tile);
 	
 	// defender is already destroyed
 	
@@ -3098,7 +3098,7 @@ double getDefendGain(int const defenderVehicleId, MAP const *tile, double defend
 	
 	// bombardment
 	
-	for (PotentialAttack const &potentialAttack : tileInfo.potentialAttacks)
+	for (PotentialAttack &potentialAttack : tileInfo.potentialAttacks)
 	{
 		// exclude enemy vehicle
 		
@@ -3121,8 +3121,8 @@ double getDefendGain(int const defenderVehicleId, MAP const *tile, double defend
 		
 	}
 	
-	double const maxBombardmentDamage = getMaxBombardmentDamage(static_cast<Triad>(defenderVehicle.triad()), tile);
-	double const minBombardmentHealth = 1.0 - maxBombardmentDamage;
+	double maxBombardmentDamage = getMaxBombardmentDamage(static_cast<Triad>(defenderVehicle.triad()), tile);
+	double minBombardmentHealth = 1.0 - maxBombardmentDamage;
 	defenderHealth = std::max(minBombardmentHealth, defenderHealth);
 	
 	// defender is destroyed by bombardment
@@ -3141,7 +3141,7 @@ double getDefendGain(int const defenderVehicleId, MAP const *tile, double defend
 	int bestAttackerVehicleId = -1;
 	double bestAttackerGain = std::numeric_limits<double>::lowest();
 	
-	for (PotentialAttack const &potentialAttack : tileInfo.potentialAttacks)
+	for (PotentialAttack &potentialAttack : tileInfo.potentialAttacks)
 	{
 		// exclude enemy vehicle
 		
@@ -3195,7 +3195,7 @@ double getMeleeAttackGain(int const vehicleId, MAP const *destination, MAP const
 	if (!aiData.hasEnemyStack(target))
 		return 0.0;
 	
-	EnemyStackInfo const &enemyStackInfo = aiData.getEnemyStackInfo(target);
+	EnemyStackInfo &enemyStackInfo = aiData.getEnemyStackInfo(target);
 	
 	if (enemyStackInfo.vehiclePad0s.size() == 0)
 		return 0.0;
@@ -3251,7 +3251,7 @@ double getArtilleryAttackGain(int vehicleId, MAP *destination, MAP *target)
 	if (!aiData.hasEnemyStack(target))
 		return 0.0;
 	
-	EnemyStackInfo const &enemyStackInfo = aiData.getEnemyStackInfo(target);
+	EnemyStackInfo &enemyStackInfo = aiData.getEnemyStackInfo(target);
 	
 	if (enemyStackInfo.vehiclePad0s.size() == 0)
 		return 0.0;
@@ -3331,7 +3331,7 @@ CombatAction selectVehicleCombatAction(int vehicleId)
 			[](MoveAction const &a, MoveAction const &b) { return a.remainingMovementPoints > b.remainingMovementPoints; }
 		);
 	}
-	for (MoveAction const &moveAction : moveActions)
+	for (MoveAction &moveAction : moveActions)
 	{
 		MAP *destination = moveAction.destination;
 		
@@ -3355,7 +3355,7 @@ CombatAction selectVehicleCombatAction(int vehicleId)
 	debug("\tattack melee\n");
 	if (isMeleeVehicle(vehicleId))
 	{
-		for (AttackAction const &attackAction : getMeleeAttackActions(vehicleId, true, true))
+		for (AttackAction &attackAction : getMeleeAttackActions(vehicleId, true, true))
 		{
 			double gain = getMeleeAttackGain(vehicleId, attackAction.destination, attackAction.target, attackAction.hastyCoefficient);
 			debug("\t\t->%s/%s gain = %+5.2f", getLocationString(attackAction.destination), getLocationString(attackAction.target), gain);
@@ -3379,7 +3379,7 @@ CombatAction selectVehicleCombatAction(int vehicleId)
 	debug("\tattack range\n");
 	if (isArtilleryVehicle(vehicleId))
 	{
-		for (AttackAction const &attackAction : getArtilleryAttackActions(vehicleId, true, true))
+		for (AttackAction &attackAction : getArtilleryAttackActions(vehicleId, true, true))
 		{
 			double gain = getArtilleryAttackGain(vehicleId, attackAction.destination, attackAction.target);
 			debug("\t->%s/%s gain = %+5.2f", getLocationString(attackAction.destination), getLocationString(attackAction.target), gain);
@@ -3420,7 +3420,7 @@ void aiEnemyMoveCombatVehicles()
 		
 		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 		{
-			VEH const &vehicle = Vehs[vehicleId];
+			VEH &vehicle = Vehs[vehicleId];
 			
 			if (vehicle.faction_id != aiFactionId)
 				continue;

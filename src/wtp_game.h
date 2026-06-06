@@ -50,7 +50,7 @@ class Profiling
 {
 private:
 	
-	static int const NAME_LENGTH = 120;
+	static constexpr int NAME_LENGTH = 120;
 	
 	static tree<ProfileName> profiles;
 	

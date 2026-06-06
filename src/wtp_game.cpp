@@ -228,8 +228,8 @@ void Profiling::print()
 	for (tree<ProfileName>::iterator iterator = profiles.begin(); iterator != profiles.end(); iterator++)
 	{
 		int depth = profiles.depth(iterator);
-		std::string const name = iterator->name;
-		Profile const &profile = iterator->profile;
+		std::string name = iterator->name;
+		Profile &profile = iterator->profile;
 
 		std::string prefixedName = std::string(4 * depth, ' ') + name;
 		std::string displayName = prefixedName + " " + std::string(std::max(0, NAME_LENGTH - 1 - (int)prefixedName.length()), '.');
@@ -2367,7 +2367,7 @@ MAP *getBaseWorkerTile(int baseId, int workerNumber)
 {
 	assert(workerNumber >=0 && workerNumber < 21);
 
-	BASE const &base = Bases[baseId];
+	BASE &base = Bases[baseId];
 
 	int dx = OFFSETS[workerNumber][0];
 	int dy = OFFSETS[workerNumber][1];
@@ -8164,7 +8164,7 @@ double getValueSum(robin_hood::unordered_flat_map<int, double> map)
 {
 	double sum = 0.0;
 
-	for (robin_hood::pair<int, double> const &mapEntry : map)
+	for (robin_hood::pair<int, double> &mapEntry : map)
 	{
 		double value = mapEntry.second;
 		sum += value;

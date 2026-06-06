@@ -973,7 +973,7 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 	
 //	// reduce redundant (inferior or equal) request gains
 //	
-//	double const redundantRequestCoefficient = 0.5;
+//	double redundantRequestCoefficient = 0.5;
 //	for (size_t i = 0; i < availableBaseTerraformingRequests.size(); i++)
 //	{
 //		TERRAFORMING_REQUEST &availableBaseTerraformingRequest = availableBaseTerraformingRequests.at(i);
@@ -996,7 +996,7 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 //	if (DEBUG)
 //	{
 //		debug("available base terraforming requests SORTED - %s\n", aiMFaction->noun_faction);
-//		for (const TERRAFORMING_REQUEST &terraformingRequest : availableBaseTerraformingRequests)
+//		for (TERRAFORMING_REQUEST &terraformingRequest : availableBaseTerraformingRequests)
 //		{
 //			debug
 //			(
@@ -1051,12 +1051,12 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 		
 		bool allWorked = true;
 
-		for (robin_hood::pair<MAP *, bool> const &selectedLocationEntry : selectedLocations)
+		for (robin_hood::pair<MAP *, bool> &selectedLocationEntry : selectedLocations)
 		{
 			MAP *tile = selectedLocationEntry.first;
 			bool area = selectedLocationEntry.second;
 			
-			TileTerraformingInfo const &tileTerraformingInfo = getTileTerraformingInfo(tile);
+			TileTerraformingInfo &tileTerraformingInfo = getTileTerraformingInfo(tile);
 			
 			if (area)
 			{
@@ -1358,7 +1358,7 @@ void applyProximityRules()
 		robin_hood::unordered_flat_map<int, PROXIMITY_RULE>::const_iterator proximityRulesIterator = PROXIMITY_RULES.find(terraformingRequest->firstAction);
 		if (proximityRulesIterator != PROXIMITY_RULES.end())
 		{
-			const PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+			PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
 
 			// there is higher ranked similar action
 
@@ -1429,7 +1429,7 @@ void removeTerraformedTiles()
 //	if (DEBUG)
 //	{
 //		debug("terraforming requests - %s\n", aiMFaction->noun_faction);
-//		for (const TERRAFORMING_REQUEST &terraformingRequest : terraformingRequests)
+//		for (TERRAFORMING_REQUEST &terraformingRequest : terraformingRequests)
 //		{
 //			debug
 //			(
@@ -1928,7 +1928,7 @@ TERRAFORMING_REQUEST calculateAquiferTerraformingScore(MAP *tile)
 {
 	bool ocean = is_ocean(tile);
 	
-	TERRAFORMING_OPTION const *option = &TO_AQUIFER;
+	TERRAFORMING_OPTION *option = &TO_AQUIFER;
 	TERRAFORMING_REQUEST terraformingRequest(tile, option);
 	
 	// initialize variables
@@ -2009,7 +2009,7 @@ TERRAFORMING_REQUEST calculateRaiseLandTerraformingScore(MAP *tile)
 	int y = getY(tile);
 	bool ocean = is_ocean(tile);
 	
-	TERRAFORMING_OPTION const *option = &TO_RAISE_LAND;
+	TERRAFORMING_OPTION *option = &TO_RAISE_LAND;
 	TERRAFORMING_REQUEST terraformingRequest(tile, option);
 	
 	// land only
@@ -2109,7 +2109,7 @@ TERRAFORMING_REQUEST calculateNetworkTerraformingScore(MAP *tile)
 	int y = getY(tile);
 	bool ocean = is_ocean(tile);
 	
-	TERRAFORMING_OPTION const *option = &TO_NETWORK;
+	TERRAFORMING_OPTION *option = &TO_NETWORK;
 	TERRAFORMING_REQUEST terraformingRequest(tile, option);
 	
 	// land only
@@ -2247,7 +2247,7 @@ TERRAFORMING_REQUEST calculateSensorTerraformingScore(MAP *tile)
 	bool ocean = is_ocean(tile);
 	TileTerraformingInfo &tileTerraformingInfo = getTileTerraformingInfo(tile);
 	
-	TERRAFORMING_OPTION const *option = ocean ? &TO_SEA_SENSOR : &TO_LAND_SENSOR;
+	TERRAFORMING_OPTION *option = ocean ? &TO_SEA_SENSOR : &TO_LAND_SENSOR;
 	TERRAFORMING_REQUEST terraformingRequest(tile, option);
 	
 	// initialize variables
@@ -2373,7 +2373,7 @@ TERRAFORMING_REQUEST calculateBunkerTerraformingScore(MAP *tile)
 	bool ocean = is_ocean(tile);
 	TileTerraformingInfo &tileTerraformingInfo = getTileTerraformingInfo(tile);
 	
-	TERRAFORMING_OPTION const *option = &TO_LAND_BUNKER;
+	TERRAFORMING_OPTION *option = &TO_LAND_BUNKER;
 	TERRAFORMING_REQUEST terraformingRequest(tile, option);
 	
 	if (ocean)
@@ -2755,7 +2755,7 @@ bool isNearbyForestUnderConstruction(int x, int y)
 
 	// get proximity rule
 
-	const PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
 	int range = proximityRule->buildingDistance;
 
 	// check building item
@@ -2794,7 +2794,7 @@ bool isNearbyCondeserUnderConstruction(int x, int y)
 
 	// get proximity rule
 
-	const PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
 	int range = proximityRule->buildingDistance;
 
 	// check terraformed condensers
@@ -2833,7 +2833,7 @@ bool isNearbyMirrorUnderConstruction(int x, int y)
 
 	// get proximity rule
 
-	const PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
 	int range = proximityRule->buildingDistance;
 
 	// check terraformed mirrors
@@ -2878,7 +2878,7 @@ bool isNearbyBoreholePresentOrUnderConstruction(int x, int y)
 
 	// get proximity rule
 
-	const PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
 
 	// check existing items
 
@@ -2923,7 +2923,7 @@ bool isNearbyRiverPresentOrUnderConstruction(int x, int y)
 
 	// get proximity rule
 
-	const PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
 
 	// check existing items
 
@@ -2968,7 +2968,7 @@ bool isNearbyRaiseUnderConstruction(int x, int y)
 
 	// get proximity rule
 
-	const PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
 
 	// check building items
 
@@ -3008,7 +3008,7 @@ bool isNearbySensorPresentOrUnderConstruction(int x, int y)
 	
 	// get proximity rule
 	
-	const PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
 	
 	// check existing items
 	
@@ -3053,7 +3053,7 @@ bool isNearbyBunkerPresentOrUnderConstruction(int x, int y)
 	
 	// get proximity rule
 	
-	const PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
+	PROXIMITY_RULE *proximityRule = &(proximityRulesIterator->second);
 	
 	// check existing items
 	
@@ -3552,7 +3552,7 @@ double estimateSensorIncome(MAP *tile)
 		
 	}
 	
-	for (robin_hood::pair<MAP *, BunkerInfo> const &bunkerInfoEntry : aiData.bunkerInfos)
+	for (robin_hood::pair<MAP *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
 	{
 		MAP *bunkerTile = bunkerInfoEntry.first;
 		
@@ -4472,7 +4472,7 @@ bool isValidConventionalTerraformingSite(MAP *tile)
 
 bool isValidTerraformingSite(MAP *tile)
 {
-	TileInfo const &tileInfo = aiData.getTileInfo(tile);
+	TileInfo &tileInfo = aiData.getTileInfo(tile);
 
 	if (tile == nullptr)
 		return false;

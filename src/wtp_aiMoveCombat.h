@@ -45,13 +45,13 @@ struct TaskPriority
 	double priority;
 	TaskPriorityRestriction taskPriorityRestriction;
 	TaskType taskType;
-	MAP const *destination;
+	MAP *destination;
 	double travelTime = INF;
 	// protected base
 	int baseId = -1;
 	// combat parameters
 	CombatMode combatMode = CM_MELEE;
-	MAP const *attackTarget = nullptr;
+	MAP *attackTarget = nullptr;
 	bool destructive = true;
 	double effect = 0.0;
 	
