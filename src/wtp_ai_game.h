@@ -648,7 +648,7 @@ struct TERRAFORMING_OPTION
 	// main action that is required to be discovered
 	int requiredAction;
 	// list of actions
-	std::vector<int> actions;
+	std::set<FormerItem> actions;
 };
 
 struct FormerRequest

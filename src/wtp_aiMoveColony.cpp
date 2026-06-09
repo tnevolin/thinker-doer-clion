@@ -6,7 +6,7 @@
 #include "wtp_ai_game.h"
 #include "wtp_aiRoute.h"
 #include "wtp_aiMove.h"
-#include "wtp_aiMoveFormer.h"
+#include "wtp_aiMoveFormer_backup.h"
 
 std::vector<std::array<int, 2>> a1 = {{1, 2}};
 

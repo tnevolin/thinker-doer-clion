@@ -1,6 +1,7 @@
 #pragma once
 
-#include <utility>
+#include <float.h>
+#include <map>
 #include <vector>
 #include "robin_hood.h"
 
@@ -8,21 +9,13 @@
 #include "engine.h"
 #include "wtp_ai_game.h"
 
-constexpr int BUNKER_ENEMY_BASE_RANGE_MIN =  2;
-constexpr int BUNKER_ENEMY_BASE_RANGE_MAX = 10;
-constexpr int PRESERVED_LAND_ROCKY_TILE_COUNT = 4;
+int const BUNKER_ENEMY_BASE_RANGE_MIN =  2;
+int const BUNKER_ENEMY_BASE_RANGE_MAX = 10;
 
-struct FactionTerraformingInfo
+struct MapState
 {
-	double averageNormalTerraformingRateMultiplier;
-	double averagePlantFungusTerraformingRateMultiplier;
-	double averageRemoveFungusTerraformingRateMultiplier;
-	
-	double bareLandScore;
-	double bareMineScore;
-	double bareSolarScore;
-
-	FactionTerraformingInfo();
+	int rockiness;
+	uint32_t items;
 };
 
 /*
@@ -30,16 +23,9 @@ Tile potentially can be terraformed.
 */
 struct TileTerraformingInfo
 {
-	MAP *tile;
-	bool landRocky;
-
-	// original tile
-	MAP originalTile;
-	// map state after ongoing and already applied terraforming
-	MAP effectiveTile;
-	// map state after temporary applicaion of potential terraforming
-	MAP potentialTile;
-
+	// original map state
+	MapState mapState;
+	
 	// terraformable tile
 	bool availableTerraformingSite = false;
 	// terraformable tile for base yield
@@ -48,72 +34,26 @@ struct TileTerraformingInfo
 	bool worked = false;
 	// baseId that works this tile
 	int workedBaseId = -1;
-	// base can work this tile
+	// base can work this tile (except base tile)
 	bool workable = false;
 	// baseIds those can work this tile
 	std::vector<int> workableBaseIds;
-	// baseIds those are affected by area improvement at this tile (river, condenser, echelon mirror)
+	// baseIds those are affected by area improvement at this tile (condenser, echelon mirror)
 	std::vector<int> areaWorkableBaseIds;
-	// minimal land rocky tile count
-	int landRockyTileCount;
 	
 	bool harvested = false;
 	bool terraformed = false;
 	bool terraformedConventional = false;
-
-	void storeOriginalMapTile()
-	{
-		originalTile = *tile;
-	}
-	void restoreOriginalMapTile()
-	{
-		*tile = originalTile;
-	}
-	void storeEffectiveMapTile()
-	{
-		effectiveTile = *tile;
-	}
-	void restoreEffectiveMapTile()
-	{
-		*tile = effectiveTile;
-	}
-	void applyTerraforming(FormerItem action)
-	{
-		switch (action)
-		{
-		case FORMER_LEVEL_TERRAIN:
-			{
-				if (tile->is_rocky())
-				{
-					// rocky turns to rolling
-					tile->val3 &= ~TILE_ROCKY;
-					tile->val3 |= TILE_ROLLING;
-				}
-				else if (tile->is_rolling())
-				{
-					// rolling turns to flat
-					tile->val3 &= ~TILE_ROLLING;
-				}
-			}
-			break;
-
-		case FORMER_AQUIFER:
-			{
-				tile->items |= BIT_RIVER;
-			}
-			break;
-
-		default:
-			{
-				tile->items |= TerraformRules[action][0];
-				tile->items &= ~TerraformRules[action][1];
-			}
-			break;
-
-		}
-
-	}
-
+	
+	bool terraformedForest = false;
+	bool terraformedCondenser = false;
+	bool terraformedMirror = false;
+	bool terraformedBorehole = false;
+	bool terraformedAquifer = false;
+	bool terraformedRaise = false;
+	bool terraformedSensor = false;
+	bool terraformedBunker = false;
+	
 };
 
 struct BaseTerraformingInfo
@@ -128,23 +68,23 @@ struct BaseTerraformingInfo
 
 // terraforming options
 
-TERRAFORMING_OPTION const TO_ROCKY_MINE			{"rocky mine"			, false, true , false, true , FORMER_MINE			, {FORMER_MINE}};
-TERRAFORMING_OPTION const TO_MINE				{"mine"				, false, false, false, true , FORMER_MINE			, {FORMER_FARM, FORMER_SOIL_ENR, FORMER_MINE}};
-TERRAFORMING_OPTION const TO_SOLAR_COLLECTOR	{"solar collector"	, false, false, false, true , FORMER_SOLAR			, {FORMER_FARM, FORMER_SOIL_ENR, FORMER_SOLAR}};
-TERRAFORMING_OPTION const TO_CONDENSER			{"condenser"			, false, false, true , true , FORMER_CONDENSER		, {FORMER_FARM, FORMER_SOIL_ENR, FORMER_CONDENSER}};
-TERRAFORMING_OPTION const TO_ECHELON_MIRROR		{"echelon mirror"		, false, false, true , true , FORMER_ECH_MIRROR		, {FORMER_FARM, FORMER_SOIL_ENR, FORMER_ECH_MIRROR}};
-TERRAFORMING_OPTION const TO_THERMAL_BOREHOLE	{"thermal borehole"	, false, false, false, true , FORMER_THERMAL_BORE	, {FORMER_THERMAL_BORE}};
-TERRAFORMING_OPTION const TO_FOREST				{"forest"				, false, false, false, true , FORMER_FOREST			, {FORMER_FOREST}};
-TERRAFORMING_OPTION const TO_LAND_FUNGUS		{"land fungus"		, false, false, false, true , FORMER_PLANT_FUNGUS	, {FORMER_PLANT_FUNGUS}};
-TERRAFORMING_OPTION const TO_MINING_PLATFORM	{"mining platform"	, true , false, false, true , FORMER_MINE			, {FORMER_MINE}};
-TERRAFORMING_OPTION const TO_TIDAL_HARNESS		{"tidal harness"		, true , false, false, true , FORMER_SOLAR			, {FORMER_SOLAR}};
-TERRAFORMING_OPTION const TO_SEA_FUNGUS			{"sea fungus"			, true , false, false, true , FORMER_PLANT_FUNGUS	, {FORMER_PLANT_FUNGUS}};
-TERRAFORMING_OPTION const TO_AQUIFER			{"aquifer"			, false, false, true , true , FORMER_AQUIFER			, {FORMER_AQUIFER}};
-TERRAFORMING_OPTION const TO_RAISE_LAND			{"raise land"			, false, false, true , true , FORMER_RAISE_LAND		, {FORMER_RAISE_LAND}};
-TERRAFORMING_OPTION const TO_NETWORK			{"road/tube"			, false, false, false, false, FORMER_ROAD			, {FORMER_ROAD, FORMER_MAGTUBE}};
-TERRAFORMING_OPTION const TO_LAND_SENSOR		{"sensor (land)"		, false, false, false, false, FORMER_SENSOR			, {FORMER_SENSOR}};
+TERRAFORMING_OPTION const TO_ROCKY_MINE			{"rocky mine"		, false, true , false, true , FORMER_MINE			, {FORMER_ROAD, FORMER_MINE}};
+TERRAFORMING_OPTION const TO_MINE				{"mine"				, false, false, false, true , FORMER_MINE			, {FORMER_ROAD, FORMER_FARM, FORMER_SOIL_ENR, FORMER_MINE}};
+TERRAFORMING_OPTION const TO_SOLAR_COLLECTOR	{"solar collector"	, false, false, false, true , FORMER_SOLAR			, {FORMER_ROAD, FORMER_FARM, FORMER_SOIL_ENR, FORMER_SOLAR}};
+TERRAFORMING_OPTION const TO_CONDENSER			{"condenser"		, false, false, true , true , FORMER_CONDENSER		, {FORMER_ROAD, FORMER_FARM, FORMER_SOIL_ENR, FORMER_CONDENSER}};
+TERRAFORMING_OPTION const TO_ECHELON_MIRROR		{"echelon mirror"	, false, false, true , true , FORMER_ECH_MIRROR		, {FORMER_ROAD, FORMER_FARM, FORMER_SOIL_ENR, FORMER_ECH_MIRROR}};
+TERRAFORMING_OPTION const TO_THERMAL_BOREHOLE	{"thermal borehole"	, false, false, false, true , FORMER_THERMAL_BORE	, {FORMER_ROAD, FORMER_THERMAL_BORE}};
+TERRAFORMING_OPTION const TO_FOREST				{"forest"			, false, false, false, true , FORMER_FOREST			, {FORMER_ROAD, FORMER_FOREST}};
+TERRAFORMING_OPTION const TO_LAND_FUNGUS		{"land fungus"		, false, false, false, true , FORMER_PLANT_FUNGUS	, {FORMER_ROAD, FORMER_PLANT_FUNGUS}};
+TERRAFORMING_OPTION const TO_MINING_PLATFORM	{"mining platform"	, true , false, false, true , FORMER_MINE			, {FORMER_FARM, FORMER_MINE}};
+TERRAFORMING_OPTION const TO_TIDAL_HARNESS		{"tidal harness"	, true , false, false, true , FORMER_SOLAR			, {FORMER_FARM, FORMER_SOLAR}};
+TERRAFORMING_OPTION const TO_SEA_FUNGUS			{"sea fungus"		, true , false, false, true , FORMER_PLANT_FUNGUS	, {FORMER_PLANT_FUNGUS}};
+TERRAFORMING_OPTION const TO_AQUIFER			{"aquifer"			, false, false, true , true , FORMER_AQUIFER		, {FORMER_AQUIFER}};
+TERRAFORMING_OPTION const TO_RAISE_LAND			{"raise land"		, false, false, true , true , FORMER_RAISE_LAND		, {FORMER_RAISE_LAND}};
+TERRAFORMING_OPTION const TO_NETWORK			{"road/tube"		, false, false, false, false, FORMER_ROAD			, {FORMER_ROAD, FORMER_MAGTUBE}};
+TERRAFORMING_OPTION const TO_LAND_SENSOR		{"sensor (land)"	, false, false, false, false, FORMER_SENSOR			, {FORMER_SENSOR}};
 TERRAFORMING_OPTION const TO_SEA_SENSOR			{"sensor (sea)"		, true , false, false, false, FORMER_SENSOR			, {FORMER_SENSOR}};
-TERRAFORMING_OPTION const TO_LAND_BUNKER		{"bunker (land)"		, false, false, false, false, FORMER_BUNKER			, {FORMER_BUNKER}};
+TERRAFORMING_OPTION const TO_LAND_BUNKER		{"bunker (land)"	, false, false, false, false, FORMER_BUNKER			, {FORMER_BUNKER}};
 
 // conventional terraforming options
 
@@ -152,30 +92,22 @@ const std::array<const std::vector<TERRAFORMING_OPTION *>, 2> BASE_TERRAFORMING_
 {{
 	// land
 	{
-		const_cast<TERRAFORMING_OPTION*>(&TO_ROCKY_MINE),
-		const_cast<TERRAFORMING_OPTION*>(&TO_MINE),
-		const_cast<TERRAFORMING_OPTION*>(&TO_SOLAR_COLLECTOR),
-		const_cast<TERRAFORMING_OPTION*>(&TO_CONDENSER),
-		const_cast<TERRAFORMING_OPTION*>(&TO_ECHELON_MIRROR),
-		const_cast<TERRAFORMING_OPTION*>(&TO_THERMAL_BOREHOLE),
-		const_cast<TERRAFORMING_OPTION*>(&TO_FOREST),
-		const_cast<TERRAFORMING_OPTION*>(&TO_LAND_FUNGUS),
+		(TERRAFORMING_OPTION *)&TO_ROCKY_MINE,
+		(TERRAFORMING_OPTION *)&TO_MINE,
+		(TERRAFORMING_OPTION *)&TO_SOLAR_COLLECTOR,
+		(TERRAFORMING_OPTION *)&TO_CONDENSER,
+		(TERRAFORMING_OPTION *)&TO_ECHELON_MIRROR,
+		(TERRAFORMING_OPTION *)&TO_THERMAL_BOREHOLE,
+		(TERRAFORMING_OPTION *)&TO_FOREST,
+		(TERRAFORMING_OPTION *)&TO_LAND_FUNGUS,
 	},
 	// sea
 	{
-		const_cast<TERRAFORMING_OPTION*>(&TO_MINING_PLATFORM),
-		const_cast<TERRAFORMING_OPTION*>(&TO_TIDAL_HARNESS),
-		const_cast<TERRAFORMING_OPTION*>(&TO_SEA_FUNGUS),
+		(TERRAFORMING_OPTION *)&TO_MINING_PLATFORM,
+		(TERRAFORMING_OPTION *)&TO_TIDAL_HARNESS,
+		(TERRAFORMING_OPTION *)&TO_SEA_FUNGUS,
 	},
 }};
-
-struct TerraformingOptionScore
-{
-	double score;
-	TERRAFORMING_OPTION *option;
-	std::set<FormerItem> actions;
-	bool operator<(TerraformingOptionScore const &other) const { return score < other.score; }
-};
 
 /// Prohibits building improvements too close to each other or existing improvements.
 struct PROXIMITY_RULE
@@ -242,11 +174,14 @@ struct TERRAFORMING_SCORE
 struct TerraformingRequest
 {
 	MAP *tile;
-	FormerItem action;
-	double score;
-
+	TERRAFORMING_OPTION const *option;
+	
 	// conventional terraforming (tile items modification resulting in yield change)
 	bool conventional = false;
+	// a target map state with all option improvements
+	MapState improvedMapState{};
+	// first former action
+	int firstAction = -1;
 	// combined option actions terraforming time
 	double terraformingTime = 0.0;
 	// improvement generated income
@@ -260,10 +195,14 @@ struct TerraformingRequest
 	
 	TileYield yield;
 	
-	TerraformingRequest(MAP *_tile, FormerItem action, double score)
-	: tile(_tile), action(action), score(score)
+	TerraformingRequest(MAP *_tile, TERRAFORMING_OPTION const *_option)
+	: tile{_tile}, option{_option}
 	{}
 	
+//	TERRAFORMING_REQUEST(MAP *_tile, TERRAFORMING_OPTION *_option, double _terraformingTime, int _firstAction, double _score)
+//	: tile{_tile}, option{_option}, terraformingTime(_terraformingTime), firstAction{_firstAction}, score{_score}
+//	{}
+//	
 };
 
 // access terraforming data arrays
@@ -290,7 +229,7 @@ void assignFormerOrders();
 void finalizeFormerOrders();
 double computeBaseTileImprovementGain(int baseId, MAP *tile, MapState &improvedMapState, bool areaEffect);
 double computeBaseImprovementYieldScore(int baseId, MAP *tile, MAP *currentMapState, MAP *improvedMapState);
-double calculateConventionalTerraformingScore(MAP *tile, const std::set<FormerItem>& actions);
+TerraformingRequest calculateConventionalTerraformingScore(int baseId, MAP *tile, TERRAFORMING_OPTION  *option);
 TerraformingRequest calculateAquiferTerraformingScore(MAP *tile);
 TerraformingRequest calculateRaiseLandTerraformingScore(MAP *tile);
 TerraformingRequest calculateNetworkTerraformingScore(MAP *tile);
@@ -298,7 +237,7 @@ TerraformingRequest calculateSensorTerraformingScore(MAP *tile);
 TerraformingRequest calculateBunkerTerraformingScore(MAP *tile);
 bool isTerraformingCompleted(MAP *tile, int action);
 bool isVehicleTerrafomingOrderCompleted(int vehicleId);
-bool isTerraformingAvailable(MAP *tile, FormerItem action);
+bool isTerraformingAvailable(MAP *tile, int action);
 bool isRemoveFungusRequired(int action);
 bool isLevelTerrainRequired(bool ocean, int action);
 bool isNearbyForestUnderConstruction(int x, int y);
@@ -331,12 +270,15 @@ bool isValidConventionalTerraformingSite(MAP *tile);
 bool isValidTerraformingSite(MAP *tile);
 double getTerraformingResourceScore(double nutrient, double mineral, double energy);
 double getTerraformingResourceScore(TileYield yield);
+void generateTerraformingChange(MapState &mapState, int action);
 double getTerraformingGain(double income, double terraformingTime);
 bool compareTerraformingRequests(TerraformingRequest  &terraformingRequest1, TerraformingRequest  &terraformingRequest2);
 bool compareConventionalTerraformingRequests(TerraformingRequest  &terraformingRequest1, TerraformingRequest  &terraformingRequest2);
+void setMapState(MapState &mapState, MAP *tile);
+void applyMapState(MapState &mapState, MAP *tile);
+void restoreTileMapState(MAP *tile);
 TileYield getTerraformingYield(int baseId, MAP *tile, std::vector<int> actions);
 double getBaseImprovementIncome(int baseId, Resource oldIntake, Resource newIntake);
 void addConventionalTerraformingRequest(std::vector<TerraformingRequest> &availableTerraformingRequests, TerraformingRequest &terraformingRequest);
 void removeUnusedBunkers();
-double getTerraformingTime(int vehicleId, Location location, FormerItem action);
 

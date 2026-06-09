@@ -30,112 +30,112 @@ struct MAP {
     uint32_t landmarks;
     uint32_t visible_items[7];
 
-    int alt_level() const {
+    int alt_level() {
         return climate >> 5;
     }
-    int code_at() const {
+    int code_at() {
         return landmarks >> 24;
     }
-    int lm_items() const {
+    int lm_items() {
         return landmarks & 0xFFFF;
     }
-    bool is_visible(int const faction) const {
+    bool is_visible(int faction) {
         return visibility & (1 << faction);
     }
-    bool is_owned() const {
+    bool is_owned() {
         return owner >= 0;
     }
-    bool is_land_region() const {
+    bool is_land_region() {
         return region < 63; // Skip pole tiles
     }
-    bool is_pole_tile() const {
+    bool is_pole_tile() {
         return region == 63 || region == 127;
     }
-    bool is_base() const {
+    bool is_base() {
         return items & BIT_BASE_IN_TILE && veh_owner() >= 0;
     }
-    bool is_bunker() const {
+    bool is_bunker() {
         return items & BIT_BUNKER;
     }
-    bool is_airbase() const {
+    bool is_airbase() {
         return is_base() || (items & BIT_AIRBASE); // Skip ABL_CARRIER checks
     }
-    bool is_base_radius() const {
+    bool is_base_radius() {
         return items & BIT_BASE_RADIUS;
     }
-    bool is_base_or_bunker() const {
+    bool is_base_or_bunker() {
         return is_base() || (items & BIT_BUNKER);
     }
-    bool is_fungus() const {
+    bool is_fungus() {
         return items & BIT_FUNGUS && alt_level() >= ALT_OCEAN_SHELF;
     }
-    bool is_rocky() const {
+    bool is_rocky() {
         return val3 & TILE_ROCKY && alt_level() >= ALT_SHORE_LINE;
     }
-    bool is_rolling() const {
-        return val3 & TILE_ROLLING;
+    bool is_rolling() {
+        return val3 & TILE_ROLLING && alt_level() >= ALT_SHORE_LINE;
     }
-    bool is_arid() const {
+    bool is_arid() {
         return !(climate & (TILE_MOIST | TILE_RAINY));
     }
-    bool is_rainy() const {
+    bool is_rainy() {
         return climate & TILE_RAINY;
     }
-    bool is_moist() const {
+    bool is_moist() {
         return climate & TILE_MOIST;
     }
-    bool is_rainy_or_moist() const {
+    bool is_rainy_or_moist() {
         return climate & (TILE_MOIST | TILE_RAINY);
     }
-    bool volcano_center() const { // Volcano also counts as rocky
+    bool volcano_center() { // Volcano also counts as rocky
         return landmarks & LM_VOLCANO && code_at() == 0;
     }
-    bool veh_in_tile() const {
+    bool veh_in_tile() {
         return items & BIT_VEH_IN_TILE;
     }
-    bool allow_base() const {
+    bool allow_base() {
         return !(items & (BIT_BASE_IN_TILE|BIT_MONOLITH)) && !is_fungus() && !is_rocky();
     }
-    bool allow_spawn() const {
+    bool allow_spawn() {
         return allow_base() && veh_who() < 0;
     }
-    bool allow_supply() const {
+    bool allow_supply() {
         return !(items & (BIT_BASE_IN_TILE|BIT_VEH_IN_TILE|BIT_MONOLITH|BIT_SUPPLY_REMOVE));
     }
-    int veh_owner() const {
+    int veh_owner() {
         if ((val2 & 0xF) >= MaxPlayerNum) {
             return -1; // No vehicles in this tile
         }
         return val2 & 0xF;
     }
-    int veh_who() const {
+    int veh_who() {
         if (items & BIT_VEH_IN_TILE) {
             return veh_owner();
         }
         return -1;
     }
-    int base_who() const {
+    int base_who() {
         if (items & BIT_BASE_IN_TILE) {
             return veh_owner();
         }
         return -1;
     }
-    int anything_at() const {
+    int anything_at() {
         if (items & (BIT_VEH_IN_TILE | BIT_BASE_IN_TILE)) {
             return veh_owner();
         }
         return -1;
     }
     // [WTP]
-    bool is_sea() const
+    bool is_sea()
 	{
 		return region >= 0x40;
 	}
-    bool is_land() const
+    bool is_land()
 	{
 		return region < 0x40;
 	}
-    bool is_item(MapItem item) const
+    bool is_item(MapItem item)
 	{
 		return (items & item) != 0;
 	}

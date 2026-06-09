@@ -318,9 +318,9 @@ struct Location
 	int x;
 	int y;
 	
-	int minAbs() { return std::min(std::abs(x), std::abs(y)); }
-	int maxAbs() { return std::max(std::abs(x), std::abs(y)); }
-	int absDiff() { return abs(abs(x) - abs(y)); }
+	int minAbs() const { return std::min(std::abs(x), std::abs(y)); }
+	int maxAbs() const { return std::max(std::abs(x), std::abs(y)); }
+	int absDiff() const { return abs(abs(x) - abs(y)); }
 	
 	Location(int _x, int _y)
 	: x(_x), y(_y)
@@ -329,11 +329,16 @@ struct Location
 	: Location(-1, -1)
 	{}
 	
-	bool isValid()
+	bool isValid() const
 	{
 		return x != -1 && y != -1;
 	}
 	
+	bool isOnMap() const
+	{
+		return x >= 0 && x < *MapAreaX && y >= 0 && y < *MapAreaY;
+	}
+
 };
 bool operator==( Location &o1,  Location &o2);
 bool operator!=( Location &o1,  Location &o2);
@@ -1341,6 +1346,7 @@ char * getAbilitiesString(int unitType);
 int getBaseItemBuildTime(int baseId, int item, bool countAccumulatedMinerals = false);
 bool isVehicleConvoying(int vehicleId);
 bool isVehicleTerraforming(VEH *vehicle);
+bool isVehicleTerraforming(int vehicleId);
 double getValueSum(robin_hood::unordered_flat_map<int, double> weights);
 bool isValidFactionId(int factionId);
 bool isValidUnitId(int unitId);

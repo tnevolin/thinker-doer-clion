@@ -179,9 +179,6 @@ fp_3void tx_setup_player = (fp_3void)0x005B0E00;
 // balances game by giving extra colony
 fp_0void tx_balance = (fp_0void)0x005B0420;
 
-// don't exactly know
-fp_3int tx_order_veh = (fp_3int)0x005947C0;
-
 // calculates unit production cost at base
 // arg1 = unit ID
 // arg2 = base ID, if not negative - Brood Pit and Skunkworks modify the cost when present

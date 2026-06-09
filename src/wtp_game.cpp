@@ -8159,6 +8159,10 @@ bool isVehicleTerraforming(VEH *vehicle)
 {
 	return vehicle->order >= ORDER_FARM && vehicle->order <= ORDER_PLACE_MONOLITH;
 }
+bool isVehicleTerraforming(int vehicleId)
+{
+	return isVehicleTerraforming(&Vehs[vehicleId]);
+}
 
 double getValueSum(robin_hood::unordered_flat_map<int, double> map)
 {

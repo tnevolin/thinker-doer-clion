@@ -124,8 +124,8 @@ set(THINKER_SOURCES
     src/wtp_aiMoveCombat.h
     src/wtp_aiMoveCrawler.cpp
     src/wtp_aiMoveCrawler.h
-    src/wtp_aiMoveFormer.cpp
-    src/wtp_aiMoveFormer.h
+#        src/wtp_aiMoveFormer_backup.cpp
+#        src/wtp_aiMoveFormer_backup.h
     src/wtp_aiMoveTransport.cpp
     src/wtp_aiMoveTransport.h
     src/wtp_aiProduction.cpp
@@ -145,6 +145,8 @@ set(THINKER_SOURCES
     src/wtp_terranx.cpp
     src/wtp_terranx.h
     src/wtp_terranx_enum.h
+        src/wtp_aiMoveFormer.cpp
+        src/wtp_aiMoveFormer.h
 )
 
 add_library(thinker SHARED ${THINKER_SOURCES})
