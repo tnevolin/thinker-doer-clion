@@ -3673,6 +3673,7 @@ int getAirCombatCluster(int chassisId, int unitSpeed, MAP *tile)
 {
 	assert(isOnMap(tile));
 
+	int tileIndex = tile - *MapTiles;
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> const &airClusters = factionMovementInfos.at(aiFactionId).airClusters;
 
 	if (airClusters.find(chassisId) == airClusters.end() || airClusters.at(chassisId).find(unitSpeed) == airClusters.at(chassisId).end())
@@ -3680,16 +3681,7 @@ int getAirCombatCluster(int chassisId, int unitSpeed, MAP *tile)
 		populateUnitAirClusters(aiFactionId, chassisId, unitSpeed);
 	}
 
-	int tileIndex = tile - *MapTiles;
-	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusters = factionMovementInfos.at(aiFactionId).airClusters;
-
-	if (airClusters.find(chassisId) == airClusters.end() || airClusters.at(chassisId).find(speed) == airClusters.at(chassisId).end())
-	{
-		populateAirCluster(aiFactionId, chassisId, speed);
-	}
-	return factionMovementInfos.at(aiFactionId).airClusters.at(chassisId).at(unitSpeed).at(tileIndex);
-
-	return airClusters.at(chassisId).at(speed).at(tileIndex);
+	return airClusters.at(chassisId).at(unitSpeed).at(tileIndex);
 
 }
 
