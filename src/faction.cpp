@@ -1041,7 +1041,13 @@ int faction_id, int UNUSED(toggle), int is_quick_calc) {
     Faction* f = &Factions[faction_id];
     MFaction* m = &MFactions[faction_id];
     memset(effect, 0, sizeof(CSocialEffect));
-    for (int cat = 0; cat < MaxSocialCatNum; cat++) {
+
+	// [WTP]
+	// save mineral cost factors for accumulated resources adjustment below
+	int mineral_cost_factor_old = mod_cost_factor(faction_id, RSC_MINERAL, -1);
+	//
+
+	for (int cat = 0; cat < MaxSocialCatNum; cat++) {
         int model = *(&category->politics + cat);
         assert(model >= 0 && model < MaxSocialModelNum);
         for (int eff = 0; eff < MaxSocialEffectNum; eff++) {
@@ -1054,12 +1060,24 @@ int faction_id, int UNUSED(toggle), int is_quick_calc) {
                         }
                     } else if (model == SOCIAL_M_THOUGHT_CONTROL) {
                         if (has_project(FAC_CLONING_VATS, faction_id)) {
+                        	// [WTP]
+                        	// disable Cloning Vats impunities if configured
+                        	if (!conf.cloning_vats_disable_impunities)
+                        	{
                             effect_val = 0;
+                        	}
+                        	//
                         }
                     }
                 } else if (cat == SOCIAL_C_VALUES && model == SOCIAL_M_POWER
                 && has_project(FAC_CLONING_VATS, faction_id)) {
-                    effect_val = 0;
+                	// [WTP]
+                	// disable Cloning Vats impunities if configured
+                	if (!conf.cloning_vats_disable_impunities)
+                	{
+                	effect_val = 0;
+                	}
+                	//
                 }
                 if (effect_val < 0) {
                     for (int i = 0; i < m->faction_bonus_count; i++) {
@@ -1090,7 +1108,25 @@ int faction_id, int UNUSED(toggle), int is_quick_calc) {
                 effect->research++; // bonus documented in conceptsx.txt but not manual
             }
         }
-        CSocialEffect* effect_base = (CSocialEffect*)&f->SE_economy_base;
+    	// [WTP]
+    	// Cloning Vats adds to GROWTH if configured
+       	if (conf.cloning_vats_se_growth != 0)
+       	{
+    	if (has_project(FAC_CLONING_VATS, faction_id)) {
+    		effect->growth += conf.cloning_vats_se_growth;
+    	}
+       	}
+    	//
+    	// [WTP]
+    	// excess police industry bonus
+    	if (conf.se_police_excess_industry_bonus != 0)
+    	{
+    		int sePoliceExcessRating = effect->police > +3 ? effect->police - 3 : effect->police < -5 ? effect->police + 5 : 0;
+    		int seIndustryBonus = conf.se_police_excess_industry_bonus * sePoliceExcessRating;
+			effect->industry += seIndustryBonus;
+    	}
+		//
+    	CSocialEffect* effect_base = (CSocialEffect*)&f->SE_economy_base;
         for (int eff = 0; eff < MaxSocialEffectNum; eff++) {
             *(&effect->economy + eff) += *(&effect_base->economy + eff);
         }
@@ -1110,6 +1146,32 @@ int faction_id, int UNUSED(toggle), int is_quick_calc) {
             }
         }
     }
+
+	// [WTP]
+	// new mineral cost factor for accumulated resources adjustment below
+	int mineral_cost_factor_new = mod_cost_factor(faction_id, RSC_MINERAL, -1);
+	debug("social_calc: factionId=%d, mineral_cost_factor: %+2d -> %+2d\n", faction_id, mineral_cost_factor_old, mineral_cost_factor_new);
+	// adjust accumulated resources for human faction
+	if (is_human(faction_id))
+	{
+		if (mineral_cost_factor_new != mineral_cost_factor_old)
+		{
+			for (int baseId = 0; baseId < *BaseCount; baseId++)
+			{
+				BASE* base = &Bases[baseId];
+
+				if (base->faction_id != faction_id)
+					continue;
+
+				base->minerals_accumulated = (base->minerals_accumulated * mineral_cost_factor_new + (mineral_cost_factor_old - 1) / 2) / mineral_cost_factor_old;
+
+			}
+
+		}
+
+	}
+	//
+
 }
 
 /*

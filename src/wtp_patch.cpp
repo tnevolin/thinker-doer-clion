@@ -1112,38 +1112,15 @@ void patch_cloning_vats_impunities()
 	byte disable_cv_display_bytes_new[] = { 0xB8, 0xFF, 0xFF, 0xFF, 0xFF };
 	write_bytes(0x004AF514, disable_cv_display_bytes_old, disable_cv_display_bytes_new, disable_cv_display_bytes_length);
 	write_bytes(0x004AF686, disable_cv_display_bytes_old, disable_cv_display_bytes_new, disable_cv_display_bytes_length);
-	
-	// disable cloning vats impunities computation
-	
-	int disable_cv_compute_bytes_length = 6;
-	byte disable_cv_compute_bytes_old[] = { 0x8B, 0x0D, 0x74, 0x65, 0x9A, 0x00 };
-	byte disable_cv_compute_bytes_new[] = { 0xB9, 0xFF, 0xFF, 0xFF, 0xFF, 0x90 };
-	write_bytes(0x005B4225, disable_cv_compute_bytes_old, disable_cv_compute_bytes_new, disable_cv_compute_bytes_length);
-	write_bytes(0x005B434D, disable_cv_compute_bytes_old, disable_cv_compute_bytes_new, disable_cv_compute_bytes_length);
-	
-}
 
-/*
-Wraps social_calc.
-This is initially to enable CV GROWTH effect.
-*/
-void patch_social_calc()
-{
-	write_call(0x004AEC6E, (int)modifiedSocialCalc); // sets SE_pending values
-	write_call(0x004AEC45, (int)modifiedSocialCalc);
-	write_call(0x004AECC4, (int)modifiedSocialCalc); // sets SE_pending values
-	write_call(0x004AEE4B, (int)modifiedSocialCalc);
-	write_call(0x004AEE74, (int)modifiedSocialCalc);
-	write_call(0x004AEECD, (int)modifiedSocialCalc); // resets SE_pending values
-	write_call(0x004AF0F6, (int)modifiedSocialCalc);
-	write_call(0x004B25B6, (int)modifiedSocialCalc);
-	write_call(0x004B25DF, (int)modifiedSocialCalc);
-	write_call(0x004B2635, (int)modifiedSocialCalc);
-	write_call(0x005B4515, (int)modifiedSocialCalc);
-	write_call(0x005B4527, (int)modifiedSocialCalc); // sets SE values
-	write_call(0x005B4539, (int)modifiedSocialCalc); // sets SE_2 values
-	write_call(0x005B464B, (int)modifiedSocialCalc);
-	write_call(0x005B4AE1, (int)modifiedSocialCalc);
+	// already implemented in social_calc
+	// // disable cloning vats impunities computation
+	//
+	// int disable_cv_compute_bytes_length = 6;
+	// byte disable_cv_compute_bytes_old[] = { 0x8B, 0x0D, 0x74, 0x65, 0x9A, 0x00 };
+	// byte disable_cv_compute_bytes_new[] = { 0xB9, 0xFF, 0xFF, 0xFF, 0xFF, 0x90 };
+	// write_bytes(0x005B4225, disable_cv_compute_bytes_old, disable_cv_compute_bytes_new, disable_cv_compute_bytes_length);
+	// write_bytes(0x005B434D, disable_cv_compute_bytes_old, disable_cv_compute_bytes_new, disable_cv_compute_bytes_length);
 	
 }
 
@@ -1340,15 +1317,15 @@ f:  5a                      pop    edx
 		artifact_mineral_contribution_bytes_length
 	);
 	
-	write_call(0x005996D3, (int)getActiveFactionMineralCostFactor);
+	write_call(0x005996D3, reinterpret_cast<int>(getActiveFactionMineralCostFactor));
 	
 	// display artifact mineral contribution for project
 	
-	write_call(0x00594D14, (int)displayArtifactMineralContributionInformation);
+	write_call(0x00594D14, reinterpret_cast<int>(displayArtifactMineralContributionInformation));
 	
 	// display artifact mineral contribution for prototype
 	
-	write_call(0x00594D8C, (int)displayArtifactMineralContributionInformation);
+	write_call(0x00594D8C, reinterpret_cast<int>(displayArtifactMineralContributionInformation));
 	
 }
 
@@ -3452,11 +3429,6 @@ void patch_setup_wtp(Config* cf)
 	{
 		patch_cloning_vats_impunities();
 	}
-	
-	// social_calc
-	// This is initially for cloning vats GROWTH effect but can be used for other modifications
-	
-	patch_social_calc();
 	
 	// patch GROWTH rating max
 	

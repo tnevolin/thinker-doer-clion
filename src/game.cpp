@@ -439,7 +439,14 @@ void __cdecl mod_faction_upkeep(int faction_id) {
     mod_repair_phase(faction_id);
     do_all_non_input();
     mod_production_phase(faction_id);
-    do_all_non_input();
+	// [WTP]
+	// Merchant Exchange increases commerce
+	if (has_project(FAC_MERCHANT_EXCHANGE, faction_id))
+	{
+		f->tech_commerce_bonus += conf.merchant_exchange_commerce_bonus;
+	}
+	//
+	do_all_non_input();
     if (full_game_turn()) {
         allocate_energy(faction_id);
         do_all_non_input();

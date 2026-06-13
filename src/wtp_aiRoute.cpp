@@ -391,9 +391,9 @@ void populateImpediments(int factionId)
 		
 		if (isUnfriendly(factionId, vehicle.faction_id) && vehicleTileInfo.ocean)
 			continue;
-		
+
 		// range
-		
+
 		int range;
 		if (isInfantryDefensiveUnit(vehicle.unit_id) && vehicle.order == ORDER_HOLD && (vehicleTileInfo.base || vehicleTileInfo.bunker))
 		{
@@ -405,7 +405,7 @@ void populateImpediments(int factionId)
 			// mobile vehicle moves
 			range = IMPEDIMENT_MOBILE_TURN_RANGE * speed;
 		}
-		
+
 		double vehicleImpediment = isHostile(factionId, vehicle.faction_id) ? IMPEDIMENT_HOSTILE : isUnfriendly(factionId, vehicle.faction_id) ? IMPEDIMENT_NEUTRAL : 0.0;
 		double impedimentDensity = vehicleImpediment / (double)(2 * range + 1);
 		for (MAP *rangeTile : getRangeTiles(vehicleTileInfo.tile, range, true))
@@ -420,17 +420,17 @@ void populateImpediments(int factionId)
 		}
 		
 	}
-	
+
 	if (DEBUG)
 	{
 		for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
 		{
 			int tileIndex = tile - *MapTiles;
-			
+
 			debug("\t%s %5.2f\n", getLocationString(tile), impediments.at(tileIndex));
 			
 		}
-		
+
 	}
 	
 	Profiling::stop("populateImpediments");
@@ -484,39 +484,176 @@ void populateAirbases(int factionId)
 	
 }
 
+void populateUnitAirClusters(int const factionId, int const chassisId, int const unitSpeed)
+{
+	Profiling::start("populateUnitAirClusters", "precomputeRouteData");
+
+	debug("populateUnitAirClusters aiFactionId=%d factionId=%d chassisId=%d speed=%d\n", aiFactionId, factionId, chassisId, unitSpeed);
+
+	std::vector<MAP *> const &airbases = factionMovementInfos.at(factionId).airbases;
+	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &factionAirClusters = factionMovementInfos.at(factionId).airClusters;
+
+	int range = (chassisId == CHS_COPTER ? 4 : Chassis[chassisId].range);
+
+	// set collection
+
+	if (factionAirClusters.find(chassisId) == factionAirClusters.end())
+	{
+		factionAirClusters.emplace(chassisId, robin_hood::unordered_flat_map<int, std::vector<int>>());
+	}
+	if (factionAirClusters.at(chassisId).find(unitSpeed) == factionAirClusters.at(chassisId).end())
+	{
+		factionAirClusters.at(chassisId).emplace(unitSpeed, std::vector<int>(*MapAreaTiles));
+	}
+	std::vector<int> &unitAirClusters = factionAirClusters.at(chassisId).at(unitSpeed);
+
+	// gravship reaches everywhere
+
+	if (chassisId == CHS_GRAVSHIP)
+	{
+		std::fill(unitAirClusters.begin(), unitAirClusters.end(), 0);
+		return;
+	}
+
+	// set default value = no cluster
+
+	std::fill(unitAirClusters.begin(), unitAirClusters.end(), -1);
+
+	// compute special ranges
+
+	int const transferRange = range * unitSpeed;
+	int const reachRange = unitSpeed - 1;
+
+	// set available nodes
+
+	robin_hood::unordered_flat_set<MAP *> availableNodes(airbases.begin(), airbases.end());
+
+	int airClusterIndex = 0;
+
+	while (!availableNodes.empty())
+	{
+		robin_hood::unordered_flat_set<MAP *> closedNodes;
+		robin_hood::unordered_flat_set<MAP *> openNodes;
+		robin_hood::unordered_flat_set<MAP *> newOpenNodes;
+
+		openNodes.insert(*(availableNodes.begin()));
+		availableNodes.erase(availableNodes.begin());
+
+		while (!openNodes.empty())
+		{
+			for (MAP *openNode : openNodes)
+			{
+				for (MAP *availableNode : availableNodes)
+				{
+					int nodeRange = getRange(openNode, availableNode);
+
+					if (nodeRange > transferRange)
+						continue;
+
+					newOpenNodes.insert(availableNode);
+
+				}
+
+				// erase openNodes from availableNodes
+
+				for (MAP *newOpenNode : newOpenNodes)
+				{
+					availableNodes.erase(newOpenNode);
+				}
+
+				for (MAP *openNode : openNodes)
+				{
+					closedNodes.insert(openNode);
+				}
+
+				openNodes.swap(newOpenNodes);
+				newOpenNodes.clear();
+
+			}
+
+		}
+
+		// set air reach cluster
+
+		for (MAP *closedNode : closedNodes)
+		{
+			for (MAP *tile : getRangeTiles(closedNode, reachRange, true))
+			{
+				factionAirClusters.at(chassisId).at(unitSpeed).at(tile - *MapTiles) = airClusterIndex;
+			}
+
+		}
+
+		// increment airClusterIndex
+
+		airClusterIndex++;
+
+	}
+
+	// if (DEBUG)
+	// {
+	// 	for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> const &airClusterEntry : factionAirClusters)
+	// 	{
+	// 		int chassisId = airClusterEntry.first;
+	// 		robin_hood::unordered_flat_map<int, std::vector<int>> const &chassisAirClusters = airClusterEntry.second;
+	//
+	// 		debug("\tchassisId=%2d\n", chassisId);
+	//
+	// 		for (robin_hood::pair<int, std::vector<int>> const &chassisAirClusterEntry : chassisAirClusters)
+	// 		{
+	// 			int speed = chassisAirClusterEntry.first;
+	// 			std::vector<int> const &chassisAirSpeedAirClusters = chassisAirClusterEntry.second;
+	//
+	// 			debug("\t\tspeed=%2d\n", speed);
+	//
+	// 			for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
+	// 			{
+	// 				debug("\t\t\t%s %2d\n", getLocationString(*MapTiles + tileIndex), chassisAirSpeedAirClusters.at(tileIndex));
+	// 			}
+	//
+	// 		}
+	//
+	// 	}
+	//
+	// }
+
+	Profiling::stop("populateUnitAirClusters");
+
+}
+
 void populateAirClusters(int factionId)
 {
 	Profiling::start("populateAirClusters", "precomputeRouteData");
-	
+
 	debug("populateAirClusters aiFactionId=%d factionId=%d\n", aiFactionId, factionId);
-	
-	std::vector<MAP *> &airbases = factionMovementInfos.at(factionId).airbases;
+
+	std::vector<MAP *> const &airbases = factionMovementInfos.at(factionId).airbases;
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusters = factionMovementInfos.at(factionId).airClusters;
-	
+
 	airClusters.clear();
-	
+
 	// collect unit/vehicle speeds
-	
+
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_set<int>> speeds;
-	
-	for (int unitId : aiData.factionInfos.at(factionId).availableUnitIds)
+
+	for (int unitId : getFactionUnitIds(factionId, false, true))
 	{
 		UNIT *unit = getUnit(unitId);
 		int chassisId = unit->chassis_id;
 		int triad = unit->triad();
 		int speed = getUnitSpeed(factionId, unitId);
-		
+
 		// air unit
-		
+
 		if (triad != TRIAD_AIR)
 			continue;
-		
+
 		// add speed
-		
+
 		speeds[chassisId].insert(speed);
-		
+
 	}
-	
+
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
 		VEH *vehicle = getVehicle(vehicleId);
@@ -525,75 +662,75 @@ void populateAirClusters(int factionId)
 		int chassisId = unit->chassis_id;
 		int triad = unit->triad();
 		int speed = getUnitSpeed(factionId, unitId);
-		
+
 		// this faction
-		
+
 		if (vehicle->faction_id != factionId)
 			continue;
-		
+
 		// air unit
-		
+
 		if (triad != TRIAD_AIR)
 			continue;
-		
+
 		// add speed
-		
+
 		speeds[chassisId].insert(speed);
-		
+
 	}
-	
+
 	// process speeds
-	
+
 	for (robin_hood::pair<int, robin_hood::unordered_flat_set<int>> &airChassisSpeedEntry : speeds)
 	{
 		int chassisId = airChassisSpeedEntry.first;
 		robin_hood::unordered_flat_set<int> &speeds = airChassisSpeedEntry.second;
-		
+
 		int range = (chassisId == CHS_COPTER ? 4 : Chassis[chassisId].range);
-		
+
 		// set collection
-		
+
 		airClusters.emplace(chassisId, robin_hood::unordered_flat_map<int, std::vector<int>>());
-		
+
 		// process speeds
-		
+
 		for (int speed : speeds)
 		{
-			
+
 			int transferRange = range * speed;
 			int reachRange = speed - 1;
-			
+
 			// set collection
-			
+
 			airClusters.at(chassisId).emplace(speed, std::vector<int>(*MapAreaTiles));
 			std::fill(airClusters.at(chassisId).at(speed).begin(), airClusters.at(chassisId).at(speed).end(), -1);
-			
+
 			// gravship reaches everywhere
-			
+
 			if (chassisId == CHS_GRAVSHIP)
 			{
 				for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 				{
 					airClusters.at(chassisId).at(speed).at(tileIndex) = 0;
 				}
-				
+
 			}
-			
+
 			// set available nodes
-			
+
 			robin_hood::unordered_flat_set<MAP *> availableNodes(airbases.begin(), airbases.end());
-			
+
 			int airClusterIndex = 0;
-			
+
 			while (!availableNodes.empty())
 			{
 				robin_hood::unordered_flat_set<MAP *> closedNodes;
 				robin_hood::unordered_flat_set<MAP *> openNodes;
 				robin_hood::unordered_flat_set<MAP *> newOpenNodes;
-				
+
 				openNodes.insert(*(availableNodes.begin()));
 				availableNodes.erase(availableNodes.begin());
-				
+
 				while (!openNodes.empty())
 				{
 					for (MAP *openNode : openNodes)
@@ -601,96 +738,96 @@ void populateAirClusters(int factionId)
 						for (MAP *availableNode : availableNodes)
 						{
 							int nodeRange = getRange(openNode, availableNode);
-							
+
 							if (nodeRange > transferRange)
 								continue;
-							
+
 							newOpenNodes.insert(availableNode);
-							
+
 						}
-						
+
 						// erase openNodes from availableNodes
-						
+
 						for (MAP *newOpenNode : newOpenNodes)
 						{
 							availableNodes.erase(newOpenNode);
 						}
-						
+
 						for (MAP *openNode : openNodes)
 						{
 							closedNodes.insert(openNode);
 						}
-						
+
 						openNodes.swap(newOpenNodes);
 						newOpenNodes.clear();
-						
+
 					}
-					
+
 				}
-				
+
 				// set air reach cluster
-				
+
 				for (MAP *closedNode : closedNodes)
 				{
 					for (MAP *tile : getRangeTiles(closedNode, reachRange, true))
 					{
 						airClusters.at(chassisId).at(speed).at(tile - *MapTiles) = airClusterIndex;
 					}
-					
+
 				}
-				
+
 				// increment airClusterIndex
-				
+
 				airClusterIndex++;
-				
+
 			}
-			
+
 		}
-		
+
 	}
-	
+
 	if (DEBUG)
 	{
 		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusterEntry : airClusters)
 		{
 			int chassisId = airClusterEntry.first;
-			robin_hood::unordered_flat_map<int, std::vector<int>> &chassisAirClusters = airClusterEntry.second;
-			
+			robin_hood::unordered_flat_map<int, std::vector<int>> const &chassisAirClusters = airClusterEntry.second;
+
 			debug("\tchassisId=%2d\n", chassisId);
-			
-			for (robin_hood::pair<int, std::vector<int>> &chassisAirClusterEntry : chassisAirClusters)
+
+			for (robin_hood::pair<int, std::vector<int>> const &chassisAirClusterEntry : chassisAirClusters)
 			{
 				int speed = chassisAirClusterEntry.first;
-				std::vector<int> &chassisAirSpeedAirClusters = chassisAirClusterEntry.second;
-				
+				std::vector<int> const &chassisAirSpeedAirClusters = chassisAirClusterEntry.second;
+
 				debug("\t\tspeed=%2d\n", speed);
-				
+
 				for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 				{
 					debug("\t\t\t%s %2d\n", getLocationString(*MapTiles + tileIndex), chassisAirSpeedAirClusters.at(tileIndex));
 				}
-				
+
 			}
-			
+
 		}
-		
+
 	}
-	
+
 	Profiling::stop("populateAirClusters");
-	
+
 }
 
 void populateAirCluster(int factionId, int chassisId, int speed)
 {
 	Profiling::start("populateAirCluster", "precomputeRouteData");
-	
+
 	debug("populateAirCluster aiFactionId=%d factionId=%d chassisId=%d speed=%d\n", aiFactionId, factionId, chassisId, speed);
-	
+
 	std::vector<MAP *> &airbases = factionMovementInfos.at(factionId).airbases;
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusters = factionMovementInfos.at(factionId).airClusters;
-	
+
 	// create new cluster
-	
+
 	if (airClusters.find(chassisId) == airClusters.end())
 	{
 		airClusters.emplace(chassisId, robin_hood::unordered_flat_map<int, std::vector<int>>());
@@ -706,34 +843,34 @@ void populateAirCluster(int factionId, int chassisId, int speed)
 		// already populated
 		return;
 	}
-	
+
 	// set range
-	
+
 	int chassisRange = (chassisId == CHS_COPTER ? 4 : Chassis[chassisId].range);
 	int transferRange = chassisRange * speed;
-	
+
 	if (chassisId == CHS_GRAVSHIP)
 	{
 		// gravship reaches everywhere
 		std::fill(airClusters.at(chassisId).at(speed).begin(), airClusters.at(chassisId).at(speed).end(), 0);
 		return;
 	}
-	
+
 	// set available nodes
-	
+
 	robin_hood::unordered_flat_set<MAP *> availableNodes(airbases.begin(), airbases.end());
-	
+
 	int airClusterIndex = 0;
-	
+
 	while (!availableNodes.empty())
 	{
 		robin_hood::unordered_flat_set<MAP *> closedNodes;
 		robin_hood::unordered_flat_set<MAP *> openNodes;
 		robin_hood::unordered_flat_set<MAP *> newOpenNodes;
-		
+
 		openNodes.insert(*(availableNodes.begin()));
 		availableNodes.erase(availableNodes.begin());
-		
+
 		while (!openNodes.empty())
 		{
 			for (MAP *openNode : openNodes)
@@ -741,79 +878,79 @@ void populateAirCluster(int factionId, int chassisId, int speed)
 				for (MAP *availableNode : availableNodes)
 				{
 					int nodeRange = getRange(openNode, availableNode);
-					
+
 					if (nodeRange > transferRange)
 						continue;
-					
+
 					newOpenNodes.insert(availableNode);
-					
+
 				}
-				
+
 				// erase openNodes from availableNodes
-				
+
 				for (MAP *newOpenNode : newOpenNodes)
 				{
 					availableNodes.erase(newOpenNode);
 				}
-				
+
 				for (MAP *openNode : openNodes)
 				{
 					closedNodes.insert(openNode);
 				}
-				
+
 				openNodes.swap(newOpenNodes);
 				newOpenNodes.clear();
-				
+
 			}
-			
+
 		}
-		
+
 		// set air cluster
-		
+
 		for (MAP *closedNode : closedNodes)
 		{
 			for (MAP *tile : getRangeTiles(closedNode, transferRange, true))
 			{
 				airClusters.at(chassisId).at(speed).at(tile - *MapTiles) = airClusterIndex;
 			}
-			
+
 		}
-		
+
 		// increment airClusterIndex
-		
+
 		airClusterIndex++;
-		
+
 	}
-	
+
 	if (DEBUG)
 	{
 		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusterEntry : airClusters)
 		{
 			int chassisId = airClusterEntry.first;
 			robin_hood::unordered_flat_map<int, std::vector<int>> &chassisAirClusters = airClusterEntry.second;
-			
+
 			debug("\tchassisId=%2d\n", chassisId);
-			
+
 			for (robin_hood::pair<int, std::vector<int>> &chassisAirClusterEntry : chassisAirClusters)
 			{
 				int speed = chassisAirClusterEntry.first;
 				std::vector<int> &chassisAirSpeedAirClusters = chassisAirClusterEntry.second;
-				
+
 				debug("\t\tspeed=%2d\n", speed);
-				
+
 				for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 				{
 					debug("\t\t\t%s %2d\n", getLocationString(*MapTiles + tileIndex), chassisAirSpeedAirClusters.at(tileIndex));
 				}
-				
+
 			}
-			
+
 		}
-		
+
 	}
-	
+
 	Profiling::stop("populateAirCluster");
-	
+
 }
 
 void populateSeaTransportWaitTimes(int factionId)
@@ -948,7 +1085,7 @@ void populateSeaTransportWaitTimes(int factionId)
 				int currentTileIndex = currentTile - *MapTiles;
 				double currentTileWaitTime = seaTransportWaitTimes.at(currentTileIndex);
 				TileInfo &currentTileInfo = aiData.getTileInfo(currentTile);
-				
+
 				for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 				{
 					TileInfo &adjacentTileInfo = *tileTransit.tileInfo;
@@ -1779,11 +1916,11 @@ void populateLandLandmarks(int factionId)
 		for (size_t landMovementTypeIndex = 0; landMovementTypeIndex < BASIC_LAND_MOVEMENT_TYPE_COUNT; landMovementTypeIndex++)
 		{
 			MovementType movementType = BASIC_LAND_MOVEMENT_TYPES.at(landMovementTypeIndex);
-			
+
 			debug("\tmovementType=%d\n", movementType);
-			
+
 			std::vector<LandLandmark> &landmarks = landLandmarks.at(landMovementTypeIndex);
-			
+
 			for (LandLandmark &landmark : landmarks)
 			{
 				debug("\t\t%s\n", getLocationString(landmark.tileIndex));
@@ -1792,9 +1929,9 @@ void populateLandLandmarks(int factionId)
 					debug("\t\t\t%s %3.0f %3.0f %3.0f\n", getLocationString(tileIndex), landmark.tileInfos.at(tileIndex).seaTransportWaitTime, landmark.tileInfos.at(tileIndex).seaMovementCost, landmark.tileInfos.at(tileIndex).landMovementCost);
 				}
 			}
-			
+
 		}
-			
+
 	}
 	
 	Profiling::stop("populateLandLandmarks");
@@ -1945,14 +2082,14 @@ void populateSeaClusters(int  factionId)
 		{
 			debug("\t%s %2d\n", getLocationString(*MapTiles + tileIndex), seaClusters.at(tileIndex));
 		}
-		
+
 		for (std::pair<int const, int> &seaClusterAreaEntry : seaClusterAreas)
 		{
 			int seaCluster = seaClusterAreaEntry.first;
 			int seaClusterArea = seaClusterAreaEntry.second;
 			debug("\t%3d %3d\n", seaCluster, seaClusterArea);
 		}
-		
+
 	}
 	
 	Profiling::stop("populateSeaClusters");
@@ -2705,7 +2842,7 @@ double getGravshipTravelTime(int speed, MAP *org, MAP *dst)
 	// approach time
 	
 	int range = getRange(org, dst);
-	
+
 	return (double)range / (double)speed;
 	
 }
@@ -2727,7 +2864,7 @@ double getRangedAirTravelTime(int factionId, int chassisId, int speed, MAP *org,
 	// approach time
 	
 	int range = getRange(org, dst);
-	
+
 	return RANGED_AIR_TRAVEL_TIME_COEFFICIENT * (double)range / (double)speed;
 	
 }
@@ -2789,7 +2926,7 @@ double getSeaLApproachTime(int factionId, MovementType movementType, int speed, 
 		Profiling::stop("- getSeaLApproachTime");
 		return INF;
 	}
-	
+
 	double maxLandmarkTravelTime = maxLandmarkMovementCost / (double)(Rules->move_rate_roads * speed);
 	
 	Profiling::stop("- getSeaLApproachTime");
@@ -2800,7 +2937,7 @@ double getSeaLApproachTime(int factionId, MovementType movementType, int speed, 
 double getLandLApproachTime(int factionId, MovementType movementType, int speed, MAP *org, MAP *dst)
 {
 //	debug("getLandLApproachTime( factionId=%d movementType=%d speed=%d org=%s dst=%s )\n", factionId, movementType, speed, getLocationString(org), getLocationString(dst));
-	
+
 	Profiling::start("- getLandLApproachTime");
 	
 	assert(factionId >= 0 && factionId < MaxPlayerNum);
@@ -2894,7 +3031,7 @@ double getLandLApproachTime(int factionId, MovementType movementType, int speed,
 		debug("ERROR: no suitable landmark.\n");
 		return INF;
 	}
-	
+
 	Profiling::stop("- getLandLApproachTime");
 	return maxLandmarkTravelTime;
 	
@@ -2960,7 +3097,7 @@ double getLandLMovementCost(int factionId, MovementType movementType, MAP *org, 
 		Profiling::stop("- getLandLMovementCost");
 		return INF;
 	}
-	
+
 	Profiling::stop("- getLandLMovementCost");
 	return maxLandmarkLandMovementCost;
 	
@@ -3173,7 +3310,7 @@ double getATravelTime(MovementType movementType, int  vehicleSpeed, MAP *org, MA
 					
 					// hexCost
 					// single road turn if attacking
-					
+
 					int hexCost = adjacentTileInfo.tile == dst && attackDestination ? Rules->move_rate_roads : tileTransit.averageHexCosts.at(movementType);
 					
 					// sensible hexCost
@@ -3532,20 +3669,28 @@ MovementType getVehicleMovementType(int vehicleId)
 	return getUnitMovementType(vehicle->faction_id, vehicle->unit_id);
 }
 
-int getAirCluster(int chassisId, int speed, MAP *tile)
+int getAirCombatCluster(int chassisId, int unitSpeed, MAP *tile)
 {
 	assert(isOnMap(tile));
-	
+
+	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> const &airClusters = factionMovementInfos.at(aiFactionId).airClusters;
+
+	if (airClusters.find(chassisId) == airClusters.end() || airClusters.at(chassisId).find(unitSpeed) == airClusters.at(chassisId).end())
+	{
+		populateUnitAirClusters(aiFactionId, chassisId, unitSpeed);
+	}
+
 	int tileIndex = tile - *MapTiles;
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusters = factionMovementInfos.at(aiFactionId).airClusters;
-	
+
 	if (airClusters.find(chassisId) == airClusters.end() || airClusters.at(chassisId).find(speed) == airClusters.at(chassisId).end())
 	{
 		populateAirCluster(aiFactionId, chassisId, speed);
 	}
-	
+	return factionMovementInfos.at(aiFactionId).airClusters.at(chassisId).at(unitSpeed).at(tileIndex);
+
 	return airClusters.at(chassisId).at(speed).at(tileIndex);
-	
+
 }
 
 int getUnitAirCluster(int unitId, MAP *tile)

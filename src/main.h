@@ -19,7 +19,7 @@
 #pragma once
 
 #ifdef BUILD_REL
-    #define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v406"
+    #define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v411"
 #else
     #define MOD_VERSION "Thinker Mod develop build"
 #endif
@@ -464,6 +464,10 @@ struct Config {
     char datalinks_menu_font_name[StrBufLen] = "Arial";
 	bool datalinks_menu_font_bold = 1;
     int datalinks_menu_font_size = 0;
+	int merchant_exchange_energy_yield = 0;
+	int merchant_exchange_energy_yield_all_tiles = false;
+	int merchant_exchange_energy_yield_all_bases = false;
+	int merchant_exchange_commerce_bonus = 0;
     // AI configurations
     bool ai_useWTPAlgorithms;
     bool wtp_enabled_factions[MaxPlayerNum];

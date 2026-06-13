@@ -225,6 +225,7 @@ void precomputeRouteData();
 
 void populateImpediments(int factionId);
 void populateAirbases(int factionId);
+void populateUnitAirClusters(int factionId, int chassisId, int unitSpeed);
 void populateAirClusters(int factionId);
 void populateAirCluster(int factionId, int chassisId, int speed);
 void populateSeaTransportWaitTimes(int factionId);
