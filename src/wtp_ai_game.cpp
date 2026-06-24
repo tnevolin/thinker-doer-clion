@@ -4305,7 +4305,7 @@ double getSensorOffenseMultiplier(int factionId, MAP *tile)
 	TileInfo &tileInfo = aiData.tileInfos.at(tile - *MapTiles);
 	
 	return
-		Rules->combat_defend_sensor != 0 && tileInfo.sensors.at(factionId) && (conf.sensor_offense && (!is_ocean(tile) || conf.sensor_offense_ocean)) ?
+		Rules->combat_defend_sensor != 0 && tileInfo.sensorCoverages.at(factionId) && (conf.sensor_offense && (!is_ocean(tile) || conf.sensor_offense_ocean)) ?
 			getPercentageBonusMultiplier(Rules->combat_defend_sensor)
 			:
 			1.0
@@ -4320,7 +4320,7 @@ double getSensorDefenseMultiplier(int factionId, MAP *tile)
 	TileInfo &tileInfo = aiData.tileInfos.at(tile - *MapTiles);
 	
 	return
-		Rules->combat_defend_sensor != 0 && tileInfo.sensors.at(factionId) && ((!is_ocean(tile) || conf.sensor_offense_ocean)) ?
+		Rules->combat_defend_sensor != 0 && tileInfo.sensorCoverages.at(factionId) && ((!is_ocean(tile) || conf.sensor_offense_ocean)) ?
 			getPercentageBonusMultiplier(Rules->combat_defend_sensor)
 			:
 			1.0

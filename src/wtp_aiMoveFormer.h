@@ -8,21 +8,33 @@
 #include "engine.h"
 #include "wtp_ai_game.h"
 
-constexpr int BUNKER_ENEMY_BASE_RANGE_MIN =  2;
-constexpr int BUNKER_ENEMY_BASE_RANGE_MAX = 10;
 constexpr int PRESERVED_LAND_ROCKY_TILE_COUNT = 4;
+constexpr int BUNKER_ENEMY_BASE_RANGE_MIN = 2;
+constexpr int BUNKER_ENEMY_BASE_RANGE_MAX = 5;
+constexpr int BUNKER_PLAYER_BASE_RANGE_MIN = 2;
+constexpr int BUNKER_PLAYER_BASE_RANGE_MAX = 3;
+
+constexpr double BUNKER_PLACEMENT_COEFFICIENTS[BUNKER_PLAYER_BASE_RANGE_MAX + 1][BUNKER_PLAYER_BASE_RANGE_MAX + 1] =
+	{
+		{0.00, 0.00, 0.00, 0.00, },
+		{0.00, 0.00, 0.00, 0.00, },
+		{0.80, 0.80, 0.50, 0.00, },
+		{1.00, 1.00, 0.40, 0.25, },
+	}
+;
 
 struct FactionTerraformingInfo
 {
-	double averageNormalTerraformingRateMultiplier;
-	double averagePlantFungusTerraformingRateMultiplier;
-	double averageRemoveFungusTerraformingRateMultiplier;
+	double averageNormalTerraformingRateMultiplier{};
+	double averagePlantFungusTerraformingRateMultiplier{};
+	double averageRemoveFungusTerraformingRateMultiplier{};
 	
-	double bareLandScore;
-	double bareMineScore;
-	double bareSolarScore;
+	double bareLandScore{};
+	double bareMineScore{};
+	double bareSolarScore{};
 
-	FactionTerraformingInfo();
+	FactionTerraformingInfo() = default;
+
 };
 
 /*
@@ -56,10 +68,13 @@ struct TileTerraformingInfo
 	std::vector<int> areaWorkableBaseIds;
 	// minimal land rocky tile count
 	int landRockyTileCount;
-	
+
 	bool harvested = false;
 	bool terraformed = false;
 	bool terraformedConventional = false;
+
+	// current terraforming
+	robin_hood::unordered_flat_set<FormerItem> terraformingItems;
 
 	void storeOriginalMapTile()
 	{
@@ -77,41 +92,49 @@ struct TileTerraformingInfo
 	{
 		*tile = effectiveTile;
 	}
-	void applyTerraforming(FormerItem action)
+
+	void static applyTerraforming(MAP *tile, FormerItem action)
 	{
 		switch (action)
 		{
 		case FORMER_LEVEL_TERRAIN:
 			{
-				if (tile->is_rocky())
+				if (tile->is_land())
 				{
-					// rocky turns to rolling
-					tile->val3 &= ~TILE_ROCKY;
-					tile->val3 |= TILE_ROLLING;
-				}
-				else if (tile->is_rolling())
-				{
-					// rolling turns to flat
-					tile->val3 &= ~TILE_ROLLING;
+					if (tile->is_rocky())
+					{
+						// rocky turns to rolling
+						tile->val3 &= ~TILE_ROCKY;
+						tile->val3 |= TILE_ROLLING;
+					}
+					else if (tile->is_rolling())
+					{
+						// rolling turns to flat
+						tile->val3 &= ~TILE_ROLLING;
+					}
 				}
 			}
 			break;
 
 		case FORMER_AQUIFER:
 			{
-				tile->items |= BIT_RIVER;
+				tile->items |= BIT_RIVER_SRC | BIT_RIVER;
 			}
 			break;
 
 		default:
 			{
-				tile->items |= TerraformRules[action][0];
-				tile->items &= ~TerraformRules[action][1];
+				tile->items |= Terraform[action].bit;
+				tile->items &= ~Terraform[action].bit_incompatible;
 			}
 			break;
 
 		}
 
+	}
+	void applyTerraforming(FormerItem action)
+	{
+		applyTerraforming(this->tile, action);
 	}
 
 };
@@ -177,38 +200,39 @@ struct TerraformingOptionScore
 	bool operator<(TerraformingOptionScore const &other) const { return score < other.score; }
 };
 
-/// Prohibits building improvements too close to each other or existing improvements.
-struct PROXIMITY_RULE
+// prohibits building improvements too close to existing or building same improvement
+struct ProximityRule
 {
+	MapItem item;
 	// cannot build within this range of same existing improvement
 	int existingDistance;
 	// cannot build within this range of same building improvement
 	int buildingDistance;
 };
-const robin_hood::unordered_flat_map<int, PROXIMITY_RULE> PROXIMITY_RULES =
+robin_hood::unordered_flat_map<int, ProximityRule> const PROXIMITY_RULES =
 {
-	{FORMER_CONDENSER, {0, 1}},
-	{FORMER_ECH_MIRROR, {0, 1}},
-	{FORMER_THERMAL_BORE, {1, 1}},
-	{FORMER_AQUIFER, {1, 3}},
-	{FORMER_RAISE_LAND, {0, 1}},
-	{FORMER_SENSOR, {2, 2}},
-	{FORMER_BUNKER, {2, 2}},
+	{FORMER_CONDENSER		, {BIT_CONDENSER	, 0, 1}},
+	{FORMER_ECH_MIRROR	, {BIT_ECH_MIRROR	, 0, 1}},
+	{FORMER_THERMAL_BORE	, {BIT_THERMAL_BORE	, 1, 1}},
+	{FORMER_AQUIFER		, {BIT_RIVER		, 1, 3}},
+	{FORMER_RAISE_LAND	, {BIT_MONOLITH		, 0, 1}}, // use dummy BIT_MONOLITH
+	{FORMER_SENSOR		, {BIT_SENSOR		, 2, 2}},
+	{FORMER_BUNKER		, {BIT_BUNKER		, 2, 2}},
 };
 
-struct FORMER_ORDER
+struct FormerOrder
 {
 	int vehicleId;
 	MAP *tile = nullptr;
 	int action = -1;
 	
-	FORMER_ORDER(int _vehicleId);
+	FormerOrder(int _vehicleId);
 	
 };
 
 struct TerraformingRequestAssignment
 {
-	FORMER_ORDER *formerOrder;
+	FormerOrder *formerOrder;
 	double travelTime;
 };
 
@@ -238,36 +262,8 @@ struct TERRAFORMING_SCORE
 	
 };
 
-/// Final terraforming request assigned to formers.
-struct TerraformingRequest
-{
-	MAP *tile;
-	FormerItem action;
-	double score;
-
-	// conventional terraforming (tile items modification resulting in yield change)
-	bool conventional = false;
-	// combined option actions terraforming time
-	double terraformingTime = 0.0;
-	// improvement generated income
-	double improvementIncome = 0.0;
-	// adjustment to how well this improvement fits in this tile by reducing its income
-	double fitnessScore = 0.0;
-	// fitness adjusted improvement generated income
-	double fitnessAdjustmentIncome = 0.0;
-	// improvement generated gain (with terraformingTime delay)
-	double improvementGain = 0.0;
-	
-	TileYield yield;
-	
-	TerraformingRequest(MAP *_tile, FormerItem action, double score)
-	: tile(_tile), action(action), score(score)
-	{}
-	
-};
-
 // access terraforming data arrays
-TileTerraformingInfo &getTileTerraformingInfo(MAP *tile);
+TileTerraformingInfo &getTileTerraformingInfo(MAP* tile);
 BaseTerraformingInfo &getBaseTerraformingInfo(int baseId);
 
 void moveFormerStrategy();
@@ -283,60 +279,42 @@ void generateRaiseLandTerraformingRequest(MAP *tile);
 void generateNetworkTerraformingRequest(MAP *tile);
 void generateSensorTerraformingRequest(MAP *tile);
 void generateBunkerTerraformingRequest(MAP *tile);
-void sortTerraformingRequests();
 void applyProximityRules();
+bool isProximityRuleSatisfied(MAP *tile, FormerItem action);
 void removeTerraformedTiles();
 void assignFormerOrders();
-void finalizeFormerOrders();
-double computeBaseTileImprovementGain(int baseId, MAP *tile, MapState &improvedMapState, bool areaEffect);
-double computeBaseImprovementYieldScore(int baseId, MAP *tile, MAP *currentMapState, MAP *improvedMapState);
+void setFormerTasks();
+double calculateConventionalTerraformingScore(MAP *tile, MAP const &originalTile, MAP const &improvedTile);
+double computeBaseTileImprovementGain(int baseId, MAP *tile, MAP const &originalTile, MAP const &improvedTile);
 double calculateConventionalTerraformingScore(MAP *tile, const std::set<FormerItem>& actions);
-TerraformingRequest calculateAquiferTerraformingScore(MAP *tile);
 TerraformingRequest calculateRaiseLandTerraformingScore(MAP *tile);
-TerraformingRequest calculateNetworkTerraformingScore(MAP *tile);
-TerraformingRequest calculateSensorTerraformingScore(MAP *tile);
-TerraformingRequest calculateBunkerTerraformingScore(MAP *tile);
-bool isTerraformingCompleted(MAP *tile, int action);
+bool isTerraformingCompleted(MAP const *tile, int action);
 bool isVehicleTerrafomingOrderCompleted(int vehicleId);
 bool isTerraformingAvailable(MAP *tile, FormerItem action);
+bool isTerraformingDestructive(MAP *tile, FormerItem action);
 bool isRemoveFungusRequired(int action);
 bool isLevelTerrainRequired(bool ocean, int action);
-bool isNearbyForestUnderConstruction(int x, int y);
-bool isNearbyCondeserUnderConstruction(int x, int y);
-bool isNearbyMirrorUnderConstruction(int x, int y);
-bool isNearbyBoreholePresentOrUnderConstruction(int x, int y);
-bool isNearbyRiverPresentOrUnderConstruction(int x, int y);
-bool isNearbyRaiseUnderConstruction(int x, int y);
-bool isNearbySensorPresentOrUnderConstruction(int x, int y);
-bool isNearbyBunkerPresentOrUnderConstruction(int x, int y);
-bool isNearbyBasePresent(int x, int y, int range);
-double getTerraformingTime(MapState &mapState, int action);
-double calculateNetworkScore(MAP *tile, int action);
-bool isTowardBaseDiagonal(int x, int y, int dxSign, int dySign);
-bool isTowardBaseHorizontal(int x, int y, int dxSign);
-bool isTowardBaseVertical(int x, int y, int dySign);
-double estimateSensorIncome(MAP *tile);
-double estimateBunkerIncome(MAP *tile, bool existing = false);
-bool isBaseWorkedTile(BASE *base, int x, int y);
-double getFitnessScore(MAP *tile, int action, bool levelTerrain);
-bool hasNearbyTerraformingRequestAction(std::vector<TerraformingRequest>::iterator begin, std::vector<TerraformingRequest>::iterator end, int action, int x, int y, int range);
-double estimateAquiferIncome(MAP *tile);
-double estimateRaiseLandIncome(MAP *tile, int cost);
 bool isRaiseLandSafe(MAP *tile);
 double calculateBaseResourceScore(int baseId, int currentMineralIntake2, int currentNutrientSurplus, int currentMineralSurplus, int currentEnergySurplus, int improvedNutrientSurplus, int improvedMineralSurplus, int improvedEnergySurplus);
-double computeImprovementBaseSurplusEffectScore(int baseId, MAP *tile, MAP *currentMapState, MAP *improvedMapState, bool areaEffect);
 double computeBaseImprovementYieldScore(int baseId, MAP *tile, MAP *currentMapState, MAP *improvedMapState);
 bool isWorkableTile(MAP *tile);
 bool isValidConventionalTerraformingSite(MAP *tile);
 bool isValidTerraformingSite(MAP *tile);
 double getTerraformingResourceScore(double nutrient, double mineral, double energy);
-double getTerraformingResourceScore(TileYield yield);
+double getTerraformingResourceScore(TileYield const &yield);
 double getTerraformingGain(double income, double terraformingTime);
-bool compareTerraformingRequests(TerraformingRequest  &terraformingRequest1, TerraformingRequest  &terraformingRequest2);
-bool compareConventionalTerraformingRequests(TerraformingRequest  &terraformingRequest1, TerraformingRequest  &terraformingRequest2);
-TileYield getTerraformingYield(int baseId, MAP *tile, std::vector<int> actions);
 double getBaseImprovementIncome(int baseId, Resource oldIntake, Resource newIntake);
-void addConventionalTerraformingRequest(std::vector<TerraformingRequest> &availableTerraformingRequests, TerraformingRequest &terraformingRequest);
 void removeUnusedBunkers();
-double getTerraformingTime(int vehicleId, Location location, FormerItem action);
+int getTerraformingTime(int vehicleId, MAP *tile, FormerItem action);
+void insertActionTerraformingRequests(MAP *tile, std::set<FormerItem> const &actions, double gain);
+double getCondenserGain(MAP *tile);
+double getEchelonMirrorGain(MAP *tile);
+double getAquiferGain(MAP *tile);
+double getRaiseLandGain(MAP *tile);
+double getNetworkGain(MAP *tile, MAP const &originalTile, MAP const &improvedTile);
+robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, double>> getCrossBaseTravelTimes(std::set<int> const& baseIds);
+double getSensorGain(MAP *tile);
+double getBunkerGain(MAP *tile);
+double getBunkerPlacementCoefficient(MAP *bunkerTile, MAP *baseTile);
+bool isCompatibleTerraforming(FormerItem ongoingAction, FormerItem action);
 

@@ -408,9 +408,9 @@ struct Config {
     bool recycling_tanks_mineral_multiplier = true;
     bool recycling_tanks_population_bonus;
     bool genejack_factory_mineral_multiplier = true;
-    int genejack_factory_mineral_bonus_mining_platform = 0;
-    int genejack_factory_mineral_bonus_regular_mine = 0;
+    int genejack_factory_mineral_bonus_flat_mine = 0;
     int genejack_factory_mineral_bonus_rocky_mine = 0;
+    int genejack_factory_mineral_bonus_mining_platform = 0;
     int energy_multipliers_tree_farm[3] = {0,0,0};
     int energy_multipliers_hybrid_forest[3] = {0,0,0};
     int energy_multipliers_centauri_preserve[3] = {0,0,0};
@@ -563,6 +563,9 @@ struct Config {
 	double ai_terraforming_completion_bonus;
 	double ai_terraforming_land_rocky_tile_threshold;
 	int ai_terraforming_travel_time_multiplier;
+	double ai_terraforming_networkValueIncomeImprovement;
+	double ai_terraforming_networkValueTravelTimeDenominator;
+	double ai_terraforming_networkValueReduction;
 	double ai_terraforming_networkConnectionValue;
 	double ai_terraforming_networkImprovementValue;
 	double ai_terraforming_networkBaseExtensionValue;

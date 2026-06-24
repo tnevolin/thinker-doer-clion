@@ -2447,7 +2447,7 @@ int getFactionHighestResearchedTechLevel(int factionId)
 
 	for (int techId = TECH_Biogen; techId <= TECH_TranT; techId++)
 	{
-		if (isFactionHasTech(factionId, techId))
+ 	if (has_tech(techId, factionId))
 		{
 			highestResearchedTechLevel = std::max(highestResearchedTechLevel, wtp_tech_level(techId));
 		}
@@ -2574,7 +2574,7 @@ int __cdecl wtp_mod_order_veh(int vehicleId, int angle, int a3)
 	// call default for invalid angle or vehicle
 	
 	if (!((angle >= 0 && angle < ANGLE_COUNT) && (vehicleId >= 0 && vehicleId < *VehCount)))
-		return tx_order_veh(vehicleId, angle, a3);
+		return order_veh(vehicleId, angle, a3);
 	
 	// parameters
 		
@@ -2595,7 +2595,7 @@ int __cdecl wtp_mod_order_veh(int vehicleId, int angle, int a3)
 		
 		// execute original function
 		
-		int returnValue = tx_order_veh(vehicleId, angle, a3);
+		int returnValue = order_veh(vehicleId, angle, a3);
 		
 		// set probe moves
 		
@@ -2625,14 +2625,14 @@ int __cdecl wtp_mod_order_veh(int vehicleId, int angle, int a3)
 			// check if there is a sea transport at a given angle
 			
 			if (!isAdjacentTransportAtSea(vehicleId, angle))
-				return tx_order_veh(vehicleId, angle, a3);
+				return order_veh(vehicleId, angle, a3);
 			
 			// try other angles
 			
 			for (int newAngle = angle + 1; newAngle < angle + ANGLE_COUNT; newAngle++)
 			{
 				if (!isAdjacentTransportAtSea(vehicleId, newAngle % ANGLE_COUNT))
-					return tx_order_veh(vehicleId, newAngle, a3);
+					return order_veh(vehicleId, newAngle, a3);
 			}
 			
 		}
@@ -2662,7 +2662,7 @@ int __cdecl wtp_mod_order_veh(int vehicleId, int angle, int a3)
 					continue;
 				
 				if (!is_ocean(newDst) && !isBlocked(factionId, newDst) && !isZoc(factionId, src, newDst))
-					return tx_order_veh(vehicleId, newAngle, a3);
+					return order_veh(vehicleId, newAngle, a3);
 					
 			}
 			
@@ -2670,7 +2670,7 @@ int __cdecl wtp_mod_order_veh(int vehicleId, int angle, int a3)
 		
 		// execute original function if nothing else applied or worked
 		
-		return tx_order_veh(vehicleId, angle, a3);
+		return order_veh(vehicleId, angle, a3);
 		
 	}
 	

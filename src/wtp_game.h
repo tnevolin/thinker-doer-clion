@@ -1293,7 +1293,6 @@ bool getVehicleSupport(int vehicleId);
 bool isUnitRequiresSupport(int unitId);
 bool isVehicleRequiresSupport(int vehicleId);
 bool isFactionHasAbility(int faction, VehAbl abl);
-bool isFactionHasTech(int factionId, int tech);
 int getFactionTechCount(int factionId);
 bool isUnprotectedArtifact(int vehicleId);
 double average(std::vector<double> v);
@@ -1351,4 +1350,5 @@ double getValueSum(robin_hood::unordered_flat_map<int, double> weights);
 bool isValidFactionId(int factionId);
 bool isValidUnitId(int unitId);
 bool isValidVehicleId(int vehicleId);	
+void applyTerraforming(MAP *tile, FormerItem action);
 

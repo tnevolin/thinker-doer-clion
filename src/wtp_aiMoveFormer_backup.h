@@ -110,14 +110,14 @@ const std::array<const std::vector<TERRAFORMING_OPTION *>, 2> BASE_TERRAFORMING_
 }};
 
 /// Prohibits building improvements too close to each other or existing improvements.
-struct PROXIMITY_RULE
+struct ProximityRule
 {
 	// cannot build within this range of same existing improvement
 	int existingDistance;
 	// cannot build within this range of same building improvement
 	int buildingDistance;
 };
-const robin_hood::unordered_flat_map<int, PROXIMITY_RULE> PROXIMITY_RULES =
+const robin_hood::unordered_flat_map<int, ProximityRule> PROXIMITY_RULES =
 {
 	{FORMER_CONDENSER, {0, 1}},
 	{FORMER_ECH_MIRROR, {0, 1}},
@@ -128,19 +128,19 @@ const robin_hood::unordered_flat_map<int, PROXIMITY_RULE> PROXIMITY_RULES =
 	{FORMER_BUNKER, {2, 2}},
 };
 
-struct FORMER_ORDER
+struct FormerOrder
 {
 	int vehicleId;
 	MAP *tile = nullptr;
 	int action = -1;
 	
-	FORMER_ORDER(int _vehicleId);
+	FormerOrder(int _vehicleId);
 	
 };
 
 struct TerraformingRequestAssignment
 {
-	FORMER_ORDER *formerOrder;
+	FormerOrder *formerOrder;
 	double travelTime;
 };
 
@@ -206,7 +206,7 @@ struct TerraformingRequest
 };
 
 // access terraforming data arrays
-TileTerraformingInfo &getTileTerraformingInfo(MAP *tile);
+TileTerraformingInfo* getTileTerraformingInfo(MAP* tile);
 BaseTerraformingInfo &getBaseTerraformingInfo(int baseId);
 
 void moveFormerStrategy();
@@ -226,7 +226,7 @@ void sortTerraformingRequests();
 void applyProximityRules();
 void removeTerraformedTiles();
 void assignFormerOrders();
-void finalizeFormerOrders();
+void setFormerTasks();
 double computeBaseTileImprovementGain(int baseId, MAP *tile, MapState &improvedMapState, bool areaEffect);
 double computeBaseImprovementYieldScore(int baseId, MAP *tile, MAP *currentMapState, MAP *improvedMapState);
 TerraformingRequest calculateConventionalTerraformingScore(int baseId, MAP *tile, TERRAFORMING_OPTION  *option);
@@ -257,7 +257,7 @@ bool isTowardBaseVertical(int x, int y, int dySign);
 double estimateSensorIncome(MAP *tile);
 double estimateBunkerIncome(MAP *tile, bool existing = false);
 bool isBaseWorkedTile(BASE *base, int x, int y);
-double getFitnessScore(MAP *tile, int action, bool levelTerrain);
+double getFitnessCoefficient(MAP *tile, int action, bool levelTerrain);
 bool hasNearbyTerraformingRequestAction(std::vector<TerraformingRequest>::iterator begin, std::vector<TerraformingRequest>::iterator end, int action, int x, int y, int range);
 double estimateAquiferIncome(MAP *tile);
 double estimateRaiseLandIncome(MAP *tile, int cost);
@@ -269,7 +269,7 @@ bool isWorkableTile(MAP *tile);
 bool isValidConventionalTerraformingSite(MAP *tile);
 bool isValidTerraformingSite(MAP *tile);
 double getTerraformingResourceScore(double nutrient, double mineral, double energy);
-double getTerraformingResourceScore(TileYield yield);
+double getTerraformingResourceScore(TileYield const& yield);
 void generateTerraformingChange(MapState &mapState, int action);
 double getTerraformingGain(double income, double terraformingTime);
 bool compareTerraformingRequests(TerraformingRequest  &terraformingRequest1, TerraformingRequest  &terraformingRequest2);
@@ -277,7 +277,7 @@ bool compareConventionalTerraformingRequests(TerraformingRequest  &terraformingR
 void setMapState(MapState &mapState, MAP *tile);
 void applyMapState(MapState &mapState, MAP *tile);
 void restoreTileMapState(MAP *tile);
-TileYield getTerraformingYield(int baseId, MAP *tile, std::vector<int> actions);
+TileYield getImprovedYield(int baseId, MAP *tile, std::vector<int> actions);
 double getBaseImprovementIncome(int baseId, Resource oldIntake, Resource newIntake);
 void addConventionalTerraformingRequest(std::vector<TerraformingRequest> &availableTerraformingRequests, TerraformingRequest &terraformingRequest);
 void removeUnusedBunkers();

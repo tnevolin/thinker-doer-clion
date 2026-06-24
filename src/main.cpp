@@ -666,17 +666,17 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->genejack_factory_mineral_multiplier = (atoi(value) == 0 ? false : true);
     }
-    else if (MATCH("genejack_factory_mineral_bonus_mining_platform"))
+    else if (MATCH("genejack_factory_mineral_bonus_flat_mine"))
     {
-        cf->genejack_factory_mineral_bonus_mining_platform = atoi(value);
-    }
-    else if (MATCH("genejack_factory_mineral_bonus_regular_mine"))
-    {
-        cf->genejack_factory_mineral_bonus_regular_mine = atoi(value);
+        cf->genejack_factory_mineral_bonus_flat_mine = atoi(value);
     }
     else if (MATCH("genejack_factory_mineral_bonus_rocky_mine"))
     {
         cf->genejack_factory_mineral_bonus_rocky_mine = atoi(value);
+    }
+    else if (MATCH("genejack_factory_mineral_bonus_mining_platform"))
+    {
+    	cf->genejack_factory_mineral_bonus_mining_platform = atoi(value);
     }
     else if (MATCH("energy_multipliers_tree_farm"))
     {
@@ -1344,6 +1344,18 @@ int option_handler(void* user, const char* section, const char* name, const char
     else if (MATCH("ai_terraforming_travel_time_multiplier"))
     {
         cf->ai_terraforming_travel_time_multiplier = atoi(value);
+    }
+    else if (MATCH("ai_terraforming_networkValueIncomeImprovement"))
+    {
+        cf->ai_terraforming_networkValueIncomeImprovement = atof(value);
+    }
+    else if (MATCH("ai_terraforming_networkValueTravelTimeDenominator"))
+    {
+        cf->ai_terraforming_networkValueTravelTimeDenominator = atof(value);
+    }
+    else if (MATCH("ai_terraforming_networkValueReduction"))
+    {
+        cf->ai_terraforming_networkValueReduction = atof(value);
     }
     else if (MATCH("ai_terraforming_networkConnectionValue"))
     {

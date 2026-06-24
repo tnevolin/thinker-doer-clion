@@ -8,7 +8,7 @@
 #include "wtp_aiMoveArtifact.h"
 #include "wtp_aiMoveCombat.h"
 #include "wtp_aiMoveColony.h"
-#include "wtp_aiMoveFormer_backup.h"
+#include "wtp_aiMoveFormer.h"
 #include "wtp_aiMoveCrawler.h"
 #include "wtp_aiMoveTransport.h"
 

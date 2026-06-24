@@ -249,11 +249,12 @@ struct TileInfo
 	bool bunker = false;
 	bool airbase = false;
 	bool port = false;
-	std::array<bool, MaxPlayerNum> sensors {};
+	// sensor coverage
+	std::array<bool, MaxPlayerNum> sensorCoverages {};
 	// player base range
 	std::array<int, TRIAD_COUNT> baseRanges;
 //	std::array<double, TRIAD_COUNT> baseDistances;
-	
+
 	// land vehicle is allowed here without transport
 	bool landAllowed = false;
 	
@@ -642,21 +643,46 @@ struct TERRAFORMING_OPTION
 	// applies to rocky tile only
 	bool rocky;
 	// area effect
-	bool area;
+	bool areaEffect;
 	// requires base yield computation
 	bool yield;
 	// main action that is required to be discovered
-	int requiredAction;
+	FormerItem requiredAction;
 	// list of actions
 	std::set<FormerItem> actions;
 };
 
-struct FormerRequest
+// Final terraforming request assigned to formers.
+struct TerraformingRequest
 {
 	MAP *tile;
-	TERRAFORMING_OPTION const *option;
-	double terraformingTime;
-	double income;
+	FormerItem action;
+	double incomeGain;
+	mutable bool assigned = false;
+
+	// conventional terraforming (tile items modification resulting in yield change)
+	bool conventional = false;
+	// combined option actions terraforming time
+	double terraformingTime = 0.0;
+	// improvement generated income
+	double improvementIncome = 0.0;
+	// adjustment to how well this improvement fits in this tile by reducing its income
+	double fitnessScore = 0.0;
+	// fitness adjusted improvement generated income
+	double fitnessAdjustmentIncome = 0.0;
+	// improvement generated gain (with terraformingTime delay)
+	double improvementGain = 0.0;
+
+	TerraformingRequest(MAP *_tile, FormerItem action, double score)
+	: tile(_tile), action(action), incomeGain(score)
+	{}
+
+	// compare by incomeGain descending
+	bool operator<(TerraformingRequest const & other) const
+	{
+		return incomeGain > other.incomeGain;
+	}
+
 };
 
 struct ConvoyRequest
@@ -669,7 +695,7 @@ struct Production
 {
 	robin_hood::unordered_flat_set<MAP *> unavailableBuildSites;
 	
-	std::vector<FormerRequest> formerRequests;
+	std::vector<TerraformingRequest> terraformingRequests;
 	std::vector<ConvoyRequest> convoyRequests;
 	
 	// combat unit demands

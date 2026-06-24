@@ -264,7 +264,7 @@ tree<ProfileName> Profiling::profiles;
 Converts factionId + unitId into key.
 [factionId][unitSlot]
 */
-FactionUnit::encodeKey(int factionId, int unitId)
+int FactionUnit::encodeKey(int factionId, int unitId)
 {
 	assert(factionId >= 0 && factionId < MaxPlayerNum);
 	assert(unitId >= 0 && unitId < MaxProtoNum);
@@ -280,7 +280,7 @@ FactionUnit::encodeKey(int factionId, int unitId)
 Converts vehicleId into key.
 [factionId][unitSlot]
 */
-FactionUnit::encodeKey(int vehicleId)
+int FactionUnit::encodeKey(int vehicleId)
 {
 	assert(vehicleId >= 0 && vehicleId < *VehCount);
 
@@ -313,7 +313,7 @@ FactionUnit::FactionUnit(int _key)
 
 }
 
-FactionUnit::encodeKey()
+int FactionUnit::encodeKey()
 {
 	if (key == -1)
 	{
@@ -508,7 +508,7 @@ Checks if location is on map (valid location).
 */
 bool isOnMap(MAP *tile)
 {
-	return tile >= *MapTiles && tile < *MapTiles + *MapAreaTiles;
+	return tile != nullptr && tile >= *MapTiles && tile < *MapTiles + *MapAreaTiles;
 }
 
 /**
@@ -1032,12 +1032,12 @@ std::vector<MAP *> getBaseRadiusAdjacentTiles(MAP *center)
 
 bool has_armor(int factionId, int armorId)
 {
-	return isFactionHasTech(factionId, Armor[armorId].preq_tech);
+	return has_tech(Armor[armorId].preq_tech, factionId);
 }
 
 bool has_reactor(int factionId, int reactor)
 {
-	return isFactionHasTech(factionId, Reactor[reactor - 1].preq_tech);
+	return has_tech(Reactor[reactor - 1].preq_tech, factionId);
 }
 
 /*
@@ -1418,7 +1418,7 @@ void setBaseFacility(int base_id, int facility_id, bool add)
 Checks if faction has tech to build a facility.
 */
 bool has_facility_tech(int faction_id, int facility_id) {
-	return isFactionHasTech(faction_id, Facility[facility_id].preq_tech);
+	return has_tech(Facility[facility_id].preq_tech, faction_id);
 }
 
 /*
@@ -1463,12 +1463,12 @@ int getDoctorSpecialistType(int factionId)
 
 		// uncovered
 
-		if (!isFactionHasTech(factionId, citizen->preq_tech))
+		if (!has_tech(citizen->preq_tech, factionId))
 			continue;
 
 		// not obsolete
 
-		if (isFactionHasTech(factionId, citizen->obsol_tech))
+		if (has_tech(citizen->obsol_tech, factionId))
 			continue;
 
 		// get psych bonus
@@ -4113,7 +4113,7 @@ VehWeapon getFactionBestWeapon(int factionId)
 
 	for (int weaponId = WPN_LASER; weaponId <= WPN_STRING_DISRUPTOR; weaponId++)
 	{
-		if (isFactionHasTech(factionId, Weapon[weaponId].preq_tech))
+		if (has_tech(Weapon[weaponId].preq_tech, factionId))
 		{
 			if (Weapon[weaponId].offense_value > bestWeaponOffenseValue)
 			{
@@ -4139,7 +4139,7 @@ VehWeapon getFactionBestWeapon(int factionId, int limit)
 
 	for (int weaponId = WPN_LASER; weaponId <= WPN_STRING_DISRUPTOR; weaponId++)
 	{
-		if (isFactionHasTech(factionId, Weapon[weaponId].preq_tech))
+		if (has_tech(Weapon[weaponId].preq_tech, factionId))
 		{
 			if (Weapon[weaponId].offense_value > limit)
 				continue;
@@ -4165,7 +4165,7 @@ VehArmor getFactionBestArmor(int factionId)
 
 	for (int armorId = ARM_SYNTHMETAL_ARMOR; armorId <= ARM_RESONANCE_8_ARMOR; armorId++)
 	{
-		if (isFactionHasTech(factionId, Armor[armorId].preq_tech))
+		if (has_tech(Armor[armorId].preq_tech, factionId))
 		{
 			if (Armor[armorId].defense_value > bestArmorDefenseValue)
 			{
@@ -4191,7 +4191,7 @@ VehArmor getFactionBestArmor(int factionId, int limit)
 
 	for (int armorId = ARM_SYNTHMETAL_ARMOR; armorId <= ARM_RESONANCE_8_ARMOR; armorId++)
 	{
-		if (isFactionHasTech(factionId, Armor[armorId].preq_tech))
+		if (has_tech(Armor[armorId].preq_tech, factionId))
 		{
 			if (Armor[armorId].defense_value > limit)
 				continue;
@@ -7194,12 +7194,7 @@ bool getVehicleSupport(int vehicleId)
 bool isFactionHasAbility(int faction, VehAbl abl)
 {
 	assert(abl >= 0 && abl <= ABL_ID_ALGO_ENHANCEMENT);
-	return isFactionHasTech(faction, Ability[abl].preq_tech);
-}
-
-bool isFactionHasTech(int factionId, int tech)
-{
-	return has_tech(tech, factionId);
+	return has_tech(Ability[abl].preq_tech, faction);
 }
 
 int getFactionTechCount(int factionId)
@@ -7208,7 +7203,7 @@ int getFactionTechCount(int factionId)
 
 	for (int techId = TECH_Biogen; techId <= TECH_TranT; techId++)
 	{
-		if (isFactionHasTech(factionId, techId))
+ 	if (has_tech(techId, factionId))
 		{
 			count++;
 		}
@@ -7360,7 +7355,7 @@ bool isBaseCanBuildShip(int baseId)
 
 	// no tech
 
-	if (!isFactionHasTech(factionId, getChassis(CHS_FOIL)->preq_tech))
+	if (!has_tech(getChassis(CHS_FOIL)->preq_tech, factionId))
 		return false;
 
 	// can build if accesses water
@@ -7656,24 +7651,24 @@ int getBaseMoraleModifier(int baseId, int extendedTriad)
 bool isFactionCanBuildAirOffense(int factionId)
 {
 	return
-		isFactionHasTech(factionId, Chassis[CHS_NEEDLEJET].preq_tech)
+		has_tech(Chassis[CHS_NEEDLEJET].preq_tech, factionId)
 		||
-		isFactionHasTech(factionId, Chassis[CHS_COPTER].preq_tech)
+		has_tech(Chassis[CHS_COPTER].preq_tech, factionId)
 		||
-		isFactionHasTech(factionId, Chassis[CHS_MISSILE].preq_tech)
+		has_tech(Chassis[CHS_MISSILE].preq_tech, factionId)
 		||
-		isFactionHasTech(factionId, Chassis[CHS_GRAVSHIP].preq_tech)
+		has_tech(Chassis[CHS_GRAVSHIP].preq_tech, factionId)
 	;
 }
 
 bool isFactionCanBuildAirDefense(int factionId)
 {
 	return
-		isFactionHasTech(factionId, Chassis[CHS_NEEDLEJET].preq_tech)
+		has_tech(Chassis[CHS_NEEDLEJET].preq_tech, factionId)
 		||
-		isFactionHasTech(factionId, Chassis[CHS_COPTER].preq_tech)
+		has_tech(Chassis[CHS_COPTER].preq_tech, factionId)
 		||
-		isFactionHasTech(factionId, Chassis[CHS_GRAVSHIP].preq_tech)
+		has_tech(Chassis[CHS_GRAVSHIP].preq_tech, factionId)
 	;
 }
 
@@ -7690,17 +7685,17 @@ bool isFactionCanBuildMelee(int factionId, int type, int triad)
 		switch (triad)
 		{
 		case TRIAD_AIR:
-			canBuild = isFactionHasTech(factionId, Units[BSC_LOCUSTS_OF_CHIRON].preq_tech);
+			canBuild = has_tech(Units[BSC_LOCUSTS_OF_CHIRON].preq_tech, factionId);
 			break;
 		case TRIAD_SEA:
 			canBuild =
-				isFactionHasTech(factionId, Units[BSC_ISLE_OF_THE_DEEP].preq_tech)
+				has_tech(Units[BSC_ISLE_OF_THE_DEEP].preq_tech, factionId)
 				||
-				isFactionHasTech(factionId, Units[BSC_SEALURK].preq_tech)
+				has_tech(Units[BSC_SEALURK].preq_tech, factionId)
 			;
 			break;
 		case TRIAD_LAND:
-			canBuild = isFactionHasTech(factionId, Units[BSC_MIND_WORMS].preq_tech);
+			canBuild = has_tech(Units[BSC_MIND_WORMS].preq_tech, factionId);
 			break;
 		}
 		break;
@@ -7709,29 +7704,29 @@ bool isFactionCanBuildMelee(int factionId, int type, int triad)
 		{
 		case TRIAD_AIR:
 			canBuild =
-				isFactionHasTech(factionId, Chassis[CHS_NEEDLEJET].preq_tech)
+				has_tech(Chassis[CHS_NEEDLEJET].preq_tech, factionId)
 				||
-				isFactionHasTech(factionId, Chassis[CHS_COPTER].preq_tech)
+				has_tech(Chassis[CHS_COPTER].preq_tech, factionId)
 				||
-				isFactionHasTech(factionId, Chassis[CHS_MISSILE].preq_tech)
+				has_tech(Chassis[CHS_MISSILE].preq_tech, factionId)
 				||
-				isFactionHasTech(factionId, Chassis[CHS_GRAVSHIP].preq_tech)
+				has_tech(Chassis[CHS_GRAVSHIP].preq_tech, factionId)
 			;
 			break;
 		case TRIAD_SEA:
 			canBuild =
-				isFactionHasTech(factionId, Chassis[CHS_FOIL].preq_tech)
+				has_tech(Chassis[CHS_FOIL].preq_tech, factionId)
 				||
-				isFactionHasTech(factionId, Chassis[CHS_CRUISER].preq_tech)
+				has_tech(Chassis[CHS_CRUISER].preq_tech, factionId)
 			;
 			break;
 		case TRIAD_LAND:
 			canBuild =
-				isFactionHasTech(factionId, Chassis[CHS_INFANTRY].preq_tech)
+				has_tech(Chassis[CHS_INFANTRY].preq_tech, factionId)
 				||
-				isFactionHasTech(factionId, Chassis[CHS_SPEEDER].preq_tech)
+				has_tech(Chassis[CHS_SPEEDER].preq_tech, factionId)
 				||
-				isFactionHasTech(factionId, Chassis[CHS_HOVERTANK].preq_tech)
+				has_tech(Chassis[CHS_HOVERTANK].preq_tech, factionId)
 			;
 			break;
 		}
@@ -8191,5 +8186,12 @@ bool isValidUnitId(int unitId)
 bool isValidVehicleId(int vehicleId)
 {
 	return vehicleId >= 0 && vehicleId < *VehCount;
+}
+
+// formally applies terraforming using terraform rules
+void applyTerraforming(MAP *tile, FormerItem action)
+{
+	tile->items |= Terraform[action].bit;
+	tile->items &= ~Terraform[action].bit_incompatible;
 }
 

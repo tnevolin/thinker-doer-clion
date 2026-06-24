@@ -636,11 +636,11 @@ void populateAirClusters(int factionId)
 
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_set<int>> speeds;
 
-	for (int unitId : getFactionUnitIds(factionId, false, true))
+	for (int unitId : aiData.factionInfos.at(factionId).availableUnitIds)
 	{
-		UNIT *unit = getUnit(unitId);
-		int chassisId = unit->chassis_id;
-		int triad = unit->triad();
+		UNIT &unit = Units[unitId];
+		int chassisId = static_cast<uint8_t>(unit.chassis_id);
+		int triad = unit.triad();
 		int speed = getUnitSpeed(factionId, unitId);
 
 		// air unit
@@ -3669,7 +3669,7 @@ MovementType getVehicleMovementType(int vehicleId)
 	return getUnitMovementType(vehicle->faction_id, vehicle->unit_id);
 }
 
-int getAirCombatCluster(int chassisId, int unitSpeed, MAP *tile)
+int getAirCluster(int chassisId, int unitSpeed, MAP *tile)
 {
 	assert(isOnMap(tile));
 

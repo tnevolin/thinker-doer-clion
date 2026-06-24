@@ -291,7 +291,7 @@ MovementType getUnitMovementType(int factionId, int unitId);
 MovementType getVehicleBasicMovementType(int vehicleId);
 MovementType getVehicleMovementType(int vehicleId);
 
-int getAirCluster(int chassisId, int speed, MAP *tile);
+int getAirCluster(int chassisId, int unitSpeed, MAP *tile);
 int getUnitAirCluster(int unitId, MAP *tile);
 int getVehicleAirCluster(int vehicleId);
 bool isSameAirCluster(int chassisId, int speed, MAP *tile1, MAP *tile2);

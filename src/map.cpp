@@ -1022,7 +1022,7 @@ int __cdecl mod_mine_yield(int faction_id, int base_id, int x, int y, int flag) 
 					}
 					else
 					{
-						value += conf.genejack_factory_mineral_bonus_regular_mine;
+						value += conf.genejack_factory_mineral_bonus_flat_mine;
 					}
 				}
 				

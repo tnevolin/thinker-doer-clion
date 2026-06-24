@@ -143,6 +143,13 @@ struct MAP {
 	{
 		return (items & BIT_SENSOR) != 0;
 	}
+	bool is_land_rocky() {
+    	return is_land() && is_rocky();
+    }
+	int elevation() {
+    	return alt_level() - ALT_SHORE_LINE;
+    }
+	//
 };
 
 struct FileFindPath {

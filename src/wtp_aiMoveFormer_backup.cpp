@@ -177,9 +177,9 @@ void setupTerraformingData()
 
 	// bareLandScore
 
-	int forestNutrient = ResInfo->forest_sq.nutrient + (isFactionHasTech(aiFactionId, Facility[FAC_TREE_FARM].preq_tech) ? 1 : 0) + (isFactionHasTech(aiFactionId, Facility[FAC_HYBRID_FOREST].preq_tech) ? 1 : 0);
+	int forestNutrient = ResInfo->forest_sq.nutrient + (has_tech(Facility[FAC_TREE_FARM].preq_tech, aiFactionId) ? 1 : 0) + (has_tech(Facility[FAC_HYBRID_FOREST].preq_tech, aiFactionId) ? 1 : 0);
 	int forestMineral = ResInfo->forest_sq.mineral;
-	int forestEnergy = ResInfo->forest_sq.energy + (isFactionHasTech(aiFactionId, Facility[FAC_HYBRID_FOREST].preq_tech) ? 1 : 0);
+	int forestEnergy = ResInfo->forest_sq.energy + (has_tech(Facility[FAC_HYBRID_FOREST].preq_tech, aiFactionId) ? 1 : 0);
 	double forestScore = getTerraformingResourceScore(forestNutrient, forestMineral, forestEnergy);
 
 	double fungusScore = 0.0;
@@ -206,7 +206,7 @@ void setupTerraformingData()
 
 	// bareMineScore
 
-	int mineNutrient = ResInfo->improved_land.nutrient + (isFactionHasTech(aiFactionId, Terraform[FORMER_SOIL_ENR].preq_tech) ? 1 : 0) + Rules->nutrient_effect_mine_sq;
+	int mineNutrient = ResInfo->improved_land.nutrient + (has_tech(Terraform[FORMER_SOIL_ENR].preq_tech, aiFactionId) ? 1 : 0) + Rules->nutrient_effect_mine_sq;
 	int mineMineral = 1;
 	int mineEnergy = 0;
 
@@ -214,9 +214,9 @@ void setupTerraformingData()
 
 	// bareSolarScore
 
-	int solarNutrient = ResInfo->improved_land.nutrient + (isFactionHasTech(aiFactionId, Terraform[FORMER_SOIL_ENR].preq_tech) ? 1 : 0);
+	int solarNutrient = ResInfo->improved_land.nutrient + (has_tech(Terraform[FORMER_SOIL_ENR].preq_tech, aiFactionId) ? 1 : 0);
 	int solarMineral = 0;
-	int solarEnergy = 1 + (isFactionHasTech(aiFactionId, Terraform[FORMER_ECH_MIRROR].preq_tech) ? 2 : 0);
+	int solarEnergy = 1 + (has_tech(Terraform[FORMER_ECH_MIRROR].preq_tech, aiFactionId) ? 2 : 0);
 
 	factionTerraformingInfo.bareSolarScore = getTerraformingResourceScore(solarNutrient, solarMineral, solarEnergy);
 
@@ -623,7 +623,7 @@ void populateTerraformingData()
 
 	// calculate network demand
 
-	int networkType = (isFactionHasTech(aiFactionId, Terraform[FORMER_MAGTUBE].preq_tech) ? BIT_MAGTUBE : BIT_ROAD);
+	int networkType = (has_tech(Terraform[FORMER_MAGTUBE].preq_tech, aiFactionId) ? BIT_MAGTUBE : BIT_ROAD);
 
 	int eligibleTileCount = 0;
 	int coveredTileCount = 0;
@@ -2626,7 +2626,7 @@ bool isTerraformingAvailable(MAP *tile, int action)
 
 	if (oceanDeep)
 	{
-		if (!(aquatic && isFactionHasTech(aiFactionId, TECH_EcoEng2)))
+ 	if (!(aquatic && has_tech(TECH_EcoEng2, aiFactionId)))
 			return false;
 	}
 
@@ -2726,12 +2726,12 @@ bool isRemoveFungusRequired(int action)
 
 	// no need to remove fungus for road with fungus road technology
 
-	if (action == FORMER_ROAD && isFactionHasTech(aiFactionId, Rules->tech_preq_build_road_fungus))
+	if (action == FORMER_ROAD && has_tech(Rules->tech_preq_build_road_fungus, aiFactionId))
 		return false;
 
 	// for everything else remove fungus only without fungus improvement technology
 
-	return !isFactionHasTech(aiFactionId, Rules->tech_preq_improv_fungus);
+	return !has_tech(Rules->tech_preq_improv_fungus, aiFactionId);
 
 }
 
@@ -3772,14 +3772,14 @@ double getFitnessScore(MAP *tile, int action, bool levelTerrain)
 
 		// condenser increases rainfall
 
-		if (isFactionHasTech(aiFactionId, Terraform[FORMER_CONDENSER].preq_tech) && rainfall < 2)
+ 	if (has_tech(Terraform[FORMER_CONDENSER].preq_tech, aiFactionId) && rainfall < 2)
 		{
 			rainfall += 0.5;
 		}
 
 		// raise land increases elevation
 
-		if (isFactionHasTech(aiFactionId, Terraform[FORMER_RAISE_LAND].preq_tech))
+ 	if (has_tech(Terraform[FORMER_RAISE_LAND].preq_tech, aiFactionId))
 		{
 			if (elevation < 1.0)
 			{
@@ -4639,7 +4639,7 @@ void restoreTileMapState(MAP *tile)
 Computes improved tile yield.
 Ignores actions not available for player faction.
 */
-TileYield getTerraformingYield(int baseId, MAP *tile, std::vector<int> actions)
+TileYield getImprovedYield(int baseId, MAP *tile, std::vector<int> actions)
 {
 	assert(isOnMap(tile));
 	assert(baseId == -1 || (baseId >= 0 && baseId < *BaseCount));
@@ -4663,7 +4663,7 @@ TileYield getTerraformingYield(int baseId, MAP *tile, std::vector<int> actions)
 		CTerraform *terraform = getTerraform(action);
 		int preqTech = tileInfo.ocean ? terraform->preq_tech_sea : terraform->preq_tech;
 
-		if (!isFactionHasTech(aiFactionId, preqTech))
+		if (!has_tech(preqTech, aiFactionId))
 			continue;
 
 		generateTerraformingChange(improvedMapState, action);
@@ -4684,11 +4684,11 @@ TileYield getTerraformingYield(int baseId, MAP *tile, std::vector<int> actions)
 
 		if (map_has_item(tile, BIT_FOREST))
 		{
-			if (isFactionHasTech(aiFactionId, getFacility(FAC_TREE_FARM)->preq_tech))
+			if (has_tech(getFacility(FAC_TREE_FARM)->preq_tech, aiFactionId))
 			{
 				nutrient += 1;
 			}
-			if (isFactionHasTech(aiFactionId, getFacility(FAC_HYBRID_FOREST)->preq_tech))
+			if (has_tech(getFacility(FAC_HYBRID_FOREST)->preq_tech, aiFactionId))
 			{
 				nutrient += 1;
 				energy += 1;
@@ -4703,7 +4703,7 @@ TileYield getTerraformingYield(int baseId, MAP *tile, std::vector<int> actions)
 
 			if (map_has_item(tile, BIT_FARM))
 			{
-				if (isFactionHasTech(aiFactionId, getFacility(FAC_AQUAFARM)->preq_tech))
+				if (has_tech(getFacility(FAC_AQUAFARM)->preq_tech, aiFactionId))
 				{
 					nutrient += 1;
 				}
@@ -4713,11 +4713,11 @@ TileYield getTerraformingYield(int baseId, MAP *tile, std::vector<int> actions)
 
 			if (map_has_item(tile, BIT_MINE))
 			{
-				if (isFactionHasTech(aiFactionId, getFacility(FAC_SUBSEA_TRUNKLINE)->preq_tech))
+				if (has_tech(getFacility(FAC_SUBSEA_TRUNKLINE)->preq_tech, aiFactionId))
 				{
 					mineral += 1;
 				}
-				if (isFactionHasTech(aiFactionId, Rules->tech_preq_mining_platform_bonus))
+				if (has_tech(Rules->tech_preq_mining_platform_bonus, aiFactionId))
 				{
 					mineral += 1;
 				}
@@ -4727,7 +4727,7 @@ TileYield getTerraformingYield(int baseId, MAP *tile, std::vector<int> actions)
 
 			if (map_has_item(tile, BIT_SOLAR))
 			{
-				if (isFactionHasTech(aiFactionId, getFacility(FAC_THERMOCLINE_TRANSDUCER)->preq_tech))
+				if (has_tech(getFacility(FAC_THERMOCLINE_TRANSDUCER)->preq_tech, aiFactionId))
 				{
 					energy += 1;
 				}

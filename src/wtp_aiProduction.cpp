@@ -12,6 +12,7 @@
 #include "wtp_mod.h"
 #include "wtp_game.h"
 #include "wtp_aiRoute.h"
+#include "wtp_aiMoveFormer.h"
 #include "wtp_aiHurry.h"
 #include "wtp_aiMoveColony.h"
 
@@ -130,9 +131,9 @@ Compares terraforming requests by improvementIncome then by fitnessScore.
 1. compare by yield: superior yield goes first.
 2. compare by gain.
 */
-bool compareFormerRequests(FormerRequest  &formerRequest1, FormerRequest  &formerRequest2)
+bool compareFormerRequests(TerraformingRequest  &formerRequest1, TerraformingRequest  &formerRequest2)
 {
-	return formerRequest1.income > formerRequest2.income;
+	return formerRequest1.improvementGain > formerRequest2.improvementGain;
 }
 
 void populateFactionProductionData()
@@ -1945,7 +1946,7 @@ void evaluateTerraformUnits()
 		
 		HarmonicSummaryStatistics distanceHarmonicSummary;
 		std::vector<TerraformingGain> terraformingGains;
-		for (FormerRequest &formerRequest : aiData.production.formerRequests)
+		for (TerraformingRequest &formerRequest : aiData.production.terraformingRequests)
 		{
 			TileInfo &tileInfo = aiData.getTileInfo(formerRequest.tile);
 			
@@ -1984,7 +1985,7 @@ void evaluateTerraformUnits()
 			
 			// terraforming gain
 			
-			terraformingGains.push_back({formerRequest.terraformingTime, formerRequest.income, 0.0});
+			terraformingGains.push_back({formerRequest.terraformingTime, formerRequest.improvementGain, 0.0});
 			
 		}
 		double averageDistance = distanceHarmonicSummary.getHarmonicMean();
@@ -3454,7 +3455,7 @@ bool isBaseCanBuildUnit(int baseId, int unitId)
 	// require technology for predefined
 	
 	if (unitId < MaxProtoFactionNum)
-		return isFactionHasTech(base->faction_id, unit->preq_tech);
+ 	return has_tech(unit->preq_tech, base->faction_id);
 	
 	// no restrictions
 	
@@ -3480,7 +3481,7 @@ bool isBaseCanBuildFacility(int baseId, int facilityId)
 	
 	// require technology and facility should not exist
 	
-	return isFactionHasTech(base->faction_id, facility->preq_tech) && !isBaseHasFacility(baseId, facilityId);
+	return has_tech(facility->preq_tech, base->faction_id) && !isBaseHasFacility(baseId, facilityId);
 	
 }
 

@@ -1,10 +1,8 @@
 #pragma once
 
-#include <float.h>
-
 #include "main.h"
 #include "engine.h"
-#include "game.h"
+#include "wtp_ai_game.h"
 #include "wtp_game.h"
 
 const int MAX_EXPANSION_RANGE = 10;
@@ -53,7 +51,7 @@ struct TileExpansionInfo
 	bool validBuildSite = false;
 	bool validWorkTile = false;
 	bool worked = false;
-	Resource averageYield;
+	Resource estimatedYield;
 //	double relativeYieldScore = 0.0;
 	double buildSiteBaseGain = 0.0;
 	double buildSitePlacementScore = 0.0;
@@ -79,7 +77,6 @@ bool isValidWorkTile(MAP *baseTile, MAP *workTile);
 int getBuildSiteNearestBaseRange(MAP *tile);
 int getNearestColonyRange(MAP *tile);
 int getExpansionRange(MAP *tile);
-Resource getAverageTileYield(MAP *tile);
 int getNearestEnemyBaseRange(MAP *tile);
 std::vector<MAP *> getUnavailableBuildSites(MAP *buildSite);
 double getBuildSiteOverlapScore(MAP *buildSite);
@@ -88,5 +85,7 @@ double getBuildSiteConnectionScore(MAP *buildSite);
 double getBuildSiteLandUseScore(MAP *buildSite);
 double getEffectiveYieldScore(double nutrient, double mineral, double energy);
 double getColonyTravelTimeCoefficient(double travelTime);
+Resource getEstimatedTileYield(MAP *tile);
+TileYield getImprovedYield(int baseId, MAP *tile, std::vector<FormerItem> const &actions);
 void populateConcaveTiles();
 

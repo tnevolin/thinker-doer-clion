@@ -692,10 +692,8 @@ void populateTileInfos()
 	
 	Profiling::start("sensors", "populateTileInfos");
 	
-	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
+	for (TileInfo &tileInfo : aiData.tileInfos)
 	{
-		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
-		
 		if (!map_has_item(tileInfo.tile, BIT_SENSOR))
 			continue;
 		
@@ -703,14 +701,14 @@ void populateTileInfos()
 		{
 			for (TileInfo *rangeTileInfo : tileInfo.range2CenterTileInfos)
 			{
-				rangeTileInfo->sensors.at(tileInfo.tile->owner) = true;
+				rangeTileInfo->sensorCoverages.at(tileInfo.tile->owner) = true;
 			}
 		}
 		else
 		{
 			for (TileInfo *rangeTileInfo : tileInfo.range2CenterTileInfos)
 			{
-				std::fill(rangeTileInfo->sensors.begin(), rangeTileInfo->sensors.end(), true);
+				rangeTileInfo->sensorCoverages.fill(true);
 			}
 		}
 		
@@ -729,14 +727,14 @@ void populateTileInfos()
 		{
 			for (TileInfo *rangeTileInfo : baseTileInfo.range2CenterTileInfos)
 			{
-				rangeTileInfo->sensors.at(baseTile->owner) = true;
+				rangeTileInfo->sensorCoverages.at(baseTile->owner) = true;
 			}
 		}
 		else
 		{
 			for (TileInfo *rangeTileInfo : baseTileInfo.range2CenterTileInfos)
 			{
-				std::fill(rangeTileInfo->sensors.begin(), rangeTileInfo->sensors.end(), true);
+				rangeTileInfo->sensorCoverages.fill(true);
 			}
 		}
 		

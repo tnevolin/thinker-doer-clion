@@ -1554,6 +1554,7 @@ void populateDefensiveProbeTasks(std::vector<Task> &tasks)
 		
 		for (int baseId : aiData.baseIds)
 		{
+			BASE &base = Bases[baseId];
 			MAP *baseTile = getBaseMapTile(baseId);
 			BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
 			BaseProbeData &probeData = baseInfo.probeData;
@@ -1616,9 +1617,9 @@ void populateDefensiveProbeTasks(std::vector<Task> &tasks)
 				" travelTime=%7.2f"
 				" travelTimeCoefficient=%5.2f"
 				"\n"
-				, vehicleId, vehicle->x, vehicle->y, getVehicleUnitName(vehicleId), base->name
+				, vehicleId, vehicle->x, vehicle->y, getVehicleUnitName(vehicleId), base.name
 				, priority
-				, requiredEffect
+				, probeData.requiredEffect
 				, combatEffect
 				, travelTime
 				, travelTimeCoefficient
@@ -2817,7 +2818,7 @@ void coordinateAttack()
 				
 				task->type = TT_HOLD;
 				task->clearDestination();
-				debug("\t\t[%4d] %s travelTime=%7.2f - bombardment wait for breaking treaty\n", vehicleId, getLocationString(getVehicleMapTile(vehicleId)), travelTime);
+				debug("\t\t[%4d] %s bombardment wait for breaking treaty\n", vehicleId, getLocationString(getVehicleMapTile(vehicleId)));
 				
 			}
 			
