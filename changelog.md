@@ -1,6 +1,10 @@
+# Version 412
+
+* [Bug] Crawler convoying order assignment.
+
 # Version 411
 
-* Fixed Cloning Vats computation.
+* [Bug] Cloning Vats computation.
 
 # Version 409
 

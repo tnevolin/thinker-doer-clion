@@ -256,7 +256,7 @@ int Task::executeNone(int)
 {
 	debug("Task::executeNone\n");
 
-	return EM_SYNC;
+	return EM_DONE;
 
 }
 
@@ -665,7 +665,8 @@ int Task::executeConvoy(int vehicleId)
 	debug("Task::executeConvoy\n");
 	
 	// set order
-	
+
+	set_convoy(vehicleId, static_cast<ResType>(order));
 	setVehicleOrder(vehicleId, ORDER_CONVOY);
 	return EM_DONE;
 	
