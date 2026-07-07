@@ -2044,7 +2044,12 @@ int __cdecl mod_base_upkeep(int base_id) {
     delay_base_riot = delay_base_riot && base->pop_size > cur_pop;
 
     if (*CurrentTurn > 1) {
+		// [WTP]
+		// use WTP modded version
+		/*
         base_check_support();
+		*/
+		wtp_mod_base_check_support();
     }
     *BaseUpkeepState = 1;
     assert(base == *CurrentBase);

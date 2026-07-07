@@ -19,7 +19,7 @@
 #pragma once
 
 #ifdef BUILD_REL
-    #define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v412"
+    #define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v413"
 #else
     #define MOD_VERSION "Thinker Mod develop build"
 #endif
@@ -468,6 +468,7 @@ struct Config {
 	int merchant_exchange_energy_yield_all_tiles = false;
 	int merchant_exchange_energy_yield_all_bases = false;
 	int merchant_exchange_commerce_bonus = 0;
+	int unit_support_energy_credits = 0;
     // AI configurations
     bool ai_useWTPAlgorithms;
     bool wtp_enabled_factions[MaxPlayerNum];

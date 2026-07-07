@@ -3283,6 +3283,12 @@ void patch_battle_report()
     
 }
 
+void patch_support_energy_credits()
+{
+    write_call(0x004F7A75, reinterpret_cast<int>(wtp_mod_base_check_support)); // base_upkeep
+
+}
+
 
 // =======================================================
 // main patch option selection
@@ -3619,7 +3625,9 @@ void patch_setup_wtp(Config* cf)
 	patch_datalinks();
 	
 	patch_battle_report();
-	
+
+	patch_support_energy_credits();
+
 }
 
 void shiftVehicleAddress(byte *bytes, int position)

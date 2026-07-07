@@ -1,3 +1,7 @@
+# Version 413
+
+* Allow unit support costs to be paid from energy credits when base mineral production is insufficient to cover them (unit_support_energy_credits).
+
 # Version 412
 
 * [Bug] Crawler convoying order assignment.

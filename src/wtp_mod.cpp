@@ -1,15 +1,12 @@
 #include "wtp_mod.h"
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include <cmath>
+#include <cstdio>
+#include <ctime>
 #include <vector>
-#include <map>
 #include <regex>
 #include "main.h"
 #include "tech.h"
-#include "patch.h"
 #include "wtp_terranx.h"
 #include "wtp_game.h"
 #include "wtp_ai.h"
@@ -4389,5 +4386,64 @@ int __thiscall wtp_mod_BattleWin_battle_report_Buffer_wrap2(Buffer* This, LPCSTR
 	
 	return Buffer_wrap2(This, lpString, x, y, a5);
 	
+}
+
+/*
+ * Replaces mineral support with energy credits support.
+ */
+int __cdecl wtp_mod_base_check_support()
+{
+	if (conf.unit_support_energy_credits > 0 && *CurrentBase != nullptr)
+	{
+		int baseId = *CurrentBaseID;
+		BASE &base = **CurrentBase;
+		Faction &faction = Factions[base.faction_id];
+		int mineralSupportCost = !conf.alternative_support && faction.SE_support_pending <= -4 ? 2 : 1;
+		int energySupportCost = conf.unit_support_energy_credits * mineralSupportCost;
+
+		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
+		{
+			VEH &vehicle = Vehs[vehicleId];
+
+			// exit when reached sufficient support
+
+			if (*BaseForcesMaintCost <= base.mineral_intake_2)
+				break;
+
+			// this home base
+
+			if (vehicle.home_base_id != baseId)
+				continue;
+
+			// requires support
+
+			if ((vehicle.state & VSTATE_REQUIRES_SUPPORT) == 0)
+				continue;
+
+			// verify sufficient energy reserve
+
+			if (faction.energy_credits < energySupportCost)
+				break;
+
+			// replace support with energy
+
+			*BaseForcesMaintCost -= mineralSupportCost;
+			faction.energy_credits -= energySupportCost;
+
+			// popup
+
+			parse_says(0, base.name, -1, -1);
+			parse_says(1, Units[vehicle.unit_id].name, -1, -1);
+			parse_num(2, energySupportCost);
+			popb("NOSUPPORTCREDITS", WARN_STOP_MINERAL_SHORTAGE, 0xD, "genwarning_sm.pcx", 0);
+
+		}
+
+	}
+
+	// execute original code
+
+	return base_check_support();
+
 }
 

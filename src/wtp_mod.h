@@ -189,4 +189,5 @@ int __cdecl wtp_mod_has_abil_land_air_superiority_attack_needlejet_at_sea(int un
 int __cdecl wtp_mod_has_abil_air_superiority_attack_needlejet(int unit_id, VehAblFlag ability);
 int __thiscall StringList__sort_nop(int *This, int sortType);
 int __thiscall wtp_mod_BattleWin_battle_report_Buffer_wrap2(Buffer* This, LPCSTR lpString, int x, int y, int a5);
+int __cdecl wtp_mod_base_check_support();
 
