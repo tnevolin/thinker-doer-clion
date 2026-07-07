@@ -714,10 +714,10 @@ void base_update_reset(BASE* base, int Ns, int Ms, int Es, std::array<TileValue,
 /*
 [WTP]
 Ensures normal distribution of talents, drones, superdrones.
-- Talents should not exceed pop_size.
-- Drones + superdrones should not exceed 2 x pop_size.
-- Superdrones should not exceed drones.
-- Talents and drones/superdrones should not intersect in the middle.
+- 0 <= talents <= worker_count
+- 0 <= drones + superdrones <= 2 * worker_count
+- superdrones <= drones
+- talents + drones <= worker_count
 */
 void wtp_normalize_happiness(BASE *base, bool subtractSpecialists)
 {
@@ -725,11 +725,7 @@ void wtp_normalize_happiness(BASE *base, bool subtractSpecialists)
 	
 	// limit talents by base size
 	
-	base->talent_total = clamp(base->talent_total, 0, (int32_t)base->pop_size);
-	
-	// superdrones cannot exceed drones
-	
-	base->superdrone_total = std::min(base->drone_total, base->superdrone_total);
+	base->talent_total = clamp(base->talent_total, 0, worker_count);
 	
 	// limit drones/superdrones by base size and redistribute them
 	
@@ -738,10 +734,10 @@ void wtp_normalize_happiness(BASE *base, bool subtractSpecialists)
 		base->drone_total = 0;
 		base->superdrone_total = 0;
 	}
-	else if (base->drone_total + base->superdrone_total >= 2 * (int32_t)base->pop_size)
+	else if (base->drone_total + base->superdrone_total >= 2 * worker_count)
 	{
-		base->drone_total = (int32_t)base->pop_size;
-		base->superdrone_total = (int32_t)base->pop_size;
+		base->drone_total = worker_count;
+		base->superdrone_total = worker_count;
 	}
 	else if (base->drone_total < base->superdrone_total)
 	{
@@ -749,12 +745,11 @@ void wtp_normalize_happiness(BASE *base, bool subtractSpecialists)
 		base->drone_total += shift;
 		base->superdrone_total -= shift;
 	}
-	else if (base->drone_total > (int32_t)base->pop_size)
+	else if (base->drone_total > worker_count)
 	{
-		int drone_excess = std::max(0, base->drone_total - (int32_t)base->pop_size);
+		int drone_excess = std::max(0, base->drone_total - worker_count);
 		base->drone_total -= drone_excess;
 		base->superdrone_total += drone_excess;
-		base->superdrone_total = std::min((int32_t)base->pop_size, base->superdrone_total);
 	}
 	
 	// ensure talents and drone/superdrones do not intersect

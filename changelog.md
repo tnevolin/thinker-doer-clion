@@ -1,3 +1,11 @@
+# Version 415
+
+* AI does design armored formers.
+
+# Version 414
+
+* [bug] Psych specialists quelled more drones than they were supposed to. Fixed.
+
 # Version 413
 
 * Allow unit support costs to be paid from energy credits when base mineral production is insufficient to cover them (unit_support_energy_credits).
