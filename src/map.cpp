@@ -697,7 +697,7 @@ int __cdecl mod_crop_yield(int faction_id, int base_id, int x, int y, int flag) 
     || (alt < ALT_SHORE_LINE && sq->landmarks & LM_FRESH)) {
         bonus_landmark = true;
     }
-    if (is_base) {
+    if (base_id != -1 && is_base) {
         value = ResInfo->base_sq.nutrient;
         if (bonus_nutrient) {
             value = 2 * ResInfo->base_sq.nutrient;
@@ -909,7 +909,7 @@ int __cdecl mod_mine_yield(int faction_id, int base_id, int x, int y, int flag) 
     }
     int value = bonus_landmark + (bonus_mineral ? ResInfo->bonus_sq.mineral : 0);
 
-    if (is_base) {
+    if (base_id != -1 && is_base) {
         value += ResInfo->base_sq.mineral;
 
     	// [WTP]
@@ -1110,7 +1110,7 @@ int __cdecl mod_energy_yield(int faction_id, int base_id, int x, int y, int flag
     int alt = sq->alt_level();
     int value = 0;
 
-    if (is_base) {
+    if (base_id != -1 && is_base) {
         bool is_hq = has_fac_built(FAC_HEADQUARTERS, base_id);
 
     	// [WTP]
