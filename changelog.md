@@ -1,3 +1,7 @@
+# Version 416
+
+* [bug] Pressure Dome inherited Recycling Tanks bonus whether or not it was configured. Fixed.
+
 # Version 415
 
 * AI does design armored formers.

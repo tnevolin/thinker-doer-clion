@@ -705,14 +705,21 @@ int __cdecl mod_crop_yield(int faction_id, int base_id, int x, int y, int flag) 
         if (bonus_landmark) {
             value++;
         }
+
+    	// [WTP]
+    	// PD inherits RT bonus if configured
+    	/*
         if (has_fac_built(FAC_PRESSURE_DOME, base_id)
         || has_fac_built(FAC_RECYCLING_TANKS, base_id)) {
-            value += ResInfo->recycling_tanks.energy;
+        */
+    	if (has_facility(FAC_RECYCLING_TANKS, base_id) || (conf.pressure_dome_recycling_tanks_bonus && has_facility(FAC_PRESSURE_DOME, base_id))) {
+    	//
+    		value += ResInfo->recycling_tanks.energy;
         }
         
 		// [WTP]
 		// Recycling Tanks population bonus
-		if (conf.recycling_tanks_population_bonus && has_fac_built(FAC_RECYCLING_TANKS, base_id))
+		if (conf.recycling_tanks_population_bonus && has_facility(FAC_RECYCLING_TANKS, base_id))
 		{
 			// every second out of three citizens contributes nutrient
 			value += (Bases[base_id].pop_size + 1) / 3;
@@ -904,8 +911,15 @@ int __cdecl mod_mine_yield(int faction_id, int base_id, int x, int y, int flag) 
 
     if (is_base) {
         value += ResInfo->base_sq.mineral;
-        if (has_fac_built(FAC_PRESSURE_DOME, base_id)
-        || has_fac_built(FAC_RECYCLING_TANKS, base_id)) {
+
+    	// [WTP]
+    	// PD inherits RT bonus if configured
+    	/*
+		if (has_fac_built(FAC_PRESSURE_DOME, base_id)
+		|| has_fac_built(FAC_RECYCLING_TANKS, base_id)) {
+		*/
+    	if (has_facility(FAC_RECYCLING_TANKS, base_id) || (conf.pressure_dome_recycling_tanks_bonus && has_facility(FAC_PRESSURE_DOME, base_id))) {
+   		//
             value += ResInfo->recycling_tanks.mineral;
         }
         
@@ -1098,8 +1112,15 @@ int __cdecl mod_energy_yield(int faction_id, int base_id, int x, int y, int flag
 
     if (is_base) {
         bool is_hq = has_fac_built(FAC_HEADQUARTERS, base_id);
-        if (has_fac_built(FAC_PRESSURE_DOME, base_id)
-        || has_fac_built(FAC_RECYCLING_TANKS, base_id)) {
+
+    	// [WTP]
+    	// PD inherits RT bonus if configured
+    	/*
+		if (has_fac_built(FAC_PRESSURE_DOME, base_id)
+		|| has_fac_built(FAC_RECYCLING_TANKS, base_id)) {
+		*/
+    	if (has_facility(FAC_RECYCLING_TANKS, base_id) || (conf.pressure_dome_recycling_tanks_bonus && has_facility(FAC_PRESSURE_DOME, base_id))) {
+   		//
             value += ResInfo->recycling_tanks.energy;
         }
         
