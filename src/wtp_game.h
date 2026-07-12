@@ -200,7 +200,14 @@ struct Resource
 	
 	static Resource combine(Resource const &o1, Resource const &o2)
 	{
-		return Resource(o1.nutrient + o2.nutrient, o1.mineral + o2.mineral, o1.energy + o2.energy);
+		return {o1.nutrient + o2.nutrient, o1.mineral + o2.mineral, o1.energy + o2.energy};
+	}
+
+	static bool isEqualOrInferior(Resource const &o1, Resource const &o2)
+	{
+		return
+			o1.nutrient <= o2.nutrient && o1.mineral <= o2.mineral && o1.energy <= o2.energy
+		;
 	}
 	
 };
@@ -283,6 +290,90 @@ public:
 	{
 		return sumWeight <= 0.0 || sumWeightValue <= 0.0 ? 0.0 : 1.0 / (sumWeightValue / sumWeight);
 	}
+};
+
+// integer resource combination
+struct ResourceYield
+{
+	int nutrient;
+	int mineral;
+	int energy;
+
+	ResourceYield(int _nutrient, int _mineral, int _energy)
+	: nutrient(_nutrient), mineral(_mineral), energy(_energy)
+	{}
+
+	ResourceYield()
+	: ResourceYield(0, 0, 0)
+	{}
+
+	/*
+	Compares yields.
+	-1 : 1 is inferior to 2
+	 0 : neither
+	 1 : 1 is superior to 2
+	*/
+	static int compare(ResourceYield o1, ResourceYield o2)
+	{
+		return
+			o1.nutrient == o2.nutrient && o1.mineral == o2.mineral && o1.energy == o2.energy
+			? 0
+			:
+			o1.nutrient <= o2.nutrient && o1.mineral >= o2.mineral && o1.energy >= o2.energy
+			? -1
+			:
+			o1.nutrient >= o2.nutrient && o1.mineral >= o2.mineral && o1.energy >= o2.energy
+			? +1
+			:  0
+		;
+
+	}
+
+	// equal
+	static bool isEqual(ResourceYield o1, ResourceYield o2)
+	{
+		return
+			(o1.nutrient == o2.nutrient && o1.mineral == o2.mineral && o1.energy == o2.energy)
+		;
+	}
+
+	// superior
+	static bool isSuperior(ResourceYield o1, ResourceYield o2)
+	{
+		return
+			(o1.nutrient >= o2.nutrient && o1.mineral >= o2.mineral && o1.energy >= o2.energy)
+			&&
+			(o1.nutrient > o2.nutrient || o1.mineral > o2.mineral || o1.energy > o2.energy)
+		;
+
+	}
+
+	// equal or superior
+	static bool isEqualOrSuperior(ResourceYield o1, ResourceYield o2)
+	{
+		return
+			(o1.nutrient >= o2.nutrient && o1.mineral >= o2.mineral && o1.energy >= o2.energy)
+		;
+	}
+
+	// inferior
+	static bool isInferior(ResourceYield o1, ResourceYield o2)
+	{
+		return
+			(o1.nutrient <= o2.nutrient && o1.mineral <= o2.mineral && o1.energy <= o2.energy)
+			&&
+			(o1.nutrient < o2.nutrient || o1.mineral < o2.mineral || o1.energy < o2.energy)
+		;
+	}
+
+	// equal or inferior
+	static bool isEqualOrInferior(ResourceYield o1, ResourceYield o2)
+	{
+		return
+			(o1.nutrient <= o2.nutrient && o1.mineral <= o2.mineral && o1.energy <= o2.energy)
+		;
+	}
+
 };
 
 // =======================================================
@@ -1081,12 +1172,16 @@ bool isHoveringLandUnit(int unitId);
 bool isHoveringLandVehicle(int vehicleId);
 bool isEasyFungusEnteringLandUnit(int unitId);
 bool isEasyFungusEnteringVehicle(int vehicleId);
+int getBaseMineralMultiplierNumerator(int baseId);
 double getBaseMineralMultiplier(int baseId);
 double getBaseEnergyEfficiencyCoefficient(int baseId);
 double getBaseEnergyMultiplier(int baseId);
+int getBaseEconomyMultiplierNumerator(int baseId);
 double getBaseEconomyMultiplier(int baseId);
-double getBaseLabsMultiplier(int baseId);
+int getBasePsychMultiplierNumerator(int baseId);
 double getBasePsychMultiplier(int baseId);
+int getBaseLabsMultiplierNumerator(int baseId);
+double getBaseLabsMultiplier(int baseId);
 bool isLandVechileMoveAllowed(int vehicleId, MAP *from, MAP *to);
 int getRange(int x1, int y1, int x2, int y2);
 int getRange(int tile1Index, int tile2Index);

@@ -1213,7 +1213,6 @@ void __cdecl mod_base_energy() {
         coeff_labs += 2;
         coeff_psych += 1;
     }
-    
     // [WTP]
     // custom values
     /*
@@ -1241,13 +1240,12 @@ void __cdecl mod_base_energy() {
         coeff_psych += conf.energy_multipliers_centauri_preserve[1];
         coeff_labs += conf.energy_multipliers_centauri_preserve[2];
     }
-    if (has_fac_built(FAC_HYBRID_FOREST, base_id)) {
+    if (has_fac_built(FAC_TEMPLE_OF_PLANET, base_id)) {
         coeff_econ += conf.energy_multipliers_temple_of_planet[0];
         coeff_psych += conf.energy_multipliers_temple_of_planet[1];
         coeff_labs += conf.energy_multipliers_temple_of_planet[2];
     }
     //
-    
     if (has_fac_built(FAC_FUSION_LAB, base_id)) {
         coeff_labs += 2;
         coeff_econ += 2;

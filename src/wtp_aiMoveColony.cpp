@@ -1128,15 +1128,15 @@ Resource getAverageTileYield(MAP *tile)
 	
 	if (monolith)
 	{
-		TileYield yield = getTerraformingYield(-1, tile, {});
+		ResourceYield yield = getTerraformingYield(-1, tile, {});
 		averageYield = {(double)yield.nutrient, (double)yield.mineral, (double)yield.energy};
 	}
 	else if (ocean)
 	{
 		// average of mining platform and tidal harness
 		
-		TileYield miningPlatformYield = getTerraformingYield(-1, tile, {FORMER_FARM, FORMER_MINE});
-		TileYield tidalHarnessYield = getTerraformingYield(-1, tile, {FORMER_FARM, FORMER_SOLAR});
+		ResourceYield miningPlatformYield = getTerraformingYield(-1, tile, {FORMER_FARM, FORMER_MINE});
+		ResourceYield tidalHarnessYield = getTerraformingYield(-1, tile, {FORMER_FARM, FORMER_SOLAR});
 		
 		averageYield =
 		{
@@ -1168,12 +1168,12 @@ Resource getAverageTileYield(MAP *tile)
 			
 		}
 		
-		TileYield bestYield;
+		ResourceYield bestYield;
 		double bestYieldScore = 0.0;
 		
 		for (std::vector<int> const &terraformingOption : terraformingOptions)
 		{
-			TileYield yield = getTerraformingYield(-1, tile, terraformingOption);
+			ResourceYield yield = getTerraformingYield(-1, tile, terraformingOption);
 			double yieldScore = getTerraformingResourceScore(yield);
 			
 			if (yieldScore > bestYieldScore)
@@ -1184,7 +1184,7 @@ Resource getAverageTileYield(MAP *tile)
 			
 		}
 		
-		TileYield yield = bestYield;
+		ResourceYield yield = bestYield;
 		averageYield = {(double)yield.nutrient, (double)yield.mineral, (double)yield.energy};
 		
 	}

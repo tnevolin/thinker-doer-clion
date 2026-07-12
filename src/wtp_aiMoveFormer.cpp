@@ -4524,7 +4524,7 @@ double getTerraformingResourceScore(double nutrient, double mineral, double ener
 	;
 }
 
-double getTerraformingResourceScore(TileYield yield)
+double getTerraformingResourceScore(ResourceYield yield)
 {
 	return getTerraformingResourceScore((double)yield.nutrient, (double)yield.mineral, (double)yield.energy);
 }
@@ -4651,7 +4651,7 @@ void restoreTileMapState(MAP *tile)
 Computes improved tile yield.
 Ignores actions not available for player faction.
 */
-TileYield getTerraformingYield(int baseId, MAP *tile, std::vector<int> actions)
+ResourceYield getTerraformingYield(int baseId, MAP *tile, std::vector<int> actions)
 {
 	assert(isOnMap(tile));
 	assert(baseId == -1 || (baseId >= 0 && baseId < *BaseCount));
@@ -4845,12 +4845,12 @@ void addConventionalTerraformingRequest(std::vector<TERRAFORMING_REQUEST> &avail
 		
 		// superior terraforming exists - ignore this one
 		
-		if (TileYield::isSuperior(availableTerraformingRequest.yield, terraformingRequest.yield))
+		if (ResourceYield::isSuperior(availableTerraformingRequest.yield, terraformingRequest.yield))
 			return;
 		
 		// equal terraforming exists - save it for later analysis
 		
-		if (TileYield::isEqual(availableTerraformingRequest.yield, terraformingRequest.yield) && availableTerraformingRequest.option == terraformingRequest.option)
+		if (ResourceYield::isEqual(availableTerraformingRequest.yield, terraformingRequest.yield) && availableTerraformingRequest.option == terraformingRequest.option)
 		{
 			equalTerraformingRequest = &availableTerraformingRequest;
 			equalTerraformingRequestIndex = i;

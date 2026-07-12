@@ -201,6 +201,10 @@ struct BASE {
     int8_t pad_7;
     int32_t pad_8;
 
+	int factionId()
+	{
+		return static_cast<unsigned char>(faction_id);
+	}
     int item() {
         return queue_items[0];
     }
@@ -282,6 +286,46 @@ struct BASE {
         return (pending ? Factions[faction_id].SE_probe_pending : Factions[faction_id].SE_probe)
             + 2*has_fac_built(FAC_COVERT_OPS_CENTER);
     }
+	// [WTP]
+	/*
+	Adds specialist of given type to the list.
+	If there is already MaxBaseSpecNum specialists, does not modify the specialist_types, but just increments specialist_total.
+	Specialists beyond MaxBaseSpecNum are autocomputed and not stored.
+	*/
+	void specialist_add(int specialist_type)
+	{
+		if (specialist_total < MaxBaseSpecNum)
+		{
+			specialist_modify(specialist_total, specialist_type);
+			specialist_total++;
+		}
+		else
+		{
+			specialist_total++;
+		}
+	}
+	/*
+	Adds specialist of given type to the list.
+	If there is already MaxBaseSpecNum specialists, does not modify the specialist_types, but just increments specialist_total.
+	Specialists beyond MaxBaseSpecNum are autocomputed and not stored.
+	*/
+	void specialist_remove(int index, int best_specialist_type)
+	{
+		if (index < MaxBaseSpecNum)
+		{
+			for (int otherIndex = index + 1; otherIndex < specialist_total; otherIndex++)
+			{
+				specialist_modify(otherIndex - 1, specialist_type(otherIndex));
+			}
+			specialist_modify(MaxBaseSpecNum - 1, best_specialist_type);
+			specialist_total--;
+		}
+		else
+		{
+			specialist_total--;
+		}
+	}
+	//
 };
 
 

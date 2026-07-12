@@ -726,10 +726,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->worker_algorithm_enable_alternative = (atoi(value) == 0 ? false : true);
     }
-    else if (MATCH("worker_algorithm_energy_weight"))
-    {
-        cf->worker_algorithm_energy_weight = atof(value);
-    }
     else if (MATCH("worker_algorithm_growth_multiplier"))
     {
         cf->worker_algorithm_growth_multiplier = atof(value);

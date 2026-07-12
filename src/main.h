@@ -422,7 +422,6 @@ struct Config {
     int se_police_excess_industry_bonus = 0;
     int facility_yield_bonus_biology_lab[3] = {0,0,0};
     bool worker_algorithm_enable_alternative = false;
-    double worker_algorithm_energy_weight = 0.0;
     double worker_algorithm_growth_multiplier = 0.0;
     int worker_algorithm_minimal_nutrient_surplus = 0;
     int worker_algorithm_minimal_mineral_surplus = 0;

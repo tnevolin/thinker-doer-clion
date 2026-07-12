@@ -1,6 +1,8 @@
 
 #include "wtp_base.h"
 
+#include "wtp_game.h"
+
 // [WTP]
 // temporarily disabled worker locations
 // that is used to emulate convoyed locations
@@ -15,14 +17,24 @@ void __cdecl wtp_mod_base_yield()
 	
 	BASE* base = *CurrentBase;
 	int base_id = *CurrentBaseID;
-	int faction_id = base->faction_id;
+	int faction_id = static_cast<unsigned char>(base->faction_id);
 	Faction* faction = &Factions[base->faction_id];
 	bool can_grow = base_unused_space(base_id) > 0;
 	bool can_riot = base_can_riot(base_id, true);
 	
+	// static computation parameters
+
+	BaseComputeParameterSet baseComputeParameterSet{};
+	baseComputeParameterSet.canGrow = can_grow;
+	baseComputeParameterSet.canRiot = can_riot;
+	
+	// satellite bonuses
+	
+	satellite_bonus(base_id, &baseComputeParameterSet.satelliteYield.nutrient, &baseComputeParameterSet.satelliteYield.mineral, &baseComputeParameterSet.satelliteYield.energy);
+
 	// base energy parameters
 	
-	BaseEnergy baseEnergy;
+	BaseEnergy baseEnergy{};
     baseEnergy.our_rank = own_base_rank(base_id);
 	for (int otherFactionId = 1; otherFactionId < MaxPlayerNum; otherFactionId++)
 	{
@@ -63,21 +75,27 @@ void __cdecl wtp_mod_base_yield()
 	int SE_effic = base->SE_effic(SE_Pending);
 	int alloc_econ = 10 - faction->SE_alloc_labs - faction->SE_alloc_psych;
 	int alloc_labs = faction->SE_alloc_labs;
-	int alloc_psych = faction->SE_alloc_psych;
 	int allocationPenalty = clamp(4 - SE_effic, 0, 8) * (2 * (abs(alloc_econ - alloc_labs) / 2));
-	
-	double const efficiency = (double)(16 - wtp_mod_energy_intake_lost(base_id, 16, 0)) / 16.0;
-	double const econValue = allocationPenalty == 0 ? 1.0 : 1.0 - (double)((alloc_econ > alloc_labs ? 1 : 2) * allocationPenalty) / 100.0;
-	double const labsValue = allocationPenalty == 0 ? 1.0 : 1.0 - (double)((alloc_labs > alloc_econ ? 1 : 2) * allocationPenalty) / 100.0 / (has_fac_built(FAC_PUNISHMENT_SPHERE, base_id) ? 2.0 : 1.0);
-	double const psychValue = 1.0;
-	double const energyValue = conf.worker_algorithm_energy_weight * (efficiency * (econValue * (double)alloc_econ / 10.0 + labsValue * (double)alloc_labs / 10.0 + psychValue * (double)alloc_psych / 10.0));
-	
-	double const growthFactor = 1.0 / (double)((1 + base->pop_size) * mod_cost_factor(base->faction_id, RSC_NUTRIENT, base_id)) / (double)base->pop_size;
-	
+
+	double const mineralValue = getBaseMineralMultiplier(base_id);
+	double const efficiency = static_cast<double>(16 - wtp_mod_energy_intake_lost(base_id, 16, nullptr)) / 16.0;
+	double const econValue = allocationPenalty == 0 ? 1.0 : 1.0 - static_cast<double>((alloc_econ > alloc_labs ? 1 : 2) * allocationPenalty) / 100.0;
+	double const labsValue = allocationPenalty == 0 ? 1.0 : 1.0 - static_cast<double>((alloc_labs > alloc_econ ? 1 : 2) * allocationPenalty) / 100.0 / (has_facility(FAC_PUNISHMENT_SPHERE, base_id) ? 2.0 : 1.0);
+	constexpr double psychValue = 1.0;
+	double const energyValue = efficiency * (econValue * static_cast<double>(alloc_econ) / 10.0 + labsValue * static_cast<double>(alloc_labs) / 10.0);
+
+	baseComputeParameterSet.mineralValue = mineralValue;
+	baseComputeParameterSet.energyValue = energyValue;
+	baseComputeParameterSet.economyValue = econValue;
+	baseComputeParameterSet.psychValue = psychValue;
+	baseComputeParameterSet.labsValue = labsValue;
+
 	// specialists
-	
-	int psychSpecialistId = getBestSpecialist(faction_id, base->pop_size, 0, 0, psychValue);
-	int adavancedSpecialistId = getBestSpecialist(faction_id, base->pop_size, econValue, labsValue, 0);
+
+	int bestSpecialistType = mod_best_specialist();
+	std::vector<int> availableSpecialistTypes = getAvailableSpecialistTypes(faction_id, base->pop_size);
+	int psychSpecialistType = getBestSpecialistType(availableSpecialistTypes, 0, 0, psychValue);
+	int adavancedSpecialistType = getBestSpecialistType(availableSpecialistTypes, econValue, labsValue, 0);
 	
 	// replace incorrect specialists
 	
@@ -97,256 +115,437 @@ void __cdecl wtp_mod_base_yield()
 		
 		if (!has_tech(citizen.preq_tech, faction_id) || (citizen.psych_bonus == 0 && base->pop_size < Rules->min_base_size_specialists))
 		{
-			base->specialist_modify(i, psychSpecialistId);
+			base->specialist_modify(i, psychSpecialistType);
 		}
 		
 	}
 	
 	// base state
 	
-	base->state_flags &= ~BSTATE_UNK_8000;
+	base->state_flags &= ~static_cast<int32_t>(BSTATE_UNK_8000);
+
+	// precompute work tile yields
+
+	baseComputeParameterSet.workTileYields = getBaseWorkTileYields(base_id);
+
+	// available work tiles
 	
-	// available worked tiles (excluding base square)
-	
-	std::array<TileValue, 21> tiles;
-	size_t tileCount = populateBaseYieldsAndTiles(base_id, tiles);
+	int32_t availableWorkTtileBits = getBaseAvailableWorkTiles(base_id);
 	
 	// remove workers from unavailable locations
-	
-	uint32_t availableWorkedTiles = 0;
-	for (size_t tileNumber = 1; tileNumber < tileCount; tileNumber++)
-	{
-		TileValue &tileValue = tiles.at(tileNumber);
-		availableWorkedTiles |= ((uint32_t)1 << tileValue.i);
-	}
-	base->worked_tiles &= (availableWorkedTiles | 1);
-	
 	// always allocate base square (it is farmed but not by worker)
+
+	base->worked_tiles &= availableWorkTtileBits | 1;
 	
-	base->worked_tiles |= 1;
-	
-	// count unallocated workers
-	
-	int unallocatedWorkers = base->pop_size - base->specialist_total - __builtin_popcount(base->worked_tiles & ~1);
-	
-	// set base yield structure
-	
-	BaseYield baseYield;
-	
+	// get current allocations
+
+	int fixed_farmer_total = __builtin_popcount(base->worked_tiles & ~1);
+	int fixed_specialist_total = base->specialist_total;
+
+	// reset workers if required or incorrect
+
+	if (manage_workers || fixed_farmer_total < 0 || fixed_farmer_total > base->pop_size || fixed_specialist_total < 0 || fixed_specialist_total > base->pop_size || fixed_farmer_total + fixed_specialist_total > base->pop_size)
+	{
+		base->worked_tiles = 1;
+		base->specialist_total = 0;
+		base->specialist_adjust = 0;
+	}
+
+	// preserve fixed allocations
+
+	int unallocatedWorkers = static_cast<unsigned char>(base->pop_size) - __builtin_popcount(base->worked_tiles & ~1) - base->specialist_total;
+	int32_t fixedWorkedTileBits = base->worked_tiles;
+	std::array<int, MaxSpecialistNum> fixedSpecialistCounts{};
+	for (int specialistIndex = 0; specialistIndex < base->specialist_total; ++specialistIndex)
+	{
+		fixedSpecialistCounts.at(base->specialist_type(specialistIndex))++;
+	}
+
 	// reset intake
 	// ? maybe not needed
 	
-	assert((int)&base->nutrient_intake + 96 == (int)&base->autoforward_land_base_id);
+	assert(reinterpret_cast<int>(&base->nutrient_intake) + 96 == reinterpret_cast<int>(&base->autoforward_land_base_id));
 	memset(&base->nutrient_intake, 0, 96);
 	
-	// satellite bonuses
-	
-	int Ns = 0, Ms = 0, Es = 0;
-	satellite_bonus(base_id, &Ns, &Ms, &Es);
-//	base->nutrient_intake = Ns;
-//	base->mineral_intake = Ms;
-//	base->energy_intake = Es;
-	
-	// select choices of worker tiles NOT INCLUDING base square
-	// base square is counting toward surplus directly
-	
-	int nutrientIntake		= Ns;
-	int nutrientAddition	= BaseResourceConvoyTo[RSC_NUTRIENT];
-	int nutrientConsumption	= BaseResourceConvoyFrom[RSC_NUTRIENT] + base->pop_size * Rules->nutrient_intake_req_citizen;
-	int mineralIntake		= Ms;
-	int mineralAddition		= BaseResourceConvoyTo[RSC_MINERAL];
-	int mineralConsumption	= BaseResourceConvoyFrom[RSC_MINERAL] + *BaseForcesMaintCost;
-	int energyIntake		= Es;
-	int energyAddition		= BaseResourceConvoyTo[RSC_ENERGY];
-	int energyConsumption	= BaseResourceConvoyFrom[RSC_ENERGY];
-	int mineralOutputModifier = mineral_output_modifier(base_id);
-	
-	std::array<TileValue, 21> choices;
-	size_t choiceCount = 0;
-	
-	if (unallocatedWorkers != 0 || manage_workers)
+	if (unallocatedWorkers > 0 || manage_workers)
 	{
-		// reset workers if required or incorrect
-		
-		if (unallocatedWorkers < 0 || manage_workers)
-		{
-			base->worked_tiles = 1;
-			base->specialist_total = 0;
-			base->specialist_adjust = 0;
-			unallocatedWorkers = base->pop_size;
-		}
-		
-		// add currently worked tiles to total
-		
-		for (size_t tileNumber = 0; tileNumber < tileCount; tileNumber++)
-		{
-			TileValue &tileValue = tiles.at(tileNumber);
-		
-			if ((base->worked_tiles & (1 << tileValue.i)) != 0)
-			{
-				nutrientIntake += tileValue.nutrient;
-				mineralIntake += tileValue.mineral;
-				energyIntake += tileValue.energy;
-			}
-			
-		}
-		
 		// select best tiles for unallocated workers
 		
-		int minimalNutrientSurplus = can_grow ? conf.worker_algorithm_minimal_nutrient_surplus : 0;
-		int minimalMineralSurplus = conf.worker_algorithm_minimal_mineral_surplus;
-		int minimalEnergySurplus = conf.worker_algorithm_minimal_energy_surplus;
-		
-		int restrictedWorkers = 1;
 		int workers = unallocatedWorkers;
 		while (workers > 0)
 		{
-			int bestTileNumber = -1;
-			double bestTileScore = 0.0;
+			int32_t bestWorkTileBit = 0;
+			double bestWorkTileScore = 0.0;
 			
-			for (size_t tileNumber = 1; tileNumber < tileCount; tileNumber++)
+			for (int workTileNumber = 1; workTileNumber < 21; workTileNumber++)
 			{
-				TileValue &tileValue = tiles.at(tileNumber);
-				
+				int32_t workTileBit = 1 << workTileNumber;
+				ResourceYield const &workTileYield = baseComputeParameterSet.workTileYields.at(workTileNumber);
+
+				// available
+
+				if ((availableWorkTtileBits & workTileBit) == 0)
+					continue;
+
+				// not occupied by fixed worker
+
+				if ((fixedWorkedTileBits & workTileBit) != 0)
+					continue;
+
 				// not worked
 				
-				if ((base->worked_tiles & (1 << tileValue.i)) != 0)
+				if ((base->worked_tiles & workTileBit) != 0)
 					continue;
 				
-				int nutrientSurplus = nutrientIntake + nutrientAddition - nutrientConsumption;
-				int mineralSurplus = mineralIntake + mineralAddition * (mineralOutputModifier + 2) / 2 - mineralConsumption;
-				int energySurplus = energyIntake + energyAddition - energyConsumption;
-				double score = computeBaseTileScore(workers <= restrictedWorkers, growthFactor, energyValue, can_grow, nutrientSurplus, mineralSurplus, energySurplus, tileValue.nutrient, tileValue.mineral, tileValue.energy);
-				
-				if (score > bestTileScore)
+				double score = getBaseTileScore(workTileYield, baseComputeParameterSet);
+
+				if (score > bestWorkTileScore)
 				{
-					bestTileNumber = tileNumber;
-					bestTileScore = score;
+					bestWorkTileBit = workTileBit;
+					bestWorkTileScore = score;
 				}
 				
 			}
 			
-			if (bestTileNumber == -1)
+			if (bestWorkTileBit == 0)
 				break;
 			
-			TileValue &bestTileValue = tiles.at(bestTileNumber);
-			choices.at(choiceCount++) = bestTileValue;
-			base->worked_tiles |= (1 << bestTileValue.i);
-			nutrientIntake += bestTileValue.nutrient;
-			mineralIntake += bestTileValue.mineral;
-			energyIntake += bestTileValue.energy;
+			base->worked_tiles |= bestWorkTileBit;
 			workers--;
-			
-			if (workers == 0)
-			{
-				// check restrictions
-				
-				int nutrientSurplus = nutrientIntake + nutrientAddition - nutrientConsumption;
-				int mineralSurplus = mineralIntake + mineralAddition * (mineralOutputModifier + 2) / 2 - mineralConsumption;
-				int energySurplus = energyIntake + energyAddition - energyConsumption;
-				
-				if (nutrientSurplus < minimalNutrientSurplus || mineralSurplus < minimalMineralSurplus || energySurplus < minimalEnergySurplus)
-				{
-					// rollback workers
-					
-					restrictedWorkers++;
-					if (restrictedWorkers > unallocatedWorkers)
-						break;
-					
-					for (int i = 0; i < restrictedWorkers; i++)
-					{
-						TileValue &tileValue = choices.at(--choiceCount);
-						base->worked_tiles &= ~(1 << tileValue.i);
-						nutrientIntake -= bestTileValue.nutrient;
-						mineralIntake -= bestTileValue.mineral;
-						energyIntake -= bestTileValue.energy;
-						workers++;
-					}
-					
-				}
-				
-			}
-			
+
 		}
-		
+			
 		// convert unallocated workers to best adavanced specialists
 		
-		for (int specialistNumber = base->specialist_total; specialistNumber < std::min(MaxBaseSpecNum, base->specialist_total + workers); specialistNumber++)
+		for (; workers > 0; workers--)
 		{
-			base->specialist_modify(specialistNumber, adavancedSpecialistId);
+			base->specialist_modify(base->specialist_total, adavancedSpecialistType);
+			base->specialist_total++;
 		}
-		base->specialist_total += workers;
-		
+
 	}
 	
 	// fix rioting in base upkeep states 0,1
 	// state 0 happens during human interactions
-	if (unallocatedWorkers != 0 || manage_workers)
+	if (unallocatedWorkers > 0 || manage_workers)
 //	if ((unallocatedWorkers != 0 || manage_workers) && *BaseUpkeepState != 2)
 	{
-		// fix rioting
-		
-		mod_base_yield_base_energy(baseEnergy, energyIntake);
-		if (can_riot && base->drone_riots() && choiceCount > 0)
-		{
-			// compute base
-			
-            base_update_reset(base, Ns, Ms, Es, tiles, tileCount);
-            int nutrientSurplus = nutrientIntake + nutrientAddition - nutrientConsumption;
-            int mineralSurplus = (mineralIntake + mineralAddition) * (mineralOutputModifier + 2) / 2 - mineralConsumption;
-			mod_base_yield_base_energy(baseEnergy, energyIntake);
-			
-			// turn specialists to psych until no drone riot
-			
-			for (int specialistNumber = 0; base->drone_riots() && specialistNumber < base->specialist_total; specialistNumber++)
-			{
-				base->specialist_modify(specialistNumber, psychSpecialistId);
-				mod_base_yield_base_energy(baseEnergy, energyIntake);
-			}
-			
-			// turn workers to psych
-			
-			while (base->drone_riots() && choiceCount > 0)
-			{
-				// find a worker that can be removed while keeping nutrition and support
-				
-				int removeChoiceIndex = -1;
-				for (int i = choiceCount - 1; i >= 0; i--)
-				{
-					if (nutrientSurplus - choices.at(i).nutrient >= 0 && mineralSurplus - choices.at(i).mineral >= 0)
-					{
-						removeChoiceIndex = i;
-						break;
-					}
-					
-				}
-				
-				if (removeChoiceIndex == -1)
-					break;
-				
-				// remove worker and recompute base
-				
-				TileValue tileValue = choices.at(removeChoiceIndex);
-				std::move(choices.begin() + removeChoiceIndex + 1, choices.end(), choices.begin() + removeChoiceIndex);
-				choiceCount--;
+		// initial base score variables
 
-				nutrientIntake -= tileValue.nutrient;
-				mineralIntake -= tileValue.mineral;
-				energyIntake -= tileValue.energy;
-				
-				base->worked_tiles &= ~(1 << tileValue.i);
-				base->specialist_modify(base->specialist_total++, psychSpecialistId);
-				base->specialist_adjust++;
-				
-				base_update_reset(base, Ns, Ms, Es, tiles, tileCount);
-				nutrientSurplus = nutrientIntake + nutrientAddition - nutrientConsumption;
-				mineralSurplus = (mineralIntake + mineralAddition) * (mineralOutputModifier + 2) / 2 - mineralConsumption;
-				mod_base_yield_base_energy(baseEnergy, energyIntake);
-				
-			};
-			
+		updateBase(baseComputeParameterSet, true);
+		int bestBaseCondition = getBaseCondition();
+		ResourceYield bestBaseSurplus = getBaseSurplus();
+		double bestBaseSurplusGain = getBaseSurplusGain();
+
+		// improvement cycle
+
+		while (true)
+		{
+			bool changed = false;
+			CitizenAllocation bestCitizenAllocation{};
+
+			CitizenAllocation currentCitizenAllocation{};
+			storeCitizenAllocation(currentCitizenAllocation);
+
+			// reallocate farmer
+
+			for (int oldWorkTileNumber = 1; oldWorkTileNumber < 21; oldWorkTileNumber++)
+			{
+				int32_t oldWorkTileBit = 1 << oldWorkTileNumber;
+				ResourceYield &oldWorkTileYield = baseComputeParameterSet.workTileYields.at(oldWorkTileNumber);
+
+				// worked
+
+				if ((base->worked_tiles & oldWorkTileBit) == 0)
+					continue;
+
+				// search for new location
+
+				for (int newWorkTileNumber = 1; newWorkTileNumber < 21; newWorkTileNumber++)
+				{
+					int32_t newWorkTileBit = 1 << newWorkTileNumber;
+					ResourceYield &newWorkTileYield = baseComputeParameterSet.workTileYields.at(newWorkTileNumber);
+
+					// available
+
+					if ((availableWorkTtileBits & newWorkTileBit) == 0)
+						continue;
+
+					// not worked
+
+					if ((base->worked_tiles & newWorkTileBit) != 0)
+						continue;
+
+					// not equal or inferior
+
+					if (ResourceYield::isEqualOrInferior(newWorkTileYield, oldWorkTileYield))
+						continue;
+
+					// reallocate farmer
+
+					base->worked_tiles &= ~oldWorkTileBit;
+					base->worked_tiles |= newWorkTileBit;
+
+					// update base
+
+					updateBase(baseComputeParameterSet, true);
+
+					// update best placement
+
+					int baseCondition = getBaseCondition();
+					if (baseCondition >= bestBaseCondition)
+					{
+						ResourceYield baseSurplus = getBaseSurplus();
+						if (!ResourceYield::isEqualOrInferior(baseSurplus, bestBaseSurplus))
+						{
+							double baseSurplusGain = getBaseSurplusGain();
+							if (baseSurplusGain > bestBaseSurplusGain)
+							{
+								storeCitizenAllocation(bestCitizenAllocation);
+								bestBaseCondition = baseCondition;
+								bestBaseSurplus = baseSurplus;
+								bestBaseSurplusGain = baseSurplusGain;
+								changed = true;
+							}
+						}
+					}
+
+					// restore allocaton
+
+					applyCitizenAllocation(currentCitizenAllocation);
+
+				}
+
+				// convert to specialist
+
+				for (int specialistType : availableSpecialistTypes)
+				{
+					// remove farmer
+					// add specialist
+
+					base->worked_tiles &= ~oldWorkTileBit;
+					base->specialist_add(specialistType);
+
+					// update base
+
+					updateBase(baseComputeParameterSet, true);
+
+					// update best placement
+
+					int baseCondition = getBaseCondition();
+					if (baseCondition >= bestBaseCondition)
+					{
+						ResourceYield baseSurplus = getBaseSurplus();
+						if (!ResourceYield::isEqualOrInferior(baseSurplus, bestBaseSurplus))
+						{
+							double baseSurplusGain = getBaseSurplusGain();
+							if (baseSurplusGain > bestBaseSurplusGain)
+							{
+								storeCitizenAllocation(bestCitizenAllocation);
+								bestBaseCondition = baseCondition;
+								bestBaseSurplus = baseSurplus;
+								bestBaseSurplusGain = baseSurplusGain;
+								changed = true;
+							}
+						}
+					}
+
+					// restore allocaton
+
+					applyCitizenAllocation(currentCitizenAllocation);
+
+				}
+
+			}
+
+			// reallocate specialist
+
+			robin_hood::unordered_set<int> processedSpecialists;
+
+			for (int specialistIndex = 0; specialistIndex < base->specialist_total; specialistIndex++)
+			{
+				int oldSpecialistType = base->specialist_type(specialistIndex);
+
+				// not yet processed
+
+				if (processedSpecialists.find(oldSpecialistType) != processedSpecialists.end())
+					continue;
+
+				processedSpecialists.insert(oldSpecialistType);
+
+				// convert to farmer
+
+				for (int newWorkTileNumber = 1; newWorkTileNumber < 21; newWorkTileNumber++)
+				{
+					int32_t newWorkTileBit = 1 << newWorkTileNumber;
+
+					// available
+
+					if ((availableWorkTtileBits & newWorkTileBit) == 0)
+						continue;
+
+					// not worked
+
+					if ((base->worked_tiles & newWorkTileBit) != 0)
+						continue;
+
+					// remove specialist
+					// allocate farmer
+
+					base->specialist_remove(specialistIndex, bestSpecialistType);
+					base->worked_tiles |= newWorkTileBit;
+
+					// update base
+
+					updateBase(baseComputeParameterSet, true);
+
+					// update best placement
+
+					int baseCondition = getBaseCondition();
+					if (baseCondition >= bestBaseCondition)
+					{
+						ResourceYield baseSurplus = getBaseSurplus();
+						if (!ResourceYield::isEqualOrInferior(baseSurplus, bestBaseSurplus))
+						{
+							double baseSurplusGain = getBaseSurplusGain();
+							if (baseSurplusGain > bestBaseSurplusGain)
+							{
+								storeCitizenAllocation(bestCitizenAllocation);
+								bestBaseCondition = baseCondition;
+								bestBaseSurplus = baseSurplus;
+								bestBaseSurplusGain = baseSurplusGain;
+								changed = true;
+							}
+						}
+					}
+
+					// restore allocaton
+
+					applyCitizenAllocation(currentCitizenAllocation);
+
+				}
+
+				// automatic default specialist is not convertable to other type
+
+				if (specialistIndex >= MaxBaseSpecNum)
+					continue;
+
+				// convert to other specialist type
+
+				for (int newSpecialistType : availableSpecialistTypes)
+				{
+					// change specialist type
+
+					base->specialist_modify(specialistIndex, newSpecialistType);
+
+					// update base
+
+					updateBase(baseComputeParameterSet, true);
+
+					// update best placement
+
+					int baseCondition = getBaseCondition();
+					if (baseCondition >= bestBaseCondition)
+					{
+						ResourceYield baseSurplus = getBaseSurplus();
+						if (!ResourceYield::isEqualOrInferior(baseSurplus, bestBaseSurplus))
+						{
+							double baseSurplusGain = getBaseSurplusGain();
+							if (baseSurplusGain > bestBaseSurplusGain)
+							{
+								storeCitizenAllocation(bestCitizenAllocation);
+								bestBaseCondition = baseCondition;
+								bestBaseSurplus = baseSurplus;
+								bestBaseSurplusGain = baseSurplusGain;
+								changed = true;
+							}
+						}
+					}
+
+					// restore allocaton
+
+					applyCitizenAllocation(currentCitizenAllocation);
+
+				}
+
+			}
+
+			// exit if not changed
+
+			if (changed)
+			{
+				applyCitizenAllocation(bestCitizenAllocation);
+			}
+			else
+			{
+				break;
+			}
+
 		}
-		
+
+		// // fix rioting
+		//
+		// mod_base_yield_base_compute(baseEnergy, energyIntake);
+		// if (can_riot && base->drone_riots() && choiceCount > 0)
+		// {
+		// 	// compute base
+		//
+  //           base_update_reset(base, Ns, Ms, Es, workableTiles, workableTtileCount);
+  //           int nutrientSurplus = nutrientIntake + nutrientAddition - nutrientConsumption;
+  //           int mineralSurplus = (mineralIntake + mineralAddition) * (mineralOutputModifier + 2) / 2 - mineralConsumption;
+		// 	mod_base_yield_base_compute(baseEnergy, energyIntake);
+		//
+		// 	// turn specialists to psych until no drone riot
+		//
+		// 	for (int specialistNumber = 0; base->drone_riots() && specialistNumber < base->specialist_total; specialistNumber++)
+		// 	{
+		// 		base->specialist_modify(specialistNumber, psychSpecialistType);
+		// 		mod_base_yield_base_compute(baseEnergy, energyIntake);
+		// 	}
+		//
+		// 	// turn workers to psych
+		//
+		// 	while (base->drone_riots() && choiceCount > 0)
+		// 	{
+		// 		// find a worker that can be removed while keeping nutrition and support
+		//
+		// 		int removeChoiceIndex = -1;
+		// 		for (int i = choiceCount - 1; i >= 0; i--)
+		// 		{
+		// 			if (nutrientSurplus - choices.at(i).nutrient >= 0 && mineralSurplus - choices.at(i).mineral >= 0)
+		// 			{
+		// 				removeChoiceIndex = i;
+		// 				break;
+		// 			}
+		//
+		// 		}
+		//
+		// 		if (removeChoiceIndex == -1)
+		// 			break;
+		//
+		// 		// remove worker and recompute base
+		//
+		// 		TileValue tileValue = choices.at(removeChoiceIndex);
+		// 		std::move(choices.begin() + removeChoiceIndex + 1, choices.end(), choices.begin() + removeChoiceIndex);
+		// 		choiceCount--;
+  //
+		// 		nutrientIntake -= tileValue.nutrient;
+		// 		mineralIntake -= tileValue.mineral;
+		// 		energyIntake -= tileValue.energy;
+		//
+		// 		base->worked_tiles &= ~(1 << tileValue.i);
+		// 		base->specialist_modify(base->specialist_total++, psychSpecialistType);
+		// 		base->specialist_adjust++;
+		//
+		// 		base_update_reset(base, Ns, Ms, Es, workableTiles, workableTtileCount);
+		// 		nutrientSurplus = nutrientIntake + nutrientAddition - nutrientConsumption;
+		// 		mineralSurplus = (mineralIntake + mineralAddition) * (mineralOutputModifier + 2) / 2 - mineralConsumption;
+		// 		mod_base_yield_base_compute(baseEnergy, energyIntake);
+		//
+		// 	};
+		//
+		// }
+		//
 	}
 //	else if (*BaseUpkeepState == 2 && unallocatedWorkers != 0)
 //	{
@@ -367,10 +566,11 @@ void __cdecl wtp_mod_base_yield()
 //	}
 	
 	// recompute base
-	
-	base_update_reset(base, Ns, Ms, Es, tiles, tileCount);
-    
-	base->state_flags &= ~BSTATE_UNK_100;
+
+	// enclosing method computes
+	updateBase(baseComputeParameterSet, false);
+
+	base->state_flags &= ~static_cast<int32_t>(BSTATE_UNK_100);
 	base->eco_damage = terraform_eco_damage(base_id);
 	
 	Profiling::stop("~ wtp_mod_base_yield");
@@ -378,16 +578,16 @@ void __cdecl wtp_mod_base_yield()
 }
 
 /*
-Minimal and fast drone computation for base_yeild.
+Minimal and fast base computation for base_yeild.
 */
-void mod_base_yield_base_energy(BaseEnergy const &baseEnergy, int energyIntake)
+void mod_base_yield_base_compute(BaseEnergy const &baseEnergy, int energyIntake)
 {
 	Profiling::start("~ mod_base_yield_base_energy");
 	
 	BASE* base = *CurrentBase;
 	Faction &faction = Factions[base->faction_id];
 	int base_id = *CurrentBaseID;
-	int faction_id = base->faction_id;
+	int faction_id = static_cast<unsigned char>(base->faction_id);
 	int commerce = 0;
 	int energygrid = 0;
 	
@@ -455,7 +655,7 @@ void mod_base_yield_base_energy(BaseEnergy const &baseEnergy, int energyIntake)
 	base->energy_intake_2 += commerce;
 	base->energy_intake_2 += energygrid;
 	
-	base->energy_inefficiency = wtp_mod_energy_intake_lost(base_id, base->energy_intake_2 - base->energy_consumption, (*BaseUpkeepState == 1 ? faction.unk_43 : NULL));
+	base->energy_inefficiency = wtp_mod_energy_intake_lost(base_id, base->energy_intake_2 - base->energy_consumption, (*BaseUpkeepState == 1 ? faction.unk_43 : nullptr));
 	base->energy_surplus = base->energy_intake_2 - base->energy_consumption - base->energy_inefficiency;
 	
 	if (*BaseUpkeepState == 1)
@@ -506,16 +706,41 @@ void mod_base_yield_base_energy(BaseEnergy const &baseEnergy, int energyIntake)
 	
 }
 
+// Prepcomputes base tile yields.
+std::array<ResourceYield, 21> getBaseWorkTileYields(int baseId)
+{
+	BASE &base = Bases[baseId];
+	int factionId = base.factionId();
+
+	std::array<ResourceYield, 21> workTileYields;
+
+	for (int workTileIndex = 0; workTileIndex < 21; workTileIndex++)
+	{
+		int x = wrap(base.x + TableOffsetX[workTileIndex]);
+		int y = base.y + TableOffsetY[workTileIndex];
+
+		ResourceYield &workTileYield = workTileYields.at(workTileIndex);
+
+		workTileYield.nutrient = mod_crop_yield(factionId, baseId, x, y, 0);
+		workTileYield.mineral = mod_mine_yield(factionId, baseId, x, y, 0);
+		workTileYield.energy = mod_energy_yield(factionId, baseId, x, y, 0);
+
+	}
+
+	return workTileYields;
+
+}
+
 /*
 Populates avaiable worker tiles in base catchment area around the base and returns available tile count.
 An optimized version of Thinker base_radius function.
 */
-size_t populateBaseYieldsAndTiles(int baseId, std::array<TileValue, 21> &tiles)
+int32_t getBaseAvailableWorkTiles(int baseId)
 {
 	BASE* base = &Bases[baseId];
-	int factionId = base->faction_id;
+	int factionId = static_cast<unsigned char>(base->faction_id);
 	bool has_map = Factions[factionId].player_flags & PFLAG_MAP_REVEALED;
-	size_t tileCount = 0;
+	int32_t availableWorkTiles = 0;
 	
 	// populate unavailable tiles
 	
@@ -544,7 +769,7 @@ size_t populateBaseYieldsAndTiles(int baseId, std::array<TileValue, 21> &tiles)
 		if (dx > 2)
 			continue;
 		
-		// restricting vehicle
+		// vehicle disabling farming
 		
 		if (vehicle->order == ORDER_CONVOY || (vehicle->faction_id != factionId && vehicle->is_visible(factionId) && !has_treaty(factionId, vehicle->faction_id, DIPLO_TREATY|DIPLO_PACT)))
 		{
@@ -589,7 +814,7 @@ size_t populateBaseYieldsAndTiles(int baseId, std::array<TileValue, 21> &tiles)
 			
 			// valid location
 			
-			if (workerIndex == 0 || otherBaseWorkedTile->owner < 0 || otherBaseWorkedTile->owner == otherBase->faction_id || mod_whose_territory(otherBase->faction_id, workedTileX, workedTileY, 0, 0) < 0)
+			if (workerIndex == 0 || otherBaseWorkedTile->owner < 0 || otherBaseWorkedTile->owner == otherBase->faction_id || mod_whose_territory(otherBase->faction_id, workedTileX, workedTileY, nullptr, 0) < 0)
 			{
 				otherBaseWorkedTiles.insert(otherBaseWorkedTile);
 			}
@@ -604,21 +829,21 @@ size_t populateBaseYieldsAndTiles(int baseId, std::array<TileValue, 21> &tiles)
 	
 	// tiles in the base catchment area
 	
-	for (int workerNumber = 0; workerNumber < 21; workerNumber++)
+	for (int workTileNumber = 0; workTileNumber < 21; workTileNumber++)
 	{
-		int x = wrap(base->x + TableOffsetX[workerNumber]);
-		int y = base->y + TableOffsetY[workerNumber];
-		MAP* workedTile = mapsq(x, y);
+		int x = wrap(base->x + TableOffsetX[workTileNumber]);
+		int y = base->y + TableOffsetY[workTileNumber];
+		MAP* workTile = mapsq(x, y);
 		
 		// on map
 		
-		if (workedTile == nullptr)
+		if (workTile == nullptr)
 		{
-			BaseTileFlags[workerNumber] = BR_NOT_VISIBLE;
+			BaseTileFlags[workTileNumber] = BR_NOT_VISIBLE;
 			continue;
 		}
 		
-		if (workerNumber == 0)
+		if (workTileNumber == 0)
 		{
 			BaseTileFlags[0] = BR_BASE_IN_TILE;
 		}
@@ -626,88 +851,94 @@ size_t populateBaseYieldsAndTiles(int baseId, std::array<TileValue, 21> &tiles)
 		{
 			// visible
 			
-			if (!has_map && !workedTile->is_visible(factionId))
+			if (!has_map && !workTile->is_visible(factionId))
 			{
-				BaseTileFlags[workerNumber] = BR_NOT_VISIBLE;
+				BaseTileFlags[workTileNumber] = BR_NOT_VISIBLE;
 				continue;
 			}
 			
-			BaseTileFlags[workerNumber] = 0;
+			BaseTileFlags[workTileNumber] = 0;
 			
-			if (workedTile->is_base())
+			if (workTile->is_base())
 			{
-				BaseTileFlags[workerNumber] |= BR_BASE_IN_TILE;
+				BaseTileFlags[workTileNumber] |= BR_BASE_IN_TILE;
 			}
 			
-			if (vehicleTiles.find(workedTile) != vehicleTiles.end())
+			if (vehicleTiles.find(workTile) != vehicleTiles.end())
 			{
-				BaseTileFlags[workerNumber] |= BR_VEH_IN_TILE;
+				BaseTileFlags[workTileNumber] |= BR_VEH_IN_TILE;
 			}
 			
-			if (workedTile->owner >= 0 && mod_whose_territory(factionId, x, y, 0, 0) != factionId)
+			if (workTile->owner >= 0 && mod_whose_territory(factionId, x, y, nullptr, 0) != factionId)
 			{
-				BaseTileFlags[workerNumber] |= BR_FOREIGN_TILE;
+				BaseTileFlags[workTileNumber] |= BR_FOREIGN_TILE;
 			}
-			else if (otherBaseWorkedTiles.find(workedTile) != otherBaseWorkedTiles.end())
+			else if (otherBaseWorkedTiles.find(workTile) != otherBaseWorkedTiles.end())
 			{
-				BaseTileFlags[workerNumber] |= BR_WORKER_ACTIVE;
+				BaseTileFlags[workTileNumber] |= BR_WORKER_ACTIVE;
 			}
 			
 		}
 		
-		bool valid = (BaseTileFlags[workerNumber] == 0);
-		if (workerNumber == 0 || valid)
+		bool valid = (BaseTileFlags[workTileNumber] == 0);
+		if (workTileNumber == 0 || valid)
 		{
-			int N = mod_crop_yield(factionId, baseId, x, y, 0);
-			int M = mod_mine_yield(factionId, baseId, x, y, 0);
-			int E = mod_energy_yield(factionId, baseId, x, y, 0);
-			tiles.at(tileCount++) = {x, y, workerNumber, workedTile, N, M, E};
+			availableWorkTiles |= 1 << workTileNumber;
 		}
 		
 	}
 	
-	return tileCount;
+	return availableWorkTiles;
 	
 }
 
-/*
-Resets and updates base.
-*/
-void base_update_reset(BASE* base, int Ns, int Ms, int Es, std::array<TileValue, 21> &tiles, int const tileCount)
+// updates base
+void updateBase(BaseComputeParameterSet const &baseComputeParameterSet, bool compute)
 {
-	assert(tiles.at(0).x == base->x && tiles.at(0).y == base->y);
-	assert(base->pop_size + 1 == __builtin_popcount(base->worked_tiles) + base->specialist_total);
-	assert(base->pop_size >= base->specialist_total && base->specialist_total >= 0);
-	
+	BASE &base = **CurrentBase;
+
+	int farmedTileCount = __builtin_popcount(base.worked_tiles);
+	assert(__builtin_popcount(base.worked_tiles) + base.specialist_total == base.pop_size + 1);
+
 	// reset base intake
 	
-    assert((int)&base->nutrient_intake + 96 == (int)&base->autoforward_land_base_id);
-    memset(&base->nutrient_intake, 0, 96);
+	assert(reinterpret_cast<int>(&base.nutrient_intake) + 96 == reinterpret_cast<int>(&base.autoforward_land_base_id));
+    memset(&base.nutrient_intake, 0, 96);
     
     // add satellite intake
     
-    base->nutrient_intake = Ns;
-    base->mineral_intake = Ms;
-    base->energy_intake = Es;
+    base.nutrient_intake = baseComputeParameterSet.satelliteYield.nutrient;
+    base.mineral_intake = baseComputeParameterSet.satelliteYield.mineral;
+    base.energy_intake = baseComputeParameterSet.satelliteYield.energy;
     
-    // update yield
+    // update farmer yield
     
-	for (int tileNumber = 0; tileNumber < tileCount; tileNumber++)
+	for (int workTileNumber = 0; workTileNumber < 21; workTileNumber++)
 	{
-		TileValue &tileValue = tiles.at(tileNumber);
-		
-		if ((base->worked_tiles & (1 << tileValue.i)) != 0)
-		{
-			base->nutrient_intake += tileValue.nutrient;
-			base->mineral_intake += tileValue.mineral;
-			base->energy_intake += tileValue.energy;
-		}
+		int32_t workTileBit = 1 << workTileNumber;
+
+		// worked
+
+		if ((base.worked_tiles & workTileBit) == 0)
+			continue;
+
+		base.nutrient_intake += baseComputeParameterSet.workTileYields.at(workTileNumber).nutrient;
+		base.mineral_intake += baseComputeParameterSet.workTileYields.at(workTileNumber).mineral;
+		base.energy_intake += baseComputeParameterSet.workTileYields.at(workTileNumber).energy;
+
 	}
 	
-	base->nutrient_intake_2 = base->nutrient_intake;
-	base->mineral_intake_2 = base->mineral_intake;
-	base->energy_intake_2 = base->energy_intake;
-	base->unused_intake_2 = base->unused_intake;
+	base.nutrient_intake_2 = base.nutrient_intake;
+	base.mineral_intake_2 = base.mineral_intake;
+	base.energy_intake_2 = base.energy_intake;
+	base.unused_intake_2 = base.unused_intake;
+
+	if (compute)
+	{
+		mod_base_nutrient();
+		mod_base_minerals();
+		mod_base_energy();
+	}
 	
 }
 
@@ -816,7 +1047,7 @@ void __cdecl wtp_mod_base_psych(int base_id)
 	BASE* base = &Bases[base_id];
 	Faction* f = &Factions[base->faction_id];
 	MFaction* m = &MFactions[base->faction_id];
-	int faction_id = base->faction_id;
+	int faction_id = static_cast<unsigned char>(base->faction_id);
 	base->talent_total = 0;
 	base->drone_total = 0;
 	base->superdrone_total = 0;
@@ -824,7 +1055,7 @@ void __cdecl wtp_mod_base_psych(int base_id)
 	
 	// stapled base ignores any other psych methods
 	
-	if (base->nerve_staple_turns_left > 0 || has_fac_built(FAC_PUNISHMENT_SPHERE, base_id))
+	if (base->nerve_staple_turns_left > 0 || has_facility(FAC_PUNISHMENT_SPHERE, base_id))
 	{
 		for (int i = 0; i < 5; i++) wtp_add_psych_row(base, i);
 		return;
@@ -893,39 +1124,37 @@ void __cdecl wtp_mod_base_psych(int base_id)
 	base->drone_total = drone_value;
 	
 	base->drone_total = max(0, min(base->drone_total, (int)base->pop_size));
-	base->drone_total += effic_drones;
-	base->superdrone_total = base->drone_total - base->pop_size;
-	base->superdrone_total = max(0, min(base->superdrone_total, (int)base->pop_size));
-	base->drone_total = max(0, min(base->drone_total, (int)base->pop_size));
+	base->superdrone_total = max(0, min(drone_value + effic_drones - (int)base->pop_size, (int)base->pop_size));
+	base->drone_total = max(0, min(drone_value + effic_drones, (int)base->pop_size));
 	
 	wtp_add_psych_row(base, 0); // Unmodified / Captured Base
 	
 	// facilities
 	
-	if (has_fac_built(FAC_PARADISE_GARDEN, base_id)) {
+	if (has_facility(FAC_PARADISE_GARDEN, base_id)) {
 		base->talent_total += 2 + conf.base_psych_facility_extra_power;
 	}
-	if (has_fac_built(FAC_GENEJACK_FACTORY, base_id)) {
+	if (has_facility(FAC_GENEJACK_FACTORY, base_id)) {
 		base->drone_total += Rules->drones_induced_genejack_factory;
 	}
-	if (has_fac_built(FAC_RECREATION_COMMONS, base_id)) {
+	if (has_facility(FAC_RECREATION_COMMONS, base_id)) {
 		base->drone_total -= 2 + conf.base_psych_facility_extra_power;
 	}
-	if (has_fac_built(FAC_HOLOGRAM_THEATRE, base_id)
+	if (has_facility(FAC_HOLOGRAM_THEATRE, base_id)
 	|| (has_project(FAC_VIRTUAL_WORLD, faction_id)
-	&& has_fac_built(FAC_NETWORK_NODE, base_id))) {
+	&& has_facility(FAC_NETWORK_NODE, base_id))) {
 		base->drone_total -= 2 + conf.base_psych_facility_extra_power;
 	}
 	if (has_project(FAC_PLANETARY_TRANSIT_SYSTEM, faction_id) && base->pop_size <= 3) {
 		base->drone_total -= 1 + conf.base_psych_facility_extra_power;
 	}
-	if (has_fac_built(FAC_RESEARCH_HOSPITAL, base_id)) {
+	if (has_facility(FAC_RESEARCH_HOSPITAL, base_id)) {
 		base->drone_total -= 1 + conf.base_psych_facility_extra_power;
 	}
-	if (has_fac_built(FAC_NANOHOSPITAL, base_id)) {
+	if (has_facility(FAC_NANOHOSPITAL, base_id)) {
 		base->drone_total -= 1 + conf.base_psych_facility_extra_power;
 	}
-	
+
 	wtp_add_psych_row(base, 1); // Facilities
 	
 	// police
@@ -1018,7 +1247,7 @@ void __cdecl wtp_mod_base_psych(int base_id)
 		
 		base->psych_total += psych_increase;
 		base->economy_total -= economy_decrease;
-		base->pad_7 = economy_decrease;
+		base->pad_7 = static_cast<int8_t>(economy_decrease);
 		base->pad_8 = psych_increase;
 		
 	}
@@ -1033,28 +1262,56 @@ void __cdecl wtp_mod_base_psych(int base_id)
 /*
 Finds best specialist by econ/labs/psych weight.
 */
-int getBestSpecialist(int factionId, int basePopSize, double econValue, double labsValue, double psychValue)
+std::vector<int> getAvailableSpecialistTypes(int factionId, int basePopSize)
 {
-	int bestCitizenId = 1; // doctor
-	double bestScore = 0.0;
+	std::vector<int> availableSpecialists;
+
 	for (int citizenId = 0; citizenId < MaxSpecialistNum; citizenId++)
 	{
 		CCitizen const &citizen = Citizen[citizenId];
+
+		// available
 		
-		if (has_tech(citizen.preq_tech, factionId) && !has_tech(citizen.obsol_tech, factionId) && (basePopSize >= Rules->min_base_size_specialists || citizen.psych_bonus > 0))
-		{
-			double score = econValue * (double)citizen.econ_bonus + labsValue * (double)citizen.labs_bonus + psychValue * (double)citizen.psych_bonus;
-			if (score > bestScore)
-			{
-				bestCitizenId = citizenId;
-				bestScore = score;
-			}
-		}
-		
+		if (!has_tech(citizen.preq_tech, factionId) || has_tech(citizen.obsol_tech, factionId))
+			continue;
+
+		// no advanced specialist in small base
+
+		if (basePopSize < Rules->min_base_size_specialists && citizen.psych_bonus == 0)
+			continue;
+
+		// add available specialist
+
+		availableSpecialists.push_back(citizenId);
+
 	}
 	
-	return bestCitizenId;
+	return availableSpecialists;
 	
+}
+
+/*
+Finds best specialist by econ/labs/psych weight.
+*/
+int getBestSpecialistType(std::vector<int> const &availableSpecialists, double econValue, double labsValue, double psychValue)
+{
+	int bestCitizenId = 1; // doctor
+	double bestScore = 0.0;
+	for (int citizenId : availableSpecialists)
+	{
+		CCitizen const &citizen = Citizen[citizenId];
+
+		double score = econValue * (double)citizen.econ_bonus + labsValue * (double)citizen.labs_bonus + psychValue * (double)citizen.psych_bonus;
+		if (score > bestScore)
+		{
+			bestCitizenId = citizenId;
+			bestScore = score;
+		}
+
+	}
+
+	return bestCitizenId;
+
 }
 
 bool wtp_base_pop_boom(int base_id)
@@ -1176,11 +1433,11 @@ int wtp_terraform_eco_damage(int base_id)
 	{
 		// each facility halfes terraforming eco-damage
 		
-		if (has_fac_built(FAC_TREE_FARM, base_id) != 0)
+		if (has_facility(FAC_TREE_FARM, base_id) != 0)
 		{
 			value /= 2;
 		}
-		if (has_fac_built(FAC_HYBRID_FOREST, base_id) != 0)
+		if (has_facility(FAC_HYBRID_FOREST, base_id) != 0)
 		{
 			value /= 2;
 		}
@@ -1190,11 +1447,11 @@ int wtp_terraform_eco_damage(int base_id)
 	{
 		// each facility reduces terraforming eco-damage by 50%
 		
-		if (has_fac_built(FAC_TREE_FARM, base_id) != 0 && has_fac_built(FAC_TREE_FARM, base_id) != 0)
+		if (has_facility(FAC_TREE_FARM, base_id) != 0 && has_facility(FAC_HYBRID_FOREST, base_id) != 0)
 		{
 			value = 0;
 		}
-		else if (has_fac_built(FAC_TREE_FARM, base_id) != 0 || has_fac_built(FAC_TREE_FARM, base_id) != 0)
+		else if (has_facility(FAC_TREE_FARM, base_id) != 0 || has_facility(FAC_HYBRID_FOREST, base_id) != 0)
 		{
 			value /= 2;
 		}
@@ -1259,35 +1516,35 @@ int getBasePsychCoefficient(int baseId)
 	assert(baseId >= 0 && baseId < *BaseCount);
 	
 	BASE &base = Bases[baseId];
-	int factionId = base.faction_id;
+	int factionId = static_cast<unsigned char>(base.faction_id);
 	
 	int psychCoefficient = 4;
 	
-	if (has_fac_built(FAC_HOLOGRAM_THEATRE, baseId) || (has_project(FAC_VIRTUAL_WORLD, factionId) && has_fac_built(FAC_NETWORK_NODE, baseId)))
+	if (has_facility(FAC_HOLOGRAM_THEATRE, baseId) || (has_project(FAC_VIRTUAL_WORLD, factionId) && has_facility(FAC_NETWORK_NODE, baseId)))
 	{
 		psychCoefficient += 2;
 	}
-	if (has_fac_built(FAC_RESEARCH_HOSPITAL, baseId))
+	if (has_facility(FAC_RESEARCH_HOSPITAL, baseId))
 	{
 		psychCoefficient += 1;
 	}
-	if (has_fac_built(FAC_NANOHOSPITAL, baseId))
+	if (has_facility(FAC_NANOHOSPITAL, baseId))
 	{
 		psychCoefficient += 1;
 	}
-	if (has_fac_built(FAC_TREE_FARM, baseId))
+	if (has_facility(FAC_TREE_FARM, baseId))
 	{
 		psychCoefficient += conf.energy_multipliers_tree_farm[1];
 	}
-	if (has_fac_built(FAC_HYBRID_FOREST, baseId))
+	if (has_facility(FAC_HYBRID_FOREST, baseId))
 	{
 		psychCoefficient += conf.energy_multipliers_hybrid_forest[1];
 	}
-	if (has_fac_built(FAC_CENTAURI_PRESERVE, baseId))
+	if (has_facility(FAC_CENTAURI_PRESERVE, baseId))
 	{
 		psychCoefficient += conf.energy_multipliers_centauri_preserve[1];
 	}
-	if (has_fac_built(FAC_HYBRID_FOREST, baseId))
+	if (has_facility(FAC_TEMPLE_OF_PLANET, baseId))
 	{
 		psychCoefficient += conf.energy_multipliers_temple_of_planet[1];
 	}
@@ -1296,73 +1553,13 @@ int getBasePsychCoefficient(int baseId)
 	
 }
 
-double computeBaseTileScore(bool restrictions, double growthFactor, double energyValue, bool can_grow, int nutrientSurplus, int mineralSurplus, int energySurplus, int tileValueNutrient, int tileValueMineral, int tileValueEnergy)
+double getBaseTileScore(ResourceYield const &tileYield, BaseComputeParameterSet const &baseComputeParameterSet)
 {
-//	debug("computeBaseTileScore gF=%7.4f eV=%5.2f nS=%2d, mS=%2d eS=%2d n=%2d m=%2d e=%2d\n", growthFactor, energyValue, nutrientSurplus, mineralSurplus, energySurplus, tileValueNutrient, tileValueMineral, tileValueEnergy);
-	
-	double nutrient = (1.0 + conf.worker_algorithm_nutrient_preference) * (double)tileValueNutrient;
-	double mineral = (1.0 + conf.worker_algorithm_mineral_preference) * (double)tileValueMineral;
-	double energy = (1.0 + conf.worker_algorithm_energy_preference) * (double)tileValueEnergy;
-	
-	double growthMultiplier = conf.worker_algorithm_growth_multiplier * (can_grow ? 1.0 : 0.1);
-	int minimalNutrientSurplus = can_grow ? conf.worker_algorithm_minimal_nutrient_surplus : 0;
-	int minimalMineralSurplus = conf.worker_algorithm_minimal_mineral_surplus;
-	int minimalEnergySurplus = conf.worker_algorithm_minimal_energy_surplus;
-	
-	double score = 0.0;
-	
-	if (restrictions && nutrientSurplus < minimalNutrientSurplus)
-	{
-		score = 10.0 * nutrient + mineral + energyValue * energy;
-	}
-	else if (restrictions && mineralSurplus < minimalMineralSurplus)
-	{
-		score = nutrient + 10.0 * mineral + energyValue * energy;
-	}
-	else if (restrictions && energySurplus < minimalEnergySurplus)
-	{
-		score = nutrient + mineral + 10.0 * energyValue * energy;
-	}
-	else
-	{
-		double nutrientSurplusFinal = (double)nutrientSurplus + nutrient;
-		double mineralSurplusFinal = (double)mineralSurplus + mineral;
-		double energySurplusFinal = (double)energySurplus + energy;
-		
-		double oldIncome = mineralSurplus + energyValue * energySurplus;
-		double oldIncomeGrowth = growthFactor * nutrientSurplus * oldIncome;
-		
-		double oldIncomeGain = oldIncome;
-		double oldIncomeGrowthGain = growthMultiplier * oldIncomeGrowth;
-		double oldGain = oldIncomeGain + oldIncomeGrowthGain;
-		
-		double newIncome = mineralSurplusFinal + energyValue * energySurplusFinal;
-		double newIncomeGrowth = growthFactor * nutrientSurplusFinal * newIncome;
-		
-		double newIncomeGain = newIncome;
-		double newIncomeGrowthGain = growthMultiplier * newIncomeGrowth;
-		double newGain = newIncomeGain + newIncomeGrowthGain;
-		
-		score = newGain - oldGain;
-		
-//		debug
-//		(
-//			"\tincome=%5.2f"
-//			" incomeGrowth=%5.2f"
-//			" incomeGain=%5.2f"
-//			" incomeGrowthGain=%5.2f"
-//			" gain=%5.2f"
-//			"\n"
-//			, income
-//			, incomeGrowth
-//			, incomeGain
-//			, incomeGrowthGain
-//			, gain
-//		);
-		
-	}
-	
-	return score;
+	return
+		+ conf.worker_algorithm_nutrient_preference * static_cast<double>(tileYield.nutrient)
+		+ conf.worker_algorithm_mineral_preference * static_cast<double>(tileYield.mineral) * baseComputeParameterSet.mineralValue
+		+ conf.worker_algorithm_energy_preference * static_cast<double>(tileYield.energy) * baseComputeParameterSet.energyValue
+	;
 	
 }
 
@@ -1373,7 +1570,7 @@ int wtp_mod_energy_intake_lost(int base_id, int energy, int32_t* effic_energy_lo
 {
 	// headquarter does not incure energy loss
 	
-	if (has_fac_built(FAC_HEADQUARTERS, base_id))
+	if (has_facility(FAC_HEADQUARTERS, base_id))
 	{
 		return 0;
 	}
@@ -1392,7 +1589,7 @@ int wtp_mod_energy_intake_lost(int base_id, int energy, int32_t* effic_energy_lo
 	{
 		BASE &otherBase = Bases[i];
 	
-		if (otherBase.faction_id == base.faction_id && has_fac_built(FAC_HEADQUARTERS, i))
+		if (otherBase.faction_id == base.faction_id && has_facility(FAC_HEADQUARTERS, i))
 		{
 			int dist = vector_dist(otherBase.x, otherBase.y, base.x, base.y);
 			dist_hq = std::min(dist_hq, dist);
@@ -1401,7 +1598,7 @@ int wtp_mod_energy_intake_lost(int base_id, int energy, int32_t* effic_energy_lo
 		
 	}
 	
-	bool has_creche = has_fac_built(FAC_CHILDREN_CRECHE, base_id);
+	bool has_creche = has_facility(FAC_CHILDREN_CRECHE, base_id);
 	int crecheEfficiencyBonus = has_creche ? 2 /* +2 on efficiency scale */ : 0;
 	
 	if (effic_energy_lost)
@@ -1426,5 +1623,88 @@ int getEnergyLost(int energy, int hqDistance, int maxDistance, int efficiencyRat
 {
 	int efficiencyLevel = 4 + efficiencyRating;
 	return std::max(0, std::min(energy, energy * 2 * hqDistance / maxDistance - energy * efficiencyLevel / 8));
+}
+
+void storeCitizenAllocation(CitizenAllocation &citizenAllocation)
+{
+	BASE &base = **CurrentBase;
+
+	citizenAllocation.worked_tiles = base.worked_tiles;
+	citizenAllocation.specialist_total = base.specialist_total;
+	citizenAllocation.specialist_types[0] = base.specialist_types[0];
+	citizenAllocation.specialist_types[1] = base.specialist_types[1];
+
+}
+
+void applyCitizenAllocation(CitizenAllocation &citizenAllocation)
+{
+	BASE &base = **CurrentBase;
+
+	base.worked_tiles = citizenAllocation.worked_tiles;
+	base.specialist_total = citizenAllocation.specialist_total;
+	base.specialist_types[0] = citizenAllocation.specialist_types[0];
+	base.specialist_types[1] = citizenAllocation.specialist_types[1];
+
+}
+
+/*
+Returns base condition. The higher the value, the better the base is.
+0 = not enough nutreints to feed the population
+1 = not enough minerals to support units
+2 =	rioting
+3 = all good
+*/
+int getBaseCondition()
+{
+	BASE &base = **CurrentBase;
+
+	int condition;
+
+	if (base.nutrient_surplus < 0)
+	{
+		condition = 0;
+	}
+	else if (base.mineral_surplus < 0)
+	{
+		condition = 1;
+	}
+	else if (base.drone_riots())
+	{
+		condition = 2;
+	}
+	else
+	{
+		condition = 3;
+	}
+
+	return condition;
+
+}
+
+ResourceYield getBaseSurplus()
+{
+	BASE &base = **CurrentBase;
+	return {base.nutrient_surplus, base.mineral_surplus, base.energy_surplus};
+}
+
+// Simplified version of getBaseGain
+double getBaseSurplusGain()
+{
+	BASE &base = **CurrentBase;
+
+	// compute gain
+
+	double income = conf.worker_algorithm_mineral_preference * base.mineral_surplus + conf.worker_algorithm_energy_preference * base.energy_surplus;
+	double populationGrowth = static_cast<double>(base.nutrient_surplus) / static_cast<double>((base.pop_size + 1) * Rules->nutrient_cost_multi);
+	double relativePopulationGrowth = populationGrowth / static_cast<double>(base.pop_size);
+	double incomeGrowth = income * relativePopulationGrowth;
+
+	double gain =
+		+ income
+		+ incomeGrowth * conf.worker_algorithm_growth_multiplier
+	;
+
+	return gain;
+
 }
 

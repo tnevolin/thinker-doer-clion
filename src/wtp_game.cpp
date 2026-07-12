@@ -6465,16 +6465,19 @@ bool isEasyFungusEnteringVehicle(int vehicleId)
 	return isEasyFungusEnteringLandUnit(getVehicle(vehicleId)->unit_id);
 }
 
-double getBaseMineralMultiplier(int baseId)
+/*
+ * Returns the mineral multiplier numerator for the given base.
+ * denominator = 4
+ */
+int getBaseMineralMultiplierNumerator(int baseId)
 {
 	int multiplierNumerator = 4;
-	int multiplierDenominator = 4;
 
-	if (isBaseHasFacility(baseId, FAC_RECYCLING_TANKS))
+	if (isBaseHasFacility(baseId, FAC_RECYCLING_TANKS) && conf.recycling_tanks_mineral_multiplier)
 	{
 		multiplierNumerator += 2;
 	}
-	if (isBaseHasFacility(baseId, FAC_GENEJACK_FACTORY))
+	if (isBaseHasFacility(baseId, FAC_GENEJACK_FACTORY) && conf.genejack_factory_mineral_multiplier)
 	{
 		multiplierNumerator += 2;
 	}
@@ -6491,7 +6494,16 @@ double getBaseMineralMultiplier(int baseId)
 		multiplierNumerator += 2;
 	}
 
-	return (double)multiplierNumerator / (double)multiplierDenominator;
+	return multiplierNumerator;
+
+}
+
+double getBaseMineralMultiplier(int baseId)
+{
+	int multiplierNumerator = getBaseMineralMultiplierNumerator(baseId);
+	int multiplierDenominator = 4;
+
+	return static_cast<double>(multiplierNumerator) / static_cast<double>(multiplierDenominator);
 
 }
 
@@ -6525,6 +6537,43 @@ double getBaseEnergyMultiplier(int baseId)
 	
 }
 
+int getBaseEconomyMultiplierNumerator(int baseId)
+{
+	int multiplierNumerator = 4;
+
+	if (isBaseHasFacility(baseId, FAC_ENERGY_BANK))
+	{
+		multiplierNumerator += 2;
+	}
+	if (isBaseHasFacility(baseId, FAC_TREE_FARM))
+	{
+		multiplierNumerator += conf.energy_multipliers_tree_farm[0];
+	}
+	if (isBaseHasFacility(baseId, FAC_HYBRID_FOREST))
+	{
+		multiplierNumerator += conf.energy_multipliers_hybrid_forest[0];
+	}
+	if (isBaseHasFacility(baseId, FAC_CENTAURI_PRESERVE))
+	{
+		multiplierNumerator += conf.energy_multipliers_centauri_preserve[0];
+	}
+	if (isBaseHasFacility(baseId, FAC_TEMPLE_OF_PLANET))
+	{
+		multiplierNumerator += conf.energy_multipliers_temple_of_planet[0];
+	}
+	if (isBaseHasFacility(baseId, FAC_FUSION_LAB))
+	{
+		multiplierNumerator += 2;
+	}
+	if (isBaseHasFacility(baseId, FAC_QUANTUM_LAB))
+	{
+		multiplierNumerator += 2;
+	}
+
+	return multiplierNumerator;
+
+}
+
 double getBaseEconomyMultiplier(int baseId)
 {
 	int multiplierNumerator = 4;
@@ -6555,10 +6604,55 @@ double getBaseEconomyMultiplier(int baseId)
 
 }
 
-double getBaseLabsMultiplier(int baseId)
+int getBasePsychMultiplierNumerator(int baseId)
 {
 	int multiplierNumerator = 4;
+
+	if (isBaseHasFacility(baseId, FAC_HOLOGRAM_THEATRE))
+	{
+		multiplierNumerator += 2;
+	}
+	if (isBaseHasFacility(baseId, FAC_TREE_FARM))
+	{
+		multiplierNumerator += conf.energy_multipliers_tree_farm[1];
+	}
+	if (isBaseHasFacility(baseId, FAC_HYBRID_FOREST))
+	{
+		multiplierNumerator += conf.energy_multipliers_hybrid_forest[1];
+	}
+	if (isBaseHasFacility(baseId, FAC_CENTAURI_PRESERVE))
+	{
+		multiplierNumerator += conf.energy_multipliers_centauri_preserve[1];
+	}
+	if (isBaseHasFacility(baseId, FAC_TEMPLE_OF_PLANET))
+	{
+		multiplierNumerator += conf.energy_multipliers_temple_of_planet[1];
+	}
+	if (isBaseHasFacility(baseId, FAC_RESEARCH_HOSPITAL))
+	{
+		multiplierNumerator += 1;
+	}
+	if (isBaseHasFacility(baseId, FAC_NANOHOSPITAL))
+	{
+		multiplierNumerator += 1;
+	}
+
+	return multiplierNumerator;
+
+}
+
+double getBasePsychMultiplier(int baseId)
+{
+	int multiplierNumerator = getBasePsychMultiplierNumerator(baseId);
 	int multiplierDenominator = 4;
+
+	return static_cast<double>(multiplierNumerator) / static_cast<double>(multiplierDenominator);
+
+}
+
+int getBaseLabsMultiplierNumerator(int baseId)
+{
+	int multiplierNumerator = 4;
 
 	if (isBaseHasFacility(baseId, FAC_NETWORK_NODE))
 	{
@@ -6580,38 +6674,33 @@ double getBaseLabsMultiplier(int baseId)
 	{
 		multiplierNumerator += 2;
 	}
-
-	return (double)multiplierNumerator / (double)multiplierDenominator;
-
-}
-
-double getBasePsychMultiplier(int baseId)
-{
-	int multiplierNumerator = 4;
-	int multiplierDenominator = 4;
-
-	if (isBaseHasFacility(baseId, FAC_HOLOGRAM_THEATRE))
-	{
-		multiplierNumerator += 2;
-	}
 	if (isBaseHasFacility(baseId, FAC_TREE_FARM))
 	{
-		multiplierNumerator += 2;
+		multiplierNumerator += conf.energy_multipliers_tree_farm[2];
 	}
 	if (isBaseHasFacility(baseId, FAC_HYBRID_FOREST))
 	{
-		multiplierNumerator += 2;
+		multiplierNumerator += conf.energy_multipliers_hybrid_forest[2];
 	}
-	if (isBaseHasFacility(baseId, FAC_RESEARCH_HOSPITAL))
+	if (isBaseHasFacility(baseId, FAC_CENTAURI_PRESERVE))
 	{
-		multiplierNumerator += 1;
+		multiplierNumerator += conf.energy_multipliers_centauri_preserve[2];
 	}
-	if (isBaseHasFacility(baseId, FAC_NANOHOSPITAL))
+	if (isBaseHasFacility(baseId, FAC_TEMPLE_OF_PLANET))
 	{
-		multiplierNumerator += 1;
+		multiplierNumerator += conf.energy_multipliers_temple_of_planet[2];
 	}
 
-	return (double)multiplierNumerator / (double)multiplierDenominator;
+	return multiplierNumerator;
+
+}
+
+double getBaseLabsMultiplier(int baseId)
+{
+	int multiplierNumerator = getBaseLabsMultiplierNumerator(baseId);
+	int multiplierDenominator = 4;
+
+	return static_cast<double>(multiplierNumerator) / static_cast<double>(multiplierDenominator);
 
 }
 
