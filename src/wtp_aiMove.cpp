@@ -564,6 +564,11 @@ void balanceVehicleSupport()
 			for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 			{
 				VEH *vehicle = getVehicle(vehicleId);
+
+				// exclude supply vehicles
+
+				if (isSupplyVehicle(vehicleId))
+					continue;
 				
 				// this home base
 				
@@ -611,7 +616,7 @@ void balanceVehicleSupport()
 				{
 					// reassign
 
-					getVehicle(reassignVehicleId)->home_base_id = otherBaseId;
+					getVehicle(reassignVehicleId)->home_base_id = static_cast<int16_t>(otherBaseId);
 					
 					// compute both bases
 					

@@ -1,3 +1,10 @@
+# Version 418
+
+* [bug] Needleject is not refueled fully when hodled in base/airbase. Fixed by refueling them fully at the beginning of the turn.
+* [fix] AI does not build unavailable facilities. Specifically, should apply to RT when it is replaced by PD.
+* [fix] PD implies RT if configured. That includes _all_ RT effects.
+* [fix] Supply vehicles are excluded from home base reassignment.
+
 # Version 417
 
 * Major rework of base citizen allocation.

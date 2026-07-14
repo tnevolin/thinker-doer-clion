@@ -3028,7 +3028,12 @@ bool has_facility(FacilityId item_id, int base_id) {
     if (item_id >= SP_ID_First) {
         return project_base(item_id) == base_id;
     }
+	// [WTP]
+	// PD implies RT if configured
+	/*
     return has_fac_built(item_id, base_id) || redundant(item_id, Bases[base_id].faction_id);
+    */
+    return has_fac_built(item_id, base_id) || redundant(item_id, Bases[base_id].faction_id) || (item_id == FAC_RECYCLING_TANKS && conf.pressure_dome_recycling_tanks_bonus && has_fac_built(FAC_PRESSURE_DOME, base_id));
 }
 
 bool has_free_facility(FacilityId item_id, int faction_id) {

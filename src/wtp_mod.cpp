@@ -1979,6 +1979,26 @@ __cdecl void modifiedFactionUpkeep(const int factionId)
 		Profiling::stop("removeWrongVehiclesFromBases");
 	}
 	
+    // refuel needlejets in base/airbase
+	// they may not be refueled if holded
+
+    for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
+	{
+    	VEH &vehicle = Vehs[vehicleId];
+
+    	if (vehicle.faction_id != factionId)
+    		continue;
+
+    	if (vehicle.chassis_type() != CHS_NEEDLEJET)
+    		continue;
+
+    	if (!getVehicleMapTile(vehicleId)->is_airbase())
+    		continue;
+
+    	vehicle.movement_turns = 0;
+
+	}
+
 	// choose AI logic
 	
 	if (isWtpEnabledFaction(factionId))

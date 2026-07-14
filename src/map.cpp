@@ -707,18 +707,19 @@ int __cdecl mod_crop_yield(int faction_id, int base_id, int x, int y, int flag) 
         }
 
     	// [WTP]
-    	// PD inherits RT bonus if configured
+    	// PD implies RT if configured (in has_facility)
     	/*
         if (has_fac_built(FAC_PRESSURE_DOME, base_id)
         || has_fac_built(FAC_RECYCLING_TANKS, base_id)) {
         */
-    	if (has_facility(FAC_RECYCLING_TANKS, base_id) || (conf.pressure_dome_recycling_tanks_bonus && has_facility(FAC_PRESSURE_DOME, base_id))) {
+    	if (has_facility(FAC_RECYCLING_TANKS, base_id)) {
     	//
     		value += ResInfo->recycling_tanks.energy;
         }
         
 		// [WTP]
 		// Recycling Tanks population bonus
+    	// PD implies RT if configured (in has_facility)
 		if (conf.recycling_tanks_population_bonus && has_facility(FAC_RECYCLING_TANKS, base_id))
 		{
 			// every second out of three citizens contributes nutrient
@@ -913,19 +914,20 @@ int __cdecl mod_mine_yield(int faction_id, int base_id, int x, int y, int flag) 
         value += ResInfo->base_sq.mineral;
 
     	// [WTP]
-    	// PD inherits RT bonus if configured
+    	// PD implies RT if configured (in has_facility)
     	/*
 		if (has_fac_built(FAC_PRESSURE_DOME, base_id)
 		|| has_fac_built(FAC_RECYCLING_TANKS, base_id)) {
 		*/
-    	if (has_facility(FAC_RECYCLING_TANKS, base_id) || (conf.pressure_dome_recycling_tanks_bonus && has_facility(FAC_PRESSURE_DOME, base_id))) {
+    	if (has_facility(FAC_RECYCLING_TANKS, base_id)) {
    		//
             value += ResInfo->recycling_tanks.mineral;
         }
         
 		// [WTP]
 		// Recycling Tanks population bonus
-		if (conf.recycling_tanks_population_bonus && has_fac_built(FAC_RECYCLING_TANKS, base_id))
+    	// PD implies RT if configured (in has_facility)
+		if (conf.recycling_tanks_population_bonus && has_facility(FAC_RECYCLING_TANKS, base_id))
 		{
 			// every third out of three citizens contributes mineral
 			value += (Bases[base_id].pop_size + 0) / 3;
@@ -1114,19 +1116,20 @@ int __cdecl mod_energy_yield(int faction_id, int base_id, int x, int y, int flag
         bool is_hq = has_fac_built(FAC_HEADQUARTERS, base_id);
 
     	// [WTP]
-    	// PD inherits RT bonus if configured
+    	// PD implies RT if configured (in has_facility)
     	/*
 		if (has_fac_built(FAC_PRESSURE_DOME, base_id)
 		|| has_fac_built(FAC_RECYCLING_TANKS, base_id)) {
 		*/
-    	if (has_facility(FAC_RECYCLING_TANKS, base_id) || (conf.pressure_dome_recycling_tanks_bonus && has_facility(FAC_PRESSURE_DOME, base_id))) {
+    	if (has_facility(FAC_RECYCLING_TANKS, base_id)) {
    		//
             value += ResInfo->recycling_tanks.energy;
         }
         
 		// [WTP]
 		// Recycling Tanks population bonus
-		if (conf.recycling_tanks_population_bonus && has_fac_built(FAC_RECYCLING_TANKS, base_id))
+    	// PD implies RT if configured (in has_facility)
+		if (conf.recycling_tanks_population_bonus && has_facility(FAC_RECYCLING_TANKS, base_id))
 		{
 			// every first out of three citizens contributes energy
 			value += (Bases[base_id].pop_size + 2) / 3;
