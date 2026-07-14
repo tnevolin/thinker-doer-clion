@@ -1727,7 +1727,7 @@ double getBaseSurplusGain(BASE const &base)
 {
 	// compute gain
 
-	double income = conf.worker_algorithm_mineral_preference * base.mineral_surplus + conf.worker_algorithm_energy_preference * base.energy_surplus;
+	double income = conf.worker_algorithm_mineral_preference * base.mineral_surplus + conf.worker_algorithm_energy_preference * (base.economy_total + base.labs_total);
 	double populationGrowth = static_cast<double>(base.nutrient_surplus) / static_cast<double>((base.pop_size + 1) * Rules->nutrient_cost_multi);
 	double relativePopulationGrowth = populationGrowth / static_cast<double>(base.pop_size);
 	double incomeGrowth = income * relativePopulationGrowth;
