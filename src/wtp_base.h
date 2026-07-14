@@ -12,23 +12,25 @@ struct BaseComputeParameterSet
 	bool canGrow{};
 	bool canRiot{};
 	ResourceYield satelliteYield;
-	std::array<ResourceYield, 21> workTileYields{};
-	int mineralMultiplierDenominator{};
-	int economyMultiplierDenominator{};
-	int psychMultiplierDenominator{};
-	int labsMultiplierDenominator{};
+	int32_t availableWorkTiles{};
+	std::array<ResourceYield, 21> workTileResourceYields{};
+	std::array<int32_t, 21> removeReplacementWorkTiles{};
+	std::array<int32_t, 21> addReplacementWorkTiles{};
+	int mineralMultiplierNumerator{};
+	int economyMultiplierNumerator{};
+	int psychMultiplierNumerator{};
+	int labsMultiplierNumerator{};
 	double mineralValue{};
 	double energyValue{};
 	double economyValue{};
 	double psychValue{};
 	double labsValue{};
-};
-
-struct BaseEnergy
-{
-	int our_rank;
-	std::array<int, MaxPlayerNum> otherFaciontRanks;
-	int coeff_psych;
+	int maxDistance{};
+	int hqDistance{};
+	int efficiencyRating{};
+	int fixedTalentTotal{};
+	int fixedDroneTotal{};
+	int fixedSuperdroneTotal{};
 };
 
 struct WorkTile
@@ -63,19 +65,19 @@ struct CitizenAllocation
 	int32_t specialist_types[2];
 };
 
-struct BaseScore
+struct BaseConditions
 {
-	CitizenAllocation citizenAllocation{};
-	int condition{};
-	ResourceYield surplus{};
-	double gain{};
+	bool nutrientShortfall;
+	bool mineralShortfall;
+	bool rioting;
 };
 
 void __cdecl wtp_mod_base_yield();
-void mod_base_yield_base_compute(BaseEnergy const &baseEnergy, int energyIntake);
-std::array<ResourceYield, 21> getBaseWorkTileYields(int baseId);
-int32_t getBaseAvailableWorkTiles(int baseId);
-void updateBase(BaseComputeParameterSet const &baseComputeParameterSet, bool compute);
+void populateBaseAvailableWorkTiles(BaseComputeParameterSet &baseComputeParameterSet);
+void populateBaseWorkTileYields(BaseComputeParameterSet &baseComputeParameterSet);
+void populateAddReplacementWorkTiles(BaseComputeParameterSet &baseComputeParameterSet);
+void populateRemoveReplacementWorkTiles(BaseComputeParameterSet &base_compute_parameters);
+void updateBase(BaseComputeParameterSet const& parameterSet, bool compute);
 void wtp_normalize_happiness(BASE *base, bool subtractSpecialists = false);
 void wtp_add_psych_row(BASE *base, int num);
 void __cdecl wtp_mod_base_psych(int base_id);
@@ -92,7 +94,19 @@ int wtp_mod_energy_intake_lost(int base_id, int energy, int32_t* effic_energy_lo
 int getEnergyLost(int energy, int hqDistance, int maxDistance, int efficiencyRating);
 void storeCitizenAllocation(CitizenAllocation &citizenAllocation);
 void applyCitizenAllocation(CitizenAllocation &citizenAllocation);
-int getBaseCondition();
+int isBetterBase(BASE const &newBase, BASE const &oldBase);
 ResourceYield getBaseSurplus();
 double getBaseSurplusGain();
+double getBaseSurplusGain(BASE const &base);
+std::array<int, MaxSpecialistNum> getSpecialistTypeCounts(int bestSpecialistType);
+void updateBaseNutrient();
+void updateBaseMineral(BaseComputeParameterSet const &parameterSet);
+void updateBaseEnergy(BaseComputeParameterSet const &parameterSet);
+void updateBasePsych(BaseComputeParameterSet const &parameterSet);
+int getInefficiencyFormulaMaxDistance();
+int getInefficiencyFormulaHQDistance(int base_id);
+int getInefficiencyFormulaEfficiencyRating(int base_id);
+void populateBaseFixedPsychBalance(BaseComputeParameterSet &parameterSet);
+char *getBaseAllocationString();
+BaseConditions getBaseConditions();
 

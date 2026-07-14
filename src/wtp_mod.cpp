@@ -119,7 +119,7 @@ Profile *Profiling::addTopProfile(std::string name)
 	return profile;
 	
 }
-Profile *Profiling::addChildProfile(std::string name, std::string parentName)
+Profile *Profiling::addChildProfile(std::string const &name, std::string const &parentName)
 {
 	// find parent iterator
 	
@@ -221,25 +221,61 @@ void Profiling::stop(std::string name)
 void Profiling::print()
 {
 	debug("executionProfiles\n");
-	
-	for (tree<ProfileName>::iterator iterator = profiles.begin(); iterator != profiles.end(); iterator++)
+
+	// // adjust execution times subtracting machinery overhead
+	//
+	// for (tree<ProfileName>::iterator iterator = profiles.begin(); iterator != profiles.end(); ++iterator)
+	// {
+	// 	std::string const name = iterator->name;
+	// 	Profile const &profile = iterator->profile;
+	//
+	// 	int executionCount = profile.executionCount;
+	// 	double childOverheadExecutionTime = 0.000002200 * executionCount;
+	// 	double parentOverheadExecutionTime = childOverheadExecutionTime + 0.000001900 * executionCount;
+	// 	int childOverheadTotalTime = static_cast<int>(round(static_cast<double>(CLOCKS_PER_SEC) * childOverheadExecutionTime));
+	// 	int parentOverheadTotalTime = static_cast<int>(round(static_cast<double>(CLOCKS_PER_SEC) * parentOverheadExecutionTime));
+	//
+	// 	bool child = true;
+	// 	tree<ProfileName>::iterator nodeIterator = iterator;
+	// 	while (true)
+	// 	{
+	// 		if (child)
+	// 		{
+	// 			nodeIterator->profile.totalTime -= childOverheadTotalTime;
+	// 			child = false;
+	// 		}
+	// 		else
+	// 		{
+	// 			nodeIterator->profile.totalTime -= parentOverheadTotalTime;
+	// 		}
+	//
+	// 		if (profiles.depth(nodeIterator) == 0)
+	// 			break;
+	//
+	// 		nodeIterator = profiles.parent(nodeIterator);
+	//
+	// 	}
+	//
+	// }
+
+	for (tree<ProfileName>::iterator iterator = profiles.begin(); iterator != profiles.end(); ++iterator)
 	{
 		int depth = profiles.depth(iterator);
 		std::string const name = iterator->name;
 		Profile const &profile = iterator->profile;
-		
+
 		std::string prefixedName = std::string(4 * depth, ' ') + name;
 		std::string displayName = prefixedName + " " + std::string(std::max(0, NAME_LENGTH - 1 - (int)prefixedName.length()), '.');
 		int executionCount = profile.executionCount;
-		double totalExecutionTime = (double)profile.totalTime / (double)CLOCKS_PER_SEC;
-		double averageExecutionTime = (executionCount == 0 ? 0.0 : totalExecutionTime / (double)executionCount);
-		
+		double totalExecutionTime = static_cast<double>(profile.totalTime) / static_cast<double>(CLOCKS_PER_SEC);
+		double averageExecutionTime = (executionCount == 0 ? 0.0 : totalExecutionTime / static_cast<double>(executionCount));
+
 		debug
 		(
 			"\t%-*s"
 			"   count=%8d"
-			"   totalTime=%7.3f"
-			"   averageTime=%10.6f"
+			"   totalTime= %6.3f"
+			"   averageTime= %12.9f"
 			"\n"
 			, NAME_LENGTH, displayName.c_str()
 			, executionCount
@@ -1815,13 +1851,123 @@ __cdecl int modifiedVehicleCargoForAirTransportUnload(int vehicleId)
 	
 }
 
+// ================================================================================================
+// base_compute test harness
+// ================================================================================================
+
+/*
+Builds a plain/neutral base radius tile: flat, arid, non-rocky, no fungus, no improvements, no
+special resources. Used to fill BaseComputeTestCase::tiles with a deterministic baseline that test
+cases can then selectively override.
+*/
+MAP makeNeutralRingTile()
+{
+	MAP tile{};
+	tile.climate = (4 << 5); // altitude level 4 (plains), arid, no rainfall
+	tile.contour = 0;
+	tile.val2 = 0;
+	tile.region = 1;
+	tile.visibility = 0;
+	tile.val3 = 0;
+	tile.unk_1 = 0;
+	tile.owner = -1;
+	tile.items = 0;
+	tile.landmarks = 0;
+	for (unsigned int &visible_item : tile.visible_items)
+	{
+		visible_item = 0;
+	}
+	return tile;
+}
+
+std::array<MAP, 21> makeNeutralTiles()
+{
+	std::array<MAP, 21> tiles{};
+	for (MAP &tile : tiles)
+	{
+		tile = makeNeutralRingTile();
+	}
+	return tiles;
+}
+
+/*
+Applies a BaseComputeTestCase onto the actual game state so base_compute can be exercised against it.
+*/
+void applyBaseComputeTestCase(int baseId, BaseComputeTestCase const &testCase)
+{
+	BASE *base = getBase(baseId);
+	Faction *faction = &(Factions[base->faction_id]);
+
+	// faction social engineering parameters
+
+	faction->SE_effic_pending = testCase.SE_effic_pending;
+	faction->SE_alloc_psych = testCase.SE_alloc_psych;
+	faction->SE_alloc_labs = testCase.SE_alloc_labs;
+
+	// base population
+
+	base->pop_size = testCase.pop_size;
+
+	// unit support mineral cost
+
+	*BaseForcesMaintCost = testCase.support;
+
+	// happiness carried over from previous turn upkeep (influences can_riot before this turn's psych recompute)
+
+	base->talent_total = std::max(0, testCase.initialHappiness);
+	base->drone_total = std::max(0, -testCase.initialHappiness);
+	base->superdrone_total = 0;
+
+	// map tiles around the base
+	// tiles[0] would be the base square itself; it is intentionally left untouched since overwriting
+	// it risks corrupting the BIT_BASE_IN_TILE/owner encoding the engine relies on for the base tile.
+	// tiles[1..20] are the worked ring and are copied verbatim, then forced into the test faction's territory.
+
+	for (int i = 1; i < (int)testCase.tiles.size(); i++)
+	{
+		int x = wrap(base->x + TableOffsetX[i]);
+		int y = base->y + TableOffsetY[i];
+		MAP *tile = mapsq(x, y);
+
+		if (tile == nullptr)
+			continue;
+
+		*tile = testCase.tiles[i];
+
+		// force tile into the test faction's territory regardless of the literal snapshot given
+
+		tile->owner = base->faction_id;
+		tile->visibility |= (1 << base->faction_id);
+
+	}
+
+	// available specialists (force listed specialist ids to be available regardless of ruleset tech gating)
+
+	for (int citizenId : testCase.availableCitizenTypes)
+	{
+		if (citizenId < 0 || citizenId >= MaxSpecialistNum)
+			continue;
+
+		Citizen[citizenId].preq_tech = TECH_None;
+		Citizen[citizenId].obsol_tech = TECH_Disable;
+
+	}
+
+	// force full worker/specialist reallocation
+
+	base->worked_tiles = 0;
+	base->specialist_total = 0;
+	base->specialist_adjust = 0;
+
+}
+
 /*
 Overrides faction_upkeep calls to amend vanilla and Thinker AI functionality.
 */
 __cdecl void modifiedFactionUpkeep(const int factionId)
 {
 	debug("modifiedFactionUpkeep - %s\n", getMFaction(factionId)->noun_faction);
-	
+
 	Profiling::start("modifiedFactionUpkeep", "");
 	
     // remove wrong units from bases

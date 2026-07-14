@@ -349,8 +349,6 @@ Returns true on successful task creation.
 */
 bool transitVehicle(Task task)
 {
-	const bool TRACE = DEBUG && false;
-
 	int vehicleId = task.getVehicleId();
 	VEH *vehicle = getVehicle(vehicleId);
 	MAP *vehicleTile = getVehicleMapTile(vehicleId);

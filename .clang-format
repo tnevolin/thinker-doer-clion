@@ -1,0 +1,9 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+PointerAlignment: Right
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
+AccessModifierOffset: -4
+...

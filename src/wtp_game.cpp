@@ -1,7 +1,6 @@
 
 #include <iostream>
 #include <iomanip>
-#include <sstream>
 #include <numeric>
 #include "wtp_terranx_enum.h"
 #include "wtp_terranx.h"
@@ -10,7 +9,7 @@
 #include "wtp_aiTask.h"
 #include "wtp_base.h"
 
-char const NULLPTR_STRING[] = "-nullptr-";
+constexpr char NULLPTR_STRING[] = "-nullptr-";
 
 const std::array<Triad, 3> Triads = { TRIAD_LAND, TRIAD_SEA, TRIAD_AIR };
 
@@ -1869,7 +1868,7 @@ void computeBase(int baseId, bool resetWorkedTiles, MAP *excludedTile)
 	assert(baseId >= 0 && baseId < *BaseCount);
 	
 	Profiling::start("- computeBase");
-	
+
 	if (resetWorkedTiles)
 	{
 		Bases[baseId].worked_tiles = 0;

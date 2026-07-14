@@ -8,6 +8,10 @@
 #include "robin_hood.h"
 #include "engine.h"
 
+#define TRACE (DEBUG && true)
+#define trace(...) if (TRACE) { fprintf(debug_log, __VA_ARGS__); }
+#define trace_flush(...) if (TRACE) { fprintf(debug_log, __VA_ARGS__); fflush(debug_log); }
+
 extern char const NULLPTR_STRING[];
 
 extern const std::array<Triad, 3> Triads;

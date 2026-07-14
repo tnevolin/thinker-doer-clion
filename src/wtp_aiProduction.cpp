@@ -3560,8 +3560,6 @@ Finds best combat unit built at source base to help target base against target b
 */
 int selectProtectionUnit(int baseId, int targetBaseId)
 {
-	bool TRACE = DEBUG && false;
-	
 	if (TRACE) { debug("selectProtectionUnit\n"); }
 	
 	MAP *baseTile = getBaseMapTile(baseId);
@@ -4506,8 +4504,6 @@ Contributing population: (minSize, maxSize].
 */
 double getBasePopulationGain(int baseId, const Interval &baseSizeInterval)
 {
-	bool TRACE = DEBUG & false;
-
 	if (TRACE) { debug("getBasePopulationGain\n"); }
 
 	BASE *base = getBase(baseId);

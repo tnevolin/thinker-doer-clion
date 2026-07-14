@@ -2972,8 +2972,6 @@ Computes resulting cost gain after attack.
 */
 double getDuelCombatCostCoefficient(int vehicleId, double effect, double enemyUnitCost)
 {
-	bool TRACE = DEBUG && false;
-
 	if (TRACE) { debug("getDuelCombatCostCoefficient\n"); }
 
 	double vehicleUnitCost = (double)getVehicleUnitCost(vehicleId);
@@ -3024,8 +3022,6 @@ Computes resulting cost gain after attack.
 */
 double getBombardmentCostCoefficient(int vehicleId, double effect, double enemyUnitCost)
 {
-	bool TRACE = DEBUG && false;
-
 	if (TRACE) { debug("getDuelCombatCostCoefficient\n"); }
 
 	double vehicleUnitCost = (double)getVehicleUnitCost(vehicleId);

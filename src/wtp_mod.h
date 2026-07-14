@@ -4,9 +4,14 @@
 #include <sstream>
 #include <iomanip>
 #include <map>
+#include <array>
+#include <vector>
 #include "robin_hood.h"
 #include "game.h"
 #include "lib/tree.hh"
+
+// base_compute test harness switch (see test_base_compute)
+constexpr bool TEST_RUN = false;
 
 struct Profile
 {
@@ -29,15 +34,14 @@ struct ProfileName
 };
 class Profiling
 {
-private:
-	
-	static int const NAME_LENGTH = 120;
+
+	static constexpr int NAME_LENGTH = 120;
 	
 	static tree<ProfileName> profiles;
 	
 	static Profile *getProfile(std::string name);
 	static Profile *addTopProfile(std::string name);
-	static Profile *addChildProfile(std::string name, std::string parentName);
+	static Profile *addChildProfile(const std::string& name, const std::string& parentName);
 	
 public:
 	
@@ -76,6 +80,90 @@ struct BASE_HURRY_ALLOWANCE_PROPORTION
 
 const int HABITATION_FACILITIES_COUNT = 2;
 const int HABITATION_FACILITIES[] = {FAC_HAB_COMPLEX, FAC_HABITATION_DOME, };
+
+struct BaseComputeTestCaseMapTile
+{
+	bool sea = false;
+	int rainfall = 0;
+	int rockiness = 0;
+	int items = 0;
+};
+
+/*
+Describes a single self-contained base_compute regression test.
+setup fields configure the base/faction/map/specialist state before base_compute runs;
+expected_* fields are compared against the resulting BASE fields afterward.
+tiles[i] corresponds to the base radius tile at (TableOffsetX[i], TableOffsetY[i]); tiles[0] is the base square itself.
+availableCitizens lists specialist type ids (indices into the global Citizen[] table) that should be
+forced available (not obsolete, no tech prerequisite) for the duration of the test, regardless of the
+active ruleset's tech requirements. Their econ/psych/labs bonuses are left as configured.
+*/
+struct BaseComputeTestCase
+{
+	// faction social engineering setup
+
+	int SE_effic_pending;
+	int SE_alloc_psych;
+	int SE_alloc_labs;
+
+	// base setup
+
+	int pop_size;
+	int support;
+	int initialHappiness;
+	std::array<MAP, 21> tiles;
+	std::vector<int> availableCitizenTypes;
+	bool canGrow;
+	bool canRiot;
+
+	// expected base_compute results
+
+	int expected_nutrient_surplus;
+	int expected_mineral_surplus;
+	int expected_energy_surplus;
+	int expected_economy_total;
+	int expected_psych_total;
+	int expected_labs_total;
+	int expected_happiness;
+
+};
+
+// forward declarations needed to build BASE_COMPUTE_TEST_CASES below
+MAP makeNeutralRingTile();
+std::array<MAP, 21> makeNeutralTiles();
+
+/*
+base_compute test cases.
+
+NOTE: expected_* values below are placeholders (0). ResInfo tile yield constants come from the
+active ruleset (alphax.txt/thinker.ini) and cannot be safely hand-derived at compile time.
+Set test_run = true, run a debug build to a point where the test faction owns a base, read the
+actual/expected mismatch log this harness prints, and copy the printed "actual" values back into
+expected_* below to lock in the regression baseline.
+*/
+const std::vector<BaseComputeTestCase> BASE_COMPUTE_TEST_CASES =
+{
+	// single citizen, uniform neutral surrounding tiles, no social engineering allocation
+	{
+		/* SE_effic_pending				*/  0,
+		/* SE_alloc_psych				*/  0,
+		/* SE_alloc_labs				*/  5,
+		/* pop_size						*/  1,
+		/* support						*/  0,
+		/* initialHappiness				*/  0,
+		/* tiles						*/ makeNeutralTiles(),
+		/* availableCitizens			*/ {1, 0},
+		/* canGrow						*/ true,
+		/* canRiot						*/ true,
+		/* expected_nutrient_surplus	*/  0,
+		/* expected_mineral_surplus		*/  0,
+		/* expected_energy_surplus		*/  0,
+		/* expected_economy_total		*/  0,
+		/* expected_psych_total			*/  0,
+		/* expected_labs_total			*/  0,
+		/* expected_happiness			*/  0,
+	},
+};
 
 __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId, int *attackerStrengthPointer, int *defenderStrengthPointer, int combat_type);
 __cdecl int wtp_mod_proto_cost(int chassisTypeId, int weaponTypeId, int armorTypeId, int abilities, int reactorTypeId);

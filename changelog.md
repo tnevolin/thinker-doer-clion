@@ -1,3 +1,7 @@
+# Version 417
+
+* Major rework of base citizen allocation.
+
 # Version 416
 
 * [bug] Pressure Dome inherited Recycling Tanks bonus whether or not it was configured. Fixed.

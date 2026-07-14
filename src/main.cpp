@@ -944,6 +944,22 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->unit_support_energy_credits = atoi(value);
     }
+	else if (MATCH("base_psych_screen_show_numbers"))
+    {
+        cf->base_psych_screen_show_numbers = atoi(value);
+    }
+	else if (MATCH("base_psych_screen_font_name"))
+    {
+        strncpy(cf->base_psych_screen_font_name, value, StrBufLen);
+    }
+	else if (MATCH("base_psych_screen_font_size"))
+    {
+        cf->base_psych_screen_font_size = atoi(value);
+    }
+	else if (MATCH("base_psych_screen_font_style"))
+    {
+        cf->base_psych_screen_font_style = atoi(value);
+    }
 	else if (MATCH("ai_useWTPAlgorithms"))
     {
         cf->ai_useWTPAlgorithms = (atoi(value) == 0 ? false : true);
