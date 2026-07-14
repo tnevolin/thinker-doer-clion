@@ -44,11 +44,11 @@ void populateConvoyData()
 		
 		if (!isSupplyVehicle(vehicleId))
 			continue;
-		
+
 		if (isVehicleConvoying(vehicleId))
 		{
-			// keep convoying crawlers convoying
-			setTask(Task(vehicleId, TT_CONVOY));
+			// retain order
+			setTask(Task(vehicleId, TT_NONE));
 		}
 		else
 		{
@@ -300,6 +300,7 @@ void assignCrawlerOrders()
 		// find best assignment location
 		
 		MAP *bestTile = nullptr;
+		BaseResType bestTileBaseResType = RSC_UNUSED;
 		double bestTileGain = 0.0;
 		
 		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
@@ -352,17 +353,18 @@ void assignCrawlerOrders()
 			if (gain > bestTileGain)
 			{
 				bestTile = tile;
+				bestTileBaseResType = tileConvoyInfo.baseResType;
 				bestTileGain = gain;
 			}
 			
 		}
 		
-		if (bestTile == nullptr)
+		if (bestTile == nullptr || bestTileBaseResType == RSC_UNUSED)
 			continue;
 		
 		// transit vehicle
 		
-		if (!transitVehicle(Task(vehicleId, TT_CONVOY, bestTile)))
+		if (!transitVehicle(Task(vehicleId, TT_CONVOY, bestTile, bestTileBaseResType)))
 			continue;
 		
 		// set other parameters

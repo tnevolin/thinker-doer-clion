@@ -2123,7 +2123,7 @@ double getTerraformingResourceScore(double nutrient, double mineral, double ener
 	;
 }
 
-double getTerraformingResourceScore(TileYield const &yield)
+double getTerraformingResourceScore(ResourceYield const &yield)
 {
 	return getTerraformingResourceScore(yield.nutrient, yield.mineral, yield.energy);
 }
@@ -2494,9 +2494,9 @@ double getNetworkGain(MAP *tile, MAP const &originalTile, MAP const &improvedTil
 		baseIds.insert(baseId);
 
 	}
-	
+
 	// find paired bases lowest former travel times (original and improved)
-	
+
 	*tile = originalTile;
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, double>> originalTravelTimes = getCrossBaseTravelTimes(baseIds);
 	*tile = improvedTile;

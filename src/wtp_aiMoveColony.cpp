@@ -1122,6 +1122,122 @@ int getExpansionRange(MAP *tile)
 	return std::min(getBuildSiteNearestBaseRange(tile), getNearestColonyRange(tile));
 }
 
+Resource getAverageTileYield(MAP *tile)
+{
+	bool monolith = map_has_item(tile, BIT_MONOLITH);
+	bool ocean = is_ocean(tile);
+	bool rocky = !ocean && (map_rockiness(tile) == 2);
+	
+	Resource averageYield;
+	
+	if (monolith)
+	{
+		ResourceYield yield = getTerraformingYield(-1, tile, {});
+		averageYield = {(double)yield.nutrient, (double)yield.mineral, (double)yield.energy};
+	}
+	else if (ocean)
+	{
+		// average of mining platform and tidal harness
+
+		ResourceYield miningPlatformYield = getTerraformingYield(-1, tile, {FORMER_FARM, FORMER_MINE});
+		ResourceYield tidalHarnessYield = getTerraformingYield(-1, tile, {FORMER_FARM, FORMER_SOLAR});
+
+		averageYield =
+		{
+			(miningPlatformYield.nutrient + tidalHarnessYield.nutrient) / 2.0,
+			(miningPlatformYield.mineral + tidalHarnessYield.mineral) / 2.0,
+			(miningPlatformYield.energy + tidalHarnessYield.energy) / 2.0,
+		};
+
+	}
+	else
+	{
+		std::vector<std::vector<int>> terraformingOptions;
+
+		if (rocky)
+		{
+			terraformingOptions.push_back({FORMER_REMOVE_FUNGUS, FORMER_ROAD, FORMER_MINE});
+			terraformingOptions.push_back({FORMER_REMOVE_FUNGUS, FORMER_LEVEL_TERRAIN, FORMER_ROAD, FORMER_FARM, FORMER_SOIL_ENR, FORMER_MINE});
+			terraformingOptions.push_back({FORMER_REMOVE_FUNGUS, FORMER_LEVEL_TERRAIN, FORMER_ROAD, FORMER_FARM, FORMER_SOIL_ENR, FORMER_SOLAR});
+			terraformingOptions.push_back({FORMER_REMOVE_FUNGUS, FORMER_LEVEL_TERRAIN, FORMER_ROAD, FORMER_FOREST});
+			terraformingOptions.push_back({FORMER_PLANT_FUNGUS});
+
+		}
+		else
+		{
+			terraformingOptions.push_back({FORMER_REMOVE_FUNGUS, FORMER_ROAD, FORMER_FARM, FORMER_SOIL_ENR, FORMER_MINE});
+			terraformingOptions.push_back({FORMER_REMOVE_FUNGUS, FORMER_ROAD, FORMER_FARM, FORMER_SOIL_ENR, FORMER_SOLAR});
+			terraformingOptions.push_back({FORMER_REMOVE_FUNGUS, FORMER_ROAD, FORMER_FOREST});
+			terraformingOptions.push_back({FORMER_PLANT_FUNGUS});
+
+		}
+
+		ResourceYield bestYield;
+		double bestYieldScore = 0.0;
+
+		for (std::vector<int> const &terraformingOption : terraformingOptions)
+		{
+			ResourceYield yield = getTerraformingYield(-1, tile, terraformingOption);
+			double yieldScore = getTerraformingResourceScore(yield);
+
+			if (yieldScore > bestYieldScore)
+			{
+				bestYield = yield;
+				bestYieldScore = yieldScore;
+			}
+
+		}
+
+		ResourceYield yield = bestYield;
+		averageYield = {(double)yield.nutrient, (double)yield.mineral, (double)yield.energy};
+		
+	}
+	
+	debug("getTileYield%s = (%5.2f,%5.2f,%5.2f)\n", getLocationString(tile), averageYield.nutrient, averageYield.mineral, averageYield.energy);
+	
+	return averageYield;
+	
+}
+
+int getNearestEnemyBaseRange(MAP *tile)
+{
+	assert(isOnMap(tile));
+	
+	int x = getX(tile);
+	int y = getY(tile);
+
+	int minRange = INT_MAX;
+
+	for (int baseId = 0; baseId < *BaseCount; baseId++)
+	{
+		BASE *base = &(Bases[baseId]);
+
+		// enemy base
+
+		if (base->faction_id == aiFactionId)
+			continue;
+
+		// get range
+
+		int range = map_range(x, y, base->x, base->y);
+
+		// update minRange
+
+		minRange = std::min(minRange, range);
+
+	}
+
+	// return zero if not modified
+
+	if (minRange == INT_MAX)
+	{
+		minRange = 0;
+	}
+
+	return minRange;
+
+}
+
 /*
 Returns unavailable build sites around already taken one.
 */

@@ -16,6 +16,10 @@
 #endif
 constexpr bool TRACE = DEBUG && true;
 
+#define TRACE (DEBUG && true)
+#define trace(...) if (TRACE) { fprintf(debug_log, __VA_ARGS__); }
+#define trace_flush(...) if (TRACE) { fprintf(debug_log, __VA_ARGS__); fflush(debug_log); }
+
 extern char const NULLPTR_STRING[];
 
 extern const std::array<Triad, 3> Triads;
@@ -34,12 +38,12 @@ struct Profile
 	int executionCount = 0;
 	clock_t startTime = 0;
 	clock_t totalTime = 0;
-	
+
 	void start();
 	void pause();
 	void resume();
 	void stop();
-	
+
 };
 struct ProfileName
 {
@@ -49,17 +53,17 @@ struct ProfileName
 class Profiling
 {
 private:
-	
+
 	static constexpr int NAME_LENGTH = 120;
-	
+
 	static tree<ProfileName> profiles;
-	
+
 	static Profile *getProfile(std::string name);
 	static Profile *addTopProfile(std::string name);
 	static Profile *addChildProfile(std::string name, std::string parentName);
-	
+
 public:
-	
+
 	static void reset();
 	static void start(std::string name);
 	static void start(std::string name, std::string parentName);
@@ -67,7 +71,7 @@ public:
 	static void resume(std::string name);
 	static void stop(std::string name);
 	static void print();
-	
+
 };
 
 struct IdIntValue
@@ -87,22 +91,22 @@ struct MapIntValue
 {
 	MAP *tile = nullptr;
 	int value = INT_MAX;
-	
+
 	MapIntValue(MAP *_tile, int _value)
 	: tile(_tile), value(_value)
 	{}
-	
+
 };
 
 struct MapDoubleValue
 {
 	MAP *tile = nullptr;
 	double value = INF;
-	
+
 	MapDoubleValue(MAP *_tile, double _value)
 	: tile(_tile), value(_value)
 	{}
-	
+
 };
 
 /*
@@ -150,10 +154,10 @@ struct CombatStrength
 {
 	// [attacker gear type (psi/con)][defender gear type (psi/con)]
 	std::array<std::array<double, COMBAT_TYPE_COUNT>, COMBAT_TYPE_COUNT> values;
-	
+
 	void accumulate(CombatStrength &combatStrength, double multiplier = 1.0);
 	double getAttackEffect(int vehicleId);
-	
+
 };
 
 /**
@@ -164,14 +168,14 @@ struct FactionUnit
 	int factionId;
 	int unitId;
 	int key = -1;
-	
+
 	static int encodeKey(int factionId, int unitId);
 	static int encodeKey(int vehicleId);
-	
+
 	FactionUnit(int _factionId, int _unitId);
 	FactionUnit(int _key);
 	int encodeKey();
-	
+
 };
 
 /**
@@ -182,13 +186,13 @@ struct FactionUnitCombat
 	FactionUnit attackerFactionUnit;
 	FactionUnit defenderFactionUnit;
 	ENGAGEMENT_MODE engagementMode;
-	
+
 	static int encodeKey(int attackerKey, int defenderKey, ENGAGEMENT_MODE engagementMode);
 	static int encodeKey(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode);
-	
+
 	FactionUnitCombat(FactionUnit _attackerFactionUnit, FactionUnit _defenderFactionUnit, ENGAGEMENT_MODE _engagementMode);
 	FactionUnitCombat(int _key);
-	
+
 };
 
 /**
@@ -198,9 +202,9 @@ struct FactionUnitCombatEffect
 {
 	FactionUnitCombat factionUnitCombat;
 	double effect;
-	
+
 	FactionUnitCombatEffect(FactionUnitCombat _factionUnitCombat, double effect);
-	
+
 };
 
 int const MAX_RANGE = 40;
@@ -375,6 +379,13 @@ struct Resource
 	{
 		return {o1.nutrient + o2.nutrient, o1.mineral + o2.mineral, o1.energy + o2.energy};
 	}
+
+	static bool isEqualOrInferior(Resource const &o1, Resource const &o2)
+	{
+		return
+			o1.nutrient <= o2.nutrient && o1.mineral <= o2.mineral && o1.energy <= o2.energy
+		;
+	}
 	
 };
 
@@ -456,6 +467,90 @@ public:
 	{
 		return sumWeight <= 0.0 || sumWeightValue <= 0.0 ? 0.0 : 1.0 / (sumWeightValue / sumWeight);
 	}
+};
+
+// integer resource combination
+struct ResourceYield
+{
+	int nutrient;
+	int mineral;
+	int energy;
+
+	ResourceYield(int _nutrient, int _mineral, int _energy)
+	: nutrient(_nutrient), mineral(_mineral), energy(_energy)
+	{}
+
+	ResourceYield()
+	: ResourceYield(0, 0, 0)
+	{}
+
+	/*
+	Compares yields.
+	-1 : 1 is inferior to 2
+	 0 : neither
+	 1 : 1 is superior to 2
+	*/
+	static int compare(ResourceYield o1, ResourceYield o2)
+	{
+		return
+			o1.nutrient == o2.nutrient && o1.mineral == o2.mineral && o1.energy == o2.energy
+			? 0
+			:
+			o1.nutrient <= o2.nutrient && o1.mineral >= o2.mineral && o1.energy >= o2.energy
+			? -1
+			:
+			o1.nutrient >= o2.nutrient && o1.mineral >= o2.mineral && o1.energy >= o2.energy
+			? +1
+			:  0
+		;
+
+	}
+
+	// equal
+	static bool isEqual(ResourceYield o1, ResourceYield o2)
+	{
+		return
+			(o1.nutrient == o2.nutrient && o1.mineral == o2.mineral && o1.energy == o2.energy)
+		;
+	}
+
+	// superior
+	static bool isSuperior(ResourceYield o1, ResourceYield o2)
+	{
+		return
+			(o1.nutrient >= o2.nutrient && o1.mineral >= o2.mineral && o1.energy >= o2.energy)
+			&&
+			(o1.nutrient > o2.nutrient || o1.mineral > o2.mineral || o1.energy > o2.energy)
+		;
+
+	}
+
+	// equal or superior
+	static bool isEqualOrSuperior(ResourceYield o1, ResourceYield o2)
+	{
+		return
+			(o1.nutrient >= o2.nutrient && o1.mineral >= o2.mineral && o1.energy >= o2.energy)
+		;
+	}
+
+	// inferior
+	static bool isInferior(ResourceYield o1, ResourceYield o2)
+	{
+		return
+			(o1.nutrient <= o2.nutrient && o1.mineral <= o2.mineral && o1.energy <= o2.energy)
+			&&
+			(o1.nutrient < o2.nutrient || o1.mineral < o2.mineral || o1.energy < o2.energy)
+		;
+	}
+
+	// equal or inferior
+	static bool isEqualOrInferior(ResourceYield o1, ResourceYield o2)
+	{
+		return
+			(o1.nutrient <= o2.nutrient && o1.mineral <= o2.mineral && o1.energy <= o2.energy)
+		;
+	}
+
 };
 
 // =======================================================
@@ -1245,12 +1340,16 @@ bool isHoveringLandUnit(int unitId);
 bool isHoveringLandVehicle(int vehicleId);
 bool isEasyFungusEnteringLandUnit(int unitId);
 bool isEasyFungusEnteringVehicle(int vehicleId);
+int getBaseMineralMultiplierNumerator(int baseId);
 double getBaseMineralMultiplier(int baseId);
 double getBaseEnergyEfficiencyCoefficient(int baseId);
 double getBaseEnergyMultiplier(int baseId);
+int getBaseEconomyMultiplierNumerator(int baseId);
 double getBaseEconomyMultiplier(int baseId);
-double getBaseLabsMultiplier(int baseId);
+int getBasePsychMultiplierNumerator(int baseId);
 double getBasePsychMultiplier(int baseId);
+int getBaseLabsMultiplierNumerator(int baseId);
+double getBaseLabsMultiplier(int baseId);
 bool isLandVechileMoveAllowed(int vehicleId, MAP *from, MAP *to);
 int getRange(int x1, int y1, int x2, int y2);
 int getRange(int tile1Index, int tile2Index);
@@ -1349,6 +1448,6 @@ bool isVehicleTerraforming(int vehicleId);
 double getValueSum(robin_hood::unordered_flat_map<int, double> weights);
 bool isValidFactionId(int factionId);
 bool isValidUnitId(int unitId);
-bool isValidVehicleId(int vehicleId);	
+bool isValidVehicleId(int vehicleId);
 void applyTerraforming(MAP *tile, FormerItem action);
 

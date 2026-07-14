@@ -46,9 +46,9 @@ struct Task
 	int baseId = -1;
 
 	Task(int _vehicleId, TaskType _type, MAP *_destination, MAP *_attackTarget, int _order, int _terraformingAction);
-	Task(int  _vehicleId, TaskType  _type, MAP  *_destination, MAP  *_attackTarget);
-	Task(int  _vehicleId, TaskType  _type, MAP  *_destination);
-	Task(int  _vehicleId, TaskType  _type);
+	Task(int _vehicleId, TaskType _type, MAP *_destination, MAP *_attackTarget);
+	Task(int _vehicleId, TaskType _type, MAP *_destination);
+	Task(int _vehicleId, TaskType _type);
 
 	bool operator<(Task  &other);
 

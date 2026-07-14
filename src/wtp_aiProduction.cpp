@@ -192,7 +192,7 @@ void populateFactionProductionData()
 		landArtilleryVehicleCount++;
 		
 	}
-	
+
 	int vehicleCount = 0;
 	int infantryDefensiveVehicleCount = 0;
 	
@@ -212,7 +212,7 @@ void populateFactionProductionData()
 		infantryDefensiveVehicleCount++;
 		
 	}
-	
+
 	Profiling::stop("populateFactionProductionData");
 	
 }
@@ -938,13 +938,13 @@ void evaluatePsychFacilities()
 	
 	// facilityIds
 	
-	const std::vector<int> facilityIds
+	const std::vector<FacilityId> facilityIds
 	{
 		FAC_PUNISHMENT_SPHERE,
 		FAC_RECREATION_COMMONS, FAC_HOLOGRAM_THEATRE, FAC_PARADISE_GARDEN,
 	};
 	
-	for (int facilityId : facilityIds)
+	for (FacilityId facilityId : facilityIds)
 	{
 		if (!isBaseCanBuildFacility(baseId, facilityId))
 			continue;
@@ -984,12 +984,12 @@ void evaluateRecyclingTanks()
 	
 	// facilityIds
 	
-	const std::vector<int> facilityIds
+	const std::vector<FacilityId> facilityIds
 	{
 		FAC_RECYCLING_TANKS,
 	};
 	
-	for (int facilityId : facilityIds)
+	for (FacilityId facilityId : facilityIds)
 	{
 		if (!isBaseCanBuildFacility(baseId, facilityId))
 			continue;
@@ -1031,7 +1031,7 @@ void evaluateIncomeFacilities()
 	
 	// facilityIds
 	
-	const std::vector<int> facilityIds
+	const std::vector<FacilityId> facilityIds
 	{
 		FAC_CHILDREN_CRECHE,
 		FAC_ENERGY_BANK,
@@ -1047,7 +1047,7 @@ void evaluateIncomeFacilities()
 		FAC_CENTAURI_PRESERVE, FAC_TEMPLE_OF_PLANET,
 	};
 	
-	robin_hood::unordered_flat_map<int, int> facilityLifecycles
+	const robin_hood::unordered_flat_map<FacilityId, int> facilityLifecycles
 	{
 		{FAC_BIOLOGY_LAB, 1},
 		{FAC_BROOD_PIT, 3}, // +1 lifecycle and -25% of the cost
@@ -1055,7 +1055,7 @@ void evaluateIncomeFacilities()
 		{FAC_TEMPLE_OF_PLANET, 1},
 	};
 	
-	for (int facilityId : facilityIds)
+	for (FacilityId facilityId : facilityIds)
 	{
 		if (!isBaseCanBuildFacility(baseId, facilityId))
 			continue;
@@ -1068,7 +1068,7 @@ void evaluateIncomeFacilities()
 		
 		double moraleIncome = 0.0;
 		
-		robin_hood::unordered_flat_map<int,int>::const_iterator facilityLifecycleIterator = facilityLifecycles.find(facilityId);
+		robin_hood::unordered_flat_map<FacilityId,int>::const_iterator facilityLifecycleIterator = facilityLifecycles.find(facilityId);
 		if (facilityLifecycleIterator != facilityLifecycles.end())
 		{
 			int lifecycle = facilityLifecycleIterator->second;
@@ -1120,12 +1120,12 @@ void evaluateMineralMultiplyingFacilities()
 	
 	// facilityIds
 	
-	const std::vector<int> facilityIds
+	const std::vector<FacilityId> facilityIds
 	{
 		FAC_GENEJACK_FACTORY, FAC_ROBOTIC_ASSEMBLY_PLANT, FAC_NANOREPLICATOR, FAC_QUANTUM_CONVERTER,
 	};
 	
-	for (int facilityId : facilityIds)
+	for (FacilityId facilityId : facilityIds)
 	{
 		if (!isBaseCanBuildFacility(baseId, facilityId))
 			continue;
@@ -1202,12 +1202,12 @@ void evaluatePopulationLimitFacilities()
 	
 	// facilityIds
 	
-	std::vector<int> facilityIds
+	std::vector<FacilityId> facilityIds
 	{
 		FAC_HAB_COMPLEX, FAC_HABITATION_DOME,
 	};
 	
-	for (int facilityId : facilityIds)
+	for (FacilityId facilityId : facilityIds)
 	{
 		if (!isBaseCanBuildFacility(baseId, facilityId))
 			continue;
@@ -1306,7 +1306,7 @@ void evaluateMilitaryFacilities()
 	
 	struct MilitaryFacility
 	{
-		int facilityId;
+		FacilityId facilityId;
 		bool morale;
 		bool defense;
 		std::array<int,4> moraleBonuses;
@@ -1349,7 +1349,7 @@ void evaluateMilitaryFacilities()
 	
 	for (MilitaryFacility &militaryFacility : militaryFacilities)
 	{
-		int facilityId = militaryFacility.facilityId;
+		FacilityId facilityId = militaryFacility.facilityId;
 		
 		if (!isBaseCanBuildFacility(baseId, facilityId))
 			continue;
@@ -1473,8 +1473,8 @@ void evaluatePrototypingFacilities()
 	ProductionDemand &productionDemand = *currentBaseProductionDemand;
 	int baseId = productionDemand.baseId;
 	BASE *base = productionDemand.base;
-	
-	int facilityId = FAC_SKUNKWORKS;
+
+	FacilityId facilityId = FAC_SKUNKWORKS;
 	
 	// free prototype faction cannot build Skunkworks
 	
@@ -2560,7 +2560,7 @@ void evaluateBaseDefenseUnits()
 		
 		if (!isBaseCanBuildUnit(baseId, unitId))
 			continue;
-		
+
 		// seek for best target base gain
 		
 		double bestGain = 0.0;
@@ -2705,7 +2705,7 @@ void evaluateBunkerDefenseUnits()
 		
 		if (!isBaseCanBuildUnit(baseId, unitId))
 			continue;
-		
+
 		// seek for best target base gain
 		
 		double bestGain = 0.0;
@@ -2723,7 +2723,7 @@ void evaluateBunkerDefenseUnits()
 			
 			// protection
 			// 0.5 of average base gain
-			
+
 			double unitContribution = targetBunkerCombatData.getProtectorUnitContribution(aiFactionId, unitId);
 			double unitProtectionGain = aiFactionInfo->averageBaseGain * unitContribution;
 			double protectionGain = unitProtectionGain * travelTimeCoefficient;
@@ -2873,7 +2873,7 @@ void evaluateTerritoryProtectionUnits()
 			
 			MapDoubleValue position(nullptr, INF);
 			bool direct = true;
-			
+
 			if (position.tile == nullptr && enemyStackInfo->isUnitCanMeleeAttackStack(unitId))
 			{
 				position = getMeleeAttackPosition(unitId, baseTile, enemyStackInfo->tile);
@@ -2897,7 +2897,7 @@ void evaluateTerritoryProtectionUnits()
 			
 			double combatEffect;
 			double combatValue;
-			
+
 			if (direct)
 			{
 				combatEffect = enemyStackInfo->getUnitDirectEffect(unitId);
@@ -2913,7 +2913,7 @@ void evaluateTerritoryProtectionUnits()
 				double attackerDestructionGain = 0.0;
 				combatValue = defenderDestructionGain - attackerDestructionGain;
 			}
-			
+
 			double attackGain = getGainDelay(getGainBonus(combatValue), travelTime);
 			
 			double upkeep = getResourceScore(-getUnitSupport(unitId), 0);
@@ -3020,7 +3020,7 @@ void evaluateEnemyBaseAssaultUnits()
 		}
 		
 		debug("\t%-32s\n", unit->name);
-		
+
 		// iterate potential enemy bases
 		
 		double bestGain = 0.0;
@@ -3035,7 +3035,7 @@ void evaluateEnemyBaseAssaultUnits()
 			
 			if (!aiData.isEnemyStackAt(enemyBaseTile))
 				continue;
-			
+
 			// exclude player base or friendly base
 			
 			if (isFriendly(aiFactionId, enemyBase->faction_id))
@@ -3466,14 +3466,19 @@ bool isBaseCanBuildUnit(int baseId, int unitId)
 /*
 Checks if base can build facility.
 */
-bool isBaseCanBuildFacility(int baseId, int facilityId)
+bool isBaseCanBuildFacility(int baseId, FacilityId facilityId)
 {
 	BASE *base = getBase(baseId);
 	CFacility *facility = getFacility(facilityId);
 	
 	MAP *baseTile = getBaseMapTile(baseId);
 	int baseSeaCluster = getBaseSeaCluster(baseTile);
-	
+
+	// generic game restrictions
+
+	if (!mod_facility_avail(facilityId, base->faction_id, baseSeaCluster, 0))
+		return false;
+
 	// no sea facility without access to water
 	
 	if (baseSeaCluster == -1 && (facilityId == FAC_NAVAL_YARD || facilityId == FAC_AQUAFARM || facilityId == FAC_SUBSEA_TRUNKLINE || facilityId == FAC_THERMOCLINE_TRANSDUCER))
@@ -3488,9 +3493,9 @@ bool isBaseCanBuildFacility(int baseId, int facilityId)
 /*
 Returns first available but unbuilt facility from list.
 */
-int getFirstAvailableFacility(int baseId, std::vector<int> facilityIds)
+int getFirstAvailableFacility(int baseId, std::vector<FacilityId> facilityIds)
 {
-	for (int facilityId : facilityIds)
+	for (FacilityId facilityId : facilityIds)
 	{
 		if (isBaseCanBuildFacility(baseId, facilityId))
 		{
@@ -4165,8 +4170,6 @@ Contributing population: (minSize, maxSize].
 */
 double getBasePopulationGain(int baseId,  Interval &baseSizeInterval)
 {
-	bool TRACE = DEBUG & false;
-
 	trace("getBasePopulationGain\n");
 
 	BASE *base = getBase(baseId);

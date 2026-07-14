@@ -4366,20 +4366,21 @@ void designUnits()
 		NULL
 	);
 	
-	// protected former
-	
+	// former
+
+	std::vector<VehChassis> formerChassises = has_chassis(aiFactionId, CHS_GRAVSHIP) ? std::vector<VehChassis>{CHS_GRAVSHIP} : std::vector<VehChassis>{fastLandChassis, fastSeaChassis};
 	proposeMultiplePrototypes
 	(
 		aiFactionId,
-		{fastLandChassis, fastSeaChassis, CHS_GRAVSHIP},
+		formerChassises,
 		{WPN_TERRAFORMING_UNIT},
-		{bestArmor},
+		{ARM_NO_ARMOR},
 		{
 			{ABL_ID_SUPER_TERRAFORMER, ABL_ID_CLEAN_REACTOR, ABL_ID_FUNGICIDAL, ABL_ID_TRANCE, },
 		},
 		bestReactor,
 		PLAN_TERRAFORM,
-		NULL
+		nullptr
 	);
 	
 	// protected crawler

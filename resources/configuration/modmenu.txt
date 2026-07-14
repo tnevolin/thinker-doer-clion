@@ -234,3 +234,12 @@ base square; instead such units receive a +1 MORALE modifier.
 Reduces base's vulnerability to enemy mind control.
 
 # ; This line must remain at end of file
+
+#NOSUPPORTCREDITS
+#xs 320
+#wave 24
+#caption Operations Director
+The minerals output of $BASENAME0 is not sufficient to support unit:
+^$UNITTYPE1
+^{$NUM2} credits has been paid from reserves to support it.
+

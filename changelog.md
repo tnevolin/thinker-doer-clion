@@ -1,6 +1,38 @@
+# Version 418
+
+* [bug] Needleject is not refueled fully when hodled in base/airbase. Fixed by refueling them fully at the beginning of the turn.
+* [fix] AI does not build unavailable facilities. Specifically, should apply to RT when it is replaced by PD.
+* [fix] PD implies RT if configured. That includes _all_ RT effects.
+* [fix] Supply vehicles are excluded from home base reassignment.
+* [fix] Base citizen allocation algorithm prefer specialists to bad land.
+
+# Version 417
+
+* Major rework of base citizen allocation.
+
+# Version 416
+
+* [bug] Pressure Dome inherited Recycling Tanks bonus whether or not it was configured. Fixed.
+
+# Version 415
+
+* AI does design armored formers.
+
+# Version 414
+
+* [bug] Psych specialists quelled more drones than they were supposed to. Fixed.
+
+# Version 413
+
+* Allow unit support costs to be paid from energy credits when base mineral production is insufficient to cover them (unit_support_energy_credits).
+
+# Version 412
+
+* [Bug] Crawler convoying order assignment.
+
 # Version 411
 
-* Fixed Cloning Vats computation.
+* [Bug] Cloning Vats computation.
 
 # Version 409
 

@@ -3304,6 +3304,19 @@ void patch_battle_report()
     
 }
 
+void patch_support_energy_credits()
+{
+    write_call(0x004F7A75, reinterpret_cast<int>(wtp_mod_base_check_support)); // base_upkeep
+
+}
+
+void patch_base_psych_label()
+{
+    write_call(0x00408B9A, reinterpret_cast<int>(wtp_mod_Base_draw_psych_Font_init2)); // Base_draw_psych
+    write_call(0x00408E07, reinterpret_cast<int>(wtp_mod_Base_draw_psych_Buffer_write_cent_l)); // Base_draw_psych
+
+}
+
 
 // =======================================================
 // main patch option selection
@@ -3644,7 +3657,14 @@ void patch_setup_wtp(Config* cf)
 	patch_datalinks();
 	
 	patch_battle_report();
-	
+
+	patch_support_energy_credits();
+
+	if (conf.base_psych && conf.base_psych_improved)
+	{
+		patch_base_psych_label();
+	}
+
 }
 
 void shiftVehicleAddress(byte *bytes, int position)

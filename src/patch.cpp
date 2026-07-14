@@ -668,7 +668,8 @@ bool patch_setup(Config* cf) {
     write_call(0x445A2F, (int)load_music_strcmpi);
     write_call(0x445AB2, (int)load_music_strcmpi);
     write_call(0x498720, (int)ReportWin_close_handler);
-    write_call(0x408DBD, (int)BaseWin_draw_psych_strcat);
+    write_call(0x408DBD, (int)BaseWin_draw_psych_strcat); // BaseWin_draw_psych
+    write_call(0x408D94, (int)BaseWin_draw_psych_strcat); // BaseWin_draw_psych
     write_call(0x40F8F8, (int)BaseWin_draw_farm_set_font);
     write_call(0x4129E5, (int)BaseWin_draw_energy_set_text_color);
     write_call(0x415AD8, (int)BaseWin_draw_misc_eco_damage);

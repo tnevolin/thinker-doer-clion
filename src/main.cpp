@@ -722,10 +722,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->worker_algorithm_enable_alternative = (atoi(value) == 0 ? false : true);
     }
-    else if (MATCH("worker_algorithm_energy_weight"))
-    {
-        cf->worker_algorithm_energy_weight = atof(value);
-    }
     else if (MATCH("worker_algorithm_growth_multiplier"))
     {
         cf->worker_algorithm_growth_multiplier = atof(value);
@@ -939,6 +935,26 @@ int option_handler(void* user, const char* section, const char* name, const char
 	else if (MATCH("merchant_exchange_commerce_bonus"))
     {
         cf->merchant_exchange_commerce_bonus = atoi(value);
+    }
+	else if (MATCH("unit_support_energy_credits"))
+    {
+        cf->unit_support_energy_credits = atoi(value);
+    }
+	else if (MATCH("base_psych_screen_show_numbers"))
+    {
+        cf->base_psych_screen_show_numbers = atoi(value);
+    }
+	else if (MATCH("base_psych_screen_font_name"))
+    {
+        strncpy(cf->base_psych_screen_font_name, value, StrBufLen);
+    }
+	else if (MATCH("base_psych_screen_font_size"))
+    {
+        cf->base_psych_screen_font_size = atoi(value);
+    }
+	else if (MATCH("base_psych_screen_font_style"))
+    {
+        cf->base_psych_screen_font_style = atoi(value);
     }
 	else if (MATCH("ai_useWTPAlgorithms"))
     {

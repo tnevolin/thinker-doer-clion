@@ -1511,48 +1511,100 @@ void __thiscall BaseWin_draw_farm_set_font(Buffer* This, Font* font, int a3, int
 
 void __cdecl BaseWin_draw_psych_strcat(char* buffer, char* source)
 {
-    BASE* base = &Bases[*CurrentBaseID];
-	
+    BASE &base = **CurrentBase;
+
 	// [WTP]
 	// base psych simplified rearranged labels
-	
+
+	robin_hood::unordered_flat_map<char *, int> labelIndexes = {{label_get(322), 322}, {label_get(323), 324}, {label_get(324), 325}, {label_get(325), 327}, {label_get(326), 327}, {label_get(327), 323}, {label_get(970), 970}, {label_get(971), 971}, };
+	robin_hood::unordered_flat_map<char *, int> rowIndexes = {{label_get(322), 0}, {label_get(323), 1}, {label_get(324), 2}, {label_get(325), 3}, {label_get(326), 3}, {label_get(327), 4}, {label_get(970), 0}, {label_get(971), 0}, };
+
 	if (conf.base_psych && conf.base_psych_improved)
 	{
-		if (!strcmp(source, label_get(323))) // Psych
+		if (labelIndexes.find(source) != labelIndexes.end() && rowIndexes.find(source) != rowIndexes.end())
 		{
-			// replace label #1 with [Facilities]
-			
-			strncat(buffer, label_get(324), StrBufLen); // Facilities
-			
+			int labelIndex = labelIndexes.at(source);
+			int rowIndex = rowIndexes.at(source);
+
+			if (labelIndex == 325 && base.SE_police(true) <= -2)
+			{
+				labelIndex += 1;
+			}
+
+			char *label = label_get(labelIndex);
+			int previousPsychBalance = rowIndex == 0 ? 0 : BasePsychTalents[rowIndex - 1] - BasePsychNDrones[rowIndex - 1] - BasePsychSDrones[rowIndex - 1];
+			int psychBalance = BasePsychTalents[rowIndex] - BasePsychNDrones[rowIndex] - BasePsychSDrones[rowIndex];
+			int psychBalanceChange = psychBalance - previousPsychBalance;
+
+			switch (conf.base_psych_screen_show_numbers)
+			{
+			case 1:
+				snprintf
+				(
+					buffer, StrBufLen, "%c%2d  %s"
+					, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
+					, label
+				);
+				break;
+			case 2:
+				snprintf
+				(
+					buffer, StrBufLen, "+%2d-%2d-%2d=%c%2d  %s"
+					, BasePsychTalents[rowIndex]
+					, BasePsychNDrones[rowIndex]
+					, BasePsychSDrones[rowIndex]
+					, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
+					, label
+				);
+				break;
+			case 3:
+				if (rowIndex == 0)
+				{
+					snprintf
+					(
+						buffer, StrBufLen, "    %c%2d %s"
+						, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
+						, label
+					);
+				}
+				else
+				{
+					snprintf
+					(
+						buffer, StrBufLen, "%c%2d %c%2d %s"
+						, psychBalanceChange == 0 ? ' ' : psychBalanceChange > 0 ? '+' : '-', std::abs(psychBalanceChange)
+						, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
+						, label
+					);
+				}
+				break;
+			case 4:
+				if (rowIndex == 0)
+				{
+					snprintf
+					(
+						buffer, StrBufLen, "    %s"
+						, label
+					);
+				}
+				else
+				{
+					snprintf
+					(
+						buffer, StrBufLen, "%c%2d %s"
+						, psychBalanceChange == 0 ? ' ' : psychBalanceChange > 0 ? '+' : '-', std::abs(psychBalanceChange)
+						, label
+					);
+				}
+				break;
+			default: ;
+				strncat(buffer, label, StrBufLen);
+			}
+
 		}
 		else
-		if (!strcmp(source, label_get(324))) // Facilities
 		{
-			// replace label #2 with [Police / Pacifism]
-			
-			int labelIndex = 325 + (base->SE_police(true) <= -2 ? 1 : 0);
-			strncat(buffer, label_get(labelIndex), StrBufLen); // Police / Pacifism
-			
-		}
-		else
-		if (!strcmp(source, label_get(325)) || !strcmp(source, label_get(326))) // Police / Pacifism
-		{
-			// replace label #3 with [Secret Projects]
-			
-			strncat(buffer, label_get(327), StrBufLen); // Secret Projects
-			
-		}
-		else
-		if (!strcmp(source, label_get(327))) // Secret Projects
-		{
-			// replace label #4 with [Psych]
-			
-			strncat(buffer, label_get(323), StrBufLen); // Psych
-			
-		}
-		else
-		{
-			if (base->nerve_staple_turns_left > 0 || has_fac_built(FAC_PUNISHMENT_SPHERE, *CurrentBaseID))
+			if (base.nerve_staple_turns_left > 0 || has_fac_built(FAC_PUNISHMENT_SPHERE, *CurrentBaseID))
 			{
 				// replace label #1 with [Stapled Base] if stapled or Punishment Sphere
 				
@@ -1573,7 +1625,7 @@ void __cdecl BaseWin_draw_psych_strcat(char* buffer, char* source)
 	else
 	{
     if (conf.render_base_info && *CurrentBaseID >= 0) {
-        if (base->nerve_staple_turns_left > 0
+        if (base.nerve_staple_turns_left > 0
         || has_fac_built(FAC_PUNISHMENT_SPHERE, *CurrentBaseID)) {
             if (!strcmp(source, label_get(971))) { // Stapled Base
                 strncat(buffer, label_get(322), StrBufLen); // Unmodified
@@ -1584,7 +1636,7 @@ void __cdecl BaseWin_draw_psych_strcat(char* buffer, char* source)
                 return;
             }
         }
-        int turns = base->assimilation_turns_left;
+        int turns = base.assimilation_turns_left;
         if (turns > 0 && !strcmp(source, label_get(970))) { // Captured Base
             snprintf(buffer, StrBufLen, label_captured_base, turns);
             return;
@@ -1594,6 +1646,22 @@ void __cdecl BaseWin_draw_psych_strcat(char* buffer, char* source)
 	}
 	// [WTP]
 	
+}
+
+/*
+ * Writes psych label left justified.
+ */
+int __thiscall wtp_mod_Base_draw_psych_Buffer_write_cent_l(Buffer* This, LPCSTR lpString, int x, int y, int w, int max_len)
+{
+	return conf.base_psych_screen_show_numbers ? Buffer_write_l(This, lpString, x, y, max_len) : Buffer_write_cent_l(This, lpString, x, y, w, max_len);
+}
+
+/*
+ * Writes psych label left justified.
+ */
+int __thiscall wtp_mod_Base_draw_psych_Font_init2(Font* This, char* /*a2*/, int /*a3*/, int /*a4*/)
+{
+	return Font_init2(This, conf.base_psych_screen_font_name, conf.base_psych_screen_font_size, conf.base_psych_screen_font_style);
 }
 
 void __thiscall BaseWin_draw_energy_set_text_color(Buffer* This, int a2, int a3, int a4, int a5)

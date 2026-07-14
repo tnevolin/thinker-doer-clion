@@ -19,7 +19,7 @@
 #pragma once
 
 #ifdef BUILD_REL
-    #define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v411"
+    #define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v418"
 #else
     #define MOD_VERSION "Thinker Mod develop build"
 #endif
@@ -422,7 +422,6 @@ struct Config {
     int se_police_excess_industry_bonus = 0;
     int facility_yield_bonus_biology_lab[3] = {0,0,0};
     bool worker_algorithm_enable_alternative = false;
-    double worker_algorithm_energy_weight = 0.0;
     double worker_algorithm_growth_multiplier = 0.0;
     int worker_algorithm_minimal_nutrient_surplus = 0;
     int worker_algorithm_minimal_mineral_surplus = 0;
@@ -468,6 +467,11 @@ struct Config {
 	int merchant_exchange_energy_yield_all_tiles = false;
 	int merchant_exchange_energy_yield_all_bases = false;
 	int merchant_exchange_commerce_bonus = 0;
+	int unit_support_energy_credits = 0;
+	int base_psych_screen_show_numbers = 0;
+	char base_psych_screen_font_name[StrBufLen] = "Arial";
+	int base_psych_screen_font_size = 17;
+	int base_psych_screen_font_style = 1;
     // AI configurations
     bool ai_useWTPAlgorithms;
     bool wtp_enabled_factions[MaxPlayerNum];

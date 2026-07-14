@@ -301,7 +301,7 @@ bool isWorkableTile(MAP *tile);
 bool isValidConventionalTerraformingSite(MAP *tile);
 bool isValidTerraformingSite(MAP *tile);
 double getTerraformingResourceScore(double nutrient, double mineral, double energy);
-double getTerraformingResourceScore(TileYield const &yield);
+double getTerraformingResourceScore(ResourceYield const &yield);
 double getTerraformingGain(double income, double terraformingTime);
 double getBaseImprovementIncome(int baseId, Resource oldIntake, Resource newIntake);
 void removeUnusedBunkers();

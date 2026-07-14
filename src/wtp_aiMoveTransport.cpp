@@ -124,8 +124,6 @@ void moveSeaTransportStrategy(int vehicleId)
 {
 	MAP *vehicleTile = getVehicleMapTile(vehicleId);
 	
-	bool TRACE = DEBUG && false;
-	
 	debug("moveSeaTransportStrategy [%4d] %s\n", vehicleId, getLocationString(getVehicleMapTile(vehicleId)));
 	
 	// assign unload task

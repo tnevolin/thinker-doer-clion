@@ -18,12 +18,13 @@ It is built on top of Thinker mod. (Thinker mod info: Thinker_Readme.md, Thinker
 * bvanevery: Play testing and help in design. Especially nice ideas and analysis in area of reactors and combat.
 * dino: Play testing and alternative combat round resolution mechanics idea.
 * Nevill and Tayta Malikai: Multiplayer play testing and multiplayer text configuration.
-* Tayta Malikai: text designer, crash reports, debugging, and test cases investigations!
+* Tayta Malikai: text designer, crash reports, debugging, and test cases investigations.
 * Mercantile Interest: Alternative nutrient model idea.
 * EmpathCrawler: Play testing. Discovered Brood Pit morale bug.
 * Loladarulz: Lots of ideas, extensive playtesting and playthroughs. Dedicated Youtube WTP channel: https://www.youtube.com/playlist?list=PLDGozj3_2wdEv_cEhBgwzmgZ-pGfxLMPB, neat!
 * Regina Jane: Superdrone icon design.
 * LowPoly: Talent star design idea.
+* Nevill: Bunch of very useful bug reports.
 
 ## Why this mod?
 

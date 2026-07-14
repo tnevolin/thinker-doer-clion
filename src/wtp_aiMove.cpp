@@ -309,9 +309,9 @@ int lastEnemyMoveVehicleY = -1;
 int enemyMoveVehicle( int vehicleId)
 {
 	debug("enemyMoveVehicle %s remaningMoves=%2d\n", getVehiclePad0LocationNameString(vehicleId), getVehicleRemainingMoves(vehicleId));
-	
+
 	VEH *vehicle = getVehicle(vehicleId);
-	
+
 	// fall over to default if vehicle did not move since last iteration
 	
 	if (vehicle->order == ORDER_MOVE_TO && vehicleId == lastEnemyMoveVehicleId && vehicle->x == lastEnemyMoveVehicleX && vehicle->y == lastEnemyMoveVehicleY)
@@ -347,8 +347,6 @@ Returns true on successful task creation.
 // pass copy
 bool transitVehicle(Task  task)
 {
-	bool TRACE = DEBUG && false;
-
 	int vehicleId = task.getVehicleId();
 	VEH *vehicle = getVehicle(vehicleId);
 	MAP *vehicleTile = getVehicleMapTile(vehicleId);
@@ -561,7 +559,12 @@ void balanceVehicleSupport()
 			for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 			{
 				VEH *vehicle = getVehicle(vehicleId);
-				
+
+				// exclude supply vehicles
+
+				if (isSupplyVehicle(vehicleId))
+					continue;
+
 				// this home base
 				
 				if (vehicle->home_base_id != baseId)
@@ -608,7 +611,7 @@ void balanceVehicleSupport()
 				{
 					// reassign
 
-					getVehicle(reassignVehicleId)->home_base_id = otherBaseId;
+					getVehicle(reassignVehicleId)->home_base_id = static_cast<int16_t>(otherBaseId);
 					
 					// compute both bases
 					
@@ -993,7 +996,7 @@ MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoid
 		
 		if (range > maxSearchRange)
 			continue;
-		
+
 		// corresponding realm
 		
 		if ((triad == TRIAD_LAND && !tileInfo.land) || (triad == TRIAD_SEA && !tileInfo.ocean))
@@ -1141,7 +1144,7 @@ MAP *getSafeLocation(int vehicleId, bool unfriendly)
 int setMoveTo(int vehicleId, MAP *destination)
 {
 	assert(isOnMap(destination));
-	
+
     VEH *vehicle = getVehicle(vehicleId);
 	int factionId = vehicle->faction_id;
     MAP *vehicleTile = getVehicleMapTile(vehicleId);
@@ -1150,39 +1153,39 @@ int setMoveTo(int vehicleId, MAP *destination)
 	int y = getY(destination);
 	bool vehicleTileOcean = is_ocean(vehicleTile);
 	bool destinationOcean = is_ocean(destination);
-	
+
     debug("setMoveTo %s -> %s\n", getLocationString({vehicle->x, vehicle->y}), getLocationString(destination));
-	
+
     vehicle->waypoint_x[0] = x;
     vehicle->waypoint_y[0] = y;
     vehicle->order = ORDER_MOVE_TO;
     vehicle->status_icon = 'G';
     vehicle->movement_turns = 0;
-	
+
     // vanilla bug fix for adjacent tile move
-	
+
     int vehicleTileRangeToDestination = getRange(vehicleTile, destination);
-    
+
     int destinationVehicleFactionId = veh_who(x, y);
     bool destinationBlocked = destinationVehicleFactionId == -1 ? false : !isFriendly(factionId, destinationVehicleFactionId);
-	
+
     if (vehicle->triad() == TRIAD_LAND && !vehicleTileOcean && !destinationOcean && vehicleTileRangeToDestination == 1 && !destinationBlocked)
 	{
 		int directMoveHexCost = mod_hex_cost(vehicle->unit_id, vehicle->faction_id, vehicle->x, vehicle->y, x, y, vehicleSpeed1);
 		bool destinationZoc = isZoc(factionId, vehicleTile, destination);
-		
+
 		// set direct move to infinite cost if zoc
-		
+
 		if (destinationZoc)
 		{
 			directMoveHexCost = INT_MAX;
 		}
-		
+
 		// search optimal waypoint
-		
+
 		MAP *waypoint = nullptr;
 		int waypointMoveHexCost = directMoveHexCost;
-		
+
 		for (MAP *adjacentTile : getAdjacentTiles(vehicleTile))
 		{
 			bool adjacentTileOcean = is_ocean(adjacentTile);
@@ -1191,44 +1194,44 @@ int setMoveTo(int vehicleId, MAP *destination)
 			int adjacentTileY = getY(adjacentTile);
 			bool adjacentTileBlocked = isBlocked(factionId, adjacentTile);
 			bool adjacentTileZoc = isZoc(factionId, vehicleTile, adjacentTile);
-			
+
 			// land
-			
+
 			if (adjacentTileOcean)
 				continue;
-			
+
 			// adjacent tile should be also adjacent to destination
-			
+
 			if (adjacentTileRangeToDestination != 1)
 				continue;
-			
+
 			// not blocked
-			
+
 			if (adjacentTileBlocked)
 				continue;
-			
+
 			// not zoc
-			
+
 			if (adjacentTileZoc)
 				continue;
-			
+
 			// compute cost
-			
+
 			int hexCost1 = mod_hex_cost(vehicle->unit_id, vehicle->faction_id, vehicle->x, vehicle->y, adjacentTileX, adjacentTileY, vehicleSpeed1);
 			int hexCost2 = mod_hex_cost(vehicle->unit_id, vehicle->faction_id, adjacentTileX, adjacentTileY, x, y, vehicleSpeed1);
 			int hexCost = hexCost1 + hexCost2;
-			
+
 			if (hexCost >= directMoveHexCost)
 				continue;
-			
+
 			if (hexCost < waypointMoveHexCost)
 			{
 				waypoint = adjacentTile;
 				waypointMoveHexCost = hexCost;
 			}
-			
+
 		}
-		
+
 		if (waypoint != nullptr)
 		{
 			vehicle->waypoint_x[0] = getX(waypoint);
@@ -1238,26 +1241,26 @@ int setMoveTo(int vehicleId, MAP *destination)
 			vehicle->waypoint_count = 1;
 			debug("setWaypoint %s\n", getLocationString(waypoint));
 		}
-		
+
 	}
-	
+
     return EM_SYNC;
-	
+
 }
 
 int setMoveTo(int vehicleId, std::vector<MAP *> waypoints)
 {
     VEH* vehicle = getVehicle(vehicleId);
-	
+
     debug("setMoveTo %s -> waypoints\n", getLocationString({vehicle->x, vehicle->y}));
-	
+
 	setVehicleWaypoints(vehicleId, waypoints);
     vehicle->order = ORDER_MOVE_TO;
     vehicle->status_icon = 'G';
     vehicle->movement_turns = 0;
-	
+
     return EM_SYNC;
-	
+
 }
 
 /*
@@ -1266,10 +1269,10 @@ Move faction vehicles.
 void aiEnemyMoveVehicles()
 {
 	debug("aiEnemyMoveVehicles - %s\n", aiMFaction->noun_faction);
-	
+
 	// move combat vehicles
-	
+
 	aiEnemyMoveCombatVehicles();
-	
+
 }
 

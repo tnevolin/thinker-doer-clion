@@ -1,14 +1,13 @@
 
 #include "wtp_mod.h"
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include <cmath>
+#include <cstdio>
+#include <ctime>
 #include <vector>
-#include <map>
 #include <regex>
-
+#include "main.h"
+#include "tech.h"
 #include "wtp_terranx.h"
 #include "wtp_game.h"
 #include "wtp_ai_game.h"
@@ -103,7 +102,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
     // ----------------------------------------------------------------------------------------------------
     // psi air-air combat uses psi bonuses
     // ----------------------------------------------------------------------------------------------------
-	
+
     if
 	(
 		psiCombat
@@ -124,7 +123,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 			addDefenderBonus(defenderStrengthPointer, Rules->combat_bonus_empath_song_vs_psi, Ability[ABL_ID_TRANCE].name);
 		}
 	}
-	
+
     // ----------------------------------------------------------------------------------------------------
     // sensor
     // ----------------------------------------------------------------------------------------------------
@@ -175,7 +174,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 			{
 				addAttackerBonus(attackerStrengthPointer, Rules->combat_defend_sensor, *(*tx_labels + LABEL_OFFSET_SENSOR));
 			}
-			
+
 		}
 		
 		// add base defense bonuses to attacker
@@ -193,10 +192,10 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 				else
 				{
 					// assign label and multiplier
-					
+
 					char const *label = nullptr;
 					int multiplier = 100;
-					
+
 					switch (attackerTriad)
 					{
 					case TRIAD_LAND:
@@ -206,7 +205,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 							multiplier += conf.facility_defense_bonus[0];
 						}
 						break;
-						
+
 					case TRIAD_SEA:
 						if (isBaseHasFacility(attackerBaseId, FAC_NAVAL_YARD))
 						{
@@ -214,7 +213,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 							multiplier += conf.facility_defense_bonus[1];
 						}
 						break;
-						
+
 					case TRIAD_AIR:
 						if (isBaseHasFacility(attackerBaseId, FAC_AEROSPACE_COMPLEX))
 						{
@@ -222,15 +221,15 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 							multiplier += conf.facility_defense_bonus[2];
 						}
 						break;
-						
+
 					}
-					
+
 					if (isBaseHasFacility(attackerBaseId, FAC_TACHYON_FIELD))
 					{
 						label = *(*tx_labels + LABEL_OFFSET_TACHYON);
 						multiplier += conf.facility_defense_bonus[3];
 					}
-					
+
 					if (label == nullptr)
 					{
 						// base intrinsic defense
@@ -241,7 +240,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 						// base defensive facility
 						addAttackerBonus(attackerStrengthPointer, (multiplier - 100), label);
 					}
-					
+
 				}
 				
 			}
@@ -263,10 +262,10 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 				else
 				{
 					// assign label and multiplier
-					
+
 					char const *label = nullptr;
 					int multiplier = 100;
-					
+
 					switch (attackerTriad)
 					{
 					case TRIAD_LAND:
@@ -276,7 +275,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 							multiplier += conf.facility_defense_bonus[0];
 						}
 						break;
-						
+
 					case TRIAD_SEA:
 						if (isBaseHasFacility(defenderBaseId, FAC_NAVAL_YARD))
 						{
@@ -284,7 +283,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 							multiplier += conf.facility_defense_bonus[1];
 						}
 						break;
-						
+
 					case TRIAD_AIR:
 						if (isBaseHasFacility(defenderBaseId, FAC_AEROSPACE_COMPLEX))
 						{
@@ -292,15 +291,15 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 							multiplier += conf.facility_defense_bonus[2];
 						}
 						break;
-						
+
 					}
-					
+
 					if (isBaseHasFacility(defenderBaseId, FAC_TACHYON_FIELD))
 					{
 						label = *(*tx_labels + LABEL_OFFSET_TACHYON);
 						multiplier += conf.facility_defense_bonus[3];
 					}
-					
+
 					if (label == nullptr)
 					{
 						// base intrinsic defense
@@ -311,7 +310,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 						// base defensive facility
 						addDefenderBonus(defenderStrengthPointer, (multiplier - 100), label);
 					}
-					
+
 				}
 				
 			}
@@ -346,22 +345,22 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 			for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 			{
 				VEH *vehicle = getVehicle(vehicleId);
-				
+
 				if (vehicle->faction_id != defenderVehicle.faction_id)
 					continue;
-				
+
 				if (!isVehicleHasAbility(vehicleId, ABL_AAA))
 					continue;
-				
+
 				int range = map_range(defenderVehicle.x, defenderVehicle.y, vehicle->x, vehicle->y);
-				
+
 				if (range > conf.aaa_range)
 					continue;
-				
+
 				addDefenderBonus(defenderStrengthPointer, Rules->combat_aaa_bonus_vs_air, *(*tx_labels + LABEL_OFFSET_TRACKING));
-				
+
 				break;
-				
+
 			}
 			
 		}
@@ -425,7 +424,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 			{
 				addAttackerBonus(attackerStrengthPointer, Rules->combat_defend_sensor, *(*tx_labels + LABEL_OFFSET_SENSOR));
 			}
-			
+
 		}
 		
 		// defender probe benefits from sensor defense bonus
@@ -437,7 +436,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 			{
 				addDefenderBonus(defenderStrengthPointer, Rules->combat_defend_sensor, *(*tx_labels + LABEL_OFFSET_SENSOR));
 			}
-			
+
 		}
 		
 		// defender probe benefits from base intrinsic defense bonus
@@ -450,7 +449,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 			{
 				addDefenderBonus(defenderStrengthPointer, Rules->combat_bonus_intrinsic_base_def, label_get(332)/*Base*/);
 			}
-			
+
 		}
 		
 	}
@@ -481,12 +480,12 @@ char const *triadFacilityFieldLabels[3] = {"PD - field", "NY - field", "AC - fie
 				facilityFieldBonus += conf.facility_field_defense_bonus[3];
 				facilityFieldLabel = tachyonFieldFieldLabel;
 			}
-			
+
 			if (facilityFieldBonus > 0)
 			{
 				addDefenderBonus(defenderStrengthPointer, facilityFieldBonus, facilityFieldLabel);
 			}
-			
+
 		}
 		
 	}
@@ -1629,13 +1628,123 @@ __cdecl int modifiedVehicleCargoForAirTransportUnload(int vehicleId)
 	
 }
 
+// ================================================================================================
+// base_compute test harness
+// ================================================================================================
+
+/*
+Builds a plain/neutral base radius tile: flat, arid, non-rocky, no fungus, no improvements, no
+special resources. Used to fill BaseComputeTestCase::tiles with a deterministic baseline that test
+cases can then selectively override.
+*/
+MAP makeNeutralRingTile()
+{
+	MAP tile{};
+	tile.climate = (4 << 5); // altitude level 4 (plains), arid, no rainfall
+	tile.contour = 0;
+	tile.val2 = 0;
+	tile.region = 1;
+	tile.visibility = 0;
+	tile.val3 = 0;
+	tile.unk_1 = 0;
+	tile.owner = -1;
+	tile.items = 0;
+	tile.landmarks = 0;
+	for (unsigned int &visible_item : tile.visible_items)
+	{
+		visible_item = 0;
+	}
+	return tile;
+}
+
+std::array<MAP, 21> makeNeutralTiles()
+{
+	std::array<MAP, 21> tiles{};
+	for (MAP &tile : tiles)
+	{
+		tile = makeNeutralRingTile();
+	}
+	return tiles;
+}
+
+/*
+Applies a BaseComputeTestCase onto the actual game state so base_compute can be exercised against it.
+*/
+void applyBaseComputeTestCase(int baseId, BaseComputeTestCase const &testCase)
+{
+	BASE *base = getBase(baseId);
+	Faction *faction = &(Factions[base->faction_id]);
+
+	// faction social engineering parameters
+
+	faction->SE_effic_pending = testCase.SE_effic_pending;
+	faction->SE_alloc_psych = testCase.SE_alloc_psych;
+	faction->SE_alloc_labs = testCase.SE_alloc_labs;
+
+	// base population
+
+	base->pop_size = testCase.pop_size;
+
+	// unit support mineral cost
+
+	*BaseForcesMaintCost = testCase.support;
+
+	// happiness carried over from previous turn upkeep (influences can_riot before this turn's psych recompute)
+
+	base->talent_total = std::max(0, testCase.initialHappiness);
+	base->drone_total = std::max(0, -testCase.initialHappiness);
+	base->superdrone_total = 0;
+
+	// map tiles around the base
+	// tiles[0] would be the base square itself; it is intentionally left untouched since overwriting
+	// it risks corrupting the BIT_BASE_IN_TILE/owner encoding the engine relies on for the base tile.
+	// tiles[1..20] are the worked ring and are copied verbatim, then forced into the test faction's territory.
+
+	for (int i = 1; i < (int)testCase.tiles.size(); i++)
+	{
+		int x = wrap(base->x + TableOffsetX[i]);
+		int y = base->y + TableOffsetY[i];
+		MAP *tile = mapsq(x, y);
+
+		if (tile == nullptr)
+			continue;
+
+		*tile = testCase.tiles[i];
+
+		// force tile into the test faction's territory regardless of the literal snapshot given
+
+		tile->owner = base->faction_id;
+		tile->visibility |= (1 << base->faction_id);
+
+	}
+
+	// available specialists (force listed specialist ids to be available regardless of ruleset tech gating)
+
+	for (int citizenId : testCase.availableCitizenTypes)
+	{
+		if (citizenId < 0 || citizenId >= MaxSpecialistNum)
+			continue;
+
+		Citizen[citizenId].preq_tech = TECH_None;
+		Citizen[citizenId].obsol_tech = TECH_Disable;
+
+	}
+
+	// force full worker/specialist reallocation
+
+	base->worked_tiles = 0;
+	base->specialist_total = 0;
+	base->specialist_adjust = 0;
+
+}
+
 /*
 Overrides faction_upkeep calls to amend vanilla and Thinker AI functionality.
 */
 __cdecl void modifiedFactionUpkeep( int factionId)
 {
 	debug("modifiedFactionUpkeep - %s\n", getMFaction(factionId)->noun_faction);
-	
+
 	Profiling::start("modifiedFactionUpkeep", "");
 	
     // remove wrong units from bases
@@ -1647,10 +1756,30 @@ __cdecl void modifiedFactionUpkeep( int factionId)
 		Profiling::stop("removeWrongVehiclesFromBases");
 	}
 	
+    // refuel needlejets in base/airbase
+	// they may not be refueled if holded
+
+    for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
+	{
+    	VEH &vehicle = Vehs[vehicleId];
+
+    	if (vehicle.faction_id != factionId)
+    		continue;
+
+    	if (vehicle.chassis_type() != CHS_NEEDLEJET)
+    		continue;
+
+    	if (!getVehicleMapTile(vehicleId)->is_airbase())
+    		continue;
+
+    	vehicle.movement_turns = 0;
+
+	}
+
 	// choose AI logic
 	
 	clearPlayerFactionReferences();
-	
+
 	if (isWtpEnabledFaction(factionId))
 	{
 		// run WTP AI code for AI eanbled factions
@@ -4137,21 +4266,21 @@ int __cdecl wtp_mod_has_abil_air_superiority_attack_needlejet(int unit_id, VehAb
 	
 }
 
-/*	
+/*
 Intercepts veh_kill to update pad_0 mapping.
 */
 int __cdecl wtp_mod_veh_kill(int vehicleId)
 {
 	vehicleKill(vehicleId);
-	
+
 	int returnValue = veh_kill(vehicleId);
-	
+
 	populateVehiclePad0Map();
-	
+
 	return returnValue;
 
 }
-	
+
 int __thiscall StringList__sort_nop(int */*This*/, int /*sortType*/)
 {
 	return 0;
@@ -4174,5 +4303,64 @@ int __thiscall wtp_mod_BattleWin_battle_report_Buffer_wrap2(Buffer* This, LPCSTR
 	
 	return Buffer_wrap2(This, lpString, x, y, a5);
 	
+}
+
+/*
+ * Replaces mineral support with energy credits support.
+ */
+int __cdecl wtp_mod_base_check_support()
+{
+	if (conf.unit_support_energy_credits > 0 && *CurrentBase != nullptr)
+	{
+		int baseId = *CurrentBaseID;
+		BASE &base = **CurrentBase;
+		Faction &faction = Factions[base.faction_id];
+		int mineralSupportCost = !conf.alternative_support && faction.SE_support_pending <= -4 ? 2 : 1;
+		int energySupportCost = conf.unit_support_energy_credits * mineralSupportCost;
+
+		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
+		{
+			VEH &vehicle = Vehs[vehicleId];
+
+			// exit when reached sufficient support
+
+			if (*BaseForcesMaintCost <= base.mineral_intake_2)
+				break;
+
+			// this home base
+
+			if (vehicle.home_base_id != baseId)
+				continue;
+
+			// requires support
+
+			if ((vehicle.state & VSTATE_REQUIRES_SUPPORT) == 0)
+				continue;
+
+			// verify sufficient energy reserve
+
+			if (faction.energy_credits < energySupportCost)
+				break;
+
+			// replace support with energy
+
+			*BaseForcesMaintCost -= mineralSupportCost;
+			faction.energy_credits -= energySupportCost;
+
+			// popup
+
+			parse_says(0, base.name, -1, -1);
+			parse_says(1, Units[vehicle.unit_id].name, -1, -1);
+			parse_num(2, energySupportCost);
+			popb("NOSUPPORTCREDITS", WARN_STOP_MINERAL_SHORTAGE, 0xD, "genwarning_sm.pcx", 0);
+
+		}
+
+	}
+
+	// execute original code
+
+	return base_check_support();
+
 }
 
