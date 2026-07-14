@@ -1662,7 +1662,9 @@ Computes base tile improvement surplus effect.
 
 double computeBaseTileImprovementGain(int baseId, MAP *tile, MAP const &originalTile, MAP const &improvedTile)
 {
-	// compute improvement gain
+	// current gain
+
+
 
 	bool worked = false;
 

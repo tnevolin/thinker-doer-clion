@@ -2107,7 +2107,7 @@ void computeBase(int baseId, bool resetWorkedTiles, MAP *excludedTile)
 
 	set_base(baseId);
 	baseComputeExcludedTile = excludedTile;
-	base_compute(1);
+	base_compute(true);
 	baseComputeExcludedTile = nullptr;
 
 	Profiling::stop("- computeBase");
