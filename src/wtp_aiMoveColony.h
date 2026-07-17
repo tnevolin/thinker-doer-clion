@@ -86,6 +86,6 @@ double getBuildSiteLandUseScore(MAP *buildSite);
 double getEffectiveYieldScore(double nutrient, double mineral, double energy);
 double getColonyTravelTimeCoefficient(double travelTime);
 Resource getEstimatedTileYield(MAP *tile);
-TileYield getImprovedYield(int baseId, MAP *tile, std::vector<FormerItem> const &actions);
+ResourceYield getImprovedYield(int baseId, MAP *tile, std::vector<FormerItem> const &actions);
 void populateConcaveTiles();
 

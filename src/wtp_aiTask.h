@@ -40,13 +40,13 @@ struct Task
 	TaskType type;
 	MAP *destination;
 	MAP *attackTarget;
-	int order;
-	int terraformingAction;
+	int parameter;
 	double priority = 0.0;
 	int baseId = -1;
 
-	Task(int _vehicleId, TaskType _type, MAP *_destination, MAP *_attackTarget, int _order, int _terraformingAction);
+	Task(int _vehicleId, TaskType _type, MAP *_destination, MAP *_attackTarget, int _parameter);
 	Task(int _vehicleId, TaskType _type, MAP *_destination, MAP *_attackTarget);
+	Task(int _vehicleId, TaskType _type, MAP *_destination, int _parameter);
 	Task(int _vehicleId, TaskType _type, MAP *_destination);
 	Task(int _vehicleId, TaskType _type);
 

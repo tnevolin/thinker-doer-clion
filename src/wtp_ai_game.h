@@ -751,57 +751,6 @@ struct TransportControl
 	
 };
 
-struct TileYield
-{
-	int nutrient;
-	int mineral;
-	int energy;
-	
-	TileYield(int _nutrient, int _mineral, int _energy)
-	: nutrient(_nutrient), mineral(_mineral), energy(_energy)
-	{}
-	
-	TileYield()
-	: TileYield(0, 0, 0)
-	{}
-	
-	/*
-	Verifies equal or superior yields.
-	*/
-	static bool isEqualOrSuperior(TileYield o1, TileYield o2)
-	{
-		return
-			(o1.nutrient >= o2.nutrient && o1.mineral >= o2.mineral && o1.energy >= o2.energy)
-		;
-		
-	}
-	
-	/*
-	Verifies equal yields.
-	*/
-	static bool isEqual(TileYield o1, TileYield o2)
-	{
-		return
-			(o1.nutrient == o2.nutrient && o1.mineral == o2.mineral && o1.energy == o2.energy)
-		;
-		
-	}
-	
-	/*
-	Verifies first is superior to second.
-	*/
-	static bool isSuperior(TileYield o1, TileYield o2)
-	{
-		return
-			(o1.nutrient >= o2.nutrient && o1.mineral >= o2.mineral && o1.energy >= o2.energy)
-			&&
-			(o1.nutrient > o2.nutrient || o1.mineral > o2.mineral || o1.energy > o2.energy)
-		;
-		
-	}
-	
-};
-
 struct Data
 {
 	// global variables

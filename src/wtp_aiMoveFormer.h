@@ -139,6 +139,12 @@ struct TileTerraformingInfo
 
 };
 
+struct WorkerMarginalGain
+{
+	double marginalGain;
+	bool isFarmer;
+	MAP *workTile;
+};
 struct BaseTerraformingInfo
 {
 	int projectedPopSize;
@@ -147,6 +153,17 @@ struct BaseTerraformingInfo
 	int minimalNutrientYield;
 	int minimalMineralYield;
 	int minimalEnergyYield;
+	int popSzie;
+	int nutrientCost;
+	double income;
+	double mineralValue;
+	double energyValue;
+	double economyValue;
+	double labsValue;
+	std::vector<WorkerMarginalGain> workerMarginalGains;
+
+	double getMarginalGain(ResourceYield const& yield, int economy, int labs) const;
+
 };
 
 // terraforming options
@@ -194,6 +211,7 @@ const std::array<const std::vector<TERRAFORMING_OPTION *>, 2> BASE_TERRAFORMING_
 
 struct TerraformingOptionScore
 {
+	MAP *tile;
 	double score;
 	TERRAFORMING_OPTION *option;
 	std::set<FormerItem> actions;
@@ -272,7 +290,7 @@ void setupTerraformingData();
 void populateTerraformingData();
 void cancelRedundantOrders();
 void generateTerraformingRequests();
-void generateConventionalTerraformingRequests(int baseId);
+void generateBaseConventionalTerraformingRequests(int baseId);
 void generateLandBridgeTerraformingRequests();
 void generateAquiferTerraformingRequest(MAP *tile);
 void generateRaiseLandTerraformingRequest(MAP *tile);
@@ -284,9 +302,7 @@ bool isProximityRuleSatisfied(MAP *tile, FormerItem action);
 void removeTerraformedTiles();
 void assignFormerOrders();
 void setFormerTasks();
-double calculateConventionalTerraformingScore(MAP *tile, MAP const &originalTile, MAP const &improvedTile);
-double computeBaseTileImprovementGain(int baseId, MAP *tile, MAP const &originalTile, MAP const &improvedTile);
-double calculateConventionalTerraformingScore(MAP *tile, const std::set<FormerItem>& actions);
+double computeBaseTileYieldMarginalGain(int baseId, ResourceYield const& tileYield);
 TerraformingRequest calculateRaiseLandTerraformingScore(MAP *tile);
 bool isTerraformingCompleted(MAP const *tile, int action);
 bool isVehicleTerrafomingOrderCompleted(int vehicleId);
@@ -301,7 +317,7 @@ bool isWorkableTile(MAP *tile);
 bool isValidConventionalTerraformingSite(MAP *tile);
 bool isValidTerraformingSite(MAP *tile);
 double getTerraformingResourceScore(double nutrient, double mineral, double energy);
-double getTerraformingResourceScore(ResourceYield const &yield);
+double getTerraformingResourceScore(ResourceYield const &resourceYield);
 double getTerraformingGain(double income, double terraformingTime);
 double getBaseImprovementIncome(int baseId, Resource oldIntake, Resource newIntake);
 void removeUnusedBunkers();
@@ -317,4 +333,5 @@ double getSensorGain(MAP *tile);
 double getBunkerGain(MAP *tile);
 double getBunkerPlacementCoefficient(MAP *bunkerTile, MAP *baseTile);
 bool isCompatibleTerraforming(FormerItem ongoingAction, FormerItem action);
+void restoreMap();
 

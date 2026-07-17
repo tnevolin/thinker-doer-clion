@@ -1,5 +1,6 @@
 #pragma once
 #pragma pack(push, 1)
+#include "base.h"
 
 
 enum BaseState {

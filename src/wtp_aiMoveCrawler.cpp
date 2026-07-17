@@ -29,7 +29,7 @@ void moveCrawlerStrategy()
 
 void populateConvoyData()
 {
-	Profiling::start("populateConvoyData", "moveFormerStrategy");
+	Profiling::start("populateConvoyData", "moveCrawlerStrategy");
 	
 	debug("populateConvoyData - %s\n", getMFaction(aiFactionId)->noun_faction);
 	

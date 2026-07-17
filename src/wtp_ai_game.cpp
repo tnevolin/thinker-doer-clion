@@ -3599,11 +3599,11 @@ double getBaseIncome(int baseId, bool withNutrients)
 	
 	if (!withNutrients)
 	{
-		income = getResourceScore(base->mineral_intake_2, base->economy_total + base->labs_total);
+		income = getResourceScore(base->mineral_surplus, base->economy_total + base->labs_total);
 	}
 	else
 	{
-		income = getResourceScore(base->nutrient_surplus, base->mineral_intake_2, base->economy_total + base->labs_total);
+		income = getResourceScore(base->nutrient_surplus, base->mineral_surplus, base->economy_total + base->labs_total);
 	}
 	
 	return income;

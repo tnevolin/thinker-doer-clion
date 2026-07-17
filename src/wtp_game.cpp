@@ -6531,9 +6531,9 @@ double getBaseEnergyMultiplier(int baseId)
 	BASE *base = getBase(baseId);
 	Faction *faction = getFaction(base->faction_id);
 
-	double economyAllocation = (double)(10 - faction->SE_alloc_labs + faction->SE_alloc_psych) / 10.0;
+	double economyAllocation = static_cast<double>(10 - faction->SE_alloc_labs + faction->SE_alloc_psych) / 10.0;
 	double economyMultiplier = getBaseEconomyMultiplier(baseId);
-	double labsAllocation = (double)(faction->SE_alloc_labs) / 10.0;
+	double labsAllocation = static_cast<double>(faction->SE_alloc_labs) / 10.0;
 	double labsMultiplier = getBaseLabsMultiplier(baseId);
 
 	double energyMultiplier = economyAllocation * economyMultiplier + labsAllocation * labsMultiplier;
@@ -7545,22 +7545,21 @@ std::vector<int> getBaseProjects(int baseId)
 
 }
 
-Resource getBaseWorkerResourceIntake(int baseId, MAP *tile)
+ResourceYield getTileResourceYield(MAP* tile, int baseId)
 {
 	assert(isOnMap(tile));
+	assert(baseId >= 0 && baseId < *BaseCount);
 
-	BASE *base = getBase(baseId);
-	int factionId = base->faction_id;
+	BASE &base = Bases[baseId];
+	int factionId = static_cast<unsigned char>(base.faction_id);
 	int x = getX(tile);
 	int y = getY(tile);
 
-	return
-		{
-			(double)mod_crop_yield(factionId, baseId, x, y, 0) - (double)Rules->nutrient_intake_req_citizen,
-			(double)mod_mine_yield(factionId, baseId, x, y, 0),
-			(double)mod_energy_yield(factionId, baseId, x, y, 0),
-		}
-	;
+	int nutrient = mod_crop_yield(factionId, baseId, x, y, 0);
+	int mineral = mod_mine_yield(factionId, baseId, x, y, 0);
+	int energy = mod_energy_yield(factionId, baseId, x, y, 0);
+
+	return {nutrient, mineral, energy, };
 
 }
 

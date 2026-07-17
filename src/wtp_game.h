@@ -1409,7 +1409,7 @@ bool isUnitZocRestricted(int unitId);
 bool isVehicleZocRestricted(int vehicleId);
 std::vector<int> getBaseFacilities(int baseId);
 std::vector<int> getBaseProjects(int baseId);
-Resource getBaseWorkerResourceIntake(int baseId, MAP *tile);
+ResourceYield getTileResourceYield(MAP* tile, int baseId);
 Resource getBaseResourceIntake2(int baseId);
 bool isLandRegion(MAP *tile, bool includePolar = false);
 bool isSeaRegion(MAP *tile, bool includePolar = false);

@@ -45,17 +45,20 @@ Task *TaskHeap::get()
 
 // Task
 
-Task::Task(int  _vehicleId, TaskType  _type, MAP  *_destination, MAP  *_attackTarget, int  _order, int  _terraformingAction)
-: vehiclePad0(Vehs[_vehicleId].pad_0), type(_type), destination(_destination), attackTarget(_attackTarget), order(_order), terraformingAction(_terraformingAction)
+Task::Task(int  _vehicleId, TaskType  _type, MAP  *_destination, MAP  *_attackTarget, int  _parameter)
+: vehiclePad0(Vehs[_vehicleId].pad_0), type(_type), destination(_destination), attackTarget(_attackTarget), parameter(_parameter)
 {}
 Task::Task(int  _vehicleId, TaskType  _type, MAP  *_destination, MAP  *_attackTarget)
-: Task(_vehicleId, _type, _destination, _attackTarget, -1, -1)
+: Task(_vehicleId, _type, _destination, _attackTarget, -1)
+{}
+Task::Task(int  _vehicleId, TaskType  _type, MAP  *_destination, int _parameter)
+: Task(_vehicleId, _type, _destination, nullptr, _parameter)
 {}
 Task::Task(int  _vehicleId, TaskType  _type, MAP  *_destination)
-: Task(_vehicleId, _type, _destination, nullptr, -1, -1)
+: Task(_vehicleId, _type, _destination, nullptr, -1)
 {}
 Task::Task(int  _vehicleId, TaskType  _type)
-: Task(_vehicleId, _type, nullptr, nullptr, -1, -1)
+: Task(_vehicleId, _type, nullptr, nullptr, -1)
 {}
 
 bool Task::operator<(Task  &other)
@@ -548,7 +551,7 @@ int Task::executeTerraformingAction(int vehicleId)
 
 	// execute terraforming action
 
-	setTerraformingAction(vehicleId, this->terraformingAction);
+	setTerraformingAction(vehicleId, this->parameter);
 	return EM_SYNC;
 
 }
@@ -559,7 +562,7 @@ int Task::executeOrder(int vehicleId)
 
 	// set order
 
-	setVehicleOrder(vehicleId, order);
+	setVehicleOrder(vehicleId, this->parameter);
 	return EM_DONE;
 
 }
@@ -749,7 +752,7 @@ int Task::executeConvoy(int vehicleId)
 	
 	// set order
 
-	set_convoy(vehicleId, static_cast<ResType>(order));
+	set_convoy(vehicleId, static_cast<ResType>(parameter));
 	setVehicleOrder(vehicleId, ORDER_CONVOY);
 	return EM_DONE;
 	
