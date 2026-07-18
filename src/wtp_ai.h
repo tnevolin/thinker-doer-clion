@@ -2,36 +2,40 @@
 
 #include <string>
 #include <vector>
-#include <set>
-#include <map>
+#include "wtp_game.h"
 #include "wtp_aiData.h"
 #include "engine.h"
 
-const int MAX_SAFE_LOCATION_SEARCH_RANGE = 6;
-const int STACK_MAX_BASE_RANGE = 20;
-const int STACK_MAX_COUNT = 20;
-const int MAX_PROXIMITY_RANGE = 4;
+constexpr int MAX_SAFE_LOCATION_SEARCH_RANGE = 6;
+constexpr int STACK_MAX_BASE_RANGE = 20;
+constexpr int STACK_MAX_COUNT = 20;
+constexpr int MAX_PROXIMITY_RANGE = 4;
 
 // estimated average land colony travel time
-const double AVERAGE_LAND_COLONY_TRAVEL_TIME = 10.0;
+constexpr double AVERAGE_LAND_COLONY_TRAVEL_TIME = 10.0;
 
 // project value multiplier comparing to mineral cost
-const double BASE_CAPTURE_GAIN_COEFFICIENT = 0.75;
-const double PROJECT_VALUE_MULTIPLIER = 1.0;
+constexpr double BASE_CAPTURE_GAIN_COEFFICIENT = 0.75;
+constexpr double PROJECT_VALUE_MULTIPLIER = 1.0;
 
 // base defense weight for remote vehicles
-const double BASE_DEFENSE_RANGE_AIR		= 10.0;
-const double BASE_DEFENSE_RANGE_SEA		=  5.0;
-const double BASE_DEFENSE_RANGE_LAND	=  3.0;
+constexpr double BASE_DEFENSE_RANGE_AIR		= 10.0;
+constexpr double BASE_DEFENSE_RANGE_SEA		=  5.0;
+constexpr double BASE_DEFENSE_RANGE_LAND	=  3.0;
 
 // combat type proportions
-const double COMBAT_PROPORTION_PSI			= 0.2;
-const double COMBAT_PROPORTION_CON			= 0.8;
+constexpr double COMBAT_PROPORTION_PSI			= 0.2;
+constexpr double COMBAT_PROPORTION_CON			= 0.8;
 // conventional air/surface attack proportion
-const double ATTACK_PROPORTION_CON_AIR		= 0.5;
-const double ATTACK_PROPORTION_CON_SURFACE	= 0.5;
+constexpr double ATTACK_PROPORTION_CON_AIR		= 0.5;
+constexpr double ATTACK_PROPORTION_CON_SURFACE	= 0.5;
 
 // forward declarations
+struct ProtectCombatData;
+struct IdIntValue;
+struct IdDoubleValue;
+struct CombatStrength;
+struct AssaultEffect;
 
 struct MapIntValue
 {

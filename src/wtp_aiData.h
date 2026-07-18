@@ -2,15 +2,16 @@
 
 #include <vector>
 #include <set>
-#include <map>
 #include "robin_hood.h"
 #include "main.h"
 #include "engine.h"
+
+constexpr int INT_INFINITY = INT_MAX;
+constexpr double INF = std::numeric_limits<double>::infinity();
+
+#include "wtp_ai.h"
 #include "wtp_aiTask.h"
 #include "wtp_aiMoveFormer.h"
-
-const int INT_INFINITY = INT_MAX;
-const double INF = std::numeric_limits<double>::infinity();
 
 const double MIN_SIGNIFICANT_THREAT = 0.2;
 const int COMBAT_ABILITY_FLAGS = ABL_AMPHIBIOUS | ABL_AIR_SUPERIORITY | ABL_AAA | ABL_COMM_JAMMER | ABL_EMPATH | ABL_ARTILLERY | ABL_BLINK_DISPLACER | ABL_TRANCE | ABL_NERVE_GAS | ABL_SOPORIFIC_GAS | ABL_DISSOCIATIVE_WAVE;
@@ -212,7 +213,8 @@ public:
 		;
 		this->combatEffects[key] = combatEffect;
 	}
-	double getCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, COMBAT_MODE combatMode) const
+	void setCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, COMBAT_MODE combatMode);
+	double getCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, COMBAT_MODE combatMode)
 	{
 		int key =
 			+ attackerFactionId		
@@ -221,7 +223,14 @@ public:
 			+ defenderUnitId		* MaxPlayerNum * MaxProtoNum * MaxPlayerNum
 			+ combatMode			* MaxPlayerNum * MaxProtoNum * MaxPlayerNum * MaxProtoNum
 		;
+
+		if (this->combatEffects.find(key) == this->combatEffects.end())
+		{
+			this->setCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, combatMode);
+		}
+
 		return this->combatEffects.at(key);
+
 	}
 	
 	void setAssaultEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, AssaultEffect const &assaultEffect)
@@ -234,17 +243,8 @@ public:
 		;
 		this->assaultEffects[key] = assaultEffect;
 	}
-	AssaultEffect const &getAssaultEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId) const
-	{
-		int key =
-			+ attackerFactionId		
-			+ attackerUnitId		* MaxPlayerNum
-			+ defenderFactionId		* MaxPlayerNum * MaxProtoNum
-			+ defenderUnitId		* MaxPlayerNum * MaxProtoNum * MaxPlayerNum
-		;
-		return this->assaultEffects.at(key);
-	}
-	
+	AssaultEffect const &getAssaultEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId);
+
 };
 
 struct BasePoliceData

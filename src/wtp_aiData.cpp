@@ -88,6 +88,49 @@ double CombatStrength::getAttackEffect(int vehicleId)
 //	weights.at(getUnitIndex(factionId, unitId)) += weight;
 //}
 
+// CombatEffectTable
+
+void CombatEffectTable::setCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, COMBAT_MODE combatMode)
+{
+	double combatEffect;
+
+	switch (combatMode)
+	{
+	case CM_MELEE:
+		combatEffect = isMeleeUnit(attackerUnitId) ? getMeleeRelativeUnitStrength(attackerUnitId, attackerFactionId, defenderUnitId, defenderFactionId) : 0.0;
+		break;
+	case CM_ARTILLERY_DUEL:
+		combatEffect = isArtilleryUnit(attackerUnitId) && isArtilleryUnit(defenderUnitId) ? getArtilleryDuelRelativeUnitStrength(attackerUnitId, attackerFactionId, defenderUnitId, defenderFactionId) : 0.0;
+		break;
+	case CM_BOMBARDMENT:
+		combatEffect = isArtilleryUnit(attackerUnitId) && !isArtilleryUnit(defenderUnitId) ? getUnitBombardmentDamage(attackerUnitId, attackerFactionId, defenderUnitId, defenderFactionId) : 0.0;
+		break;
+	}
+
+	this->setCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, combatMode, combatEffect);
+
+}
+
+AssaultEffect const &CombatEffectTable::getAssaultEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId)
+{
+	int key =
+		+ attackerFactionId
+		+ attackerUnitId		* MaxPlayerNum
+		+ defenderFactionId		* MaxPlayerNum * MaxProtoNum
+		+ defenderUnitId		* MaxPlayerNum * MaxProtoNum * MaxPlayerNum
+	;
+
+	// compute effect if not exist
+
+	if (this->assaultEffects.find(key) == this->assaultEffects.end())
+	{
+		this->setAssaultEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, computeAssaultEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId));
+	}
+
+	return this->assaultEffects.at(key);
+
+}
+
 // Data
 
 void Data::clear()

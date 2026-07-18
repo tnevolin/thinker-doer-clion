@@ -592,7 +592,13 @@ void __cdecl mod_base_support() {
         MAP* sq = mapsq(veh->x, veh->y);
         if (veh->is_supply() && veh->order == ORDER_CONVOY) {
             BaseResType type = (BaseResType)veh->order_auto_type;
-            assert(type <= RSC_UNUSED);
+        	// TODO Temporary fix. Need to remove in following version.
+        	if (type > RSC_UNUSED)
+        	{
+        		veh->order_auto_type = RSC_NUTRIENT;
+        		type = RSC_NUTRIENT;
+        	}
+        	assert(type <= RSC_UNUSED);
             if (veh->home_base_id == base_id && type <= RSC_UNUSED) {
                 if (!sq->is_base()) {
                     int value = resource_yield(type, veh->faction_id, base_id, veh->x, veh->y);

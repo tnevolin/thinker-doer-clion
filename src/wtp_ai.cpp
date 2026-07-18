@@ -2446,6 +2446,10 @@ void populateEnemyStacks()
 	{
 		VEH *vehicle = getVehicle(vehicleId);
 		MAP *vehicleTile = getVehicleMapTile(vehicleId);
+		
+		if (vehicleTile == nullptr)
+			continue;
+		
 		TileInfo const &vehicleTileInfo = aiData.tileInfos.at(vehicleTile - *MapTiles);
 		
 		// ignore sea aliens
@@ -2561,7 +2565,7 @@ void populateEnemyStacks()
 		debug("\t\t%s\n", getLocationString(enemyStackInfo.tile));
 		
 		// averageUnitCost
-		
+
 		unitCostSummary.clear();
 		for (int vehicleId : enemyStackInfo.vehicleIds)
 		{
@@ -6929,6 +6933,10 @@ void disbandUnneededVehicles()
 	{
 		VEH *vehicle = getVehicle(vehicleId);
 		MAP *vehicleTile = getVehicleMapTile(vehicleId);
+		
+		if (vehicleTile == nullptr)
+			continue;
+			
 		int triad = vehicle->triad();
 
 		// ours
@@ -7079,8 +7087,10 @@ bool isVehicleCanCaptureBase(int vehicleId, MAP *baseTile)
 	VEH *vehicle = getVehicle(vehicleId);
 	MAP *vehicleTile = getVehicleMapTile(vehicleId);
 	
+	if (vehicleTile == nullptr)
+		return false;
+		
 	return isUnitCanCaptureBase(vehicle->unit_id, vehicleTile, baseTile);
-	
 }
 
 /**
@@ -7091,6 +7101,10 @@ double getDestroyingEnemyVehicleGain(int vehicleId)
 {
 	VEH *vehicle = getVehicle(vehicleId);
 	MAP *vehicleTile = getVehicleMapTile(vehicleId);
+
+	if (vehicleTile == nullptr)
+		return 0.0;
+		
 	TileInfo &vehicleTileInfo = aiData.getTileInfo(vehicleTile);
 	int factionId = vehicle->faction_id;
 	int unitId = vehicle->unit_id;
