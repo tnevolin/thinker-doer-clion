@@ -783,7 +783,13 @@ void __cdecl mod_base_yield() {
     bool need_labs = !has_fac_built(FAC_PUNISHMENT_SPHERE, base_id);
     bool pacifism = can_riot && SE_police <= -3 && *BaseVehPacifismCount > 0;
     int threshold = Rules->nutrient_intake_req_citizen * (base_pop_boom(base_id) ? 1 : 2);
+	// [WTP]
+	// alternative energy inefficiency
+	/*
     int effic_val = 16 - energy_intake_lost(base_id, 16, 0);
+    */
+    int effic_val = 16 - wtp_mod_energy_intake_lost(base_id, 16, 0);
+	//
     int alloc_econ = 10 - f->SE_alloc_labs - f->SE_alloc_psych;
     int econ_val = 4 + (alloc_econ > f->SE_alloc_labs);
     int labs_val = 2 + 2*(need_labs && f->SE_alloc_labs > 0) + (alloc_econ <= f->SE_alloc_labs);
@@ -1121,9 +1127,15 @@ void __cdecl mod_base_energy() {
     base->energy_intake_2 += commerce;
     base->energy_intake_2 += energygrid;
 
+	// [WTP]
+	// alternative energy inefficiency calculation
+	/*
     base->energy_inefficiency = energy_intake_lost(base_id, base->energy_intake_2 - base->energy_consumption,
         (*BaseUpkeepState == 1 ? f->unk_43 : NULL));
-    base->energy_surplus = base->energy_intake_2 - base->energy_consumption - base->energy_inefficiency;
+    */
+	base->energy_inefficiency = wtp_mod_energy_intake_lost(base_id, base->energy_intake_2 - base->energy_consumption, *BaseUpkeepState == 1 ? f->unk_43 : nullptr);
+	//
+	base->energy_surplus = base->energy_intake_2 - base->energy_consumption - base->energy_inefficiency;
 
     if (*BaseUpkeepState == 1) {
         f->energy_surplus_total += clamp(base->energy_surplus, 0, 99999);

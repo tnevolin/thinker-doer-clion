@@ -8,6 +8,7 @@
 #include "wtp_aiMoveFormer.h"
 #include "wtp_aiRoute.h"
 #include "wtp_aiMove.h"
+#include "wtp_base.h"
 
 // variables
 
@@ -736,7 +737,7 @@ void populateTerraformingData()
 		baseTerraformingInfo.nutrientCost = mod_cost_factor(base.faction_id, RSC_NUTRIENT, baseId);
 		baseTerraformingInfo.income = getBaseIncome(baseId, false);
 		baseTerraformingInfo.mineralValue = getBaseMineralMultiplier(baseId);
-		baseTerraformingInfo.energyValue = getBaseEnergyMultiplier(baseId) * static_cast<double>(energy_intake_lost(baseId, 100, nullptr)) / 100.0;
+		baseTerraformingInfo.energyValue = getBaseEnergyMultiplier(baseId) * static_cast<double>(wtp_mod_energy_intake_lost(baseId, 100, nullptr)) / 100.0;
 		baseTerraformingInfo.economyValue = getBaseEconomyMultiplier(baseId);
 		baseTerraformingInfo.labsValue = getBaseLabsMultiplier(baseId);
 
