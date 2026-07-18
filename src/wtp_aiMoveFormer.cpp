@@ -24,8 +24,6 @@ FormerOrder::FormerOrder(int _vehicleId)
 
 double BaseTerraformingInfo::getMarginalGain(ResourceYield const &yield, int economy, int labs) const
 {
-	double gain = 0.0;
-
 	// resource marginal gain
 
 	double income = getResourceScore(this->mineralValue * yield.mineral, this->energyValue * yield.energy + this->economyValue * economy + this-> labsValue * labs);
@@ -745,7 +743,7 @@ void populateTerraformingData()
 		{
 			ResourceYield workedTileResourceYield = getTileResourceYield(workedTile, baseId);
 			double farmerMarginalGain = baseTerraformingInfo.getMarginalGain(workedTileResourceYield, 0, 0);
-			baseTerraformingInfo.workerMarginalGains.push_back({farmerMarginalGain, true, workedTile});
+			baseTerraformingInfo.workerMarginalGains.push_back({farmerMarginalGain, workedTile});
 		}
 		// do not account for extra specialists
 		for (int specialistIndex = 0; specialistIndex < std::min(MaxBaseSpecNum, base.specialist_total); ++specialistIndex)
@@ -759,11 +757,11 @@ void populateTerraformingData()
 				continue;
 
 			double specialistMarginalGain = baseTerraformingInfo.getMarginalGain({0, 0, 0}, citizen.econ_bonus, citizen.labs_bonus);
-			baseTerraformingInfo.workerMarginalGains.push_back({specialistMarginalGain, false, nullptr});
+			baseTerraformingInfo.workerMarginalGains.push_back({specialistMarginalGain, nullptr});
 
 		}
 		// sort marginal gains ascending
-		std::sort(baseTerraformingInfo.workerMarginalGains.begin(), baseTerraformingInfo.workerMarginalGains.end(), [](WorkerMarginalGain const &o1, WorkerMarginalGain const &o2) { return o1.marginalGain < o2.marginalGain; });
+		std::sort(baseTerraformingInfo.workerMarginalGains.begin(), baseTerraformingInfo.workerMarginalGains.end(), [](WorkerMarginalGain const &o1, WorkerMarginalGain const &o2) { return o1.gain < o2.gain; });
 
 	}
 
@@ -1145,23 +1143,54 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 
 	// match them with the worst worker to get the improvement gain
 
-	std::vector<MAP *> baseWorkedTiles = getBaseWorkedTiles(baseId);
-	robin_hood::unordered_flat_set<MAP *> workedTiles(baseWorkedTiles.begin(), baseWorkedTiles.end());
-	for (int index = 0; index < static_cast<int>(std::min(baseTerraformingOptionScores.size(), baseTerraformingInfo.workerMarginalGains.size())); index++)
+	std::vector<bool> matched(baseTerraformingInfo.workerMarginalGains.size(), false);
+	for (TerraformingOptionScore &baseTerraformingOptionScore : baseTerraformingOptionScores)
 	{
-		TerraformingOptionScore &baseTerraformingOptionScore = baseTerraformingOptionScores.at(index);
-		WorkerMarginalGain const &workerMarginalGain = baseTerraformingInfo.workerMarginalGains.at(index);
+		int matchedIndex = -1;
 
-		
-	}
+		// 1. Find workerMarginalGains that has same tile as current baseTerraformingOptionScore.
 
-	// insert actions
+		for (int i = 0; i < static_cast<int>(baseTerraformingInfo.workerMarginalGains.size()); i++)
+		{
+			if (!matched[i] && baseTerraformingInfo.workerMarginalGains[i].tile == baseTerraformingOptionScore.tile)
+			{
+				matchedIndex = i;
+				break;
+			}
+		}
 
-	insertActionTerraformingRequests(tile, bestTerraformingOptionScore.actions, optionScore);
+		// 2. If none found, then pick not yet matched workerMarginalGain with the minimal gain.
 
-	if (DEBUG)
-	{
-		debug("\t%5.2f %-15s\n", optionScore, bestTerraformingOptionScore.option->name);
+		if (matchedIndex == -1)
+		{
+			for (int i = 0; i < static_cast<int>(baseTerraformingInfo.workerMarginalGains.size()); i++)
+			{
+				if (!matched[i])
+				{
+					matchedIndex = i;
+					break;
+				}
+			}
+		}
+
+		// no available worker found - exit
+
+		if (matchedIndex == -1)
+			break;
+
+		matched[matchedIndex] = true;
+		baseTerraformingOptionScore.score -= baseTerraformingInfo.workerMarginalGains[matchedIndex].gain;
+
+		// marginal gain is not positive - exit
+
+		if (baseTerraformingOptionScore.score <= 0)
+			break;
+
+		// insert actions
+
+		insertActionTerraformingRequests(baseTerraformingOptionScore.tile, baseTerraformingOptionScore.actions, baseTerraformingOptionScore.score);
+		debug("\t%5.2f %-15s\n", baseTerraformingOptionScore.score, baseTerraformingOptionScore.option->name);
+
 	}
 
 }

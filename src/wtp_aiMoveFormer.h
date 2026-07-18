@@ -141,9 +141,8 @@ struct TileTerraformingInfo
 
 struct WorkerMarginalGain
 {
-	double marginalGain;
-	bool isFarmer;
-	MAP *workTile;
+	double gain;
+	MAP *tile;
 };
 struct BaseTerraformingInfo
 {
