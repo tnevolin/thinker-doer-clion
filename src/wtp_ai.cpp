@@ -2756,6 +2756,10 @@ void populateEnemyStacks()
 	{
 		VEH *vehicle = getVehicle(vehicleId);
 		MAP *vehicleTile = getVehicleMapTile(vehicleId);
+
+		if (vehicleTile == nullptr)
+			continue;
+
 		TileInfo &vehicleTileInfo = aiData.tileInfos.at(vehicleTile - *MapTiles);
 		
 		// ignore sea aliens

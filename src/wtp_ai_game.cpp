@@ -3401,6 +3401,10 @@ void disbandUnneededVehicles()
 	{
 		VEH *vehicle = getVehicle(vehicleId);
 		MAP *vehicleTile = getVehicleMapTile(vehicleId);
+
+		if (vehicleTile == nullptr)
+			continue;
+
 		int triad = vehicle->triad();
 
 		// ours

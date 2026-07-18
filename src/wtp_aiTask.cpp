@@ -752,7 +752,8 @@ int Task::executeConvoy(int vehicleId)
 	
 	// set order
 
-	set_convoy(vehicleId, static_cast<ResType>(parameter));
+	// set_convoy uses ResType which is 1 bigger than BaseResType
+	set_convoy(vehicleId, static_cast<ResType>(parameter + 1));
 	setVehicleOrder(vehicleId, ORDER_CONVOY);
 	return EM_DONE;
 	
