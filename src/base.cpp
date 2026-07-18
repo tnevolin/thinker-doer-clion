@@ -2755,7 +2755,7 @@ Determine if the faction can build a specific facility or Secret Project in the 
 Checks are included to prevent SMACX specific facilities from being built in SMAC mode.
 */
 int __cdecl mod_facility_avail(FacilityId item_id, int faction_id, int base_id, int queue_count) {
-    // initial checks
+    // initial checksg
     if (!item_id || (item_id == FAC_SKUNKWORKS && *DiffLevel <= DIFF_SPECIALIST)
     || (item_id >= SP_ID_First && *GameRules & RULES_SCN_NO_BUILDING_SP)) {
         return false; // Skunkworks removed if there are no prototype costs

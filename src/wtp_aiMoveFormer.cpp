@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 
+#include "main.h"
 #include "wtp_aiMoveFormer.h"
 #include "wtp_aiRoute.h"
 #include "wtp_aiMove.h"
@@ -32,6 +33,7 @@ double BaseTerraformingInfo::getMarginalGain(ResourceYield const &yield, int eco
 	// nutrient marginal gain
 
 	double populationGrowthRate = yield.nutrient / static_cast<double>(this->nutrientCost * (this->popSzie + 1)) / static_cast<double>(this->popSzie);
+
 	double incomeGrowth = populationGrowthRate * this->income;
 	double incomeGrowthGain = getGainIncomeGrowth(incomeGrowth);
 
@@ -765,6 +767,62 @@ void populateTerraformingData()
 
 	}
 
+	// base unworked tile yields
+
+	for (int baseId : aiData.baseIds)
+	{
+		BaseTerraformingInfo &baseTerraformingInfo = getBaseTerraformingInfo(baseId);
+		std::vector<ResourceYield> &unworkedTileYields = baseTerraformingInfo.unworkedTileYields;
+
+		// process available unworked tiles
+
+		std::vector<MAP *> availableTiles = baseTerraformingInfo.terraformingSites;
+		std::vector<MAP *> workedTiles = getBaseWorkedTiles(baseId);
+		robin_hood::unordered_flat_set<MAP *> workedTileSet(workedTiles.begin(), workedTiles.end());
+
+		for (MAP *availableTile : availableTiles)
+		{
+			// unworked
+
+			if (workedTileSet.find(availableTile) == workedTileSet.end())
+				continue;
+
+			unworkedTileYields.push_back(getTileResourceYield(availableTile, baseId));
+
+		}
+
+		// remove all yields from there those are equal or inferior to any remaining yield there
+
+		for (auto it = unworkedTileYields.begin(); it != unworkedTileYields.end(); )
+		{
+			bool remove = false;
+
+			for (auto it2 = unworkedTileYields.begin(); it2 != unworkedTileYields.end(); ++it2)
+			{
+				if (it == it2)
+					continue;
+
+				if (ResourceYield::isEqualOrSuperior(*it2, *it))
+				{
+					remove = true;
+					break;
+				}
+
+			}
+
+			if (remove)
+			{
+				it = unworkedTileYields.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+
+		}
+
+	}
+
 	// store original map states
 
 	for (TileTerraformingInfo &tileTerraformingInfo : tileTerraformingInfos)
@@ -773,7 +831,12 @@ void populateTerraformingData()
 	}
 
 	// store effective map states from ongoing terraforming
-
+	
+	for (TileTerraformingInfo &tileTerraformingInfo : tileTerraformingInfos)
+	{
+		tileTerraformingInfo.storeEffectiveMapTile();
+	}
+	
 	for (int vehicleId : aiData.formerVehicleIds)
 	{
 		VEH &vehicle = Vehs[vehicleId];
@@ -903,27 +966,6 @@ void generateTerraformingRequests()
 	for (int baseId : aiData.baseIds)
 	{
 		generateBaseConventionalTerraformingRequests(baseId);
-	}
-
-	// remove overlapping conventional terraforming requests leaving only the most significant one
-
-	std::sort(terraformingRequests.begin(), terraformingRequests.end());
-
-	robin_hood::unordered_flat_set<MAP *> terraformingRequestLocations;
-	for (auto terraformingRequestIterator = terraformingRequests.begin(); terraformingRequestIterator != terraformingRequests.end(); )
-	{
-		TerraformingRequest &terraformingRequest = *terraformingRequestIterator;
-
-		if (terraformingRequestLocations.find(terraformingRequest.tile) != terraformingRequestLocations.end())
-		{
-			terraformingRequestIterator = terraformingRequests.erase(terraformingRequestIterator);
-		}
-		else
-		{
-			terraformingRequestLocations.insert(terraformingRequest.tile);
-			++terraformingRequestIterator;
-		}
-
 	}
 
 	// aquifer
@@ -1072,6 +1114,21 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 
 			ResourceYield improvedTileYield = getTileResourceYield(tileTerraformingInfo.tile, baseId);
 			tileTerraformingInfo.restoreEffectiveMapTile();
+
+			// discard option if it is no better than already unworked tile yield
+
+			bool noBetter = false;
+			for (ResourceYield unworkedTileYield : baseTerraformingInfo.unworkedTileYields)
+			{
+				if (ResourceYield::isEqualOrInferior(improvedTileYield, unworkedTileYield))
+				{
+					noBetter = true;
+					break;
+				}
+			}
+
+			if (noBetter)
+				continue;
 
 			// calculate option score
 
@@ -1285,13 +1342,18 @@ Generate request for aquifer.
 */
 void generateAquiferTerraformingRequest(MAP *tile)
 {
+	FormerItem action = FORMER_AQUIFER;
+
+	if (!isTerraformingAvailable(tile, action))
+		return;
+
 	// compute gain
 
 	double gain = getAquiferGain(tile);
 
 	// store terraformingRequest
 
-	terraformingRequests.emplace_back(tile, FORMER_AQUIFER, gain);
+	terraformingRequests.emplace_back(tile, action, gain);
 
 }
 
@@ -1349,7 +1411,8 @@ void generateNetworkTerraformingRequest(MAP *tile)
 	}
 
 	// generate terraforming changes
-
+	
+	tileTerraformingInfo.storeEffectiveMapTile();
 	tileTerraformingInfo.applyTerraforming(action);
 	MAP originalTile = tileTerraformingInfo.effectiveTile;
 	MAP improvedTile = *tile;
@@ -1441,31 +1504,8 @@ Removes terraforming requests violating proximity rules.
 */
 void applyProximityRules()
 {
-	Profiling::start("applyProximityRules", "moveFormerStrategy");
-
-	// apply proximity rules
-
-	for (auto terraformingRequestsIterator = terraformingRequests.begin(); terraformingRequestsIterator != terraformingRequests.end(); )
-	{
-		TerraformingRequest const &terraformingRequest = *terraformingRequestsIterator;
-
-		if (isProximityRuleSatisfied(terraformingRequest.tile, terraformingRequest.action))
-		{
-			// rule is satisfied
-			// advance iterator
-			++terraformingRequestsIterator;
-		}
-		else
-		{
-			// rule is broken
-			// remove request
-			terraformingRequestsIterator = terraformingRequests.erase(terraformingRequestsIterator);
-		}
-
-	}
-
-	Profiling::stop("applyProximityRules");
-
+	// Proximity rules are now handled during assignment phase to ensure consistency
+	// and to avoid premature filtering of high-priority requests.
 }
 
 // verifies action complies with proximity rules
@@ -1572,29 +1612,37 @@ void removeTerraformedTiles()
  */
 void assignFormerOrders()
 {
-	debug("assignFormerOrders - %s\n", MFactions[aiFactionId].noun_faction);
-
 	Profiling::start("assignFormerOrders", "moveFormerStrategy");
+
+	debug("assignFormerOrders - %s\n", MFactions[aiFactionId].noun_faction);
 
 	// distribute orders
 
 	aiData.production.terraformingRequests.clear();
-	for (TerraformingRequest const &terraformingRequest : terraformingRequests)
+
+	// set of assigned tile and action pairs
+	std::set<std::pair<MAP *, FormerItem>> assignedRequests;
+
+	for (TerraformingRequest &terraformingRequest : terraformingRequests)
 	{
 		MAP *tile = terraformingRequest.tile;
 		FormerItem action = terraformingRequest.action;
 
-		debug("%s %s incomeGain=%5.2f\n", getLocationString(tile), Terraform[action].name, terraformingRequest.incomeGain);
+		// Skip if another request for the same tile and action is already assigned
+		if (assignedRequests.count({tile, action}))
+			continue;
+
+		debug("\t%5.2f %s %-16s\n", terraformingRequest.incomeGain, getLocationString(tile), Terraform[action].name);
 
 		// verify action complies with proximity rules
 
 		if (!isProximityRuleSatisfied(tile, action))
 			continue;
 
-		// find former with the best gainGrowth
+		// find formers that can work on this request (primary and secondary)
 
-		FormerOrder *bestFormerOrder = nullptr;
-		double bestFormerOrderGain = 0.0;
+		struct ScoredFormer { FormerOrder* order; double gain; double travelTime; int terraformingTime; };
+		std::vector<ScoredFormer> scoredFormers;
 
 		for (FormerOrder &formerOrder : formerOrders)
 		{
@@ -1603,78 +1651,105 @@ void assignFormerOrders()
 			int triad = vehicle->triad();
 			MAP *vehicleTile = getVehicleMapTile(vehicleId);
 
-			// skip assigned
-
+			// skip already assigned in this turn
 			if (formerOrder.tile != nullptr)
 				continue;
 
 			// corresponding triad
-
 			if ((triad == TRIAD_LAND && !tile->is_land()) || (triad == TRIAD_SEA && !tile->is_sea()))
 				continue;
 
 			// same cluster
-
 			if ((triad == TRIAD_SEA && !isSameSeaCluster(vehicleTile, tile)) || (triad == TRIAD_LAND && !isSameLandTransportedCluster(vehicleTile, tile)))
 				continue;
 
 			// reachable
-
 			if (!isVehicleDestinationReachable(vehicleId, tile))
 				continue;
-
-			// travelTime
 
 			double travelTime = getVehicleTravelTime(vehicleId, tile);
 			if (travelTime == INF)
 				continue;
 
-			// terraformingTime
-
 			int terraformingTime = getTerraformingTime(vehicleId, tile, action);
-
-			// total time
-
 			double totalTime = conf.ai_terraforming_travel_time_multiplier * travelTime + static_cast<double>(terraformingTime);
-
-			// estimate former incomeGain for this improvement
-
 			double gain = getGainIncomeGrowth(terraformingRequest.incomeGain / totalTime);
 
-			// update best
-
-			bool best = false;
-			if (gain > bestFormerOrderGain)
-			{
-				bestFormerOrder = &formerOrder;
-				bestFormerOrderGain = gain;
-				best = true;
-			}
-
-			debug("\t[%4d] %s travelTime=%5.2f terraformingTime=%2d gain=%5.2f\n %s", vehicleId, getLocationString({vehicle->x, vehicle->y}), travelTime, terraformingTime, gain, best ? "- best" : "");
+			scoredFormers.push_back({&formerOrder, gain, travelTime, terraformingTime});
 
 		}
 
-		// not found
-
-		if (bestFormerOrder == nullptr)
+		if (scoredFormers.empty())
 		{
-			// store unprocessed terraformingRequest
 			aiData.production.terraformingRequests.push_back(terraformingRequest);
 			continue;
 		}
 
-		// assign order
+		// sort scoredFormers by gain descending
 
-		bestFormerOrder->tile = tile;
-		bestFormerOrder->action = action;
+		std::sort(scoredFormers.begin(), scoredFormers.end(), [](const ScoredFormer& a, const ScoredFormer& b) { return a.gain < b.gain; });
+
+		// pick primary former (highest gain)
+
+		ScoredFormer primary = scoredFormers.front();
+		scoredFormers.erase(scoredFormers.begin());
+
+		primary.order->tile = tile;
+		primary.order->action = action;
 		terraformingRequest.assigned = true;
+		assignedRequests.insert({tile, action});
 
-		// update tile terraforming
+		// primary former effect
 
 		TileTerraformingInfo &tileTerraformingInfo = getTileTerraformingInfo(tile);
 		tileTerraformingInfo.applyTerraforming(action);
 		tileTerraformingInfo.terraformingItems.insert(action);
+
+		debug("\t\t[%4d] (PRIM) travelTime=%5.2f terraformingTime=%2d gain=%5.2f\n", primary.order->vehicleId, primary.travelTime, primary.terraformingTime, primary.gain);
+
+		// mild cooperation: assign secondary formers if the project is long enough
+
+		std::vector<ScoredFormer> cooperatingFormers;
+		cooperatingFormers.push_back(primary);
+
+		for (auto const &candidateFormer : scoredFormers)
+		{
+			// compute how much work is done and remaining by already-assigned formers before this candidate arrives
+
+			double workDoneBeforeArrival = 0.0;
+			for (ScoredFormer const &cooperatingFormer : cooperatingFormers)
+			{
+				double prevWorkWindow = std::max(0.0, candidateFormer.travelTime - cooperatingFormer.travelTime);
+				workDoneBeforeArrival += 1.0 / static_cast<double>(cooperatingFormer.terraformingTime) * prevWorkWindow;
+			}
+			double workLeftAtArrival = 1.0 - workDoneBeforeArrival;
+
+			// compute candidate former terraforming rate portion
+
+			double combinedTerraformingRate = 1.0 / static_cast<double>(candidateFormer.terraformingTime);
+			for (ScoredFormer const &cooperatingFormer : cooperatingFormers)
+			{
+				combinedTerraformingRate += 1.0 / static_cast<double>(cooperatingFormer.terraformingTime);
+			}
+
+			// compute candidate former work time
+
+			double candidateFormerWorkTime = workLeftAtArrival / combinedTerraformingRate;
+
+			// secondarty former should spend at least 4 turns to not waste the travel
+
+			if (candidateFormerWorkTime < 4.0)
+				break;
+
+			// assign secondary
+
+			candidateFormer.order->tile = tile;
+			candidateFormer.order->action = action;
+			cooperatingFormers.push_back(candidateFormer);
+
+			debug("\t[%4d] (COOP) travelTime=%5.2f workLeftAtArrival=%5.2f candidateWorkTime=%5.2f\n", candidateFormer.order->vehicleId, candidateFormer.travelTime, workLeftAtArrival, candidateFormerWorkTime);
+
+		}
 
 	}
 
@@ -2160,19 +2235,19 @@ double getTerraformingGain(double income, double terraformingTime)
 void removeUnusedBunkers()
 {
 	debug("removeUnusedBunkers - %s\n", MFactions[aiFactionId].noun_faction);
-	
+
 	robin_hood::unordered_flat_set<MAP *> unusedBunkers;
 	for (robin_hood::pair<MAP *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
 	{
 		MAP *bunkerTile = bunkerInfoEntry.first;
-		
+
 		if (getBunkerGain(bunkerTile) <= 0.0)
 		{
 			unusedBunkers.insert(bunkerTile);
 		}
-		
+
 	}
-	
+
 	for (MAP *unusedBunkerTile : unusedBunkers)
 	{
 		unusedBunkerTile->items &= (~BIT_BUNKER);
@@ -2180,7 +2255,7 @@ void removeUnusedBunkers()
 		aiData.bunkerInfos.erase(unusedBunkerTile);
 		debug("\t%s\n", getLocationString(unusedBunkerTile));
 	}
-	
+
 }
 
 /**

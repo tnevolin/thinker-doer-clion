@@ -4,7 +4,6 @@
 #include <vector>
 #include "robin_hood.h"
 
-#include "main.h"
 #include "engine.h"
 #include "wtp_ai_game.h"
 
@@ -28,7 +27,7 @@ struct FactionTerraformingInfo
 	double averageNormalTerraformingRateMultiplier{};
 	double averagePlantFungusTerraformingRateMultiplier{};
 	double averageRemoveFungusTerraformingRateMultiplier{};
-	
+
 	double bareLandScore{};
 	double bareMineScore{};
 	double bareSolarScore{};
@@ -160,6 +159,7 @@ struct BaseTerraformingInfo
 	double economyValue;
 	double labsValue;
 	std::vector<WorkerMarginalGain> workerMarginalGains;
+	std::vector<ResourceYield> unworkedTileYields;
 
 	double getMarginalGain(ResourceYield const& yield, int economy, int labs) const;
 
@@ -242,9 +242,9 @@ struct FormerOrder
 	int vehicleId;
 	MAP *tile = nullptr;
 	int action = -1;
-	
+
 	FormerOrder(int _vehicleId);
-	
+
 };
 
 struct TerraformingRequestAssignment
@@ -268,15 +268,15 @@ struct TERRAFORMING_SCORE
 {
 	MAP *tile;
 	TERRAFORMING_OPTION const *option;
-	
+
 	int action = -1;
 	double score = 0.0;
 	double terraformingTime = 0.0;
-	
+
 	TERRAFORMING_SCORE(MAP *_tile, TERRAFORMING_OPTION const *_option)
 	: tile{_tile}, option{_option}
 	{}
-	
+
 };
 
 // access terraforming data arrays

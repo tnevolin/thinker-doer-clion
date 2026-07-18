@@ -2,9 +2,6 @@
 
 #include "main.h"
 
-const uint32_t GOV_ALLOW_COMBAT =
-    (GOV_MAY_PROD_LAND_COMBAT | GOV_MAY_PROD_NAVAL_COMBAT | GOV_MAY_PROD_AIR_COMBAT);
-
 int __cdecl mod_base_init(int faction_id, int x, int y);
 void __cdecl mod_base_kill(int base_id);
 void __cdecl mod_base_reset(int base_id, bool has_gov);
