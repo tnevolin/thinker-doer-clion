@@ -43,6 +43,7 @@ struct Task
 	int parameter;
 	double priority = 0.0;
 	int baseId = -1;
+	bool executed = false;
 
 	Task(int _vehicleId, TaskType _type, MAP *_destination, MAP *_attackTarget, int _parameter);
 	Task(int _vehicleId, TaskType _type, MAP *_destination, MAP *_attackTarget);

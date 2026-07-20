@@ -22,19 +22,77 @@ FormerOrder::FormerOrder(int _vehicleId)
 : vehicleId(_vehicleId)
 {}
 
+// TileTerraformingInfo
+
+void TileTerraformingInfo::storeOriginalMapTile()
+{
+	originalTile = *tile;
+}
+void TileTerraformingInfo::restoreOriginalMapTile()
+{
+	*tile = originalTile;
+}
+void TileTerraformingInfo::storeEffectiveMapTile()
+{
+	effectiveTile = *tile;
+}
+void TileTerraformingInfo::restoreEffectiveMapTile()
+{
+	*tile = effectiveTile;
+}
+
+void TileTerraformingInfo::applyTerraforming(FormerItem action)
+{
+	switch (action)
+	{
+	case FORMER_LEVEL_TERRAIN:
+		{
+			if (this->tile->is_land())
+			{
+				if (this->tile->is_rocky())
+				{
+					// rocky turns to rolling
+					this->tile->val3 &= ~TILE_ROCKY;
+					this->tile->val3 |= TILE_ROLLING;
+				}
+				else if (this->tile->is_rolling())
+				{
+					// rolling turns to flat
+					this->tile->val3 &= ~TILE_ROLLING;
+				}
+			}
+		}
+		break;
+
+	case FORMER_AQUIFER:
+		{
+			this->tile->items |= BIT_RIVER_SRC | BIT_RIVER;
+		}
+		break;
+
+	default:
+		{
+			this->tile->items &= ~Terraform[action].bit_incompatible;
+			this->tile->items |= Terraform[action].bit;
+		}
+		break;
+
+	}
+
+}
+
 // BaseTerraformingInfo
 
-double BaseTerraformingInfo::getMarginalGain(ResourceYield const &yield, int economy, int labs) const
+double BaseTerraformingInfo::getIntakeGain(ResourceYield const &yield, int economy, int labs) const
 {
-	// resource marginal gain
+	// resource gain
 
 	double income = getResourceScore(this->mineralValue * yield.mineral, this->energyValue * yield.energy + this->economyValue * economy + this-> labsValue * labs);
 	double incomeGain = getGainIncome(income);
 
-	// nutrient marginal gain
+	// nutrient gain
 
 	double populationGrowthRate = yield.nutrient / static_cast<double>(this->nutrientCost * (this->popSzie + 1)) / static_cast<double>(this->popSzie);
-
 	double incomeGrowth = populationGrowthRate * this->income;
 	double incomeGrowthGain = getGainIncomeGrowth(incomeGrowth);
 
@@ -88,6 +146,10 @@ void moveFormerStrategy()
 
 	removeUnusedBunkers();
 
+	// reset former orders if improvement is already there
+
+	cancelRedundantOrders();
+
 	// initialize data
 
 	setupTerraformingData();
@@ -98,7 +160,6 @@ void moveFormerStrategy()
 
 	// formers
 
-	cancelRedundantOrders();
 	generateTerraformingRequests();
 	applyProximityRules();
 	removeTerraformedTiles();
@@ -653,18 +714,6 @@ void populateTerraformingData()
 //
 //	}
 
-	// populate base projected sizes
-
-	for (int baseId : aiData.baseIds)
-	{
-		BaseTerraformingInfo &baseTerraformingInfo = getBaseTerraformingInfo(baseId);
-
-		// 10 turns and mininum 3 pop
-
-		baseTerraformingInfo.projectedPopSize = std::max(3, getBaseProjectedSize(baseId, 10));
-
-	}
-
 	// populate base conventionalTerraformingSites
 
 	for (int baseId : aiData.baseIds)
@@ -694,41 +743,12 @@ void populateTerraformingData()
 
 	}
 
-	// populate base minimal yields
-
-	for (int baseId : aiData.baseIds)
-	{
-		BaseTerraformingInfo &baseTerraformingInfo = getBaseTerraformingInfo(baseId);
-
-		std::vector<MAP *> baseWorkedTiles = getBaseWorkedTiles(baseId);
-
-		if (baseWorkedTiles.empty())
-		{
-			baseTerraformingInfo.minimalNutrientYield = 0;
-			baseTerraformingInfo.minimalMineralYield = 0;
-			baseTerraformingInfo.minimalEnergyYield = 0;
-		}
-		else
-		{
-			baseTerraformingInfo.minimalNutrientYield = INT_MAX;
-			baseTerraformingInfo.minimalMineralYield = INT_MAX;
-			baseTerraformingInfo.minimalEnergyYield = INT_MAX;
-
-			for (MAP *tile : getBaseWorkedTiles(baseId))
-			{
-				baseTerraformingInfo.minimalNutrientYield = std::min(baseTerraformingInfo.minimalNutrientYield, mod_crop_yield(aiFactionId, baseId, getX(tile), getY(tile), 0));
-				baseTerraformingInfo.minimalMineralYield = std::min(baseTerraformingInfo.minimalMineralYield, mod_mine_yield(aiFactionId, baseId, getX(tile), getY(tile), 0));
-				baseTerraformingInfo.minimalEnergyYield = std::min(baseTerraformingInfo.minimalEnergyYield, mod_energy_yield(aiFactionId, baseId, getX(tile), getY(tile), 0));
-			}
-
-		}
-
-	}
-
 	// base gain values
 
+	debug("\tworker gains\n");
 	for (int baseId : aiData.baseIds)
 	{
+		debug("\t\t%s\n", Bases[baseId].name);
 		BASE &base = Bases[baseId];
 		BaseTerraformingInfo &baseTerraformingInfo = getBaseTerraformingInfo(baseId);
 		std::vector<MAP *> baseWorkedTiles = getBaseWorkedTiles(baseId);
@@ -741,14 +761,18 @@ void populateTerraformingData()
 		baseTerraformingInfo.economyValue = getBaseEconomyMultiplier(baseId);
 		baseTerraformingInfo.labsValue = getBaseLabsMultiplier(baseId);
 
-		baseTerraformingInfo.workerMarginalGains.reserve(base.pop_size);
+		debug("\t\t\tfarmer gains\n");
+		baseTerraformingInfo.workerGains.reserve(base.pop_size);
 		for (MAP *workedTile : baseWorkedTiles)
 		{
 			ResourceYield workedTileResourceYield = getTileResourceYield(workedTile, baseId);
-			double farmerMarginalGain = baseTerraformingInfo.getMarginalGain(workedTileResourceYield, 0, 0);
-			baseTerraformingInfo.workerMarginalGains.push_back({farmerMarginalGain, workedTile});
+			double farmerGain = baseTerraformingInfo.getIntakeGain(workedTileResourceYield, 0, 0);
+			baseTerraformingInfo.workerGains.push_back({farmerGain, workedTile});
+			debug("\t\t\t\t%s %5.2f {%2d-%2d-%2d}\n", getLocationString(workedTile), farmerGain, workedTileResourceYield.nutrient, workedTileResourceYield.mineral, workedTileResourceYield.energy);
 		}
+
 		// do not account for extra specialists
+		debug("\t\t\tspecialist gains\n");
 		for (int specialistIndex = 0; specialistIndex < std::min(MaxBaseSpecNum, base.specialist_total); ++specialistIndex)
 		{
 			int specialistType = base.specialist_type(specialistIndex);
@@ -759,19 +783,22 @@ void populateTerraformingData()
 			if (citizen.psych_bonus > 0)
 				continue;
 
-			double specialistMarginalGain = baseTerraformingInfo.getMarginalGain({0, 0, 0}, citizen.econ_bonus, citizen.labs_bonus);
-			baseTerraformingInfo.workerMarginalGains.push_back({specialistMarginalGain, nullptr});
+			double specialistGain = baseTerraformingInfo.getIntakeGain({0, 0, 0}, citizen.econ_bonus, citizen.labs_bonus);
+			baseTerraformingInfo.workerGains.push_back({specialistGain, nullptr});
+			debug("\t\t\t\t%s %5.2f\n", citizen.singular_name, specialistGain);
 
 		}
-		// sort marginal gains ascending
-		std::sort(baseTerraformingInfo.workerMarginalGains.begin(), baseTerraformingInfo.workerMarginalGains.end(), [](WorkerMarginalGain const &o1, WorkerMarginalGain const &o2) { return o1.gain < o2.gain; });
+		// sort gains ascending
+		std::sort(baseTerraformingInfo.workerGains.begin(), baseTerraformingInfo.workerGains.end(), [](WorkerGain const &o1, WorkerGain const &o2) { return o1.gain < o2.gain; });
 
 	}
 
 	// base unworked tile yields
 
+	debug("\tunworked tile yields\n");
 	for (int baseId : aiData.baseIds)
 	{
+		debug("\t\t%s\n", Bases[baseId].name);
 		BaseTerraformingInfo &baseTerraformingInfo = getBaseTerraformingInfo(baseId);
 		std::vector<ResourceYield> &unworkedTileYields = baseTerraformingInfo.unworkedTileYields;
 
@@ -818,6 +845,15 @@ void populateTerraformingData()
 			else
 			{
 				++it;
+			}
+
+		}
+
+		if (DEBUG)
+		{
+			for (ResourceYield unworkedTileYeild : unworkedTileYields)
+			{
+				debug("\t\t\t{%2d-%2d-%2d}\n", unworkedTileYeild.nutrient, unworkedTileYeild.mineral, unworkedTileYeild.energy);
 			}
 
 		}
@@ -1034,9 +1070,65 @@ void generateTerraformingRequests()
 		generateLandBridgeTerraformingRequests();
 	}
 
-	// sort terraformingRequests
+	// sort terraformingRequests by formerGain descending with tolearance 1E-6 preserving original order
 
-	std::sort(terraformingRequests.begin(), terraformingRequests.end());
+	std::stable_sort(terraformingRequests.begin(), terraformingRequests.end(), [](TerraformingRequest const &a, TerraformingRequest const &b){ return std::abs(a.formerGain - b.formerGain) >= 1E-6 && a.formerGain > b.formerGain; });
+	// std::sort
+	// (
+	// 	terraformingRequests.begin(), terraformingRequests.end(),
+	// 	[](const TerraformingRequest &a, const TerraformingRequest &b)
+	// 	{
+	// 		if (a.option != nullptr && b.option != nullptr && a.option == b.option)
+	// 		{
+	// 			int aIndex = 0;
+	// 			int bIndex = 0;
+	// 			switch (a.action)
+	// 			{
+	// 			case FORMER_REMOVE_FUNGUS:
+	// 				aIndex = 0;
+	// 				break;
+	// 			case FORMER_LEVEL_TERRAIN:
+	// 				aIndex = 1;
+	// 				break;
+	// 			case FORMER_ROAD:
+	// 				aIndex = 2;
+	// 				break;
+	// 			case FORMER_FARM:
+	// 				aIndex = 3;
+	// 				break;
+	// 			case FORMER_SOIL_ENR:
+	// 				aIndex = 4;
+	// 				break;
+	// 			default:
+	// 				aIndex = 5;
+	// 			}
+	// 			switch (b.action)
+	// 			{
+	// 			case FORMER_REMOVE_FUNGUS:
+	// 				bIndex = 0;
+	// 				break;
+	// 			case FORMER_LEVEL_TERRAIN:
+	// 				bIndex = 1;
+	// 				break;
+	// 			case FORMER_ROAD:
+	// 				bIndex = 2;
+	// 				break;
+	// 			case FORMER_FARM:
+	// 				bIndex = 3;
+	// 				break;
+	// 			case FORMER_SOIL_ENR:
+	// 				bIndex = 4;
+	// 				break;
+	// 			default:
+	// 				bIndex = 5;
+	// 			}
+	// 			return aIndex < bIndex;
+	// 		}
+	// 		return a.formerGain > b.formerGain;
+	// 	}
+	// );
+
+	// TODO remove requests for same action in same tile. Also remove less priotiosed incompatible requests those would cancel previous requests or be cancelled by previous requests.
 
 	Profiling::stop("generateTerraformingRequests");
 
@@ -1067,36 +1159,31 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			if (option->rocky && !tileTerraformingInfo.landRocky)
 				continue;
 
-			// required action should be available
-
-			if (!isTerraformingAvailable(tile, option->requiredAction))
-				continue;
-
 			// improve tile and collect actions
 
-			std::set<FormerItem> actions;
+			std::vector<FormerItem> actions;
 
 			// remove fungus if needed
 
-			if (option->requiredAction != FORMER_PLANT_FUNGUS && tile->is_fungus())
+			if (option->requiredAction != FORMER_PLANT_FUNGUS && tile->is_fungus() && isTerraformingAvailable(tile, FORMER_REMOVE_FUNGUS))
 			{
-				actions.insert(FORMER_REMOVE_FUNGUS);
+				actions.push_back(FORMER_REMOVE_FUNGUS);
 				tileTerraformingInfo.applyTerraforming(FORMER_REMOVE_FUNGUS);
 			}
 
 			// level terrain if needed
 
-			if (tile->is_land_rocky() && !option->rocky)
+			if (tile->is_land_rocky() && !option->rocky && isTerraformingAvailable(tile, FORMER_LEVEL_TERRAIN))
 			{
-				actions.insert(FORMER_LEVEL_TERRAIN);
+				actions.push_back(FORMER_LEVEL_TERRAIN);
 				tileTerraformingInfo.applyTerraforming(FORMER_LEVEL_TERRAIN);
 			}
 
 			// build road on land
 
-			if (tileInfo.land && !map_has_item(tile, BIT_ROAD))
+			if (tileInfo.land && !map_has_item(tile, BIT_ROAD) && isTerraformingAvailable(tile, FORMER_ROAD))
 			{
-				actions.insert(FORMER_ROAD);
+				actions.push_back(FORMER_ROAD);
 				tileTerraformingInfo.applyTerraforming(FORMER_ROAD);
 			}
 
@@ -1104,12 +1191,22 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 
 			for (FormerItem action : option->actions)
 			{
+				// skip already existing actions
+				if (std::find(actions.begin(), actions.end(), action) != actions.end())
+					continue;
+
 				if (isTerraformingAvailable(tile, action))
 				{
-					actions.insert(action);
+					actions.push_back(action);
 					tileTerraformingInfo.applyTerraforming(action);
 				}
+
 			}
+
+			// need available actions
+
+			if (actions.empty())
+				continue;
 
 			// get improved tile yield
 
@@ -1127,28 +1224,27 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 					break;
 				}
 			}
-
 			if (noBetter)
 				continue;
 
 			// calculate option score
 
-			double improvedTileMarginalGain = computeBaseTileYieldMarginalGain(baseId, improvedTileYield);
+			double improvedTileGain = computeWorkerGain(baseId, improvedTileYield);
 
 			// factor in area effect
 
 			switch (option->requiredAction)
 			{
 			case FORMER_CONDENSER:
-				improvedTileMarginalGain += getCondenserGain(tile);
+				improvedTileGain += getCondenserGain(tile);
 				break;
 			case FORMER_ECH_MIRROR:
-				improvedTileMarginalGain += getEchelonMirrorGain(tile);
+				improvedTileGain += getEchelonMirrorGain(tile);
 				break;
 			default: ;
 			}
 
-			if (improvedTileMarginalGain < 0.0)
+			if (improvedTileGain < 0.0)
 				continue;
 
 			// adjust score to preserve land rocky tiles
@@ -1156,12 +1252,55 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			if (tileTerraformingInfo.landRocky && !option->rocky && tileTerraformingInfo.landRockyTileCount < PRESERVED_LAND_ROCKY_TILE_COUNT)
 			{
 				double landRockyPreservationCoefficient = std::min(1.0, static_cast<double>(tileTerraformingInfo.landRockyTileCount) / static_cast<double>(PRESERVED_LAND_ROCKY_TILE_COUNT));
-				improvedTileMarginalGain *= landRockyPreservationCoefficient; // NOLINT
+				improvedTileGain *= landRockyPreservationCoefficient; // NOLINT
 			}
+
+			// penalize improvement destruction
+
+			uint32_t incompatibleFormerItemBits = 0;
+			for (FormerItem const &actionFormerItem : actions)
+			{
+				CTerraform actionTerraform = Terraform[actionFormerItem];
+				incompatibleFormerItemBits |= actionTerraform.bit_incompatible;
+			}
+
+			// remove built items as they could be incompatible with themselves and is going to be built anyway
+			for (FormerItem const &actionFormerItem : actions)
+			{
+				CTerraform actionTerraform = Terraform[actionFormerItem];
+				incompatibleFormerItemBits &= ~actionTerraform.bit;
+			}
+
+			// compute total built items terraforming rate
+			int builtItemTotalTerraformingRate = 0;
+			for (FormerItem const &actionFormerItem : actions)
+			{
+				CTerraform builtItemTerraform = Terraform[actionFormerItem];
+				builtItemTotalTerraformingRate += builtItemTerraform.rate;
+			}
+
+			// compute total destroyed items terraforming rate
+			int destroyedItemTotalTerraformingRate = 0;
+			for (FormerItem const &destroyedFormerItem : {FORMER_FARM, FORMER_SOIL_ENR, FORMER_MINE, FORMER_SOLAR, FORMER_FOREST, FORMER_CONDENSER, FORMER_ECH_MIRROR, FORMER_THERMAL_BORE, })
+			{
+				CTerraform destroyedItemTerraform = Terraform[destroyedFormerItem];
+
+				// destroyed improvement must exist and be incompatible
+				if (map_has_item(tile, destroyedItemTerraform.bit) && (incompatibleFormerItemBits & destroyedItemTerraform.bit) != 0)
+				{
+					destroyedItemTotalTerraformingRate += destroyedItemTerraform.rate;
+				}
+
+			}
+
+			// update gain with preservation coefficient
+			double preservationCoefficient = static_cast<double>(builtItemTotalTerraformingRate) / static_cast<double>(builtItemTotalTerraformingRate + destroyedItemTotalTerraformingRate);
+			improvedTileGain *= preservationCoefficient; // NOLINT(clang-diagnostic-unused-variable)
+			debug("\t\t%5.2f %-16s preservationCoefficient=%5.2f\n", improvedTileGain, option->name, preservationCoefficient);
 
 			// save option score
 
-			terraformingOptionScores.push_back({tile, improvedTileMarginalGain, option, actions});
+			terraformingOptionScores.push_back({tile, option, actions, improvedTileGain});
 
 		}
 
@@ -1176,52 +1315,62 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 		TerraformingOptionScore bestTerraformingOptionScore = std::move(*iterator);
 		terraformingOptionScores.erase(iterator);
 
-		// find second best option score
+		// compute fitScore and adjusted score for flat output improvements
 
-		double secondBestOptionScore = 0.0;
-		if (!terraformingOptionScores.empty())
+		if (bestTerraformingOptionScore.option->requiredAction == FORMER_FOREST || bestTerraformingOptionScore.option->requiredAction == FORMER_THERMAL_BORE)
 		{
-			secondBestOptionScore = std::max_element(terraformingOptionScores.begin(), terraformingOptionScores.end())->score;
+			// find second best option gain
+
+			double secondBestOptionGain = 0.0;
+			if (!terraformingOptionScores.empty())
+			{
+				secondBestOptionGain = std::max_element(terraformingOptionScores.begin(), terraformingOptionScores.end())->gain;
+			}
+
+			// compute fitScore and adjusted score
+			// 0.75 when best option is same as second best option
+			// 1.25 when best option is 2x better than second best option
+
+			double fitScoreMultiplier = 1.00 + (-0.25 + (0.25 + 0.25) * 2.00 * std::min(0.5, 1.0 - secondBestOptionGain / bestTerraformingOptionScore.gain));
+			bestTerraformingOptionScore.gain *= fitScoreMultiplier;
+
 		}
-
-		// compute fitScore and adjusted score
-
-		double fitScoreMultiplier = -0.25 + 1.00 * std::min(0.5, 1.0 - secondBestOptionScore / bestTerraformingOptionScore.score);
-		bestTerraformingOptionScore.score *= fitScoreMultiplier;
 
 		// store baseTerraformingOptionScore
 
 		baseTerraformingOptionScores.push_back(bestTerraformingOptionScore);
+		debug("\t\t%5.2f %s\n", bestTerraformingOptionScore.gain, bestTerraformingOptionScore.option->name);
 
 	}
 
 	// sort baseTerraformingOptionScores by score descending
 
-	std::sort(baseTerraformingOptionScores.begin(), baseTerraformingOptionScores.end(), [](const TerraformingOptionScore &a, const TerraformingOptionScore &b) { return a.score > b.score; });
+	std::sort(baseTerraformingOptionScores.begin(), baseTerraformingOptionScores.end(), [](const TerraformingOptionScore &a, const TerraformingOptionScore &b) { return a.gain > b.gain; });
 
 	// match them with the worst worker to get the improvement gain
 
-	std::vector<bool> matched(baseTerraformingInfo.workerMarginalGains.size(), false);
+	debug("\treplacement gain\n");
+	std::vector<bool> matched(baseTerraformingInfo.workerGains.size(), false);
 	for (TerraformingOptionScore &baseTerraformingOptionScore : baseTerraformingOptionScores)
 	{
 		int matchedIndex = -1;
 
-		// 1. Find workerMarginalGains that has same tile as current baseTerraformingOptionScore.
+		// 1. Find workerGains that has same tile as current baseTerraformingOptionScore.
 
-		for (int i = 0; i < static_cast<int>(baseTerraformingInfo.workerMarginalGains.size()); i++)
+		for (int i = 0; i < static_cast<int>(baseTerraformingInfo.workerGains.size()); i++)
 		{
-			if (!matched[i] && baseTerraformingInfo.workerMarginalGains[i].tile == baseTerraformingOptionScore.tile)
+			if (!matched[i] && baseTerraformingInfo.workerGains[i].tile == baseTerraformingOptionScore.tile)
 			{
 				matchedIndex = i;
 				break;
 			}
 		}
 
-		// 2. If none found, then pick not yet matched workerMarginalGain with the minimal gain.
+		// 2. If none found, then pick not yet matched workerGains with the minimal gain.
 
 		if (matchedIndex == -1)
 		{
-			for (int i = 0; i < static_cast<int>(baseTerraformingInfo.workerMarginalGains.size()); i++)
+			for (int i = 0; i < static_cast<int>(baseTerraformingInfo.workerGains.size()); i++)
 			{
 				if (!matched[i])
 				{
@@ -1237,17 +1386,15 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			break;
 
 		matched[matchedIndex] = true;
-		baseTerraformingOptionScore.score -= baseTerraformingInfo.workerMarginalGains[matchedIndex].gain;
+		baseTerraformingOptionScore.gain -= baseTerraformingInfo.workerGains[matchedIndex].gain;
+		debug("\t\t%5.2f %s %-16s matchedIndex=%2d replacementGain=%5.2f\n", baseTerraformingOptionScore.gain, getLocationString(baseTerraformingOptionScore.tile), baseTerraformingOptionScore.option->name, matchedIndex, baseTerraformingOptionScore.gain);
 
-		// marginal gain is not positive - exit
+		// gain is not positive - exit
 
-		if (baseTerraformingOptionScore.score <= 0)
+		if (baseTerraformingOptionScore.gain <= 0)
 			break;
 
-		// insert actions
-
-		insertActionTerraformingRequests(baseTerraformingOptionScore.tile, baseTerraformingOptionScore.actions, baseTerraformingOptionScore.score);
-		debug("\t%5.2f %-15s\n", baseTerraformingOptionScore.score, baseTerraformingOptionScore.option->name);
+		insertActionTerraformingRequests(baseTerraformingOptionScore.tile, baseTerraformingOptionScore.option, baseTerraformingOptionScore.actions, baseTerraformingOptionScore.gain);
 
 	}
 
@@ -1330,7 +1477,7 @@ void generateLandBridgeTerraformingRequests()
 			, bridgeRequest.value
 		);
 
-		TerraformingRequest terraformingRequest(bridgeRequest.tile, FORMER_RAISE_LAND, gain);
+		TerraformingRequest terraformingRequest(bridgeRequest.tile, &TO_RAISE_LAND, FORMER_RAISE_LAND, gain);
 
 		terraformingRequests.push_back(terraformingRequest);
 
@@ -1354,7 +1501,7 @@ void generateAquiferTerraformingRequest(MAP *tile)
 
 	// store terraformingRequest
 
-	terraformingRequests.emplace_back(tile, action, gain);
+	terraformingRequests.emplace_back(tile, nullptr, action, gain);
 
 }
 
@@ -1379,7 +1526,7 @@ void generateRaiseLandTerraformingRequest(MAP *tile)
 
 	double gain = getRaiseLandGain(tile);
 
-	terraformingRequests.emplace_back(tile, action, gain);
+	terraformingRequests.emplace_back(tile, nullptr, action, gain);
 
 }
 
@@ -1422,17 +1569,23 @@ void generateNetworkTerraformingRequest(MAP *tile)
 
 	// collect actions
 
-	std::set<FormerItem> actions;
-	actions.insert(action);
+	std::vector<FormerItem> actions;
 
 	// remove fungus if needed
 
-	if (tile->is_fungus() && !has_tech(Rules->tech_preq_build_road_fungus, aiFactionId))
+	if (tile->is_fungus() && !has_tech(Rules->tech_preq_build_road_fungus, aiFactionId) && isTerraformingAvailable(tile, FORMER_REMOVE_FUNGUS))
 	{
-		actions.insert(FORMER_REMOVE_FUNGUS);
+		actions.push_back(FORMER_REMOVE_FUNGUS);
 	}
 
-	insertActionTerraformingRequests(tile, actions, gain);
+	// main action
+
+	if (isTerraformingAvailable(tile, action))
+	{
+		actions.push_back(action);
+	}
+
+	insertActionTerraformingRequests(tile, nullptr, actions, gain);
 
 }
 
@@ -1454,17 +1607,23 @@ void generateSensorTerraformingRequest(MAP *tile)
 
 	// collect actions
 
-	std::set<FormerItem> actions;
-	actions.insert(action);
+	std::vector<FormerItem> actions;
 
 	// remove fungus if needed
 
-	if (tile->is_fungus() && !has_tech(Rules->tech_preq_build_road_fungus, aiFactionId))
+	if (tile->is_fungus() && !has_tech(Rules->tech_preq_build_road_fungus, aiFactionId) && isTerraformingAvailable(tile, FORMER_REMOVE_FUNGUS))
 	{
-		actions.insert(FORMER_REMOVE_FUNGUS);
+		actions.push_back(FORMER_REMOVE_FUNGUS);
 	}
 
-	insertActionTerraformingRequests(tile, actions, gain);
+	// main action
+
+	if (isTerraformingAvailable(tile, action))
+	{
+		actions.push_back(action);
+	}
+
+	insertActionTerraformingRequests(tile, nullptr, actions, gain);
 
 }
 
@@ -1486,17 +1645,23 @@ void generateBunkerTerraformingRequest(MAP *tile)
 
 	// collect actions
 
-	std::set<FormerItem> actions;
-	actions.insert(action);
+	std::vector<FormerItem> actions;
 
 	// remove fungus if needed
 
-	if (tile->is_fungus() && !has_tech(Rules->tech_preq_build_road_fungus, aiFactionId))
+	if (tile->is_fungus() && !has_tech(Rules->tech_preq_build_road_fungus, aiFactionId) && isTerraformingAvailable(tile, FORMER_REMOVE_FUNGUS))
 	{
-		actions.insert(FORMER_REMOVE_FUNGUS);
+		actions.push_back(FORMER_REMOVE_FUNGUS);
 	}
 
-	insertActionTerraformingRequests(tile, actions, gain);
+	// main action
+
+	if (isTerraformingAvailable(tile, action))
+	{
+		actions.push_back(action);
+	}
+
+	insertActionTerraformingRequests(tile, nullptr, actions, gain);
 
 }
 
@@ -1552,11 +1717,13 @@ bool isProximityRuleSatisfied(MAP *tile, FormerItem action)
 }
 
 /*
-Removes terraforming requests in terraformed tiles.
+Removes terraforming requests for action that has already been terraformed or appears higher in the list.
 */
 void removeTerraformedTiles()
 {
 	Profiling::start("removeTerraformedTiles", "moveFormerStrategy");
+
+	robin_hood::unordered_flat_map<MAP *, robin_hood::unordered_flat_set<FormerItem>> terraformedActions;
 
 	for
 	(
@@ -1567,12 +1734,18 @@ void removeTerraformedTiles()
 		TerraformingRequest &terraformingRequest = *terraformingRequestsIterator;
 		TileTerraformingInfo &terraformingRequestTileInfo = getTileTerraformingInfo(terraformingRequest.tile);
 
-		if (terraformingRequestTileInfo.terraformed)
+		if
+		(
+			terraformingRequestTileInfo.terraformingItems.find(terraformingRequest.action) != terraformingRequestTileInfo.terraformingItems.end()
+			||
+			(terraformedActions.find(terraformingRequestTileInfo.tile) != terraformedActions.end() && terraformedActions.at(terraformingRequestTileInfo.tile).find(terraformingRequest.action) != terraformedActions.at(terraformingRequestTileInfo.tile).end())
+		)
 		{
 			terraformingRequestsIterator = terraformingRequests.erase(terraformingRequestsIterator);
 		}
 		else
 		{
+			terraformedActions[terraformingRequestTileInfo.tile].insert(terraformingRequest.action);
 			++terraformingRequestsIterator;
 		}
 
@@ -1621,6 +1794,8 @@ void assignFormerOrders()
 
 	aiData.production.terraformingRequests.clear();
 
+	// TODO find the best work for the former, not the best former for the work
+
 	// set of assigned tile and action pairs
 	std::set<std::pair<MAP *, FormerItem>> assignedRequests;
 
@@ -1633,7 +1808,7 @@ void assignFormerOrders()
 		if (assignedRequests.count({tile, action}))
 			continue;
 
-		debug("\t%5.2f %s %-16s\n", terraformingRequest.incomeGain, getLocationString(tile), Terraform[action].name);
+		debug("\t%5.2f / %2d -> %5.2f %s %-16s\n", terraformingRequest.incomeGain, terraformingRequest.terraformingRate, terraformingRequest.formerGain, getLocationString(tile), Terraform[action].name);
 
 		// verify action complies with proximity rules
 
@@ -1748,11 +1923,13 @@ void assignFormerOrders()
 			candidateFormer.order->action = action;
 			cooperatingFormers.push_back(candidateFormer);
 
-			debug("\t[%4d] (COOP) travelTime=%5.2f workLeftAtArrival=%5.2f candidateWorkTime=%5.2f\n", candidateFormer.order->vehicleId, candidateFormer.travelTime, workLeftAtArrival, candidateFormerWorkTime);
+			debug("\t\t[%4d] (COOP) travelTime=%5.2f workLeftAtArrival=%5.2f candidateWorkTime=%5.2f\n", candidateFormer.order->vehicleId, candidateFormer.travelTime, workLeftAtArrival, candidateFormerWorkTime);
 
 		}
 
 	}
+
+	// TODO swap orders for better efficiency
 
 	Profiling::stop("assignFormerOrders");
 
@@ -1797,18 +1974,10 @@ void setFormerTasks()
 Computes base tile improvement surplus effect.
 */
 
-double computeBaseTileYieldMarginalGain(int baseId, ResourceYield const &tileYield)
+double computeWorkerGain(int baseId, ResourceYield const &tileYield)
 {
 	BaseTerraformingInfo &baseTerraformingInfo = getBaseTerraformingInfo(baseId);
-
-	// marginal gain
-
-	double marginalGain = baseTerraformingInfo.getMarginalGain(tileYield, 0, 0);
-
-	// effect
-
-	return marginalGain;
-
+	return baseTerraformingInfo.getIntakeGain(tileYield, 0, 0);
 }
 
 /*
@@ -2280,8 +2449,9 @@ int getTerraformingTime(int vehicleId, MAP *tile, FormerItem action)
 	vehicle.y = static_cast<int16_t>(y);
 
 	// compute terraforming time
+	// original action_terraform code gives one less turn for some reason
 
-	int terraformingTime = action_terraform(vehicleId, action, 0);
+	int terraformingTime = action_terraform(vehicleId, action, 0) + 1;
 
 	// restore vehicle coordinates
 
@@ -2294,7 +2464,7 @@ int getTerraformingTime(int vehicleId, MAP *tile, FormerItem action)
 
 }
 
-void insertActionTerraformingRequests(MAP *tile, std::set<FormerItem> const &actions, double gain)
+void insertActionTerraformingRequests(MAP *tile, TERRAFORMING_OPTION const *option, std::vector<FormerItem> const &actions, double gain)
 {
 	// positive gain
 
@@ -2330,8 +2500,8 @@ void insertActionTerraformingRequests(MAP *tile, std::set<FormerItem> const &act
 		if (tile->is_land_rocky() && action != FORMER_LEVEL_TERRAIN && isLevelTerrainRequired(tile->is_sea(), action))
 			continue;
 
-		double actionGain = gain * static_cast<double>(Terraform[action].rate) / static_cast<double>(totalTerraformingRate);
-		terraformingRequests.emplace_back(tile, action, actionGain);
+		double incomeGain = gain * static_cast<double>(Terraform[action].rate) / static_cast<double>(totalTerraformingRate);
+		terraformingRequests.emplace_back(tile, option, action, incomeGain);
 
 	}
 
@@ -2588,7 +2758,7 @@ double getNetworkGain(MAP *tile, MAP const &originalTile, MAP const &improvedTil
 		if (!baseTile->is_land())
 			continue;
 
-		if (getRange(x, y, base.x, base.y) > 5)
+		if (getRange(x, y, base.x, base.y) > NETWORK_BASE_RANGE)
 			continue;
 
 		baseIds.insert(baseId);
@@ -2611,18 +2781,30 @@ double getNetworkGain(MAP *tile, MAP const &originalTile, MAP const &improvedTil
 	{
 		for (int dstBaseId : baseIds)
 		{
-			double travelTimeImprovement = originalTravelTimes.at(orgBaseId).at(dstBaseId) - improvedTravelTimes.at(orgBaseId).at(dstBaseId);
+			// not same
 
-			if (travelTimeImprovement > 0.0)
+			if (dstBaseId == orgBaseId)
+				continue;
+
+			if
+			(
+				originalTravelTimes.find(orgBaseId) != originalTravelTimes.end() && originalTravelTimes.at(orgBaseId).find(dstBaseId) != originalTravelTimes.at(orgBaseId).end()
+				&&
+				improvedTravelTimes.find(orgBaseId) != improvedTravelTimes.end() && improvedTravelTimes.at(orgBaseId).find(dstBaseId) != improvedTravelTimes.at(orgBaseId).end()
+			)
 			{
-				totalTravelTimeImprovement += travelTimeImprovement;
+				double travelTimeImprovement = originalTravelTimes.at(orgBaseId).at(dstBaseId) - improvedTravelTimes.at(orgBaseId).at(dstBaseId);
+				if (travelTimeImprovement > 0.0)
+				{
+					totalTravelTimeImprovement += travelTimeImprovement;
+				}
 			}
 
 		}
 
 	}
 
-	// halve travel time improvement to account for bidirectional travel
+	// halve travel time improvement since it was counted twice in both directions
 
 	totalTravelTimeImprovement /= 2.0;
 
@@ -2630,7 +2812,7 @@ double getNetworkGain(MAP *tile, MAP const &originalTile, MAP const &improvedTil
 
 	double resourceScore = getResourceScore(conf.ai_terraforming_networkValueIncomeImprovement, 0.0);
 	double improvementIncomeGrowh = resourceScore * totalTravelTimeImprovement / conf.ai_terraforming_networkValueTravelTimeDenominator;
-	double networkGain = getGainIncomeGrowth(improvementIncomeGrowh);
+	double networkGain = getGainIncome(improvementIncomeGrowh);
 
 	return networkGain;
 
@@ -2638,6 +2820,17 @@ double getNetworkGain(MAP *tile, MAP const &originalTile, MAP const &improvedTil
 
 robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, double>> getCrossBaseTravelTimes(std::set<int> const& baseIds)
 {
+	debug("getCrossBaseTravelTimes\n");
+
+	// set tile -> base mapping
+
+	robin_hood::unordered_flat_map<MAP *, int> tileBaseId;
+	for (int baseId : baseIds)
+	{
+		MAP *baseTile = getBaseMapTile(baseId);
+		tileBaseId[baseTile] = baseId;
+	}
+
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, double>> travelTimes;
 
 	robin_hood::unordered_map<MAP *, int> travelCosts;
@@ -2687,9 +2880,9 @@ robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, double>>
 					if (!adjacentTile->is_land())
 						continue;
 
-					// within 5 tiles
+					// within 9 tiles
 
-					if (getRange(orgBaseTile, adjacentTile) > 5)
+					if (getRange(orgBaseTile, adjacentTile) > 2 * NETWORK_BASE_RANGE + 1)
 						continue;
 
 					// hexCost

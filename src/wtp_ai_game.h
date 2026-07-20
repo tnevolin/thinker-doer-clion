@@ -656,8 +656,11 @@ struct TERRAFORMING_OPTION
 struct TerraformingRequest
 {
 	MAP *tile;
+	TERRAFORMING_OPTION const *option;
 	FormerItem action;
 	double incomeGain;
+	int terraformingRate;
+	double formerGain;
 	mutable bool assigned = false;
 
 	// conventional terraforming (tile items modification resulting in yield change)
@@ -673,15 +676,10 @@ struct TerraformingRequest
 	// improvement generated gain (with terraformingTime delay)
 	double improvementGain = 0.0;
 
-	TerraformingRequest(MAP *_tile, FormerItem action, double score)
-	: tile(_tile), action(action), incomeGain(score)
-	{}
+	TerraformingRequest(MAP *_tile, TERRAFORMING_OPTION const *_option, FormerItem _action, double _incomeGain);
 
 	// compare by incomeGain descending
-	bool operator<(TerraformingRequest const & other) const
-	{
-		return incomeGain > other.incomeGain;
-	}
+	bool operator<(TerraformingRequest const & other) const;
 
 };
 
@@ -980,6 +978,7 @@ std::array<int, 3> getFactionFastestTriadChassisIds(int factionId);
 bool isWithinAlienArtilleryRange(int vehicleId);
 bool isWtpEnabledFaction(int factionId);
 bool compareIdIntValueAscending( IdIntValue &a,  IdIntValue &b);
+bool compareMapIntValueAscending( MapIntValue &a,  MapIntValue &b);
 bool compareIdIntValueDescending( IdIntValue &a,  IdIntValue &b);
 bool compareIdDoubleValueAscending( IdDoubleValue &a,  IdDoubleValue &b);
 bool compareIdDoubleValueDescending( IdDoubleValue &a,  IdDoubleValue &b);

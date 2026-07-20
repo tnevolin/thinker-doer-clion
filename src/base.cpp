@@ -2326,6 +2326,7 @@ int prod_turns(int base_id, int item_id) {
     BASE* b = &Bases[base_id];
     assert(base_id >= 0 && base_id < *BaseCount);
     if (item_id >= 0) {
+    	size_t len = strlen(Units[item_id].name);
         assert(strlen(Units[item_id].name) > 0);
     } else {
         assert(item_id >= -SP_ID_Last);

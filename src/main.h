@@ -86,10 +86,20 @@
 #ifdef BUILD_DEBUG
 #ifdef assert
 #undef assert
+/*
 #define assert(_Expression) \
 ((!!(_Expression)) \
 || (fprintf(debug_log, "Assertion Failed: %s %s %d\n", #_Expression, __FILE__, __LINE__) \
 && (_assert(#_Expression, __FILE__, __LINE__), 0)))
+*/
+#define assert(_Expression) \
+do { \
+if (!(_Expression)) { \
+fprintf(debug_log, "Assertion Failed: %s %s %d\n", #_Expression, __FILE__, __LINE__); \
+fflush(debug_log); \
+__debugbreak(); \
+} \
+} while(0)
 #endif
 #endif
 

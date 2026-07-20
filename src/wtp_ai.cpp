@@ -1700,16 +1700,17 @@ void populateBunkerInfos()
 		
 		if (tileInfo.bunker)
 		{
+			aiData.bunkerInfos.emplace(tile, BunkerInfo());
+			aiData.getBunkerInfo(tile).tile = tile;
+
 			// player territory - not block
 			if (tile->owner == aiFactionId && !tileInfo.blocks.at(aiFactionId))
 			{
-				aiData.bunkerInfos.emplace(tile, BunkerInfo());
 				aiData.getBunkerInfo(tile).playerTerritory = true;
 			}
 			// hostile territory - not block
 			else if (isHostile(aiFactionId, tile->owner) && !tileInfo.blocks.at(aiFactionId))
 			{
-				aiData.bunkerInfos.emplace(tile, BunkerInfo());
 				aiData.getBunkerInfo(tile).playerTerritory = false;
 			}
 
@@ -2855,23 +2856,23 @@ void populateEnemyStacks()
 	
 	// track closest to our bases stacks only
 	
-	std::vector<IdIntValue> stackTileRanges;
+	std::vector<MapIntValue> stackTileRanges;
 	
 	for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 	{
 		MAP *enemyStackLocation = enemyStackEntry.first;
 		EnemyStackInfo &enemyStackInfo = enemyStackEntry.second;
 		
-		stackTileRanges.push_back({(int)enemyStackLocation, enemyStackInfo.baseRange});
+		stackTileRanges.push_back({enemyStackLocation, enemyStackInfo.baseRange});
 		
 	}
 	
-	std::sort(stackTileRanges.begin(), stackTileRanges.end(), compareIdIntValueAscending);
+	std::sort(stackTileRanges.begin(), stackTileRanges.end(), compareMapIntValueAscending);
 	
 	for (unsigned int i = 0; i < stackTileRanges.size(); i++)
 	{
-		IdIntValue stackTileRange = stackTileRanges.at(i);
-		MAP *enemyStackLocation = (MAP *)stackTileRange.id;
+		MapIntValue stackTileRange = stackTileRanges.at(i);
+		MAP *enemyStackLocation = stackTileRange.tile;
 		
 		if (i < STACK_MAX_COUNT || stackTileRange.value <= STACK_MAX_BASE_RANGE)
 			continue;

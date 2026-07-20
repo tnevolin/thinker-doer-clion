@@ -7,6 +7,8 @@
 #include "engine.h"
 #include "wtp_ai_game.h"
 
+constexpr int NETWORK_BASE_RANGE = 5;
+
 constexpr int PRESERVED_LAND_ROCKY_TILE_COUNT = 4;
 constexpr int BUNKER_ENEMY_BASE_RANGE_MIN = 2;
 constexpr int BUNKER_ENEMY_BASE_RANGE_MAX = 5;
@@ -75,82 +77,23 @@ struct TileTerraformingInfo
 	// current terraforming
 	robin_hood::unordered_flat_set<FormerItem> terraformingItems;
 
-	void storeOriginalMapTile()
-	{
-		originalTile = *tile;
-	}
-	void restoreOriginalMapTile()
-	{
-		*tile = originalTile;
-	}
-	void storeEffectiveMapTile()
-	{
-		effectiveTile = *tile;
-	}
-	void restoreEffectiveMapTile()
-	{
-		*tile = effectiveTile;
-	}
-
-	void static applyTerraforming(MAP *tile, FormerItem action)
-	{
-		switch (action)
-		{
-		case FORMER_LEVEL_TERRAIN:
-			{
-				if (tile->is_land())
-				{
-					if (tile->is_rocky())
-					{
-						// rocky turns to rolling
-						tile->val3 &= ~TILE_ROCKY;
-						tile->val3 |= TILE_ROLLING;
-					}
-					else if (tile->is_rolling())
-					{
-						// rolling turns to flat
-						tile->val3 &= ~TILE_ROLLING;
-					}
-				}
-			}
-			break;
-
-		case FORMER_AQUIFER:
-			{
-				tile->items |= BIT_RIVER_SRC | BIT_RIVER;
-			}
-			break;
-
-		default:
-			{
-				tile->items |= Terraform[action].bit;
-				tile->items &= ~Terraform[action].bit_incompatible;
-			}
-			break;
-
-		}
-
-	}
-	void applyTerraforming(FormerItem action)
-	{
-		applyTerraforming(this->tile, action);
-	}
+	void storeOriginalMapTile();
+	void restoreOriginalMapTile();
+	void storeEffectiveMapTile();
+	void restoreEffectiveMapTile();
+	void applyTerraforming(FormerItem action);
 
 };
 
-struct WorkerMarginalGain
+struct WorkerGain
 {
 	double gain;
 	MAP *tile;
 };
 struct BaseTerraformingInfo
 {
-	int projectedPopSize;
 	std::vector<MAP *> terraformingSites;
 	int landRockyTileCount;
-	int minimalNutrientYield;
-	int minimalMineralYield;
-	int minimalEnergyYield;
 	int popSzie;
 	int nutrientCost;
 	double income;
@@ -158,10 +101,10 @@ struct BaseTerraformingInfo
 	double energyValue;
 	double economyValue;
 	double labsValue;
-	std::vector<WorkerMarginalGain> workerMarginalGains;
+	std::vector<WorkerGain> workerGains;
 	std::vector<ResourceYield> unworkedTileYields;
 
-	double getMarginalGain(ResourceYield const& yield, int economy, int labs) const;
+	double getIntakeGain(ResourceYield const& yield, int economy, int labs) const;
 
 };
 
@@ -211,10 +154,12 @@ const std::array<const std::vector<TERRAFORMING_OPTION *>, 2> BASE_TERRAFORMING_
 struct TerraformingOptionScore
 {
 	MAP *tile;
-	double score;
 	TERRAFORMING_OPTION *option;
-	std::set<FormerItem> actions;
-	bool operator<(TerraformingOptionScore const &other) const { return score < other.score; }
+	std::vector<FormerItem> actions;
+	double gain;
+
+	bool operator<(TerraformingOptionScore const &other) const { return gain < other.gain; }
+
 };
 
 // prohibits building improvements too close to existing or building same improvement
@@ -301,7 +246,7 @@ bool isProximityRuleSatisfied(MAP *tile, FormerItem action);
 void removeTerraformedTiles();
 void assignFormerOrders();
 void setFormerTasks();
-double computeBaseTileYieldMarginalGain(int baseId, ResourceYield const& tileYield);
+double computeWorkerGain(int baseId, ResourceYield const& tileYield);
 TerraformingRequest calculateRaiseLandTerraformingScore(MAP *tile);
 bool isTerraformingCompleted(MAP const *tile, int action);
 bool isVehicleTerrafomingOrderCompleted(int vehicleId);
@@ -321,7 +266,7 @@ double getTerraformingGain(double income, double terraformingTime);
 double getBaseImprovementIncome(int baseId, Resource oldIntake, Resource newIntake);
 void removeUnusedBunkers();
 int getTerraformingTime(int vehicleId, MAP *tile, FormerItem action);
-void insertActionTerraformingRequests(MAP *tile, std::set<FormerItem> const &actions, double gain);
+void insertActionTerraformingRequests(MAP *tile, TERRAFORMING_OPTION const *option, std::vector<FormerItem> const& actions, double gain);
 double getCondenserGain(MAP *tile);
 double getEchelonMirrorGain(MAP *tile);
 double getAquiferGain(MAP *tile);

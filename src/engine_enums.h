@@ -630,7 +630,7 @@ enum PlayerFlagsExtended {
     PFLAG_EXT_STRAT_LOTS_ARTILLERY = 0x40,
 };
 
-enum MapItem {
+enum MapItem : uint32_t {
     BIT_BASE_IN_TILE = 0x1,
     BIT_VEH_IN_TILE = 0x2,
     BIT_ROAD = 0x4,
@@ -668,37 +668,29 @@ enum MapItem {
 };
 
 const uint32_t TerraformRules[20][2] = { // terrain enhancement, incompatible on same tile
-    BIT_FARM,          BIT_FOREST, // farm
-    BIT_SOIL_ENRICHER, BIT_FOREST, // soil enricher
-    BIT_MINE,          BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR
-                       | BIT_THERMAL_BORE | BIT_SENSOR, // mine
-    BIT_SOLAR,         BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR
-                       | BIT_THERMAL_BORE | BIT_SENSOR, // solar collector / tidal harness
-    BIT_FOREST,        BIT_MINE | BIT_FUNGUS | BIT_SOLAR | BIT_FARM | BIT_SOIL_ENRICHER
-                       | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE, // forest
-    BIT_ROAD,          0, // road
-    BIT_MAGTUBE,       0, // magtube
-    BIT_BUNKER,        BIT_AIRBASE, // bunker
-    BIT_AIRBASE,       BIT_BUNKER, // airbase
-    BIT_SENSOR,        BIT_MINE | BIT_SOLAR | BIT_CONDENSER | BIT_ECH_MIRROR
-                       | BIT_THERMAL_BORE, // sensor
-    0,                 BIT_FUNGUS, // fungus remove
-    BIT_FUNGUS,        BIT_MINE | BIT_SOLAR | BIT_FARM | BIT_SOIL_ENRICHER
-                       | BIT_FOREST, // fungus plant
-    BIT_CONDENSER,     BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR
-                       | BIT_THERMAL_BORE | BIT_SENSOR, // condenser
-    BIT_ECH_MIRROR,    BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR
-                       | BIT_THERMAL_BORE | BIT_SENSOR, // echelon mirror
-    BIT_THERMAL_BORE,  BIT_MINE | BIT_SOLAR | BIT_FARM | BIT_FOREST | BIT_CONDENSER
-                       | BIT_ECH_MIRROR | BIT_THERMAL_BORE | BIT_SENSOR, // thermal borehole
-    0,                 0, // aquifer
-    0,                 0, // raise land
-    0,                 0, // lower land
-    0,                 0, // level terrain
-    BIT_MONOLITH,      BIT_SUPPLY_POD | BIT_NUTRIENT_RES | BIT_BONUS_RES, // monolith
+    {BIT_FARM			, BIT_FOREST																														, }, // farm
+    {BIT_SOIL_ENRICHER	, BIT_FOREST																														, }, // soil enricher
+    {BIT_MINE			, BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE | BIT_SENSOR								, }, // mine
+    {BIT_SOLAR			, BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE | BIT_SENSOR								, }, // solar collector / tidal harness
+    {BIT_FOREST			, BIT_MINE | BIT_FUNGUS | BIT_SOLAR | BIT_FARM | BIT_SOIL_ENRICHER | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE	, }, // forest
+    {BIT_ROAD			, 0																																	, }, // road
+    {BIT_MAGTUBE			, 0																																	, }, // magtube
+    {BIT_BUNKER			, BIT_AIRBASE																														, }, // bunker
+    {BIT_AIRBASE			, BIT_BUNKER																														, }, // airbase
+    {BIT_SENSOR			, BIT_MINE | BIT_SOLAR | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE															, }, // sensor
+    {0					, BIT_FUNGUS																														, }, // fungus remove
+    {BIT_FUNGUS			, BIT_MINE | BIT_SOLAR | BIT_FARM | BIT_SOIL_ENRICHER | BIT_FOREST																	, }, // fungus plant
+    {BIT_CONDENSER		, BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE | BIT_SENSOR								, }, // condenser
+    {BIT_ECH_MIRROR		, BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE | BIT_SENSOR								, }, // echelon mirror
+    {BIT_THERMAL_BORE	, BIT_MINE | BIT_SOLAR | BIT_FARM | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE | BIT_SENSOR						, }, // thermal borehole
+    {0					, 0																																	, }, // aquifer
+    {0					, 0																																	, }, // raise land
+    {0					, 0																																	, }, // lower land
+    {0					, 0																																	, }, // level terrain
+    {BIT_MONOLITH		, BIT_SUPPLY_POD | BIT_NUTRIENT_RES | BIT_BONUS_RES																					, }, // monolith
 };
 
-enum MapLandmark {
+enum MapLandmark : uint32_t {
     LM_CRATER = 0x1,
     LM_VOLCANO = 0x2,
     LM_JUNGLE = 0x4,

@@ -246,7 +246,9 @@ int Task::execute()
 		return EM_DONE;
 	}
 
-	return execute(vehicleId);
+	int returnValue = execute(vehicleId);
+	this->executed = true;
+	return returnValue;
 
 }
 

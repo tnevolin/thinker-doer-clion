@@ -3225,7 +3225,6 @@ double getMeleeAttackGain(int  vehicleId, MAP  *destination, MAP  *target, doubl
 	// attack gain
 
 	double attackGain = getMutualCombatGain(getVehicleDestructionGain(vehicleId), enemyStackInfo.destructionGain, combatEffect);
-debug(">attackGain=%5.2f\n", attackGain);
 	// defend gain if survived
 
 	double defendGain = 0.0;
@@ -3233,7 +3232,6 @@ debug(">attackGain=%5.2f\n", attackGain);
 	{
 		defendGain = winningProbability * getDefendGain(vehicleId, destination, attackerHealth, Vehs[defenderVehicleId].pad_0);
 	}
-debug(">defendGain=%5.2f\n", defendGain);
 
 	return attackGain + defendGain;
 
@@ -3432,6 +3430,8 @@ void aiEnemyMoveCombatVehicles()
 
 			Task *task = getTask(vehicleId);
 			if (task == nullptr)
+				continue;
+			if (task->executed)
 				continue;
 
 			if (task->priority > bestVehicleTaskPriority)

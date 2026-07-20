@@ -709,7 +709,6 @@ double CombatEffectTable::getUnitBombardmentDamage(int attackerFactionId, int at
 	if (attackerOffenseValue < 0 || defenderDefenseValue < 0)
 	{
 		relativeStrength = getPsiCombatBaseOdds(attackerUnit->triad());
-debug(">relativeStrength=%5.2f\n", relativeStrength);flushlog();
 		
 		// reactor
 		// psi combat ignores reactor
@@ -717,9 +716,7 @@ debug(">relativeStrength=%5.2f\n", relativeStrength);flushlog();
 		// PLANET bonus
 		
 		relativeStrength *= getFactionSEPlanetOffenseModifier(attackerFactionId);
-debug(">relativeStrength=%5.2f\n", relativeStrength);flushlog();
 		relativeStrength /= getFactionSEPlanetOffenseModifier(defenderFactionId);
-debug(">relativeStrength=%5.2f\n", relativeStrength);flushlog();
 		
 		// gear bonus
 		
@@ -2193,6 +2190,21 @@ void EnemyStackInfo::computeAttackParameters()
 	
 }
 
+// TerraformingRequest
+
+TerraformingRequest::TerraformingRequest(MAP *_tile, TERRAFORMING_OPTION const *_option, FormerItem _action, double _incomeGain)
+: tile(_tile), option(_option), action(_action), incomeGain(_incomeGain)
+{
+	this->terraformingRate = Terraform[this->action].rate;
+	this->formerGain = getGainIncomeGrowth(this->incomeGain / static_cast<double>(this->terraformingRate));
+}
+
+// compare by incomeGain descending
+bool TerraformingRequest::operator<(TerraformingRequest const & other) const
+{
+	return incomeGain > other.incomeGain;
+}
+
 // utility methods
 
 void Data::addSeaTransportRequest(int seaCluster)
@@ -2527,6 +2539,11 @@ bool isWtpEnabledFaction(int factionId)
 }
 
 bool compareIdIntValueAscending( IdIntValue &a,  IdIntValue &b)
+{
+	return a.value < b.value;
+}
+
+bool compareMapIntValueAscending( MapIntValue &a,  MapIntValue &b)
 {
 	return a.value < b.value;
 }
@@ -4802,10 +4819,7 @@ Combat gain to attacker.
 */
 double getMutualCombatGain(double attackerDestructionGain, double defenderDestructionGain, double combatEffect)
 {
-debug(">attackerDestructionGain=%5.2f\n", attackerDestructionGain);
-debug(">defenderDestructionGain=%5.2f\n", defenderDestructionGain);
 	double winningProbability = getWinningProbability(combatEffect);
-debug(">winningProbability=%5.2f\n", winningProbability);
 	
 	double attackerLoss = (1.0 - winningProbability);
 	double defenderLoss = winningProbability;

@@ -1346,7 +1346,6 @@ If potentialBuildSite is set it is counted as another base.
 double getBuildSiteLandUseScore(MAP *buildSite)
 {
 	assert(isOnMap(buildSite));
-
 	int buildSiteX = getX(buildSite);
 	int buildSiteY = getY(buildSite);
 
@@ -1738,7 +1737,6 @@ void populateConcaveTiles()
 					continue;
 
 				// congestion
-
 				double distance = getEuclidianDistance(getX(tile), getY(tile), getX(radiusTile), getY(radiusTile));
 				double congestion = coefficient * (1.0 / distance) / 1.5; // normalized by 1.5 because this is the lowest practical value
 				totalCongestion += congestion;
@@ -1895,7 +1893,6 @@ void populateConcaveTiles()
 					continue;
 
 				// congestion
-
 				double distance = getEuclidianDistance(getX(tile), getY(tile), getX(radiusTile), getY(radiusTile));
 				double congestion = coefficient * (1.0 / distance) / 1.5; // normalized by 1.5 because this is the lowest practical value
 				totalCongestion += congestion;

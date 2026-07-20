@@ -306,7 +306,7 @@ When at or next unload location it stops and explicitly commands passenger to un
 int lastEnemyMoveVehicleId = -1;
 int lastEnemyMoveVehicleX = -1;
 int lastEnemyMoveVehicleY = -1;
-int enemyMoveVehicle( int vehicleId)
+int enemyMoveVehicle(int vehicleId)
 {
 	debug("enemyMoveVehicle %s remaningMoves=%2d\n", getVehiclePad0LocationNameString(vehicleId), getVehicleRemainingMoves(vehicleId));
 

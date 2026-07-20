@@ -564,7 +564,7 @@ int getY(int tileIndex)
 /**
 Computes location coordinates by map tile.
 */
-int getX(MAP  *tile)
+int getX(MAP *tile)
 {
 	return getX(tile - *MapTiles);
 }
@@ -3869,7 +3869,7 @@ int getRegionPodCount(int x, int y, int range, int region)
 	{
 		// within range
 
-		if (map_range(x, y, getX(tile), getY(tile)) > range)
+ 	if (map_range(x, y, getX(tile), getY(tile)) > range)
 			continue;
 
 		// within region if given
@@ -3879,7 +3879,7 @@ int getRegionPodCount(int x, int y, int range, int region)
 
 		// count pods
 
-		if (mod_goody_at(getX(tile), getY(tile)) != 0)
+ 	if (mod_goody_at(getX(tile), getY(tile)) != 0)
 		{
 			regionPodCount++;
 		}
@@ -4447,7 +4447,7 @@ int countPodsInBaseRadius(int x, int y)
 
 	for (MAP *tile : getBaseRadiusTiles(x, y, true))
 	{
-		if ((mod_goody_at(getX(tile), getY(tile)) != 0))
+ 	if ((mod_goody_at(getX(tile), getY(tile)) != 0))
 		{
 			podCount++;
 		}
@@ -4835,7 +4835,7 @@ MAP *getNearestLandTerritory(int x, int y, int factionId)
 
 	for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
 	{
-		int mapX = getX(tile);
+ 	int mapX = getX(tile);
 		int mapY = getY(tile);
 
 		// land
@@ -5502,8 +5502,7 @@ VEH *getVehicle(int vehicleId)
 
 BASE *getBase(int baseId)
 {
-	assert(baseId >= 0 && baseId < *BaseCount);
-	return &(Bases[baseId]);
+	return baseId >= 0 && baseId < *BaseCount ? &(Bases[baseId]) : nullptr;
 }
 
 bool isBaseHasNativeRepairFacility(int baseId)
@@ -6428,22 +6427,22 @@ void setVehicleWaypoints(int vehicleId,  std::vector<MAP *> waypoints)
 
 	if (!waypoints.empty())
 	{
-		vehicle->waypoint_x[0] = static_cast<int16_t>(getX(waypoints.at(0)));
+ 	vehicle->waypoint_x[0] = static_cast<int16_t>(getX(waypoints.at(0)));
 		vehicle->waypoint_y[0] = static_cast<int16_t>(getY(waypoints.at(0)));
 	}
 	if (waypoints.size() >= 2)
 	{
-		vehicle->waypoint_x[1] = static_cast<int16_t>(getX(waypoints.at(1)));
+ 	vehicle->waypoint_x[1] = static_cast<int16_t>(getX(waypoints.at(1)));
 		vehicle->waypoint_y[1] = static_cast<int16_t>(getY(waypoints.at(1)));
 	}
 	if (waypoints.size() >= 3)
 	{
-		vehicle->waypoint_x[2] = static_cast<int16_t>(getX(waypoints.at(2)));
+ 	vehicle->waypoint_x[2] = static_cast<int16_t>(getX(waypoints.at(2)));
 		vehicle->waypoint_y[2] = static_cast<int16_t>(getY(waypoints.at(2)));
 	}
 	if (waypoints.size() >= 4)
 	{
-		vehicle->waypoint_x[3] = static_cast<int16_t>(getX(waypoints.at(3)));
+ 	vehicle->waypoint_x[3] = static_cast<int16_t>(getX(waypoints.at(3)));
 		vehicle->waypoint_y[3] = static_cast<int16_t>(getY(waypoints.at(3)));
 	}
 
