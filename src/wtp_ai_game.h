@@ -652,34 +652,21 @@ struct TERRAFORMING_OPTION
 	std::set<FormerItem> actions;
 };
 
-// Final terraforming request assigned to formers.
+// terraforming request assigned to formers
 struct TerraformingRequest
 {
 	MAP *tile;
 	TERRAFORMING_OPTION const *option;
 	FormerItem action;
 	double incomeGain;
-	int terraformingRate;
+	int terraformingTime;
 	double formerGain;
 	mutable bool assigned = false;
 
-	// conventional terraforming (tile items modification resulting in yield change)
-	bool conventional = false;
-	// combined option actions terraforming time
-	double terraformingTime = 0.0;
-	// improvement generated income
-	double improvementIncome = 0.0;
-	// adjustment to how well this improvement fits in this tile by reducing its income
-	double fitnessScore = 0.0;
-	// fitness adjusted improvement generated income
-	double fitnessAdjustmentIncome = 0.0;
-	// improvement generated gain (with terraformingTime delay)
-	double improvementGain = 0.0;
-
 	TerraformingRequest(MAP *_tile, TERRAFORMING_OPTION const *_option, FormerItem _action, double _incomeGain);
 
-	// compare by incomeGain descending
-	bool operator<(TerraformingRequest const & other) const;
+	// // compare by formerGain descending
+	// bool operator<(TerraformingRequest const & other) const;
 
 };
 

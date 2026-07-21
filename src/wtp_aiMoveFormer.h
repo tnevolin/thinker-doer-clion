@@ -1,6 +1,5 @@
 #pragma once
 
-#include <utility>
 #include <vector>
 #include "robin_hood.h"
 
@@ -82,6 +81,7 @@ struct TileTerraformingInfo
 	void storeEffectiveMapTile();
 	void restoreEffectiveMapTile();
 	void applyTerraforming(FormerItem action);
+	void applyTerraforming(robin_hood::unordered_flat_set<FormerItem> actions);
 
 };
 
@@ -154,11 +154,12 @@ const std::array<const std::vector<TERRAFORMING_OPTION *>, 2> BASE_TERRAFORMING_
 struct TerraformingOptionScore
 {
 	MAP *tile;
-	TERRAFORMING_OPTION *option;
-	std::vector<FormerItem> actions;
-	double gain;
+	TERRAFORMING_OPTION const *option;
+	robin_hood::unordered_flat_set<FormerItem> actions;
+	double incomeGain;
+	int terraformingTime;
 
-	bool operator<(TerraformingOptionScore const &other) const { return gain < other.gain; }
+	TerraformingOptionScore(MAP *_tile, TERRAFORMING_OPTION const *_option, robin_hood::unordered_flat_set<FormerItem> const& _actions, double _incomeGain);
 
 };
 
@@ -250,10 +251,9 @@ double computeWorkerGain(int baseId, ResourceYield const& tileYield);
 TerraformingRequest calculateRaiseLandTerraformingScore(MAP *tile);
 bool isTerraformingCompleted(MAP const *tile, int action);
 bool isVehicleTerrafomingOrderCompleted(int vehicleId);
-bool isTerraformingAvailable(MAP *tile, FormerItem action);
+bool isTerraformingAvailable(MAP *tile, FormerItem action, bool requirePrerequisite);
+robin_hood::unordered_flat_set<FormerItem> getTerraformingPrerequisites(MAP *tile, FormerItem action);
 bool isTerraformingDestructive(MAP *tile, FormerItem action);
-bool isRemoveFungusRequired(int action);
-bool isLevelTerrainRequired(bool ocean, int action);
 bool isRaiseLandSafe(MAP *tile);
 double calculateBaseResourceScore(int baseId, int currentMineralIntake2, int currentNutrientSurplus, int currentMineralSurplus, int currentEnergySurplus, int improvedNutrientSurplus, int improvedMineralSurplus, int improvedEnergySurplus);
 double computeBaseImprovementYieldScore(int baseId, MAP *tile, MAP *currentMapState, MAP *improvedMapState);
@@ -266,7 +266,7 @@ double getTerraformingGain(double income, double terraformingTime);
 double getBaseImprovementIncome(int baseId, Resource oldIntake, Resource newIntake);
 void removeUnusedBunkers();
 int getTerraformingTime(int vehicleId, MAP *tile, FormerItem action);
-void insertActionTerraformingRequests(MAP *tile, TERRAFORMING_OPTION const *option, std::vector<FormerItem> const& actions, double gain);
+void insertActionTerraformingRequests(MAP *tile, TERRAFORMING_OPTION const *option, robin_hood::unordered_flat_set<FormerItem> const& actions, double gain);
 double getCondenserGain(MAP *tile);
 double getEchelonMirrorGain(MAP *tile);
 double getAquiferGain(MAP *tile);
@@ -278,4 +278,5 @@ double getBunkerGain(MAP *tile);
 double getBunkerPlacementCoefficient(MAP *bunkerTile, MAP *baseTile);
 bool isCompatibleTerraforming(FormerItem ongoingAction, FormerItem action);
 void restoreMap();
+robin_hood::unordered_flat_set<FormerItem> addPrerequisites(MAP *tile, robin_hood::unordered_flat_set<FormerItem> &actions);
 

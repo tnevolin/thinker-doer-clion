@@ -126,16 +126,6 @@ void productionStrategy()
 	
 }
 
-/**
-Compares terraforming requests by improvementIncome then by fitnessScore.
-1. compare by yield: superior yield goes first.
-2. compare by gain.
-*/
-bool compareFormerRequests(TerraformingRequest  &formerRequest1, TerraformingRequest  &formerRequest2)
-{
-	return formerRequest1.improvementGain > formerRequest2.improvementGain;
-}
-
 void populateFactionProductionData()
 {
 	Profiling::start("populateFactionProductionData", "productionStrategy");
@@ -1865,9 +1855,6 @@ void evaluateTerraformUnits()
 		double time;
 		double income;
 		double gain;
-		bool operator<(TerraformingGain &other) 		{
-			return this->gain > other.gain;
-		}
 	};
 
 	Profiling::start("evaluateTerraformUnits", "suggestBaseProduction");
@@ -1985,7 +1972,7 @@ void evaluateTerraformUnits()
 			
 			// terraforming gain
 			
-			terraformingGains.push_back({formerRequest.terraformingTime, formerRequest.improvementGain, 0.0});
+			terraformingGains.push_back({static_cast<double>(formerRequest.terraformingTime), formerRequest.incomeGain, 0.0});
 			
 		}
 		double averageDistance = distanceHarmonicSummary.getHarmonicMean();
@@ -2001,7 +1988,7 @@ void evaluateTerraformUnits()
 		
 		// sort terraforming gains
 		
-		std::sort(terraformingGains.begin(), terraformingGains.end());
+		std::sort(terraformingGains.begin(), terraformingGains.end(), [](TerraformingGain const &a, TerraformingGain const &b){ return a.gain > b.gain; });
 		
 		// extra former gain
 		

@@ -16,6 +16,19 @@ FactionTerraformingInfo factionTerraformingInfo;
 std::vector<MAP *> raiseableCoasts;
 robin_hood::unordered_flat_set<MAP *> significantTerraformingRequestLocations;
 
+// TerraformingOptionScore
+
+TerraformingOptionScore::TerraformingOptionScore(MAP *_tile, TERRAFORMING_OPTION const *_option, robin_hood::unordered_flat_set<FormerItem> const &_actions, double _incomeGain)
+	: tile(_tile), option(_option), actions(_actions), incomeGain(_incomeGain)
+{
+	this->terraformingTime = 0;
+	for (FormerItem action : actions)
+	{
+		this->terraformingTime += Terraform[action].rate;
+	}
+
+}
+
 // FORMER_ORDER
 
 FormerOrder::FormerOrder(int _vehicleId)
@@ -79,6 +92,13 @@ void TileTerraformingInfo::applyTerraforming(FormerItem action)
 
 	}
 
+}
+void TileTerraformingInfo::applyTerraforming(robin_hood::unordered_flat_set<FormerItem> actions)
+{
+	for (FormerItem action : actions)
+	{
+		this->applyTerraforming(action);
+	}
 }
 
 // BaseTerraformingInfo
@@ -757,7 +777,7 @@ void populateTerraformingData()
 		baseTerraformingInfo.nutrientCost = mod_cost_factor(base.faction_id, RSC_NUTRIENT, baseId);
 		baseTerraformingInfo.income = getBaseIncome(baseId, false);
 		baseTerraformingInfo.mineralValue = getBaseMineralMultiplier(baseId);
-		baseTerraformingInfo.energyValue = getBaseEnergyMultiplier(baseId) * static_cast<double>(wtp_mod_energy_intake_lost(baseId, 100, nullptr)) / 100.0;
+		baseTerraformingInfo.energyValue = getBaseEnergyMultiplier(baseId) * (1.0 - static_cast<double>(wtp_mod_energy_intake_lost(baseId, 100, nullptr)) / 100.0);
 		baseTerraformingInfo.economyValue = getBaseEconomyMultiplier(baseId);
 		baseTerraformingInfo.labsValue = getBaseLabsMultiplier(baseId);
 
@@ -768,7 +788,7 @@ void populateTerraformingData()
 			ResourceYield workedTileResourceYield = getTileResourceYield(workedTile, baseId);
 			double farmerGain = baseTerraformingInfo.getIntakeGain(workedTileResourceYield, 0, 0);
 			baseTerraformingInfo.workerGains.push_back({farmerGain, workedTile});
-			debug("\t\t\t\t%s %5.2f {%2d-%2d-%2d}\n", getLocationString(workedTile), farmerGain, workedTileResourceYield.nutrient, workedTileResourceYield.mineral, workedTileResourceYield.energy);
+			debug("\t\t\t\t%s %5.2f {%d-%d-%d}\n", getLocationString(workedTile), farmerGain, workedTileResourceYield.nutrient, workedTileResourceYield.mineral, workedTileResourceYield.energy);
 		}
 
 		// do not account for extra specialists
@@ -1070,65 +1090,11 @@ void generateTerraformingRequests()
 		generateLandBridgeTerraformingRequests();
 	}
 
-	// sort terraformingRequests by formerGain descending with tolearance 1E-6 preserving original order
+	// sort terraformingRequests by formerGain descending
 
-	std::stable_sort(terraformingRequests.begin(), terraformingRequests.end(), [](TerraformingRequest const &a, TerraformingRequest const &b){ return std::abs(a.formerGain - b.formerGain) >= 1E-6 && a.formerGain > b.formerGain; });
-	// std::sort
-	// (
-	// 	terraformingRequests.begin(), terraformingRequests.end(),
-	// 	[](const TerraformingRequest &a, const TerraformingRequest &b)
-	// 	{
-	// 		if (a.option != nullptr && b.option != nullptr && a.option == b.option)
-	// 		{
-	// 			int aIndex = 0;
-	// 			int bIndex = 0;
-	// 			switch (a.action)
-	// 			{
-	// 			case FORMER_REMOVE_FUNGUS:
-	// 				aIndex = 0;
-	// 				break;
-	// 			case FORMER_LEVEL_TERRAIN:
-	// 				aIndex = 1;
-	// 				break;
-	// 			case FORMER_ROAD:
-	// 				aIndex = 2;
-	// 				break;
-	// 			case FORMER_FARM:
-	// 				aIndex = 3;
-	// 				break;
-	// 			case FORMER_SOIL_ENR:
-	// 				aIndex = 4;
-	// 				break;
-	// 			default:
-	// 				aIndex = 5;
-	// 			}
-	// 			switch (b.action)
-	// 			{
-	// 			case FORMER_REMOVE_FUNGUS:
-	// 				bIndex = 0;
-	// 				break;
-	// 			case FORMER_LEVEL_TERRAIN:
-	// 				bIndex = 1;
-	// 				break;
-	// 			case FORMER_ROAD:
-	// 				bIndex = 2;
-	// 				break;
-	// 			case FORMER_FARM:
-	// 				bIndex = 3;
-	// 				break;
-	// 			case FORMER_SOIL_ENR:
-	// 				bIndex = 4;
-	// 				break;
-	// 			default:
-	// 				bIndex = 5;
-	// 			}
-	// 			return aIndex < bIndex;
-	// 		}
-	// 		return a.formerGain > b.formerGain;
-	// 	}
-	// );
+	std::stable_sort(terraformingRequests.begin(), terraformingRequests.end(), [](TerraformingRequest const &a, TerraformingRequest const &b){ return a.formerGain > b.formerGain; });
 
-	// TODO remove requests for same action in same tile. Also remove less priotiosed incompatible requests those would cancel previous requests or be cancelled by previous requests.
+	// TODO remove requests for same option/action in same tile. Also remove less priotiosed incompatible requests those would cancel previous requests or be cancelled by previous requests.
 
 	Profiling::stop("generateTerraformingRequests");
 
@@ -1161,47 +1127,25 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 
 			// improve tile and collect actions
 
-			std::vector<FormerItem> actions;
+			robin_hood::unordered_flat_set<FormerItem> actions;
 
-			// remove fungus if needed
-
-			if (option->requiredAction != FORMER_PLANT_FUNGUS && tile->is_fungus() && isTerraformingAvailable(tile, FORMER_REMOVE_FUNGUS))
+			if (isTerraformingAvailable(tile, FORMER_ROAD, false))
 			{
-				actions.push_back(FORMER_REMOVE_FUNGUS);
-				tileTerraformingInfo.applyTerraforming(FORMER_REMOVE_FUNGUS);
-			}
-
-			// level terrain if needed
-
-			if (tile->is_land_rocky() && !option->rocky && isTerraformingAvailable(tile, FORMER_LEVEL_TERRAIN))
-			{
-				actions.push_back(FORMER_LEVEL_TERRAIN);
-				tileTerraformingInfo.applyTerraforming(FORMER_LEVEL_TERRAIN);
-			}
-
-			// build road on land
-
-			if (tileInfo.land && !map_has_item(tile, BIT_ROAD) && isTerraformingAvailable(tile, FORMER_ROAD))
-			{
-				actions.push_back(FORMER_ROAD);
-				tileTerraformingInfo.applyTerraforming(FORMER_ROAD);
+				actions.insert(FORMER_ROAD);
 			}
 
 			// apply available actions
 
 			for (FormerItem action : option->actions)
 			{
-				// skip already existing actions
-				if (std::find(actions.begin(), actions.end(), action) != actions.end())
-					continue;
-
-				if (isTerraformingAvailable(tile, action))
+				if (isTerraformingAvailable(tile, action, false))
 				{
-					actions.push_back(action);
-					tileTerraformingInfo.applyTerraforming(action);
+					actions.insert(action);
 				}
-
 			}
+
+			// add prerequisites and store currently unavailable actions
+			robin_hood::unordered_flat_set<FormerItem> unavailableActions = addPrerequisites(tile, actions);
 
 			// need available actions
 
@@ -1210,6 +1154,7 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 
 			// get improved tile yield
 
+			tileTerraformingInfo.applyTerraforming(actions);
 			ResourceYield improvedTileYield = getTileResourceYield(tileTerraformingInfo.tile, baseId);
 			tileTerraformingInfo.restoreEffectiveMapTile();
 
@@ -1246,6 +1191,16 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 
 			if (improvedTileGain < 0.0)
 				continue;
+
+			// factor average gain delay
+
+			int terraformingTime = 0;
+			for (FormerItem action : actions)
+			{
+				terraformingTime += Terraform[action].rate;
+			}
+			double averageTerraformingTime = static_cast<double>(terraformingTime) / static_cast<double>(actions.size());
+			improvedTileGain = getGainDelay(improvedTileGain, averageTerraformingTime);
 
 			// adjust score to preserve land rocky tiles
 
@@ -1296,7 +1251,14 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			// update gain with preservation coefficient
 			double preservationCoefficient = static_cast<double>(builtItemTotalTerraformingRate) / static_cast<double>(builtItemTotalTerraformingRate + destroyedItemTotalTerraformingRate);
 			improvedTileGain *= preservationCoefficient; // NOLINT(clang-diagnostic-unused-variable)
-			debug("\t\t%5.2f %-16s preservationCoefficient=%5.2f\n", improvedTileGain, option->name, preservationCoefficient);
+			debug("\t\t%5.2f %-16s improvedTileYield={%d-%d-%d} preservationCoefficient=%5.2f\n", improvedTileGain, option->name, improvedTileYield.nutrient, improvedTileYield.mineral, improvedTileYield.energy, preservationCoefficient);
+
+			// remove currently unavailable actions
+
+			for (FormerItem unavailableAction : unavailableActions)
+			{
+				actions.erase(unavailableAction);
+			}
 
 			// save option score
 
@@ -1311,7 +1273,7 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 
 		// find best option
 
-		auto iterator = std::max_element(terraformingOptionScores.begin(), terraformingOptionScores.end());
+		auto iterator = std::max_element(terraformingOptionScores.begin(), terraformingOptionScores.end(), [](TerraformingOptionScore const &a, TerraformingOptionScore const &b) { return a.incomeGain < b.incomeGain; });
 		TerraformingOptionScore bestTerraformingOptionScore = std::move(*iterator);
 		terraformingOptionScores.erase(iterator);
 
@@ -1324,28 +1286,28 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			double secondBestOptionGain = 0.0;
 			if (!terraformingOptionScores.empty())
 			{
-				secondBestOptionGain = std::max_element(terraformingOptionScores.begin(), terraformingOptionScores.end())->gain;
+				secondBestOptionGain = std::max_element(terraformingOptionScores.begin(), terraformingOptionScores.end(), [](TerraformingOptionScore const &a, TerraformingOptionScore const &b) { return a.incomeGain < b.incomeGain; })->incomeGain;
 			}
 
 			// compute fitScore and adjusted score
 			// 0.75 when best option is same as second best option
 			// 1.25 when best option is 2x better than second best option
 
-			double fitScoreMultiplier = 1.00 + (-0.25 + (0.25 + 0.25) * 2.00 * std::min(0.5, 1.0 - secondBestOptionGain / bestTerraformingOptionScore.gain));
-			bestTerraformingOptionScore.gain *= fitScoreMultiplier;
+			double fitScoreMultiplier = 1.00 + (-0.25 + (0.25 + 0.25) * 2.00 * std::min(0.5, 1.0 - secondBestOptionGain / bestTerraformingOptionScore.incomeGain));
+			bestTerraformingOptionScore.incomeGain *= fitScoreMultiplier;
 
 		}
 
 		// store baseTerraformingOptionScore
 
 		baseTerraformingOptionScores.push_back(bestTerraformingOptionScore);
-		debug("\t\t%5.2f %s\n", bestTerraformingOptionScore.gain, bestTerraformingOptionScore.option->name);
+		debug("\t\t%5.2f %s\n", bestTerraformingOptionScore.incomeGain, bestTerraformingOptionScore.option->name);
 
 	}
 
-	// sort baseTerraformingOptionScores by score descending
+	// sort baseTerraformingOptionScores by incomeGain descending
 
-	std::sort(baseTerraformingOptionScores.begin(), baseTerraformingOptionScores.end(), [](const TerraformingOptionScore &a, const TerraformingOptionScore &b) { return a.gain > b.gain; });
+	std::sort(baseTerraformingOptionScores.begin(), baseTerraformingOptionScores.end(), [](const TerraformingOptionScore &a, const TerraformingOptionScore &b) { return a.incomeGain > b.incomeGain; });
 
 	// match them with the worst worker to get the improvement gain
 
@@ -1386,15 +1348,15 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			break;
 
 		matched[matchedIndex] = true;
-		baseTerraformingOptionScore.gain -= baseTerraformingInfo.workerGains[matchedIndex].gain;
-		debug("\t\t%5.2f %s %-16s matchedIndex=%2d replacementGain=%5.2f\n", baseTerraformingOptionScore.gain, getLocationString(baseTerraformingOptionScore.tile), baseTerraformingOptionScore.option->name, matchedIndex, baseTerraformingOptionScore.gain);
+		baseTerraformingOptionScore.incomeGain -= baseTerraformingInfo.workerGains[matchedIndex].gain;
+		debug("\t\t%5.2f %s %-16s matchedIndex=%2d replacementGain=%5.2f\n", baseTerraformingOptionScore.incomeGain, getLocationString(baseTerraformingOptionScore.tile), baseTerraformingOptionScore.option->name, matchedIndex, baseTerraformingOptionScore.incomeGain);
 
 		// gain is not positive - exit
 
-		if (baseTerraformingOptionScore.gain <= 0)
+		if (baseTerraformingOptionScore.incomeGain <= 0)
 			break;
 
-		insertActionTerraformingRequests(baseTerraformingOptionScore.tile, baseTerraformingOptionScore.option, baseTerraformingOptionScore.actions, baseTerraformingOptionScore.gain);
+		insertActionTerraformingRequests(baseTerraformingOptionScore.tile, baseTerraformingOptionScore.option, baseTerraformingOptionScore.actions, baseTerraformingOptionScore.incomeGain);
 
 	}
 
@@ -1492,7 +1454,7 @@ void generateAquiferTerraformingRequest(MAP *tile)
 {
 	FormerItem action = FORMER_AQUIFER;
 
-	if (!isTerraformingAvailable(tile, action))
+	if (!isTerraformingAvailable(tile, action, false))
 		return;
 
 	// compute gain
@@ -1519,7 +1481,7 @@ void generateRaiseLandTerraformingRequest(MAP *tile)
 
 	// available action
 
-	if (!isTerraformingAvailable(tile, action))
+	if (!isTerraformingAvailable(tile, action, false))
 		return;
 
 	// compute gain
@@ -1537,52 +1499,40 @@ void generateNetworkTerraformingRequest(MAP *tile)
 {
 	TileTerraformingInfo &tileTerraformingInfo = getTileTerraformingInfo(tile);
 
-	// land
-
-	if (!tile->is_land())
-		return;
+	robin_hood::unordered_flat_set<FormerItem> actions;
 
 	// action: road or magtube
 
-	FormerItem action;
-	if (isTerraformingAvailable(tile, FORMER_ROAD))
+	if (isTerraformingAvailable(tile, FORMER_ROAD, false))
 	{
-		action = FORMER_ROAD;
+		actions.insert(FORMER_ROAD);
 	}
-	else if (isTerraformingAvailable(tile, FORMER_MAGTUBE))
+	else if (isTerraformingAvailable(tile, FORMER_MAGTUBE, false))
 	{
-		action = FORMER_MAGTUBE;
+		actions.insert(FORMER_MAGTUBE);
 	}
 	else
 	{
 		return;
 	}
 
+	// add prerequisites and store currently unavailable actions
+	robin_hood::unordered_flat_set<FormerItem> unavailableActions = addPrerequisites(tile, actions);
+
 	// generate terraforming changes
 	
 	tileTerraformingInfo.storeEffectiveMapTile();
-	tileTerraformingInfo.applyTerraforming(action);
+	tileTerraformingInfo.applyTerraforming(actions);
 	MAP originalTile = tileTerraformingInfo.effectiveTile;
 	MAP improvedTile = *tile;
-	double gain = getNetworkGain(tile, originalTile, improvedTile);
 	tileTerraformingInfo.restoreEffectiveMapTile();
+	double gain = getNetworkGain(tile, originalTile, improvedTile);
 
-	// collect actions
+	// remove currently unavailable actions
 
-	std::vector<FormerItem> actions;
-
-	// remove fungus if needed
-
-	if (tile->is_fungus() && !has_tech(Rules->tech_preq_build_road_fungus, aiFactionId) && isTerraformingAvailable(tile, FORMER_REMOVE_FUNGUS))
+	for (FormerItem unavailableAction : unavailableActions)
 	{
-		actions.push_back(FORMER_REMOVE_FUNGUS);
-	}
-
-	// main action
-
-	if (isTerraformingAvailable(tile, action))
-	{
-		actions.push_back(action);
+		actions.erase(unavailableAction);
 	}
 
 	insertActionTerraformingRequests(tile, nullptr, actions, gain);
@@ -1598,29 +1548,24 @@ void generateSensorTerraformingRequest(MAP *tile)
 
 	// available
 
-	if (!isTerraformingAvailable(tile, action))
+	if (!isTerraformingAvailable(tile, action, false))
 		return;
+
+	robin_hood::unordered_flat_set<FormerItem> actions;
+	actions.insert(action);
+
+	// add prerequisites and store currently unavailable actions
+	robin_hood::unordered_flat_set<FormerItem> unavailableActions = addPrerequisites(tile, actions);
 
 	// generate terraforming changes
 
 	double gain = getSensorGain(tile);
 
-	// collect actions
+	// remove currently unavailable actions
 
-	std::vector<FormerItem> actions;
-
-	// remove fungus if needed
-
-	if (tile->is_fungus() && !has_tech(Rules->tech_preq_build_road_fungus, aiFactionId) && isTerraformingAvailable(tile, FORMER_REMOVE_FUNGUS))
+	for (FormerItem unavailableAction : unavailableActions)
 	{
-		actions.push_back(FORMER_REMOVE_FUNGUS);
-	}
-
-	// main action
-
-	if (isTerraformingAvailable(tile, action))
-	{
-		actions.push_back(action);
+		actions.erase(unavailableAction);
 	}
 
 	insertActionTerraformingRequests(tile, nullptr, actions, gain);
@@ -1636,29 +1581,24 @@ void generateBunkerTerraformingRequest(MAP *tile)
 
 	// available
 
-	if (!isTerraformingAvailable(tile, action))
+	if (!isTerraformingAvailable(tile, action, false))
 		return;
+
+	robin_hood::unordered_flat_set<FormerItem> actions;
+	actions.insert(action);
+
+	// add prerequisites and store currently unavailable actions
+	robin_hood::unordered_flat_set<FormerItem> unavailableActions = addPrerequisites(tile, actions);
 
 	// generate terraforming changes
 
 	double gain = getBunkerGain(tile);
 
-	// collect actions
+	// remove currently unavailable actions
 
-	std::vector<FormerItem> actions;
-
-	// remove fungus if needed
-
-	if (tile->is_fungus() && !has_tech(Rules->tech_preq_build_road_fungus, aiFactionId) && isTerraformingAvailable(tile, FORMER_REMOVE_FUNGUS))
+	for (FormerItem unavailableAction : unavailableActions)
 	{
-		actions.push_back(FORMER_REMOVE_FUNGUS);
-	}
-
-	// main action
-
-	if (isTerraformingAvailable(tile, action))
-	{
-		actions.push_back(action);
+		actions.erase(unavailableAction);
 	}
 
 	insertActionTerraformingRequests(tile, nullptr, actions, gain);
@@ -1794,142 +1734,190 @@ void assignFormerOrders()
 
 	aiData.production.terraformingRequests.clear();
 
-	// TODO find the best work for the former, not the best former for the work
-
 	// set of assigned tile and action pairs
 	std::set<std::pair<MAP *, FormerItem>> assignedRequests;
 
-	for (TerraformingRequest &terraformingRequest : terraformingRequests)
+	// track formers working on each request for cooperation
+	struct ScoredFormer { FormerOrder* order; double gain; double travelTime; int terraformingTime; };
+	robin_hood::unordered_flat_map<MAP *, robin_hood::unordered_flat_map<FormerItem, std::vector<ScoredFormer>>> requestAssignments;
+
+	// Loop until no more formers can be assigned
+	while (true)
 	{
-		MAP *tile = terraformingRequest.tile;
-		FormerItem action = terraformingRequest.action;
+		ScoredFormer bestCombination = {nullptr, -1.0, 0.0, 0};
+		TerraformingRequest* bestRequest = nullptr;
 
-		// Skip if another request for the same tile and action is already assigned
-		if (assignedRequests.count({tile, action}))
-			continue;
-
-		debug("\t%5.2f / %2d -> %5.2f %s %-16s\n", terraformingRequest.incomeGain, terraformingRequest.terraformingRate, terraformingRequest.formerGain, getLocationString(tile), Terraform[action].name);
-
-		// verify action complies with proximity rules
-
-		if (!isProximityRuleSatisfied(tile, action))
-			continue;
-
-		// find formers that can work on this request (primary and secondary)
-
-		struct ScoredFormer { FormerOrder* order; double gain; double travelTime; int terraformingTime; };
-		std::vector<ScoredFormer> scoredFormers;
-
-		for (FormerOrder &formerOrder : formerOrders)
+		for (TerraformingRequest &terraformingRequest : terraformingRequests)
 		{
-			int vehicleId = formerOrder.vehicleId;
-			VEH *vehicle = getVehicle(vehicleId);
-			int triad = vehicle->triad();
-			MAP *vehicleTile = getVehicleMapTile(vehicleId);
+			MAP *tile = terraformingRequest.tile;
+			FormerItem action = terraformingRequest.action;
 
-			// skip already assigned in this turn
-			if (formerOrder.tile != nullptr)
+			// verify action complies with proximity rules
+			if (!isProximityRuleSatisfied(tile, action))
 				continue;
 
-			// corresponding triad
-			if ((triad == TRIAD_LAND && !tile->is_land()) || (triad == TRIAD_SEA && !tile->is_sea()))
-				continue;
+			// find unassigned formers that can work on this request
+			for (FormerOrder &formerOrder : formerOrders)
+			{
+				// skip already assigned in this turn
+				if (formerOrder.tile != nullptr)
+					continue;
 
-			// same cluster
-			if ((triad == TRIAD_SEA && !isSameSeaCluster(vehicleTile, tile)) || (triad == TRIAD_LAND && !isSameLandTransportedCluster(vehicleTile, tile)))
-				continue;
+				int vehicleId = formerOrder.vehicleId;
+				VEH *vehicle = getVehicle(vehicleId);
+				int triad = vehicle->triad();
+				MAP *vehicleTile = getVehicleMapTile(vehicleId);
 
-			// reachable
-			if (!isVehicleDestinationReachable(vehicleId, tile))
-				continue;
+				// corresponding triad
+				if ((triad == TRIAD_LAND && !tile->is_land()) || (triad == TRIAD_SEA && !tile->is_sea()))
+					continue;
 
-			double travelTime = getVehicleTravelTime(vehicleId, tile);
-			if (travelTime == INF)
-				continue;
+				// same cluster
+				if ((triad == TRIAD_SEA && !isSameSeaCluster(vehicleTile, tile)) || (triad == TRIAD_LAND && !isSameLandTransportedCluster(vehicleTile, tile)))
+					continue;
 
-			int terraformingTime = getTerraformingTime(vehicleId, tile, action);
-			double totalTime = conf.ai_terraforming_travel_time_multiplier * travelTime + static_cast<double>(terraformingTime);
-			double gain = getGainIncomeGrowth(terraformingRequest.incomeGain / totalTime);
+				// reachable
+				if (!isVehicleDestinationReachable(vehicleId, tile))
+					continue;
 
-			scoredFormers.push_back({&formerOrder, gain, travelTime, terraformingTime});
+				double travelTime = getVehicleTravelTime(vehicleId, tile);
+				if (travelTime == INF)
+					continue;
+
+				int terraformingTime = getTerraformingTime(vehicleId, tile, action);
+				
+				bool eligible = false;
+				auto& cooperatingFormers = requestAssignments[tile][action];
+				if (cooperatingFormers.empty())
+				{
+					// primary former
+					eligible = true;
+				}
+				else
+				{
+					double workLeftAtArrival = 0.0;
+					// Cooperation: check if secondary former spends at least 4 turns
+					double workDoneBeforeArrival = 0.0;
+					for (ScoredFormer const &cooperatingFormer : cooperatingFormers)
+					{
+						double prevWorkWindow = std::max(0.0, travelTime - cooperatingFormer.travelTime);
+						workDoneBeforeArrival += 1.0 / static_cast<double>(cooperatingFormer.terraformingTime) * prevWorkWindow;
+					}
+					workLeftAtArrival = 1.0 - workDoneBeforeArrival;
+
+					if (workLeftAtArrival > 0.0)
+					{
+						double candidateFormerWorkTime = 0.0;
+						double combinedTerraformingRate = 1.0 / static_cast<double>(terraformingTime);
+						for (ScoredFormer const &cooperatingFormer : cooperatingFormers)
+						{
+							combinedTerraformingRate += 1.0 / static_cast<double>(cooperatingFormer.terraformingTime);
+						}
+						candidateFormerWorkTime = workLeftAtArrival / combinedTerraformingRate;
+
+						if (candidateFormerWorkTime >= 4.0)
+						{
+							// secondary former
+							eligible = true;
+						}
+					}
+				}
+				if (!eligible)
+					continue;
+
+				// former gain
+
+				double totalTime = conf.ai_terraforming_travel_time_multiplier * travelTime + static_cast<double>(terraformingTime);
+				double gain = getGainIncomeGrowth(terraformingRequest.incomeGain / totalTime);
+
+				// update best combination
+
+				if (gain > bestCombination.gain)
+				{
+					bestCombination = {&formerOrder, gain, travelTime, terraformingTime};
+					bestRequest = &terraformingRequest;
+				}
+
+			}
 
 		}
 
-		if (scoredFormers.empty())
+		if (bestCombination.order == nullptr || bestRequest == nullptr)
+			break;
+
+		// assign the best combination
+
+		MAP* tile = bestRequest->tile;
+		FormerItem action = bestRequest->action;
+		
+		bestCombination.order->tile = tile;
+		bestCombination.order->action = action;
+
+		auto &cooperatingFormers = requestAssignments[tile][action];
+		if (cooperatingFormers.empty())
 		{
-			aiData.production.terraformingRequests.push_back(terraformingRequest);
-			continue;
+			// primary former assignment
+
+			bestRequest->assigned = true;
+			assignedRequests.insert({tile, action});
+
+			// primary former effect
+
+			TileTerraformingInfo &tileTerraformingInfo = getTileTerraformingInfo(tile);
+			tileTerraformingInfo.applyTerraforming(action);
+			tileTerraformingInfo.terraformingItems.insert(action);
+
+			debug("\t%5.2f / %2d -> %5.2f %s %-16s\n", bestRequest->incomeGain, bestRequest->terraformingTime, bestRequest->formerGain, getLocationString(tile), Terraform[action].name);
+			debug("\t\t[%4d] (PRIM) travelTime=%5.2f terraformingTime=%2d gain=%5.2f\n", bestCombination.order->vehicleId, bestCombination.travelTime, bestCombination.terraformingTime, bestCombination.gain);
+
 		}
-
-		// sort scoredFormers by gain descending
-
-		std::sort(scoredFormers.begin(), scoredFormers.end(), [](const ScoredFormer& a, const ScoredFormer& b) { return a.gain < b.gain; });
-
-		// pick primary former (highest gain)
-
-		ScoredFormer primary = scoredFormers.front();
-		scoredFormers.erase(scoredFormers.begin());
-
-		primary.order->tile = tile;
-		primary.order->action = action;
-		terraformingRequest.assigned = true;
-		assignedRequests.insert({tile, action});
-
-		// primary former effect
-
-		TileTerraformingInfo &tileTerraformingInfo = getTileTerraformingInfo(tile);
-		tileTerraformingInfo.applyTerraforming(action);
-		tileTerraformingInfo.terraformingItems.insert(action);
-
-		debug("\t\t[%4d] (PRIM) travelTime=%5.2f terraformingTime=%2d gain=%5.2f\n", primary.order->vehicleId, primary.travelTime, primary.terraformingTime, primary.gain);
-
-		// mild cooperation: assign secondary formers if the project is long enough
-
-		std::vector<ScoredFormer> cooperatingFormers;
-		cooperatingFormers.push_back(primary);
-
-		for (auto const &candidateFormer : scoredFormers)
+		else
 		{
-			// compute how much work is done and remaining by already-assigned formers before this candidate arrives
+			// secondary former assignment
+			// Recalculate candidateFormerWorkTime for the debug message (or store it in ScoredFormer)
 
 			double workDoneBeforeArrival = 0.0;
 			for (ScoredFormer const &cooperatingFormer : cooperatingFormers)
 			{
-				double prevWorkWindow = std::max(0.0, candidateFormer.travelTime - cooperatingFormer.travelTime);
+				double prevWorkWindow = std::max(0.0, bestCombination.travelTime - cooperatingFormer.travelTime);
 				workDoneBeforeArrival += 1.0 / static_cast<double>(cooperatingFormer.terraformingTime) * prevWorkWindow;
 			}
 			double workLeftAtArrival = 1.0 - workDoneBeforeArrival;
-
-			// compute candidate former terraforming rate portion
-
-			double combinedTerraformingRate = 1.0 / static_cast<double>(candidateFormer.terraformingTime);
+			double combinedTerraformingRate = 1.0 / static_cast<double>(bestCombination.terraformingTime);
 			for (ScoredFormer const &cooperatingFormer : cooperatingFormers)
 			{
 				combinedTerraformingRate += 1.0 / static_cast<double>(cooperatingFormer.terraformingTime);
 			}
-
-			// compute candidate former work time
-
 			double candidateFormerWorkTime = workLeftAtArrival / combinedTerraformingRate;
 
-			// secondarty former should spend at least 4 turns to not waste the travel
-
-			if (candidateFormerWorkTime < 4.0)
-				break;
-
-			// assign secondary
-
-			candidateFormer.order->tile = tile;
-			candidateFormer.order->action = action;
-			cooperatingFormers.push_back(candidateFormer);
-
-			debug("\t\t[%4d] (COOP) travelTime=%5.2f workLeftAtArrival=%5.2f candidateWorkTime=%5.2f\n", candidateFormer.order->vehicleId, candidateFormer.travelTime, workLeftAtArrival, candidateFormerWorkTime);
+			debug("\t\t[%4d] (COOP) travelTime=%5.2f workLeftAtArrival=%5.2f candidateWorkTime=%5.2f gain=%5.2f\n", bestCombination.order->vehicleId, bestCombination.travelTime, workLeftAtArrival, candidateFormerWorkTime, bestCombination.gain);
 
 		}
+		
+		cooperatingFormers.push_back(bestCombination);
+		// Sort cooperating formers by travel time so that the work calculation in subsequent iterations (if any) is correct.
+		// Actually, the current logic for work calculation assumes they are ordered or at least handles it.
+		// The current code used: `for (ScoredFormer const &cooperatingFormer : cooperatingFormers) { ... candidateFormer.travelTime - cooperatingFormer.travelTime ... }`
+		// It seems it assumes candidate is arriving later than all previous ones.
+		// Since we pick the best gain, it's not guaranteed they are picked in order of travel time.
+		// However, a former with much longer travel time will have lower gain.
+		// Let's sort them just in case.
+		std::sort(cooperatingFormers.begin(), cooperatingFormers.end(), [](const ScoredFormer& a, const ScoredFormer& b) { return a.travelTime < b.travelTime; });
 
 	}
 
-	// TODO swap orders for better efficiency
+	// add unassigned requests
+
+	debug("unassigned requests\n");
+	for (TerraformingRequest &terraformingRequest : terraformingRequests)
+	{
+		if (!terraformingRequest.assigned)
+		{
+			aiData.production.terraformingRequests.push_back(terraformingRequest);
+			debug("\t%5.2f / %2d -> %5.2f %s %-16s\n", terraformingRequest.incomeGain, terraformingRequest.terraformingTime, terraformingRequest.formerGain, getLocationString(terraformingRequest.tile), Terraform[terraformingRequest.action].name);
+		}
+
+	}
 
 	Profiling::stop("assignFormerOrders");
 
@@ -1937,9 +1925,20 @@ void assignFormerOrders()
 
 void setFormerTasks()
 {
-	Profiling::start("setFormerTasks", "moveFormerStrategy");
-
 	debug("setFormerTasks - %s\n", MFactions[aiFactionId].noun_faction);
+
+	// set all former tasks to none when there are no bases
+
+	if (aiData.baseIds.empty())
+	{
+		for (FormerOrder &formerOrder : formerOrders)
+		{
+			setTask(Task(formerOrder.vehicleId, TT_NONE));
+		}
+		return;
+	}
+
+	Profiling::start("setFormerTasks", "moveFormerStrategy");
 
 	// iterate former orders
 
@@ -2010,13 +2009,13 @@ bool isVehicleTerrafomingOrderCompleted(int vehicleId)
 
 }
 
-// determines whether terraforming can be done in this square with removing fungus and leveling terrain if needed
-bool isTerraformingAvailable(MAP *tile, FormerItem action)
+// determines whether terraforming can be done in this square with all available prerequisites
+// requirePrerequisite - require all prerequisites already in place
+bool isTerraformingAvailable(MAP *tile, FormerItem action, bool requirePrerequisite)
 {
 	assert(isOnMap(tile));
 
 	TileTerraformingInfo const &tileTerraformingInfo = getTileTerraformingInfo(tile);
-	bool ocean = is_ocean(tile);
 	bool oceanDeep = is_ocean_deep(tile);
 	bool aquaticFaction = MFactions[aiFactionId].rule_flags & RFLAG_AQUATIC;
 
@@ -2035,11 +2034,6 @@ bool isTerraformingAvailable(MAP *tile, FormerItem action)
 	if (map_has_item(tile, Terraform[action].bit))
 		return false;
 
-	// action is available only when enabled and researched
-
-	if (!has_terra(action, ocean, aiFactionId))
-		return false;
-
 	// ocean improvements in deep ocean are available for aquatic faction with Adv. Ecological Engineering only
 
 	if (oceanDeep)
@@ -2048,27 +2042,20 @@ bool isTerraformingAvailable(MAP *tile, FormerItem action)
 			return false;
 	}
 
-	// building improvement in fungus requires either fungus removal or ability to build in fungus
+	// check prerequisites
 
-	if (tile->is_fungus() && action != FORMER_REMOVE_FUNGUS && !has_terra(FORMER_REMOVE_FUNGUS, ocean, aiFactionId) && !Rules->tech_preq_improv_fungus)
+	robin_hood::unordered_flat_set<FormerItem> prerequisites = getTerraformingPrerequisites(tile, action);
+
+	if (requirePrerequisite && !prerequisites.empty())
 		return false;
 
-	// certain improvements require flatter terrain
-
-	if (tile->is_land_rocky() && !has_terra(FORMER_LEVEL_TERRAIN, false, aiFactionId))
+	for (FormerItem prerequisite : prerequisites)
 	{
-		// improvements requiring flatter terrain cannot be built on rocky terrain
-		switch (action)
-		{
-		case FORMER_FARM:
-		case FORMER_SOIL_ENR:
-		case FORMER_FOREST:
+		if (!has_terra(prerequisite, tile->is_sea(), aiFactionId))
 			return false;
-		default: ;
-		}
 	}
 
-	// do not allow terraforming incompatible with ongoing terraforming
+	// do not allow terraforming destroying ongoing terraforming
 
 	bool compatible = true;
 	for (FormerItem const &terraformingItem : tileTerraformingInfo.terraformingItems)
@@ -2119,45 +2106,68 @@ bool isTerraformingAvailable(MAP *tile, FormerItem action)
 
 }
 
+// returns terraforming prerequisites
+robin_hood::unordered_flat_set<FormerItem> getTerraformingPrerequisites(MAP *tile, FormerItem action)
+{
+	assert(isOnMap(tile));
+
+	robin_hood::unordered_flat_set<FormerItem> prerequisites;
+
+	// building road in fungus requires fungus removal if no fungus road build discovered
+
+	if
+	(
+		tile->is_fungus()
+		&&
+		(action == FORMER_ROAD || action == FORMER_MAGTUBE)
+		&&
+		!has_tech(Rules->tech_preq_build_road_fungus, aiFactionId)
+	)
+	{
+		prerequisites.insert(FORMER_REMOVE_FUNGUS);
+	}
+
+	// building improvement in fungus requires fungus removal if no fungus improvement built discovered
+
+	if
+	(
+		tile->is_fungus()
+		&&
+		action != FORMER_REMOVE_FUNGUS && action != FORMER_ROAD && action != FORMER_MAGTUBE
+		&&
+		!has_tech(Rules->tech_preq_improv_fungus, aiFactionId)
+	)
+	{
+		prerequisites.insert(FORMER_REMOVE_FUNGUS);
+	}
+
+	// certain improvements require flatter terrain
+
+	if
+	(
+		tile->is_land_rocky()
+		&&
+		(action == FORMER_FARM || action == FORMER_SOIL_ENR || action == FORMER_FOREST)
+	)
+	{
+		prerequisites.insert(FORMER_LEVEL_TERRAIN);
+	}
+
+	// soil enricher requires farm
+
+	if (action == FORMER_SOIL_ENR)
+	{
+		prerequisites.insert(FORMER_FARM);
+	}
+
+	return prerequisites;
+
+}
+
 // teraforming destroys improvements except fungus
 bool isTerraformingDestructive(MAP *tile, FormerItem action)
 {
 	return (tile->items & Terraform[action].bit_incompatible & ~BIT_FUNGUS) != 0;
-}
-
-/*
-Determines whether fungus need to be removed before terraforming.
-*/
-bool isRemoveFungusRequired(int action)
-{
-	// no need to remove fungus for planting fungus
-
-	if (action == FORMER_PLANT_FUNGUS)
-		return false;
-
-	// always remove fungus for basic improvements even with fungus improvement technology
-
-	if (action >= FORMER_FARM && action <= FORMER_SOLAR)
-		return true;
-
-	// no need to remove fungus for road with fungus road technology
-
-	if (action == FORMER_ROAD && has_tech(Rules->tech_preq_build_road_fungus, aiFactionId))
-		return false;
-
-	// for everything else remove fungus only without fungus improvement technology
-
-	return !has_tech(Rules->tech_preq_improv_fungus, aiFactionId);
-
-}
-
-/*
-Determines whether rocky terrain need to be leveled before terraforming.
-*/
-bool isLevelTerrainRequired(bool ocean, int action)
-{
-	return !ocean && (action == FORMER_FARM || action == FORMER_SOIL_ENR || action == FORMER_FOREST);
-
 }
 
 /*
@@ -2464,45 +2474,19 @@ int getTerraformingTime(int vehicleId, MAP *tile, FormerItem action)
 
 }
 
-void insertActionTerraformingRequests(MAP *tile, TERRAFORMING_OPTION const *option, std::vector<FormerItem> const &actions, double gain)
+void insertActionTerraformingRequests(MAP *tile, TERRAFORMING_OPTION const *option, robin_hood::unordered_flat_set<FormerItem> const& actions, double gain)
 {
 	// positive gain
 
 	if (gain <= 0.0)
 		return;
 
-	// gather total terraforming rate
-
-	int totalTerraformingRate = 0;
+	// generate requests with distributed gain
 
 	for (FormerItem action : actions)
 	{
-		totalTerraformingRate += Terraform[action].rate;
-	}
-
-	if (totalTerraformingRate == 0)
-	{
-		debug("ERROR: no terraforming rate for actions");
-		return;
-	}
-
-	// generate requests with proportional gain
-
-	for (FormerItem action : actions)
-	{
-		// do not insert improvement if we cannot build it in fungus
-
-		if (tile->is_fungus() && action != FORMER_REMOVE_FUNGUS && isRemoveFungusRequired(action))
-			continue;
-
-		// do not insert improvement if we cannot build it in land rocky
-
-		if (tile->is_land_rocky() && action != FORMER_LEVEL_TERRAIN && isLevelTerrainRequired(tile->is_sea(), action))
-			continue;
-
-		double incomeGain = gain * static_cast<double>(Terraform[action].rate) / static_cast<double>(totalTerraformingRate);
+		double incomeGain = gain / static_cast<double>(actions.size());
 		terraformingRequests.emplace_back(tile, option, action, incomeGain);
-
 	}
 
 }
@@ -2676,7 +2660,7 @@ double getRaiseLandGain(MAP *tile)
 
 	// available action
 
-	if (!isTerraformingAvailable(tile, action))
+	if (!isTerraformingAvailable(tile, action, false))
 		return 0.0;
 
 	// not max elevation
@@ -3099,6 +3083,26 @@ void restoreMap()
 	{
 		tileTerraformingInfo.restoreOriginalMapTile();
 	}
+
+}
+
+// adds prerequisites to action set and returns currently unavailable actions
+robin_hood::unordered_flat_set<FormerItem> addPrerequisites(MAP *tile, robin_hood::unordered_flat_set<FormerItem> &actions)
+{
+	robin_hood::unordered_flat_set<FormerItem> prerequisites;
+	robin_hood::unordered_flat_set<FormerItem> unavailableActions;
+	for (FormerItem action : actions)
+	{
+		robin_hood::unordered_flat_set<FormerItem> actionPrerequisites = getTerraformingPrerequisites(tile, action);
+		prerequisites.insert(actionPrerequisites.begin(), actionPrerequisites.end());
+		if (!actionPrerequisites.empty())
+		{
+			unavailableActions.insert(action);
+		}
+	}
+	actions.insert(prerequisites.begin(), prerequisites.end());
+
+	return unavailableActions;
 
 }
 

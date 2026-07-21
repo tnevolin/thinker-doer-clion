@@ -2195,15 +2195,15 @@ void EnemyStackInfo::computeAttackParameters()
 TerraformingRequest::TerraformingRequest(MAP *_tile, TERRAFORMING_OPTION const *_option, FormerItem _action, double _incomeGain)
 : tile(_tile), option(_option), action(_action), incomeGain(_incomeGain)
 {
-	this->terraformingRate = Terraform[this->action].rate;
-	this->formerGain = getGainIncomeGrowth(this->incomeGain / static_cast<double>(this->terraformingRate));
+	this->terraformingTime = Terraform[this->action].rate;
+	this->formerGain = getGainIncomeGrowth(this->incomeGain / static_cast<double>(this->terraformingTime));
 }
 
-// compare by incomeGain descending
-bool TerraformingRequest::operator<(TerraformingRequest const & other) const
-{
-	return incomeGain > other.incomeGain;
-}
+// // compare by incomeGain descending
+// bool TerraformingRequest::operator<(TerraformingRequest const & other) const
+// {
+// 	return incomeGain > other.incomeGain;
+// }
 
 // utility methods
 

@@ -6,6 +6,7 @@
 #include <numeric>
 #include <limits>
 
+#include "wtp_ai_game.h"
 #include "wtp_terranx.h"
 #include "wtp_terranx_enum.h"
 #include "wtp_base.h"
@@ -2513,6 +2514,15 @@ std::vector<int> getDesignedFactionUnitIds(int factionId, bool includeObsolete, 
 
 		designedFactionUnitIds.push_back(unitId);
 
+	}
+
+	if (DEBUG)
+	{
+		debug("getDesignedFactionUnitIds(%d, %d, %d) - %s\n", factionId, includeObsolete, includeNotPrototyped, aiMFaction->noun_faction);
+		for (int unitId : designedFactionUnitIds)
+		{
+			debug("[%3d] %s\n", unitId, Units[unitId].name);
+		}
 	}
 
 	return designedFactionUnitIds;
@@ -5251,7 +5261,7 @@ int getUnitIdBySlot(int factionId, int slot)
 	assert(factionId >= 0 && factionId < MaxPlayerNum);
 	assert(slot >= 0 && slot < 2 * MaxProtoFactionNum);
 	assert(factionId != 0 || slot < MaxProtoFactionNum);
-	return (slot < MaxProtoFactionNum ? slot : MaxProtoFactionNum * (factionId - 1) + slot);
+	return slot < MaxProtoFactionNum ? slot : MaxProtoFactionNum * (factionId - 1) + slot;
 }
 
 /*
