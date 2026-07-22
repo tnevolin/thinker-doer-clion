@@ -2253,23 +2253,24 @@ void evaluatePodPoppingUnits()
 	std::set<int> baseSeaRegions = getBaseSeaRegions(baseId);
 	
 	debug("evaluatePodPoppingUnits\n");
-	
-	std::array<int, 2> podRanges {10, 20};
+
+	// ReSharper disable once CppTooWideScope
+	constexpr std::array<int, 2> SCAN_RANGES {10, 20};
 	std::array<SurfacePodData, 2> surfacePodDatas;
 	
 	for (int surface = 0; surface < 2; surface++)
 	{
 		SurfacePodData &surfacePodData = surfacePodDatas.at(surface);
-		surfacePodData.scanRange = podRanges[surface];
+		surfacePodData.scanRange = SCAN_RANGES[surface];
 		
-		// base has access to water to collect sea pods
+		// base needs access to water to collect sea pods
 		
 		if (surface == 1 && !isBaseAccessesWater(baseId))
 			continue;
 		
 		// count pods around the base
-		
-		for (MAP *tile : aiData.pods)
+
+		for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; ++tile)
 		{
 			// within range
 			
@@ -2286,15 +2287,22 @@ void evaluatePodPoppingUnits()
 			if ((surface == 0 && !isSameLandTransportedCluster(baseTile, tile)) || (surface == 1 && !isSameSeaCluster(baseTile, tile)))
 				continue;
 			
-			// not hostile territory
+			// not unfriendly territory
 			
-			if (isHostileTerritory(aiFactionId, tile))
+			if (isUnfriendlyTerritory(aiFactionId, tile))
 				continue;
+
+			// count tiles
+
+			surfacePodData.tileCount++;
 			
-			// accumulate
-			
-			surfacePodData.podCount++;
-			
+			// count pods
+
+			if (mod_goody_at(getX(tile), getY(tile)))
+			{
+				surfacePodData.podCount++;
+			}
+
 		}
 		
 		if (surfacePodData.podCount == 0)
@@ -2302,9 +2310,10 @@ void evaluatePodPoppingUnits()
 		
 		// average pod distance
 		
-		surfacePodData.averagePodDistance = sqrt(0.5 * (2 * surfacePodData.scanRange + 1) * (2 * surfacePodData.scanRange + 1) / surfacePodData.podCount);
+		surfacePodData.averagePodDistance = sqrt(static_cast<double>(surfacePodData.tileCount) / static_cast<double>(surfacePodData.podCount)) / 2.0;
 		
 		// consumption rate
+		// all non-alien factions consume pods in the region
 		
 		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 		{
@@ -2345,38 +2354,17 @@ void evaluatePodPoppingUnits()
 					continue;
 			}
 			
-			// not holding in base
+			// not in base or holding
 			
-			if (isBaseAt(vehicleTile) && triad == TRIAD_LAND && vehicle->order == ORDER_HOLD)
+			if (isBaseAt(vehicleTile) || vehicle->order == ORDER_HOLD)
 				continue;
-			
-			// consumption rate
-			
-			int vehicleSpeed = getVehicleSpeed(vehicleId);
-			
-			if (vehicleSpeed <= 0)
-				continue;
-			
-			double travelTime = 0.5 * surfacePodData.averagePodDistance / (double)vehicleSpeed;
-			double consumptionInterval = travelTime + (vehicleSpeed == 1 ? 4.0 : 1.0); // for average repair time
-			double consumptionRate = 1.0 / consumptionInterval;
-			
-			// accumulate
-			
-			surfacePodData.totalConsumptionRate += consumptionRate;
-			
-			if (vehicle->faction_id == aiFactionId)
-			{
-				surfacePodData.factionConsumptionRate += consumptionRate;
-			}
+
+			// count scouts
+
+			surfacePodData.scoutCount++;
 			
 		}
-		
-		double consumptionTime = surfacePodData.podCount / surfacePodData.totalConsumptionRate;
-		double factionIncome = conf.ai_production_pod_bonus * surfacePodData.factionConsumptionRate;
-		double factionGain = getGainTimeInterval(getGainIncome(factionIncome), 0.0, consumptionTime);
-		surfacePodData.factionConsumptionGain = factionGain;
-		
+
 	}
 	
 	// scan combat units
@@ -2389,6 +2377,22 @@ void evaluatePodPoppingUnits()
 		int offenseValue = unit->offense_value();
 		int defenseValue = unit->defense_value();
 		
+		// producible
+
+		if (!isBaseCanBuildUnit(baseId, unitId))
+			continue;
+
+		// unit priority
+
+		double unitPriorityCoefficient = getUnitPriorityCoefficient(baseId, unitId);
+		if (unitPriorityCoefficient <= 0.0)
+			continue;
+
+		// pop popping unit
+
+		if (!isPodPoppingUnit(unitId))
+			continue;
+
 		// surface triad
 		
 		if (triad == TRIAD_AIR)
@@ -2408,52 +2412,30 @@ void evaluatePodPoppingUnits()
 		
 		SurfacePodData &surfacePodData = surfacePodDatas.at(triad);
 		
-		// no pods
+		// there are pods
 		
 		if (surfacePodData.podCount == 0)
 			continue;
 		
-		// pop popping unit
-		
-		if (!isPodPoppingUnit(unitId))
+		// there are insufficient number of scouts in the area
+
+		if (surfacePodData.scoutCount > surfacePodData.podCount / 2)
 			continue;
-		
-		// exclude unproducible
-		
-		if (!isBaseCanBuildUnit(baseId, unitId))
-			continue;
-		
-		// unit priority
-		
-		double unitPriorityCoefficient = getUnitPriorityCoefficient(baseId, unitId);
-		
-		if (unitPriorityCoefficient <= 0.0)
-		{
-			Profiling::stop("evaluatePodPoppingUnits");
-			return;
-		}
-		
-		// consumption rate
+
+		// speed
 		
 		int unitSpeed = getUnitSpeed(aiFactionId, unitId);
-		
 		if (unitSpeed <= 0)
 			continue;
-		
-		double unitTravelTime = 0.5 * surfacePodData.averagePodDistance / (double)unitSpeed;
-		double unitConsumptionInterval = unitTravelTime + (unitSpeed == 1 ? 2.0 : 1.0); // for average repair time
-		double unitConsumptionRate = 1.0 / unitConsumptionInterval;
-		
-		double unitTotalConsumptionRate = surfacePodData.totalConsumptionRate + unitConsumptionRate;
-		double unitFactionConsumptionRate = surfacePodData.factionConsumptionRate + unitConsumptionRate;
-		
-		double unitConsumptionTime = surfacePodData.podCount / unitTotalConsumptionRate;
-		double unitFactionConsumptionIncome = conf.ai_production_pod_bonus * unitFactionConsumptionRate;
-		double unitFactionConsumptionGain = getGainTimeInterval(getGainIncome(unitFactionConsumptionIncome), 0.0, unitConsumptionTime);
-		
-		double factionConsumptionGainIcrease = unitFactionConsumptionGain - surfacePodData.factionConsumptionGain;
-		double podPoppingGain = factionConsumptionGainIcrease;
-		
+
+		// income gain
+
+		double unitTravelTime = surfacePodData.averagePodDistance / static_cast<double>(unitSpeed);
+		double podPoppingInterval = unitTravelTime + (unitSpeed == 1 ? 2.0 : 1.0); // for average repair time
+		double podPoppingRate = 1.0 / podPoppingInterval;
+		double podPoppingIncome = conf.ai_production_pod_bonus * podPoppingRate;
+		double podPoppingIncomeGain = getGainIncome(podPoppingIncome);
+
 		// upkeep
 		
 		double upkeepGain = getGainIncome(getResourceScore(-getUnitSupport(unitId), 0.0));
@@ -2461,7 +2443,7 @@ void evaluatePodPoppingUnits()
 		// combined
 		
 		double gain =
-			+ podPoppingGain
+			+ podPoppingIncomeGain
 			+ upkeepGain
 		;
 		
@@ -2485,14 +2467,10 @@ void evaluatePodPoppingUnits()
 			" conf.ai_production_pod_popping_priority=%5.2f"
 			" unitPriorityCoefficient=%5.2f"
 			" surface=%2d"
+			" tileCount=%2d"
 			" podCount=%2d"
-			" totalConsumptionRate=%5.2f"
-			" factionConsumptionRate=%5.2f"
-			" unitConsumptionRate=%5.2f"
-			" factionConsumptionGain=%5.2f"
-			" unitFactionConsumptionGain=%5.2f"
-			" factionConsumptionGainIcrease=%5.2f"
-			" podPoppingGain=%5.2f"
+			" scoutCount=%2d"
+			" podPoppingIncomeGain=%5.2f"
 			" upkeepGain=%5.2f"
 			" gain=%5.2f"
 			" rawPriority=%5.2f"
@@ -2502,14 +2480,10 @@ void evaluatePodPoppingUnits()
 			, conf.ai_production_pod_popping_priority
 			, unitPriorityCoefficient
 			, surface
+			, surfacePodData.tileCount
 			, surfacePodData.podCount
-			, surfacePodData.totalConsumptionRate
-			, surfacePodData.factionConsumptionRate
-			, unitConsumptionRate
-			, surfacePodData.factionConsumptionGain
-			, unitFactionConsumptionGain
-			, factionConsumptionGainIcrease
-			, podPoppingGain
+			, surfacePodData.scoutCount
+			, podPoppingIncomeGain
 			, upkeepGain
 			, gain
 			, rawPriority

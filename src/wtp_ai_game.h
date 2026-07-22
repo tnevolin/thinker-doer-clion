@@ -815,7 +815,6 @@ struct Data
 	
 	// combat data
 	
-	double cachingArtifactGain;
 	std::array<double, MaxProtoNum> unitDestructionGains;
 	std::vector<int> rivalFactionIds;
 	std::vector<int> unfriendlyFactionIds;
@@ -876,7 +875,6 @@ struct Data
 	robin_hood::unordered_flat_map<int, std::vector<int>> seaTransportVehicleIds;
 	robin_hood::unordered_flat_map<int, std::vector<int>> regionSurfaceCombatVehicleIds;
 	robin_hood::unordered_flat_map<int, std::vector<int>> regionSurfaceScoutVehicleIds;
-	double medianBaseDefenseDemand;
 	int totalMineralIntake2;
 	int maxMineralSurplus;
 	int maxMineralIntake2;
@@ -888,13 +886,9 @@ struct Data
 	std::vector<int> airCombatUnitIds;
 	std::vector<int> landAndAirCombatUnitIds;
 	std::vector<int> seaAndAirCombatUnitIds;
-	double landAlienHunterDemand;
 	robin_hood::unordered_flat_map<int, int> seaTransportRequestCounts;
 	TransportControl transportControl;
 	robin_hood::unordered_flat_map<int, TaskHeap> tasks;
-	double airColonyProductionPriority;
-	double landColonyProductionPriority;
-	robin_hood::unordered_flat_map<int, double> seaColonyProductionPriorities;
 	Production production;
 	int netIncome;
 	int grossIncome;
