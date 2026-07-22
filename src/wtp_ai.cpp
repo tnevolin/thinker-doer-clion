@@ -292,7 +292,13 @@ void populateTileInfos()
 	Profiling::start("populateTileInfos", "populateAIData");
 	
 	debug("populateTileInfos - %s\n", aiMFaction->noun_faction);
-	
+
+	// clear tileInfos
+	// resize tileInfos to map size
+
+	aiData.tileInfos.clear();
+	aiData.tileInfos.resize(*MapAreaTiles, {});
+
 	// ocean, surface type, coast
 	
 	Profiling::start("tile info", "populateTileInfos");
@@ -1027,7 +1033,7 @@ void populateRegionAreas()
 void populatePlayerBaseIds()
 {
 	Profiling::start("populatePlayerBaseIds", "populateAIData");
-	
+
 	aiData.baseIds.clear();
 	
 	for (int baseId = 0; baseId < *BaseCount; baseId++)
@@ -1261,9 +1267,18 @@ void populateFactionInfos()
 	
 	for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
 	{
-		Faction &faction = Factions[factionId];
 		FactionInfo &factionInfo = aiData.factionInfos[factionId];
 		
+		factionInfo.baseIds.clear();
+		factionInfo.seaClusterFormerCounts.clear();
+		factionInfo.landTransportedClusterFormerCounts.clear();
+		factionInfo.availableUnitIds.clear();
+		factionInfo.buildableUnitIds.clear();
+		factionInfo.combatUnitIds.clear();
+		factionInfo.combatVehicleIds.clear();
+
+		Faction &faction = Factions[factionId];
+
 		// can build unit types
 		
 		for (int type = 0; type < 2; type++)
@@ -1492,7 +1507,6 @@ void populateFactionInfos()
 		
 		// units
 		
-		factionInfo.availableUnitIds.clear();
 		for (int unitId : getDesignedFactionUnitIds(factionId, true, true))
 		{
 			// available
@@ -1620,8 +1634,12 @@ void populateBaseInfos()
 	
 	for (int baseId = 0; baseId < *BaseCount; baseId++)
 	{
-		BASE *base = getBase(baseId);
 		BaseInfo &baseInfo = aiData.baseInfos.at(baseId);
+		
+		// clear
+		baseInfo.protectorUnitWeights.clear();
+		
+		BASE *base = getBase(baseId);
 		
 		// store base snapshot
 		
@@ -2002,7 +2020,7 @@ void populateUnits()
 	aiData.seaCombatUnitIds.clear();
 	aiData.seaAndAirCombatUnitIds.clear();
 	aiData.airCombatUnitIds.clear();
-	
+
     for (int unitId : aiFactionInfo->availableUnitIds)
 	{
 		UNIT *unit = &(Units[unitId]);
@@ -2183,6 +2201,19 @@ void populateVehicles()
 	
 	// process vehicles
 	
+	aiData.vehicleIds.clear();
+	aiData.combatVehicleIds.clear();
+	aiData.scoutVehicleIds.clear();
+	aiData.outsideCombatVehicleIds.clear();
+	aiData.colonyVehicleIds.clear();
+	aiData.formerVehicleIds.clear();
+	aiData.airFormerVehicleIds.clear();
+	aiData.landFormerVehicleIds.clear();
+	aiData.seaFormerVehicleIds.clear();
+	aiData.seaTransportVehicleIds.clear();
+	aiData.regionSurfaceCombatVehicleIds.clear();
+	aiData.regionSurfaceScoutVehicleIds.clear();
+
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
 		VEH *vehicle = getVehicle(vehicleId);
@@ -2751,7 +2782,11 @@ void populateEnemyStacks()
 	Profiling::start("populateEnemyStacks", "populateAIData");
 	
 	debug("populateEnemyStacks - %s\n", MFactions[aiFactionId].noun_faction);
+
+	// clear enemyStacks
 	
+	aiData.enemyStacks.clear();
+
 	// add enemy vehicles to stacks
 	
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)

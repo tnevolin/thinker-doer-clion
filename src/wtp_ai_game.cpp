@@ -112,39 +112,9 @@ double TileInfo::getDefenseMultiplier(int /*attackerFactionId*/, int attackerUni
 
 void Data::clear()
 {
-	// resize tileInfos to map size
+	// clear lists used in other functions
 
-	tileInfos.clear();
-	tileInfos.resize(*MapAreaTiles, {});
-
-	// cleanup lists
-
-	enemyStacks.clear();
 	production.clear();
-	baseIds.clear();
-	vehicleIds.clear();
-	combatVehicleIds.clear();
-	scoutVehicleIds.clear();
-	outsideCombatVehicleIds.clear();
-	combatUnitIds.clear();
-	landColonyUnitIds.clear();
-	seaColonyUnitIds.clear();
-	airColonyUnitIds.clear();
-	colonyVehicleIds.clear();
-	formerVehicleIds.clear();
-	airFormerVehicleIds.clear();
-	landFormerVehicleIds.clear();
-	seaFormerVehicleIds.clear();
-	seaTransportVehicleIds.clear();
-	threatLevel = 0.0;
-	regionSurfaceCombatVehicleIds.clear();
-	regionSurfaceScoutVehicleIds.clear();
-	regionDefenseDemand.clear();
-	landCombatUnitIds.clear();
-	seaCombatUnitIds.clear();
-	airCombatUnitIds.clear();
-	landAndAirCombatUnitIds.clear();
-	seaAndAirCombatUnitIds.clear();
 	seaTransportRequestCounts.clear();
 	transportControl.clear();
 	tasks.clear();

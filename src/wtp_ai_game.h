@@ -874,11 +874,9 @@ struct Data
 	robin_hood::unordered_flat_map<int, std::vector<int>> seaFormerVehicleIds;
 	// sea transports by clusters
 	robin_hood::unordered_flat_map<int, std::vector<int>> seaTransportVehicleIds;
-	double threatLevel;
 	robin_hood::unordered_flat_map<int, std::vector<int>> regionSurfaceCombatVehicleIds;
 	robin_hood::unordered_flat_map<int, std::vector<int>> regionSurfaceScoutVehicleIds;
 	double medianBaseDefenseDemand;
-	robin_hood::unordered_flat_map<int, double> regionDefenseDemand;
 	int totalMineralIntake2;
 	int maxMineralSurplus;
 	int maxMineralIntake2;
