@@ -68,12 +68,14 @@ void ProductionDemand::initialize(int _baseId)
 	
 }
 
-void ProductionDemand::addItemPriority(int _item, double _priority)
+void ProductionDemand::addItemPriority(int item, double priority)
 {
-	if (_priority > this->priority)
+	this->itemPriorities[item] = std::max(this->itemPriorities[item], priority);
+
+	if (priority > this->priority)
 	{
-		this->item = _item;
-		this->priority = _priority;
+		this->item = item;
+		this->priority = priority;
 	}
 	
 }
@@ -488,6 +490,18 @@ void applyBaseProductions()
 		}
 		
 		// WTP
+
+    	if (DEBUG)
+    	{
+    		std::vector<robin_hood::pair<int, double>> sortedItemPriorities(productionDemand.itemPriorities.begin(), productionDemand.itemPriorities.end());
+    		std::sort(sortedItemPriorities.begin(), sortedItemPriorities.end(), [](const robin_hood::pair<int, double>& a, const robin_hood::pair<int, double>& b) { return a.second > b.second; });
+
+    		for (const auto& itemPriority : sortedItemPriorities)
+    		{
+    			debug("\t%5.2f %-24s\n", itemPriority.second, prod_name(itemPriority.first));
+    		}
+
+    	}
 		
 		int wtpChoice = productionDemand.item;
 		double wtpPriority = productionDemand.priority;

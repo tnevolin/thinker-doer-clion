@@ -1492,6 +1492,7 @@ void populateFactionInfos()
 		
 		// units
 		
+		factionInfo.availableUnitIds.clear();
 		for (int unitId : getDesignedFactionUnitIds(factionId, true, true))
 		{
 			// available

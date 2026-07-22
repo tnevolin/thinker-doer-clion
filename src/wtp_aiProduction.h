@@ -30,6 +30,7 @@ struct ProductionDemand
 	
 	int item;
 	double priority;
+	robin_hood::unordered_flat_map<int, double> itemPriorities;
 	
 	double baseGain;
 	double baseCitizenGain;

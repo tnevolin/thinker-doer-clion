@@ -37,41 +37,26 @@ FormerOrder::FormerOrder(int _vehicleId)
 
 // TileTerraformingInfo
 
-void TileTerraformingInfo::storeOriginalMapTile()
-{
-	originalTile = *tile;
-}
-void TileTerraformingInfo::restoreOriginalMapTile()
-{
-	*tile = originalTile;
-}
-void TileTerraformingInfo::storeEffectiveMapTile()
-{
-	effectiveTile = *tile;
-}
-void TileTerraformingInfo::restoreEffectiveMapTile()
-{
-	*tile = effectiveTile;
-}
-
-void TileTerraformingInfo::applyTerraforming(FormerItem action)
+// converts a former action into map state. Pure: mutates whatever MAP is pointed to (live tile or local value)
+// and never reads or leaves anything in `this` - caller owns save/restore of the live array, if any.
+void TileTerraformingInfo::applyTerraforming(MAP *state, FormerItem action)
 {
 	switch (action)
 	{
 	case FORMER_LEVEL_TERRAIN:
 		{
-			if (this->tile->is_land())
+			if (state->is_land())
 			{
-				if (this->tile->is_rocky())
+				if (state->is_rocky())
 				{
 					// rocky turns to rolling
-					this->tile->val3 &= ~TILE_ROCKY;
-					this->tile->val3 |= TILE_ROLLING;
+					state->val3 &= ~TILE_ROCKY;
+					state->val3 |= TILE_ROLLING;
 				}
-				else if (this->tile->is_rolling())
+				else if (state->is_rolling())
 				{
 					// rolling turns to flat
-					this->tile->val3 &= ~TILE_ROLLING;
+					state->val3 &= ~TILE_ROLLING;
 				}
 			}
 		}
@@ -79,25 +64,25 @@ void TileTerraformingInfo::applyTerraforming(FormerItem action)
 
 	case FORMER_AQUIFER:
 		{
-			this->tile->items |= BIT_RIVER_SRC | BIT_RIVER;
+			state->items |= BIT_RIVER_SRC | BIT_RIVER;
 		}
 		break;
 
 	default:
 		{
-			this->tile->items &= ~Terraform[action].bit_incompatible;
-			this->tile->items |= Terraform[action].bit;
+			state->items &= ~Terraform[action].bit_incompatible;
+			state->items |= Terraform[action].bit;
 		}
 		break;
 
 	}
 
 }
-void TileTerraformingInfo::applyTerraforming(robin_hood::unordered_flat_set<FormerItem> actions)
+void TileTerraformingInfo::applyTerraforming(MAP *state, robin_hood::unordered_flat_set<FormerItem> const &actions)
 {
 	for (FormerItem action : actions)
 	{
-		this->applyTerraforming(action);
+		applyTerraforming(state, action);
 	}
 }
 
@@ -185,8 +170,6 @@ void moveFormerStrategy()
 	removeTerraformedTiles();
 	assignFormerOrders();
 	setFormerTasks();
-
-	restoreMap();
 
 	Profiling::stop("moveFormerStrategy");
 
@@ -880,20 +863,10 @@ void populateTerraformingData()
 
 	}
 
-	// store original map states
+	// record ongoing terraforming as planned
+	// the live map tile is never mutated here - it always reflects true current game state.
+	// "planned" work is tracked purely as data (terraformingItems), not as array state.
 
-	for (TileTerraformingInfo &tileTerraformingInfo : tileTerraformingInfos)
-	{
-		tileTerraformingInfo.storeOriginalMapTile();
-	}
-
-	// store effective map states from ongoing terraforming
-	
-	for (TileTerraformingInfo &tileTerraformingInfo : tileTerraformingInfos)
-	{
-		tileTerraformingInfo.storeEffectiveMapTile();
-	}
-	
 	for (int vehicleId : aiData.formerVehicleIds)
 	{
 		VEH &vehicle = Vehs[vehicleId];
@@ -907,11 +880,7 @@ void populateTerraformingData()
 
 		auto action = static_cast<FormerItem>(vehicle.order - ORDER_FARM);
 
-		// store effective map states from ongoing terraforming
-
 		TileTerraformingInfo &tileTerraformingInfo = tileTerraformingInfos[getVehicleMapTileIndex(vehicleId)];
-		tileTerraformingInfo.applyTerraforming(action);
-		tileTerraformingInfo.storeEffectiveMapTile();
 		tileTerraformingInfo.terraformingItems.insert(action);
 
 	}
@@ -1125,7 +1094,9 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			if (option->rocky && !tileTerraformingInfo.landRocky)
 				continue;
 
-			// improve tile and collect actions
+			// 1. collect option actions not yet present on the tile (road is always attempted alongside the option)
+			// isTerraformingAvailable validates each action's full prerequisite chain (see its own recursive check),
+			// so anything collected here is guaranteed completable on this tile - no separate validation pass needed
 
 			robin_hood::unordered_flat_set<FormerItem> actions;
 
@@ -1133,8 +1104,6 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			{
 				actions.insert(FORMER_ROAD);
 			}
-
-			// apply available actions
 
 			for (FormerItem action : option->actions)
 			{
@@ -1144,19 +1113,21 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 				}
 			}
 
-			// add prerequisites and store currently unavailable actions
-			robin_hood::unordered_flat_set<FormerItem> unavailableActions = addPrerequisites(tile, actions);
-
-			// need available actions
-
 			if (actions.empty())
 				continue;
 
-			// get improved tile yield
+			// 2. add prerequisite actions needed to complete the collected actions (e.g. remove fungus before road)
+			// 3. no separate check needed - step 1 already confirmed the full prerequisite chain is available
 
-			tileTerraformingInfo.applyTerraforming(actions);
-			ResourceYield improvedTileYield = getTileResourceYield(tileTerraformingInfo.tile, baseId);
-			tileTerraformingInfo.restoreEffectiveMapTile();
+			robin_hood::unordered_flat_set<FormerItem> unavailableActions = addPrerequisites(tile, actions);
+
+			// 4. generate resulting tile and 5. compute its yield
+			// mutate the live tile directly, read through it, then restore - never left mutated
+
+			MAP savedTile = *tile;
+			TileTerraformingInfo::applyTerraforming(tile, actions);
+			ResourceYield improvedTileYield = getTileResourceYield(tile, baseId);
+			*tile = savedTile;
 
 			// discard option if it is no better than already unworked tile yield
 
@@ -1253,14 +1224,14 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			improvedTileGain *= preservationCoefficient; // NOLINT(clang-diagnostic-unused-variable)
 			debug("\t\t%5.2f %-16s improvedTileYield={%d-%d-%d} preservationCoefficient=%5.2f\n", improvedTileGain, option->name, improvedTileYield.nutrient, improvedTileYield.mineral, improvedTileYield.energy, preservationCoefficient);
 
-			// remove currently unavailable actions
+			// 6. drop actions still blocked on a prerequisite - only what's actually doable now goes into the request
 
 			for (FormerItem unavailableAction : unavailableActions)
 			{
 				actions.erase(unavailableAction);
 			}
 
-			// save option score
+			// 7. record the final currently-available actions and their gain
 
 			terraformingOptionScores.push_back({tile, option, actions, improvedTileGain});
 
@@ -1497,8 +1468,6 @@ Generates request for network (road/tube).
 */
 void generateNetworkTerraformingRequest(MAP *tile)
 {
-	TileTerraformingInfo &tileTerraformingInfo = getTileTerraformingInfo(tile);
-
 	robin_hood::unordered_flat_set<FormerItem> actions;
 
 	// action: road or magtube
@@ -1520,13 +1489,12 @@ void generateNetworkTerraformingRequest(MAP *tile)
 	robin_hood::unordered_flat_set<FormerItem> unavailableActions = addPrerequisites(tile, actions);
 
 	// generate terraforming changes
-	
-	tileTerraformingInfo.storeEffectiveMapTile();
-	tileTerraformingInfo.applyTerraforming(actions);
-	MAP originalTile = tileTerraformingInfo.effectiveTile;
-	MAP improvedTile = *tile;
-	tileTerraformingInfo.restoreEffectiveMapTile();
-	double gain = getNetworkGain(tile, originalTile, improvedTile);
+
+	MAP originalState = *tile;
+	TileTerraformingInfo::applyTerraforming(tile, actions);
+	MAP improvedState = *tile;
+	*tile = originalState;
+	double gain = getNetworkGain(tile, originalState, improvedState);
 
 	// remove currently unavailable actions
 
@@ -1628,9 +1596,7 @@ bool isProximityRuleSatisfied(MAP *tile, FormerItem action)
 
 	for (MAP *rangeTile : getRangeTiles(tile, proximityRule.existingDistance, true))
 	{
-		TileTerraformingInfo &rangeTileTerraformingInfo = getTileTerraformingInfo(rangeTile);
-
-		if (map_has_item(&rangeTileTerraformingInfo.originalTile, proximityRule.item))
+		if (map_has_item(rangeTile, proximityRule.item))
 		{
 			return false;
 		}
@@ -1721,7 +1687,7 @@ void removeTerraformedTiles()
  * 1. select terraformingRequest with the highest incomeGain
  * 2. find a former with the highest former incomeGainGrowth (incomeGain / totalTime) for this request
  * 3. assign this former request
- * 4. update effectiveTile and terraformingItems
+ * 4. update terraformingItems
  * 5. apply proximity rule to remove similar requests
  */
 void assignFormerOrders()
@@ -1861,10 +1827,9 @@ void assignFormerOrders()
 			bestRequest->assigned = true;
 			assignedRequests.insert({tile, action});
 
-			// primary former effect
+			// primary former effect - record as planned; live tile is never mutated here
 
 			TileTerraformingInfo &tileTerraformingInfo = getTileTerraformingInfo(tile);
-			tileTerraformingInfo.applyTerraforming(action);
 			tileTerraformingInfo.terraformingItems.insert(action);
 
 			debug("\t%5.2f / %2d -> %5.2f %s %-16s\n", bestRequest->incomeGain, bestRequest->terraformingTime, bestRequest->formerGain, getLocationString(tile), Terraform[action].name);
@@ -1980,20 +1945,6 @@ double computeWorkerGain(int baseId, ResourceYield const &tileYield)
 }
 
 /*
-Determines whether terraforming is already completed in this tile.
-*/
-bool isTerraformingCompleted(MAP const *tile, int action)
-{
-	return
-		// items appeared
-		(tile->items & Terraform[action].bit) == Terraform[action].bit
-		&&
-		// items removed
-		(tile->items & Terraform[action].bit_incompatible) == 0
-	;
-}
-
-/*
 Determines whether vehicle order is a terraforming order and is already completed in this tile.
 */
 bool isVehicleTerrafomingOrderCompleted(int vehicleId)
@@ -2010,8 +1961,9 @@ bool isVehicleTerrafomingOrderCompleted(int vehicleId)
 }
 
 // determines whether terraforming can be done in this square with all available prerequisites
-// requirePrerequisite - require all prerequisites already in place
-bool isTerraformingAvailable(MAP *tile, FormerItem action, bool requirePrerequisite)
+// requireImmediatelyBuildable - true: action must be doable right now, with no prerequisite still pending
+//                               false: action may still need a prerequisite completed first, and that's fine
+bool isTerraformingAvailable(MAP *tile, FormerItem action, bool immediatelyBuildable)
 {
 	assert(isOnMap(tile));
 
@@ -2043,16 +1995,21 @@ bool isTerraformingAvailable(MAP *tile, FormerItem action, bool requirePrerequis
 	}
 
 	// check prerequisites
+	// a prerequisite must itself be fully available (tech, proximity, compatibility, its own prerequisites, ...)
+	// - not just researched - or the action can never actually be completed on this tile
 
 	robin_hood::unordered_flat_set<FormerItem> prerequisites = getTerraformingPrerequisites(tile, action);
 
-	if (requirePrerequisite && !prerequisites.empty())
-		return false;
-
-	for (FormerItem prerequisite : prerequisites)
+	if (!prerequisites.empty())
 	{
-		if (!has_terra(prerequisite, tile->is_sea(), aiFactionId))
+		if (immediatelyBuildable)
 			return false;
+
+		for (FormerItem prerequisite : prerequisites)
+		{
+			if (!isTerraformingAvailable(tile, prerequisite, false))
+				return false;
+		}
 	}
 
 	// do not allow terraforming destroying ongoing terraforming
@@ -2203,103 +2160,6 @@ bool isRaiseLandSafe(MAP *raisedTile)
 
 }
 
-/**
-Calculates combined weighted resource score taking base additional demand into account.
-*/
-double calculateBaseResourceScore(int baseId, int currentMineralIntake2, int currentNutrientSurplus, int currentMineralSurplus, int currentEnergySurplus, int improvedNutrientSurplus, int improvedMineralSurplus, int improvedEnergySurplus)
-{
-	BASE *base = &(Bases[baseId]);
-
-	// improvedNutrientSurplus <= 0 is unacceptable
-
-	if (improvedNutrientSurplus <= 0)
-		return 0.0;
-
-	// calculate nutrient and mineral extra score
-
-	double nutrientCostMultiplier = 1.0;
-	double mineralCostMultiplier = 1.0;
-	double energyCostMultiplier = 1.0;
-
-	// multipliers are for bases size 2 and above
-
-	if (base->pop_size >= 2)
-	{
-		// calculate nutrient cost multiplier
-
-		double nutrientThreshold = conf.ai_terraforming_baseNutrientThresholdRatio * static_cast<double>(currentNutrientSurplus);
-
-		if (currentNutrientSurplus < nutrientThreshold)
-		{
-			double proportion = 1.0 - static_cast<double>(currentNutrientSurplus) / nutrientThreshold;
-			nutrientCostMultiplier += (conf.ai_terraforming_baseNutrientCostMultiplier - 1.0) * proportion;
-		}
-
-		// calculate mineral cost multiplier
-
-		double mineralThreshold = conf.ai_terraforming_baseMineralThresholdRatio * static_cast<double>(currentNutrientSurplus);
-
-		if (currentMineralIntake2 < mineralThreshold)
-		{
-			double proportion = 1.0 - static_cast<double>(currentMineralIntake2) / mineralThreshold;
-			mineralCostMultiplier += (conf.ai_terraforming_baseMineralCostMultiplier - 1.0) * proportion;
-		}
-
-		// calculate energy cost multiplier
-
-		if (aiData.grossIncome > 0 && aiData.netIncome > 0)
-		{
-			double maxNetIncome = 0.5 * static_cast<double>(aiData.grossIncome);
-			double minNetIncome = 0.1 * maxNetIncome;
-			energyCostMultiplier = maxNetIncome / std::min(maxNetIncome, std::max(minNetIncome, static_cast<double>(aiData.netIncome)));
-		}
-
-	}
-
-	// compute final score
-
-	return
-		getTerraformingResourceScore
-		(
-			nutrientCostMultiplier * (improvedNutrientSurplus - currentNutrientSurplus),
-			mineralCostMultiplier * (improvedMineralSurplus - currentMineralSurplus),
-			energyCostMultiplier * (improvedEnergySurplus - currentEnergySurplus)
-		)
-	;
-
-}
-
-/*
-Applies improvement and computes its maximal yield score for this base.
-*/
-double computeBaseImprovementYieldScore(int baseId, MAP *tile, MAP *currentMapState, MAP *improvedMapState)
-{
-	assert(isOnMap(tile));
-
-	BASE *base = &(Bases[baseId]);
-	int x = getX(tile);
-	int y = getY(tile);
-
-	// apply improved state
-
-	*tile = *improvedMapState;
-
-	// record yield
-
-	int nutrient = mod_crop_yield(base->faction_id, baseId, x, y, 0);
-	int mineral = mod_mine_yield(base->faction_id, baseId, x, y, 0);
-	int energy = mod_energy_yield(base->faction_id, baseId, x, y, 0);
-
-	// restore original state
-
-	*tile = *currentMapState;
-
-	// compute yield score
-
-	return getTerraformingResourceScore(nutrient, mineral, energy);
-
-}
-
 /*
 Checks that base can yield from this site.
 */
@@ -2405,11 +2265,6 @@ double getTerraformingResourceScore(double nutrient, double mineral, double ener
 double getTerraformingResourceScore(ResourceYield const &resourceYield)
 {
 	return getTerraformingResourceScore(resourceYield.nutrient, resourceYield.mineral, resourceYield.energy);
-}
-
-double getTerraformingGain(double income, double terraformingTime)
-{
-	return getGainDelay(getGainIncome(income), terraformingTime);
 }
 
 void removeUnusedBunkers()
@@ -3075,15 +2930,6 @@ double getBunkerPlacementCoefficient(MAP *bunkerTile, MAP *baseTile)
 bool isCompatibleTerraforming(FormerItem ongoingAction, FormerItem action)
 {
 	return (Terraform[ongoingAction].bit & Terraform[action].bit_incompatible) == 0;
-}
-
-void restoreMap()
-{
-	for (TileTerraformingInfo &tileTerraformingInfo : tileTerraformingInfos)
-	{
-		tileTerraformingInfo.restoreOriginalMapTile();
-	}
-
 }
 
 // adds prerequisites to action set and returns currently unavailable actions

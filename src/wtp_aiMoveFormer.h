@@ -45,13 +45,6 @@ struct TileTerraformingInfo
 	MAP *tile;
 	bool landRocky;
 
-	// original tile
-	MAP originalTile;
-	// map state after ongoing and already applied terraforming
-	MAP effectiveTile;
-	// map state after temporary applicaion of potential terraforming
-	MAP potentialTile;
-
 	// terraformable tile
 	bool availableTerraformingSite = false;
 	// terraformable tile for base yield
@@ -76,12 +69,9 @@ struct TileTerraformingInfo
 	// current terraforming
 	robin_hood::unordered_flat_set<FormerItem> terraformingItems;
 
-	void storeOriginalMapTile();
-	void restoreOriginalMapTile();
-	void storeEffectiveMapTile();
-	void restoreEffectiveMapTile();
-	void applyTerraforming(FormerItem action);
-	void applyTerraforming(robin_hood::unordered_flat_set<FormerItem> actions);
+	// converts former action(s) into map state; operates on whatever MAP is passed - the live tile or a local value
+	static void applyTerraforming(MAP *state, FormerItem action);
+	static void applyTerraforming(MAP *state, robin_hood::unordered_flat_set<FormerItem> const &actions);
 
 };
 
@@ -248,22 +238,16 @@ void removeTerraformedTiles();
 void assignFormerOrders();
 void setFormerTasks();
 double computeWorkerGain(int baseId, ResourceYield const& tileYield);
-TerraformingRequest calculateRaiseLandTerraformingScore(MAP *tile);
-bool isTerraformingCompleted(MAP const *tile, int action);
 bool isVehicleTerrafomingOrderCompleted(int vehicleId);
-bool isTerraformingAvailable(MAP *tile, FormerItem action, bool requirePrerequisite);
+bool isTerraformingAvailable(MAP *tile, FormerItem action, bool immediatelyBuildable);
 robin_hood::unordered_flat_set<FormerItem> getTerraformingPrerequisites(MAP *tile, FormerItem action);
 bool isTerraformingDestructive(MAP *tile, FormerItem action);
 bool isRaiseLandSafe(MAP *tile);
-double calculateBaseResourceScore(int baseId, int currentMineralIntake2, int currentNutrientSurplus, int currentMineralSurplus, int currentEnergySurplus, int improvedNutrientSurplus, int improvedMineralSurplus, int improvedEnergySurplus);
-double computeBaseImprovementYieldScore(int baseId, MAP *tile, MAP *currentMapState, MAP *improvedMapState);
 bool isWorkableTile(MAP *tile);
 bool isValidConventionalTerraformingSite(MAP *tile);
 bool isValidTerraformingSite(MAP *tile);
 double getTerraformingResourceScore(double nutrient, double mineral, double energy);
 double getTerraformingResourceScore(ResourceYield const &resourceYield);
-double getTerraformingGain(double income, double terraformingTime);
-double getBaseImprovementIncome(int baseId, Resource oldIntake, Resource newIntake);
 void removeUnusedBunkers();
 int getTerraformingTime(int vehicleId, MAP *tile, FormerItem action);
 void insertActionTerraformingRequests(MAP *tile, TERRAFORMING_OPTION const *option, robin_hood::unordered_flat_set<FormerItem> const& actions, double gain);
@@ -277,6 +261,5 @@ double getSensorGain(MAP *tile);
 double getBunkerGain(MAP *tile);
 double getBunkerPlacementCoefficient(MAP *bunkerTile, MAP *baseTile);
 bool isCompatibleTerraforming(FormerItem ongoingAction, FormerItem action);
-void restoreMap();
 robin_hood::unordered_flat_set<FormerItem> addPrerequisites(MAP *tile, robin_hood::unordered_flat_set<FormerItem> &actions);
 
