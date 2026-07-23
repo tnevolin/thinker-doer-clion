@@ -950,7 +950,7 @@ int option_handler(void* user, const char* section, const char* name, const char
     }
 	else if (MATCH("base_psych_screen_font_name"))
     {
-        strncpy(cf->base_psych_screen_font_name, value, StrBufLen);
+        strncpy(cf->base_psych_screen_font_name, value, StrBufLen - 1);
     }
 	else if (MATCH("base_psych_screen_font_size"))
     {

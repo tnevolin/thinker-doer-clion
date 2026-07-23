@@ -3296,6 +3296,15 @@ void patch_base_psych_label()
 
 }
 
+void patch_bypass_multiplayer_password()
+{
+	int bypass_multiplayer_password_bytes_length = 0x2;
+	byte bypass_multiplayer_password_bytes_old[] = { 0x3B, 0xC1 };
+	byte bypass_multiplayer_password_bytes_new[] = { 0x39, 0xc0 };
+	write_bytes(0x00527B4A, bypass_multiplayer_password_bytes_old, bypass_multiplayer_password_bytes_new, bypass_multiplayer_password_bytes_length);
+
+}
+
 
 // =======================================================
 // main patch option selection
@@ -3421,7 +3430,7 @@ void patch_setup_wtp(Config* cf)
 	{
 		patch_cloning_vats_impunities();
 	}
-	
+
 	// patch GROWTH rating max
 	
 	if (cf->se_growth_rating_max != 5)
@@ -3639,6 +3648,9 @@ void patch_setup_wtp(Config* cf)
 	{
 		patch_base_psych_label();
 	}
+
+
+	// patch_bypass_multiplayer_password();
 
 }
 

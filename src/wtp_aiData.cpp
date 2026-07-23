@@ -105,6 +105,8 @@ void CombatEffectTable::setCombatEffect(int attackerFactionId, int attackerUnitI
 	case CM_BOMBARDMENT:
 		combatEffect = isArtilleryUnit(attackerUnitId) && !isArtilleryUnit(defenderUnitId) ? getUnitBombardmentDamage(attackerUnitId, attackerFactionId, defenderUnitId, defenderFactionId) : 0.0;
 		break;
+	default:
+		combatEffect = 0.0;
 	}
 
 	this->setCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, combatMode, combatEffect);
