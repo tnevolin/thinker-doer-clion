@@ -257,8 +257,9 @@ void populateAIData()
 void populateGlobalVariables()
 {
 	aiData.developmentScale = getDevelopmentScale();
+	aiData.podGain = getGainBonus(conf.ai_production_pod_bonus);
 	aiData.newBaseGain = getNewBaseGain();
-	
+
 	// psi vehicle ratio
 	
 	int combatVehicleCount = 0;
@@ -1830,11 +1831,6 @@ void populatePlayerGlobalVariables()
 		
 	}
 	
-	// summaries
-	
-	aiData.maxConOffenseValue = getFactionMaxConOffenseValue(aiFactionId);
-	aiData.maxConDefenseValue = getFactionMaxConDefenseValue(aiFactionId);
-	
 	// average values
 	
 	{
@@ -2382,6 +2378,10 @@ void populateDangerZones()
 	
 	debug("populateDangerZones - %s\n", getMFaction(aiFactionId)->noun_faction);
 	
+	aiData.unfriendlyEndangeredVehicleIds.clear();
+	aiData.hostileEndangeredVehicleIds.clear();
+	aiData.artilleryEndangeredVehicleIds.clear();
+
 	// unfriendly (artifact and colony)
 	
 	std::vector<int> unfriendlyAffectedVehicleIds;
@@ -2407,7 +2407,6 @@ void populateDangerZones()
 	// reaching unfriendly vehicles
 	
 	robin_hood::unordered_flat_set<int> reachingUnfriendlyVehicleIds;
-	aiData.unfriendlyEndangeredVehicleIds.clear();
 	
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
@@ -2530,7 +2529,6 @@ void populateDangerZones()
 	// reaching hostile vehicles
 	
 	robin_hood::unordered_flat_set<int> reachingHostileVehicleIds;
-	aiData.hostileEndangeredVehicleIds.clear();
 	
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
@@ -2659,7 +2657,6 @@ void populateDangerZones()
 	// reaching artillery vehicles
 	
 	robin_hood::unordered_flat_set<int> reachingArtilleryVehicleIds;
-	aiData.artilleryEndangeredVehicleIds.clear();
 	
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
@@ -3115,6 +3112,11 @@ void populateEnemyBaseInfos()
 {
 	Profiling::start("populateEnemyBaseInfos", "populateAIData");
 	
+	for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
+	{
+		aiData.factionInfos.at(factionId).baseIds.clear();
+	}
+
 	populateEnemyBaseCaptureGains();
 	populateEnemyBaseProtectorWeights();
 	
@@ -3127,11 +3129,6 @@ void populateEnemyBaseCaptureGains()
 	Profiling::start("populateEnemyBaseCaptureGains", "populateEnemyBaseInfos");
 	
 	debug("populateEnemyBaseCaptureGains - %s\n", MFactions[aiFactionId].noun_faction);
-	
-	for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
-	{
-		aiData.factionInfos.at(factionId).baseIds.clear();
-	}
 	
 	for (int baseId = 0; baseId < *BaseCount; baseId++)
 	{

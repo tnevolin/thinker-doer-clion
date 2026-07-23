@@ -302,7 +302,7 @@ struct TileInfo
 struct BasePoliceData
 {
 	int allowedUnitCount;
-	std::array<int, 2> providedUnitCounts;
+	int providedUnitCount;
 	int requiredPower;
 	int providedPower;
 	std::array<int, 2> policePowers;
@@ -317,41 +317,15 @@ struct BasePoliceData
 		return policeGains.at(isPolice2xVehicle(vehicleId));
 	}
 	
-	void resetProvided()
-	{
-		std::fill(providedUnitCounts.begin(), providedUnitCounts.end(), 0);
-		providedPower = 0;
-	}
-	
 	void addVehicle(int vehicleId)
 	{
-		if (isPolice2xVehicle(vehicleId))
-		{
-			providedUnitCounts.at(0)++;
-			providedUnitCounts.at(1)++;
-			providedPower += policePowers.at(1);
-		}
-		else
-		{
-			providedUnitCounts.at(0)++;
-			providedPower += policePowers.at(0);
-		}
-		
+		providedUnitCount++;
+		providedPower += policePowers.at(isPolice2xVehicle(vehicleId));
 	}
 	
-	bool isSatisfied(int policePower) const
+	bool isSufficient() const
 	{
-		return (providedUnitCounts.at(policePower) >= allowedUnitCount || providedPower >= requiredPower);
-	}
-	
-	bool isSatisfied1x() const
-	{
-		return isSatisfied(0);
-	}
-	
-	bool isSatisfied2x() const
-	{
-		return isSatisfied(1);
+		return providedUnitCount >= allowedUnitCount || providedPower >= requiredPower;
 	}
 	
 };
@@ -457,7 +431,7 @@ struct BaseInfo
 	}
 	bool isSatisfied(int policePower)
 	{
-		return policeData.isSatisfied(policePower) && combatData.isSufficientProtect();
+		return policeData.isSufficient(policePower) && combatData.isSufficientProtect();
 	}
 	
 };
@@ -676,6 +650,26 @@ struct ConvoyRequest
 	double gain;
 };
 
+enum CombatRequestType
+{
+	CRT_POD,
+	CRT_POLICE,
+	CRT_DEFEND_BASE,
+	CRT_DEFEND_BUNKER,
+	CRT_CAPTURE_BASE,
+	CRT_ATTACK_STACK,
+};
+struct CombatRequest
+{
+	CombatRequestType type;
+	MAP const *tile;
+	int vehicleId;
+
+	CombatRequest(CombatRequestType _type, MAP const *_tile, int _vehicleId);
+	CombatRequest(CombatRequestType _type, MAP const* _tile);
+
+};
+
 struct Production
 {
 	robin_hood::unordered_flat_set<MAP *> unavailableBuildSites;
@@ -740,9 +734,10 @@ struct Data
 {
 	// global variables
 	
+	double podGain;
 	double newBaseGain;
 	double psiVehicleRatio;
-	
+
 	// map data
 	
 	std::vector<TileInfo> tileInfos;
@@ -799,7 +794,7 @@ struct Data
 	
 	double developmentScale;
 	
-	// combat values
+	// global combat values
 	
 	int maxConOffenseValue;
 	int maxConDefenseValue;

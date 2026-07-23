@@ -11,24 +11,6 @@ const int MAX_PODPOP_DISTANCE = 20;
 
 const double MIN_IMMEDIATE_ATTACK_PRIORITY = 1.0;
 
-enum CombatRequestType
-{
-	CRT_POD_POPPING,
-	CRT_BASE_DEFENSE,
-	CRT_STACK_ATTACK,
-};
-/*
-Request for combat operation.
-*/
-struct CombatRequest
-{
-	CombatRequestType type;
-	MAP *tile;
-	double gain;
-	int baseId;
-	EnemyStackInfo *enemyStackInfo;
-};
-
 enum TaskPriorityRestriction
 {
 	TPR_NONE,
@@ -131,22 +113,23 @@ struct CombatAction
 };
 
 void moveCombatStrategy();
-void moveDefensiveProbes();
+void generateRequests();
+void generateRepairRequests();
+void generatePodRequests();
+void generatePoliceRequests();
+void generateDefendBaseRequests();
+void generateDefendBunkerRequests();
+void generateCaptureBaseRequests();
+void generateAttackStackRequests();
 void immediateAttack();
 void movePolice2x();
-void movePolice();
 void moveInterceptors();
 void moveBaseProtectors();
 void moveBunkerProtectors();
 void moveCombat();
-void populateDefensiveProbeTasks(std::vector<Task> &tasks);
-void populateRepairTasks(std::vector<TaskPriority> &taskPriorities);
 void populateMonolithTasks(std::vector<TaskPriority> &taskPriorities);
-void populatePodPoppingTasks(std::vector<TaskPriority> &taskPriorities);
 void populatePolice2xTasks(std::vector<TaskPriority> &taskPriorities);
 void populatePoliceTasks(std::vector<TaskPriority> &taskPriorities);
-void populateBaseProtectorTasks(std::vector<TaskPriority> &taskPriorities);
-void populateBunkerProtectorTasks(std::vector<TaskPriority> &taskPriorities);
 void populateEmptyBaseCaptureTasks(std::vector<TaskPriority> &taskPriorities);
 void populateEnemyStackAttackTasks(std::vector<TaskPriority> &taskPriorities);
 void coordinateAttack();

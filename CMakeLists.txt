@@ -147,6 +147,8 @@ set(THINKER_SOURCES
     src/wtp_terranx_enum.h
         src/wtp_aiMoveFormer.cpp
         src/wtp_aiMoveFormer.h
+        src/wtp_aiMoveProbe.cpp
+        src/wtp_aiMoveProbe.h
 )
 
 add_library(thinker SHARED ${THINKER_SOURCES})

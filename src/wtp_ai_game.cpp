@@ -2169,11 +2169,15 @@ TerraformingRequest::TerraformingRequest(MAP *_tile, TERRAFORMING_OPTION const *
 	this->formerGain = getGainIncomeGrowth(this->incomeGain / static_cast<double>(this->terraformingTime));
 }
 
-// // compare by incomeGain descending
-// bool TerraformingRequest::operator<(TerraformingRequest const & other) const
-// {
-// 	return incomeGain > other.incomeGain;
-// }
+CombatRequest::CombatRequest(CombatRequestType _type, MAP const *_tile, int _vehicleId)
+: type(_type), tile(_tile), vehicleId(_vehicleId)
+{
+}
+
+CombatRequest::CombatRequest(CombatRequestType _type, MAP const *_tile)
+: CombatRequest(_type, _tile, -1)
+{
+}
 
 // utility methods
 

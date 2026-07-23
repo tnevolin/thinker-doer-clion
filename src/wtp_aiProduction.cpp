@@ -2552,7 +2552,7 @@ void evaluateBaseDefenseUnits()
 			
 			// police
 			
-			double unitPoliceGain = targetBasePoliceData.isSatisfied(isPolice2xUnit(unitId, aiFactionId)) ? 0.0 : targetBasePoliceData.getUnitPoliceGain(unitId, aiFactionId);
+			double unitPoliceGain = targetBasePoliceData.isSufficient(isPolice2xUnit(unitId, aiFactionId)) ? 0.0 : targetBasePoliceData.getUnitPoliceGain(unitId, aiFactionId);
 			double policeGain = conf.ai_production_priority_police * getGainDelay(unitPoliceGain, travelTime);
 			
 			// protection
