@@ -100,8 +100,9 @@ void generateRepairRequests()
 	for (int vehicleId : aiData.combatVehicleIds)
 	{
 		VEH *vehicle = getVehicle(vehicleId);
-		int triad = vehicle->triad();
+		Triad triad = static_cast<Triad>(vehicle->triad());
 		MAP *vehicleTile = getVehicleMapTile(vehicleId);
+		bool rangedAir = isRangedAirVehicle(vehicleId);
 
 		// repairable
 
@@ -121,10 +122,10 @@ void generateRepairRequests()
 
 		// repair bonus
 
-		double fullRepairBonus = conf.ai_combat_strength_increase_value * std::max(0.0, getVehicleRelativeDamage(vehicleId) - 0.0) * (double)unitMineralCost;
-		double partRepairBonus = conf.ai_combat_strength_increase_value * std::max(0.0, getVehicleRelativeDamage(vehicleId) - 0.2) * (double)unitMineralCost;
+		double fullRepairBonus = conf.ai_combat_strength_increase_value * std::max(0.0, getVehicleRelativeDamage(vehicleId) - 0.0) * static_cast<double>(unitMineralCost);
+		double partRepairBonus = conf.ai_combat_strength_increase_value * std::max(0.0, getVehicleRelativeDamage(vehicleId) - 0.2) * static_cast<double>(unitMineralCost);
 
-		// best priority
+		// best repair location
 
 		MAP *bestRepairLocation = nullptr;
 		double bestRepairLocationPriority = 0.0;
@@ -133,11 +134,6 @@ void generateRepairRequests()
 		{
 			int x = getX(tile), y = getY(tile);
 			TileInfo &tileInfo = aiData.getTileInfo(tile);
-
-			// exclude monolith, they are handled by monolith function
-
-			if (map_has_item(tile, BIT_MONOLITH))
-				continue;
 
 			// exclude blocked
 
@@ -151,8 +147,16 @@ void generateRepairRequests()
 
 			// exclude too far field location
 
-			if (!(map_has_item(tile, BIT_BASE_IN_TILE | BIT_BUNKER | BIT_MONOLITH)) && map_range(vehicle->x, vehicle->y, x, y) > 0)
-				continue;
+			if (rangedAir)
+			{
+				if (!tile->is_airbase())
+					continue;
+			}
+			else
+			{
+				if (!map_has_item(tile, BIT_BASE_IN_TILE | BIT_BUNKER | BIT_MONOLITH) && map_range(vehicle->x, vehicle->y, x, y) > 0)
+					continue;
+			}
 
 			// exclude unreachable locations
 
@@ -164,23 +168,25 @@ void generateRepairRequests()
 			switch (triad)
 			{
 			case TRIAD_AIR:
-				// airbase
-				if (!isAirbaseAt(tile))
-					continue;
+				switch (static_cast<VehChassis>(Vehs[vehicleId].chassis_type()))
+				{
+				case CHS_GRAVSHIP:
+					// repair anywhere
+					break;
+				default:
+					// repair at airbase
+					if (!isAirbaseAt(tile))
+						continue;
+				}
 				break;
 
 			case TRIAD_SEA:
-				// same ocean cluster
-				if (!isSameSeaCluster(vehicleTile, tile))
-					continue;
+				// repair anywhere
 				break;
 
 			case TRIAD_LAND:
-				// same land transported cluster
-				if (!isSameLandTransportedCluster(vehicleTile, tile))
-					continue;
+				// repair anywhere
 				break;
-
 			}
 
 			// get repair parameters
