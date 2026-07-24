@@ -429,9 +429,9 @@ struct BaseInfo
 		policeData.addVehicle(vehicleId);
 		combatData.addProtector(vehicleId);
 	}
-	bool isSatisfied(int policePower)
+	bool isSufficient()
 	{
-		return policeData.isSufficient(policePower) && combatData.isSufficientProtect();
+		return policeData.isSufficient() && combatData.isSufficientProtect();
 	}
 	
 };

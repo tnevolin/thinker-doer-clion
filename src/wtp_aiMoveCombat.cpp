@@ -647,7 +647,7 @@ void movePolice2x()
 			, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
 			, getLocationString(taskPriority.destination)
 			, getBase(taskPriority.baseId)->name
-			, baseInfo.isSatisfied(1)
+			, baseInfo.isSufficient(1)
 		);
 		
 	}
@@ -859,7 +859,7 @@ void moveBaseProtectors()
 
 			BaseInfo &baseInfo = aiData.getBaseInfo(taskPriority.baseId);
 
-			if (baseInfo.isSatisfied(0))
+			if (baseInfo.isSufficient(0))
 				continue;
 
 			// compute priority
@@ -899,7 +899,7 @@ void moveBaseProtectors()
 			, getLocationString(getVehicleMapTile(bestTaskPriority->vehicleId))
 			, getLocationString(bestTaskPriority->destination)
 			, getBase(bestTaskPriority->baseId)->name
-			, baseInfo.isSatisfied(0)
+			, baseInfo.isSufficient(0)
 			, baseInfo.combatData.isSufficientProtect()
 		);
 		
