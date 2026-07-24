@@ -652,6 +652,7 @@ struct ConvoyRequest
 
 enum CombatRequestType
 {
+	CRT_REPAIR,
 	CRT_POD,
 	CRT_POLICE,
 	CRT_DEFEND_BASE,

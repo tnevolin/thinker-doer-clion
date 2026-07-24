@@ -103,6 +103,7 @@ void generateRepairRequests()
 		Triad triad = static_cast<Triad>(vehicle->triad());
 		MAP *vehicleTile = getVehicleMapTile(vehicleId);
 		bool rangedAir = isRangedAirVehicle(vehicleId);
+		bool air = triad == TRIAD_AIR;
 
 		// repairable
 
@@ -135,6 +136,27 @@ void generateRepairRequests()
 			int x = getX(tile), y = getY(tile);
 			TileInfo &tileInfo = aiData.getTileInfo(tile);
 
+			// exclude unsuitable and too far field location
+
+			if (rangedAir)
+			{
+				// ranged air repair at airbase
+				if (!tile->is_airbase())
+					continue;
+			}
+			else if (air)
+			{
+				// not ranged air repair at airbase and field
+				if (!tile->is_airbase() && map_range(vehicle->x, vehicle->y, x, y) > 0)
+					continue;
+			}
+			else
+			{
+				// surface repair at base/bunker, monolith and field
+				if (!(tile->is_base_or_bunker() || map_has_item(tile, BIT_MONOLITH)) && map_range(vehicle->x, vehicle->y, x, y) > 0)
+					continue;
+			}
+
 			// exclude blocked
 
 			if (tileInfo.blocks.at(aiFactionId))
@@ -145,66 +167,27 @@ void generateRepairRequests()
 			if (tileInfo.hostileDangerZone || tileInfo.artilleryDangerZone)
 				continue;
 
-			// exclude too far field location
-
-			if (rangedAir)
-			{
-				if (!tile->is_airbase())
-					continue;
-			}
-			else
-			{
-				if (!map_has_item(tile, BIT_BASE_IN_TILE | BIT_BUNKER | BIT_MONOLITH) && map_range(vehicle->x, vehicle->y, x, y) > 0)
-					continue;
-			}
-
 			// exclude unreachable locations
 
 			if (!isVehicleDestinationReachable(vehicleId, tile))
 				continue;
 
-			// vehicle can repair there
-
-			switch (triad)
-			{
-			case TRIAD_AIR:
-				switch (static_cast<VehChassis>(Vehs[vehicleId].chassis_type()))
-				{
-				case CHS_GRAVSHIP:
-					// repair anywhere
-					break;
-				default:
-					// repair at airbase
-					if (!isAirbaseAt(tile))
-						continue;
-				}
-				break;
-
-			case TRIAD_SEA:
-				// repair anywhere
-				break;
-
-			case TRIAD_LAND:
-				// repair anywhere
-				break;
-			}
-
 			// get repair parameters
 
 			RepairInfo repairInfo = getVehicleRepairInfo(vehicleId, tile);
 
-			// no repair happening
+			// no repair needed
 
 			if (repairInfo.damage <= 0)
 				continue;
 
 			// repair priority coefficient
 
-			double repairPriorityCoefficient = (repairInfo.full ? conf.ai_combat_priority_repair : conf.ai_combat_priority_repair_partial);
+			double repairPriorityCoefficient = repairInfo.full ? conf.ai_combat_priority_repair : conf.ai_combat_priority_repair_partial;
 
 			// warzone coefficient
 
-			double warzoneCoefficient = (tileInfo.hostileDangerZone ? 0.7 : 1.0);
+			double warzoneCoefficient = tileInfo.hostileDangerZone ? 0.7 : 1.0;
 
 			// travel time and total time
 
@@ -212,18 +195,18 @@ void generateRepairRequests()
 			if (travelTime == INF)
 				continue;
 
-			double totalTime = std::max(1.0, travelTime + (double)repairInfo.time);
+			double totalTime = std::max(1.0, travelTime + static_cast<double>(repairInfo.time));
 			double totalTimeCoefficient = getExponentialCoefficient(conf.ai_combat_travel_time_scale, totalTime);
 
 			// repairGain
 
-			double repairBonus = (repairInfo.full ? fullRepairBonus : partRepairBonus);
+			double repairBonus = repairInfo.full ? fullRepairBonus : partRepairBonus;
 			double repairGain = getGainBonus(repairBonus) * totalTimeCoefficient;
 
 			double repairPriority =
-				repairPriorityCoefficient
+				repairGain
+				* repairPriorityCoefficient
 				* warzoneCoefficient
-				* repairGain
 				;
 
 			debug
@@ -269,9 +252,9 @@ void generateRepairRequests()
 			continue;
 		}
 
-		// add task
+		// add куйгуые
 
-		taskPriorities.emplace_back(vehicleId, bestRepairLocationPriority, TPR_NONE, TT_SKIP, bestRepairLocation);
+		combatRequests.emplace_back(CRT_REPAIR, bestRepairLocation, vehicleId);
 
 	}
 
