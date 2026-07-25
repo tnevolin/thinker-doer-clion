@@ -323,7 +323,15 @@ int target_priority(int x, int y, int faction, MAP* sq) {
     AIPlans& p2 = plans[sq->owner];
     int score = 0;
 
-    if (sq->is_owned()) {
+	// [WTP]
+	// clear attack target base when there is no war
+	if (!at_war(faction, Bases[f.base_id_attack_target].faction_id))
+	{
+		f.base_id_attack_target = -1;
+	}
+	//
+
+	if (sq->is_owned()) {
         if (sq->region == p2.main_region) {
             score += 150;
         }

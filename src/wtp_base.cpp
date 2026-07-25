@@ -241,8 +241,17 @@ void __cdecl wtp_mod_base_yield()
 
 		// improvement cycle
 
+		int iterationCount = 0;
 		while (true)
 		{
+			// safety cap in case isBetterBase cycles between states forever
+
+			if (++iterationCount > 100)
+			{
+				debug("wtp_mod_base_yield improvement cycle iteration cap reached\n")
+				break;
+			}
+
 			// reallocate farmer
 
 			for (int oldWorkTileNumber = 1; oldWorkTileNumber < 21; oldWorkTileNumber++)
@@ -1708,7 +1717,11 @@ int isBetterBase(BASE const &newBase, BASE const &oldBase)
 
 	double oldBaseGain = getBaseSurplusGain(oldBase);
 	double newBaseGain = getBaseSurplusGain(newBase);
-	return newBaseGain > oldBaseGain;
+
+	// return better base with double epsilon threshold
+
+	constexpr double epsilon = 1e-6;
+	return newBaseGain > oldBaseGain + epsilon;
 
 }
 

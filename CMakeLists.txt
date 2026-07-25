@@ -31,6 +31,8 @@ add_compile_options(
     -Wpointer-arith
     -Wfloat-conversion
     -Wno-shadow
+    -msse2
+    -mfpmath=sse
 )
 
 # C++ specific flags
