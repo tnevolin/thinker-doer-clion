@@ -1,4 +1,8 @@
-# Version 418
+# Version 420
+
+[bug] Thinker keeps referencing other faction attack target base after the war. Fixed.
+
+# Version 419
 
 [bug] Crawler resource assigment was incorrect. Fixed.
 [bug] Occasional missing unit in combat effect table. Fixed.
