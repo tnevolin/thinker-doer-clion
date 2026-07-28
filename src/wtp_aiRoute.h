@@ -17,7 +17,7 @@ static constexpr int IMPEDIMENT_MOBILE_TURN_RANGE = 2;
 static constexpr double IMPEDIMENT_HOSTILE = 10.0;
 static constexpr double IMPEDIMENT_NEUTRAL = 5.0;
 
-static constexpr double A_TRAVEL_TIME = 10.0;
+static constexpr double A_TRAVEL_TIME_THRESHOLD = 10.0;
 
 struct BaseChange
 {
@@ -248,23 +248,22 @@ void populateSharedSeas();
 
 double getVehicleApproachTime(int vehicleId, MAP *dst);
 double getVehicleApproachTime(int vehicleId, MAP *org, MAP *dst);
-double getUnitApproachTime(int factionId, int unitId, MAP *org, MAP *dst);
-double getGravshipTravelTime(int speed, MAP *org, MAP *dst);
-double getRangedAirTravelTime(int factionId, int chassisId, int speed, MAP *org, MAP *dst);
-double getSeaLApproachTime(int factionId, MovementType movementType, int speed, MAP *org, MAP *dst);
-double getLandLApproachTime(int factionId, MovementType movementType, int speed, MAP *org, MAP *dst);
+double getUnitApproachTime(int factionId, int unitId, MAP const* org, MAP const* dst);
+double getGravshipTravelTime(int vechicleSpeed, MAP const* org, MAP const* dst);
+double getRangedAirTravelTime(int factionId, int chassisId, int unitSpeed, MAP const* org, MAP const* dst);
+double getSeaLApproachTime(int factionId, MovementType movementType, int unitSpeed, MAP const* org, MAP const* dst);
+double getLandLApproachTime(int factionId, MovementType movementType, int unitSpeed, MAP const* org, MAP const* dst);
 double getLandLMovementCost(int factionId, MovementType movementType, MAP *org, MAP *dst);
 
-double getUnitTravelTime(int factionId, int unitId, int unitSpeed, MAP *org, MAP *dst, bool attackDestination = true);
-double getUnitTravelTime(int factionId, int unitId, MAP *org, MAP *dst, bool attackDestination = true);
-double getVehicleTravelTime(int vehicleId, MAP *org, MAP *dst, bool attackDestination = true);
-double getVehicleTravelTime(int vehicleId, MAP  *dst, bool attackDestination = true);
+double getUnitTravelTime(int factionId, int unitId, int unitSpeed, MAP const* org, MAP const* dst, bool attack);
+double getVehicleTravelTime(int vehicleId, MAP *org, MAP *dst, bool attack);
+double getVehicleTravelTime(int vehicleId, MAP const* dst, bool attack);
 
 // ==================================================
 // A* path finding algorithm
 // ==================================================
 
-double getATravelTime(MovementType movementType, int vehicleSpeed, MAP *org, MAP *dst, bool attackDestination);
+double getATravelTime(MovementType movementType, int vehicleSpeed, MAP const* org, MAP const* dst, bool attack);
 //double getUnitATravelTime(int unitId, int speed, MAP *org, MAP *dst, bool attackDestination);
 //double getUnitATravelTime(int unitId, MAP *org, MAP *dst, bool attackDestination);
 //double getSeaUnitATravelTime(int unitId, int speed, MAP *org, MAP *dst, bool attackDestination);
@@ -277,7 +276,7 @@ double getATravelTime(MovementType movementType, int vehicleSpeed, MAP *org, MAP
 // Reachability
 // ============================================================
 
-bool isUnitDestinationReachable(int unitId, MAP  *org, MAP  *dst);
+bool isUnitDestinationReachable(int unitId, MAP const* org, MAP const* dst);
 bool isVehicleDestinationReachable(int vehicleId, MAP  *org, MAP  *dst);
 bool isVehicleDestinationReachable(int vehicleId, MAP  *dst);
 
@@ -298,7 +297,7 @@ bool isSameAirCluster(int chassisId, int speed, MAP *tile1, MAP *tile2);
 bool isVehicleSameAirCluster(int vehicleId, MAP *dst);
 bool isMeleeAttackableFromAirCluster(int chassisId, int speed, MAP *org, MAP *target);
 bool isVehicleMeleeAttackableFromAirCluster(int vehicleId, MAP *target);
-int getSeaCluster(MAP *tile);
+int getSeaCluster(MAP const* tile);
 int getVehicleSeaCluster(int vehicleId);
 int getBaseSeaCluster(MAP  *baseTile);
 bool isSameSeaCluster(int tile1SeaCluster, MAP  *tile2);

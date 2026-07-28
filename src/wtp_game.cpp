@@ -565,11 +565,11 @@ int getY(int tileIndex)
 /**
 Computes location coordinates by map tile.
 */
-int getX(MAP *tile)
+int getX(MAP const* tile)
 {
 	return getX(tile - *MapTiles);
 }
-int getY(MAP  *tile)
+int getY(MAP const* tile)
 {
 	return getY(tile - *MapTiles);
 }
@@ -1795,11 +1795,34 @@ bool isOgreUnit(int unitId)
 		return false;
 	}
 }
-
 bool isOgreVehicle(int vehicleId)
 {
 	assert(vehicleId >= 0 && vehicleId < *VehCount);
 	return isOgreUnit(Vehs[vehicleId].unit_id);
+}
+
+// Checks if vehicle is repairable
+bool isRepairableVehicle(int vehicleId)
+{
+	assert(vehicleId >= 0 && vehicleId < *VehCount);
+	// not ogre
+	return !isOgreVehicle(Vehs[vehicleId].unit_id);
+}
+
+// Checks if vehicle interacts with monolith
+bool isMonolithInteractingVehicle(int vehicleId)
+{
+	assert(vehicleId >= 0 && vehicleId < *VehCount);
+	// not air, not ogre
+	return Vehs[vehicleId].triad() != TRIAD_AIR && !isOgreVehicle(Vehs[vehicleId].unit_id);
+}
+
+// Checks if vehicle can be promoted by monolith
+bool isMonolithUpgradableVehicle(int vehicleId)
+{
+	assert(vehicleId >= 0 && vehicleId < *VehCount);
+	// interacting with the monolith, not upgraded, morale < max
+	return isMonolithInteractingVehicle(vehicleId) && (Vehs[vehicleId].state & VSTATE_MONOLITH_UPGRADED) == 0 && Vehs[vehicleId].morale < MORALE_ELITE;
 }
 
 /*
@@ -3029,17 +3052,18 @@ int getBasePoliceRating(int baseId)
 
 int getBasePolicePower(int baseId, bool police2x)
 {
-	return (getBasePoliceRating(baseId) == 3 ? 2 : 1) + (police2x ? 1 : 0);
+	// extra police power if configured
+	return conf.base_psych_police_extra_power + (getBasePoliceRating(baseId) == 3 ? 2 : 1) + (police2x ? 1 : 0);
 }
 
 /**
 Calculates number of allowed police units per base POLICE rating.
 */
-int getBasePoliceAllowed(int baseId)
+int getBaseAllowedPolice(int baseId)
 {
 	int policeAllowed;
 
-	switch (getBasePoliceRating(baseId))
+	switch (Bases[baseId].SE_police(true))
 	{
 	case -5:
 	case -4:
@@ -3048,7 +3072,7 @@ int getBasePoliceAllowed(int baseId)
 		policeAllowed = 0;
 		break;
 	case -1:
-	case +0:
+	case  0:
 		policeAllowed = 1;
 		break;
 	case +1:
@@ -5322,6 +5346,12 @@ bool isPolice2xVehicle(int vehicleId)
 	return isPolice2xUnit(vehicle->unit_id, vehicle->faction_id);
 }
 
+int getVehiclePoliceTypeIndex(int vehicleId)
+{
+	VEH *vehicle = getVehicle(vehicleId);
+	return isPolice2xUnit(vehicle->unit_id, vehicle->faction_id) ? 1 : 0;
+}
+
 bool isInfantryPolice2xUnit(int unitId, int factionId)
 {
 	return isInfantryUnit(unitId) && isPolice2xUnit(unitId, factionId);
@@ -6794,7 +6824,7 @@ int getRange(int tile1Index, int tile2Index)
 	return getRange(x1, y1, x2, y2);
 
 }
-int getRange(MAP  *tile1, MAP  *tile2)
+int getRange(MAP const* tile1, MAP const* tile2)
 {
 	return getRange(getX(tile1), getY(tile1), getX(tile2), getY(tile2));
 }

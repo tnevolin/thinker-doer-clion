@@ -391,7 +391,7 @@ void analyzeBasePlacementSites()
 			// estimate it as range
 			// plus transfer cost if different clusters
 			
-			double travelTime = getVehicleTravelTime(vehicleId, tile);
+			double travelTime = getVehicleTravelTime(vehicleId, tile, false);
 			if (travelTime == INF)
 				continue;
 			double travelTimeCoefficient = getExponentialCoefficient(expantionTravelTimeScale, travelTime);
@@ -466,7 +466,7 @@ void analyzeBasePlacementSites()
 		{
 			MAP *destination = destinations.at(destinationIndex);
 			
-			double travelTime = getVehicleTravelTime(vehicleId, destination);
+			double travelTime = getVehicleTravelTime(vehicleId, destination, false);
 			travelTimes.at(destinations.size() * vehicleIndex + destinationIndex) = travelTime;
 			
 			debug

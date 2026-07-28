@@ -108,6 +108,80 @@ double TileInfo::getDefenseMultiplier(int /*attackerFactionId*/, int attackerUni
 	return defenseMultiplier;
 }
 
+// BasePoliceData
+
+double BasePoliceData::getUnitPoliceGain(int unitId, int factionId) const
+{
+	return this->policeTypeGains.at(isPolice2xUnit(unitId, factionId));
+}
+double BasePoliceData::getVehiclePoliceGain(int vehicleId) const
+{
+	return this->policeTypeGains.at(isPolice2xVehicle(vehicleId));
+}
+
+void BasePoliceData::addVehicle(int vehicleId)
+{
+	// do not add vehicle if police is not allowed
+
+	if (this->allowedPolice <= 0)
+		return;
+
+	// police type index
+
+	int policeTypeIndex = isPolice2xVehicle(vehicleId) ? 1 : 0;
+
+	// add unit police power to the pool
+
+	this->providedPowers.push_back(this->policeTypePowers.at(policeTypeIndex));
+
+	// sort provided powers descending
+
+	std::sort(this->providedPowers.begin(), this->providedPowers.end(), [](int a, int b) { return a > b; });
+
+	// truncate to allowed police
+
+	if (static_cast<int>(this->providedPowers.size()) > this->allowedPolice)
+	{
+		this->providedPowers.resize(this->allowedPolice);
+	}
+
+}
+
+bool BasePoliceData::isSufficientForType(int policeTypeIndex) const
+{
+	// sufficient if police is not allowed
+
+	if (this->allowedPolice <= 0)
+		return true;
+
+	// sufficient if enough power
+
+	int totalProvidedPower = std::accumulate(this->policeTypePowers.begin(), this->policeTypePowers.end(), 0);
+	if (totalProvidedPower >= this->requiredPower)
+		return true;
+
+	// insufficient if not enough police
+
+	if (static_cast<int>(this->providedPowers.size()) < this->allowedPolice)
+		return false;
+
+	// sufficient if this unit cannot add more power
+
+	int unitPolicePower = this->policeTypePowers.at(policeTypeIndex);
+	for (int providedPower : this->providedPowers)
+	{
+		if (unitPolicePower > providedPower)
+			return false;
+	}
+
+	return true;
+
+}
+bool BasePoliceData::isSufficientForVehicle(int vehicleId) const
+{
+	return this->isSufficientForType(isPolice2xVehicle(vehicleId));
+}
+
 // Data
 
 void Data::clear()
@@ -2169,13 +2243,18 @@ TerraformingRequest::TerraformingRequest(MAP *_tile, TERRAFORMING_OPTION const *
 	this->formerGain = getGainIncomeGrowth(this->incomeGain / static_cast<double>(this->terraformingTime));
 }
 
+CombatRequest::CombatRequest(CombatRequestType _type, MAP const *_tile, int _vehicleId, double _gain)
+: type(_type), tile(_tile), vehicleId(_vehicleId), gain(_gain)
+{
+}
+
 CombatRequest::CombatRequest(CombatRequestType _type, MAP const *_tile, int _vehicleId)
-: type(_type), tile(_tile), vehicleId(_vehicleId)
+: CombatRequest(_type, _tile, _vehicleId, 0.0)
 {
 }
 
 CombatRequest::CombatRequest(CombatRequestType _type, MAP const *_tile)
-: CombatRequest(_type, _tile, -1)
+: CombatRequest(_type, _tile, -1, 0.0)
 {
 }
 
@@ -2382,7 +2461,7 @@ MAP *getClosestPod(int vehicleId)
 		
 		// get travel time
 		
-		double travelTime = getVehicleTravelTime(vehicleId, tile);
+		double travelTime = getVehicleTravelTime(vehicleId, tile, false);
 		if (travelTime == INF)
 			continue;
 		
@@ -4486,9 +4565,13 @@ double getUnitArtilleryOffenseStrengthMultipler(int attackerFactionId, int attac
 /**
 Determines number of drones could be quelled by police.
 */
-int getBasePoliceRequiredPower(int baseId)
+int getBaseRequiredPolicePower(int baseId)
 {
 	BASE *base = getBase(baseId);
+
+	// store base
+
+	BASE storedBase = *base;
 	
 	// compute base without specialists
 
@@ -4496,13 +4579,13 @@ int getBasePoliceRequiredPower(int baseId)
 	computeBase(baseId, true);
 	Profiling::stop("- getBasePoliceRequiredPower - computeBase");
 	
-	// get drones currently quelled by police
+	// get drones (+ superdrones) currently quelled by police
 	
-	int quelledDrones = *CURRENT_BASE_DRONES_FACILITIES - *CURRENT_BASE_DRONES_POLICE;
-	
+	int quelledDrones = (*CURRENT_BASE_DRONES_FACILITIES + *CURRENT_BASE_SDRONES_FACILITIES) - (*CURRENT_BASE_DRONES_POLICE + *CURRENT_BASE_SDRONES_POLICE);
+
 	// get drones left after projects applied
 	
-	int leftDrones = *CURRENT_BASE_DRONES_PROJECTS;
+	int leftDrones = (*CURRENT_BASE_DRONES_PROJECTS + *CURRENT_BASE_SDRONES_PROJECTS);
 	
 	// calculate potential number of drones can be quelled with police
 	
@@ -4510,7 +4593,9 @@ int getBasePoliceRequiredPower(int baseId)
 	
 	// restore base
 	
-	aiData.resetBase(baseId);
+	*base = storedBase;
+
+	// return required police power
 	
 	return requiredPolicePower;
 	

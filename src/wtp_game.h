@@ -10,15 +10,14 @@
 
 // tracing statements
 #ifdef BUILD_DEBUG
+	#define TRACE (DEBUG && false)
 	#define trace(...) if (TRACE) { fprintf(debug_log, __VA_ARGS__); }
+	#define trace_flush(...) if (TRACE) { fprintf(debug_log, __VA_ARGS__); fflush(debug_log); }
 #else
+	#define TRACE (false)
 	#define trace(...) /* Nothing */
+	#define trace_flush(...) /* Nothing */
 #endif
-constexpr bool TRACE = DEBUG && true;
-
-#define TRACE (DEBUG && true)
-#define trace(...) if (TRACE) { fprintf(debug_log, __VA_ARGS__); }
-#define trace_flush(...) if (TRACE) { fprintf(debug_log, __VA_ARGS__); fflush(debug_log); }
 
 extern char const NULLPTR_STRING[];
 
@@ -942,8 +941,8 @@ Location getLocation(int tileIndex);
 Location getLocation(MAP *tile);
 int getX(int tileIndex);
 int getY(int tileIndex);
-int getX(MAP  *tile);
-int getY(MAP  *tile);
+int getX(MAP const* tile);
+int getY(MAP const* tile);
 int getMapTileIndex(int x, int y);
 MAP *getMapTile(int x, int y);
 Location getDelta(MAP *tile1, MAP *tile2);
@@ -1042,6 +1041,9 @@ bool isCombatVehicle(int vehicleId);
 bool isUtilityVehicle(int vehicleId);
 bool isOgreUnit(int unitId);
 bool isOgreVehicle(int vehicleId);
+bool isRepairableVehicle(int vehicleId);
+bool isMonolithInteractingVehicle(int vehicleId);
+bool isMonolithUpgradableVehicle(int vehicleId);
 double calculatePsiDamageAttack(int id, int enemyId);
 double calculatePsiDamageDefense(int id, int enemyId);
 VehOrder getVehicleOrder(int vehicleId);
@@ -1114,7 +1116,7 @@ double getVehicleBaseNativeProtectionPotential(int vehicleId);
 double getVehicleBaseNativeProtectionEfficiency(int vehicleId);
 int getBasePoliceRating(int baseId);
 int getBasePolicePower(int baseId, bool police2x);
-int getBasePoliceAllowed(int baseId);
+int getBaseAllowedPolice(int baseId);
 int getBasePoliceCount(int baseId, bool police2x);
 char *getVehicleUnitName(int vehicleId);
 int getVehicleUnitPlan(int vehicleId);
@@ -1243,6 +1245,7 @@ bool isInfantryUnit(int unitId);
 bool isInfantryVehicle(int vehicleId);
 bool isPolice2xUnit(int unitId, int factionId);
 bool isPolice2xVehicle(int vehicleId);
+int getVehiclePoliceTypeIndex(int vehicleId);
 bool isInfantryPolice2xUnit(int unitId, int factionId);
 bool isInfantryPolice2xVehicle(int vehicleId);
 bool isPsiCombat(int attackerUnitId, int defenderUnitId);
@@ -1353,7 +1356,7 @@ double getBaseLabsMultiplier(int baseId);
 bool isLandVechileMoveAllowed(int vehicleId, MAP *from, MAP *to);
 int getRange(int x1, int y1, int x2, int y2);
 int getRange(int tile1Index, int tile2Index);
-int getRange(MAP  *tile1, MAP  *tile2);
+int getRange(MAP const* tile1, MAP const* tile2);
 int getVectorDist(int x1, int y1, int x2, int y2);
 int getVectorDist(int tile1Index, int tile2Index);
 int getVectorDist(MAP  *tile1, MAP  *tile2);

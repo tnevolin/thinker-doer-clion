@@ -1019,7 +1019,7 @@ MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoid
 		
 		// get travel time
 		
-		double travelTime = getVehicleTravelTime(vehicleId, tile);
+		double travelTime = getVehicleTravelTime(vehicleId, tile, false);
 		if (travelTime == INF)
 			continue;
 		

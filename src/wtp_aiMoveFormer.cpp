@@ -1746,7 +1746,7 @@ void assignFormerOrders()
 				if (!isVehicleDestinationReachable(vehicleId, tile))
 					continue;
 
-				double travelTime = getVehicleTravelTime(vehicleId, tile);
+				double travelTime = getVehicleTravelTime(vehicleId, tile, false);
 				if (travelTime == INF)
 					continue;
 

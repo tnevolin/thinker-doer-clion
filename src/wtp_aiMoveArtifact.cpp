@@ -96,7 +96,7 @@ void moveArtifactStrategy()
 			
 			// travelTime
 			
-			double travelTime = getVehicleTravelTime(vehicleId, baseTile);
+			double travelTime = getVehicleTravelTime(vehicleId, baseTile, false);
 			if (travelTime == INF)
 				continue;
 			
@@ -161,7 +161,7 @@ void moveArtifactStrategy()
 			
 			// travelTime
 			
-			double travelTime = getVehicleTravelTime(vehicleId, baseTile);
+			double travelTime = getVehicleTravelTime(vehicleId, baseTile, false);
 			if (travelTime == INF)
 				continue;
 			

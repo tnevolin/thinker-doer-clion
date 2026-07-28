@@ -1928,7 +1928,7 @@
 // 		{
 // 			// promotion priority coefficient
 //
-// 			double promotionPriorityCoefficient = conf.ai_combat_priority_monolith_promotion;
+// 			double promotionPriorityCoefficient = conf.ai_combat_priority_monolith_upgrade;
 //
 // 			// promotion gain
 //

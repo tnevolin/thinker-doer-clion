@@ -2127,34 +2127,41 @@ void populateBasePoliceData()
 		
 		debug("\t%-25s\n", getBase(baseId)->name);
 		
-		basePoliceData.allowedUnitCount = getBasePoliceAllowed(baseId);
-		std::fill(basePoliceData.providedUnitCounts.begin(), basePoliceData.providedUnitCounts.end(), 0);
-		basePoliceData.requiredPower = getBasePoliceRequiredPower(baseId);
-		basePoliceData.providedPower = 0;
-		
+		basePoliceData.providedPowers.resize(0);
+		basePoliceData.allowedPolice = getBaseAllowedPolice(baseId);
+		basePoliceData.requiredPower = getBaseRequiredPolicePower(baseId);
+
 		double extraWorkerGain = getBaseExtraWorkerGain(baseId);
-		for (int i = 0; i < 2; i++)
+		for (int policeTypeIndex = 0; policeTypeIndex < 2; policeTypeIndex++)
 		{
-			basePoliceData.policePowers.at(i) = getBasePolicePower(baseId, i);
-			basePoliceData.policeGains.at(i) = std::min(basePoliceData.requiredPower, basePoliceData.policePowers.at(i)) * extraWorkerGain;
+			basePoliceData.policeTypePowers.at(policeTypeIndex) = getBasePolicePower(baseId, policeTypeIndex);
+			// improved psych makes police less effective by suppressing drones and superdrones separately
+			basePoliceData.policeTypeGains.at(policeTypeIndex) = (conf.base_psych_improved ? 0.75 : 1.00) * basePoliceData.policeTypePowers.at(policeTypeIndex) * extraWorkerGain;
+		}
+
+		// self aware colony provides virtual regular police unit
+
+		if (has_project(FAC_SELF_AWARE_COLONY, Bases[baseId].faction_id))
+		{
+			basePoliceData.providedPowers.push_back(basePoliceData.policeTypePowers.at(0));
 		}
 		
-//		debug
-//		(
-//			"\t\tallowedUnitCount=%d"
-//			" providedUnitCounts={%d,%d}"
-//			" requiredPower=%d"
-//			" providedPower=%d"
-//			" policePowers={%d,%d}"
-//			" policeGains={%5.2f,%5.2f}"
-//			"\n"
-//			, basePoliceData.allowedUnitCount
-//			, basePoliceData.providedUnitCounts.at(0), basePoliceData.providedUnitCounts.at(1)
-//			, basePoliceData.requiredPower
-//			, basePoliceData.providedPower
-//			, basePoliceData.policePowers.at(0), basePoliceData.policePowers.at(1)
-//			, basePoliceData.policeGains.at(0), basePoliceData.policeGains.at(1)
-//		);
+		debug
+		(
+			"\t\tallowedUnitCount=%d"
+			" providedUnitCounts={%d,%d}"
+			" requiredPower=%d"
+			" providedPower=%d"
+			" policePowers={%d,%d}"
+			" policeGains={%5.2f,%5.2f}"
+			"\n"
+			, basePoliceData.allowedUnitCount
+			, basePoliceData.providedUnitCounts.at(0), basePoliceData.providedUnitCounts.at(1)
+			, basePoliceData.requiredPower
+			, basePoliceData.providedPower
+			, basePoliceData.policePowers.at(0), basePoliceData.policePowers.at(1)
+			, basePoliceData.policeGains.at(0), basePoliceData.policeGains.at(1)
+		);
 		
 	}
 	

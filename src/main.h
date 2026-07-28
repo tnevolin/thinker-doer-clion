@@ -608,7 +608,7 @@ struct Config {
     double ai_combat_priority_escape;
     double ai_combat_priority_repair;
     double ai_combat_priority_repair_partial;
-    double ai_combat_priority_monolith_promotion;
+    double ai_combat_priority_monolith_upgrade;
     double ai_combat_priority_field_healing;
     double ai_combat_priority_base_protection;
     double ai_combat_priority_base_healing;

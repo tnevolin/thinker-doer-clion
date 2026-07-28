@@ -136,7 +136,7 @@ void moveSeaTransportStrategy(int vehicleId)
 	{
 		int passengerVehicleId = unloadRequest.getVehicleId();
 		
-		double travelTime = getVehicleTravelTime(vehicleId, unloadRequest.destination);
+		double travelTime = getVehicleTravelTime(vehicleId, unloadRequest.destination, false);
 		if (travelTime == INF)
 			continue;
 		
@@ -214,7 +214,7 @@ void moveSeaTransportStrategy(int vehicleId)
 			if (transitRequest.isFulfilled())
 				continue;
 			
-			double travelTime = getVehicleTravelTime(vehicleId, transitRequest.origin);
+			double travelTime = getVehicleTravelTime(vehicleId, transitRequest.origin, false);
 			if (travelTime == INF)
 				continue;
 			
@@ -248,7 +248,7 @@ void moveSeaTransportStrategy(int vehicleId)
 		
 		MAP *vehicleTile = getVehicleMapTile(vehicleId);
 		MAP *destination = task->getDestination();
-		double currentTravelTime = getVehicleTravelTime(vehicleId, destination);
+		double currentTravelTime = getVehicleTravelTime(vehicleId, destination, false);
 		if (currentTravelTime == INF)
 			return;
 		
@@ -270,8 +270,8 @@ void moveSeaTransportStrategy(int vehicleId)
 			// combined travel time
 			
 			double travelTime =
-				+ getVehicleTravelTime(vehicleId, vehicleTile, transitRequest.origin)
-				+ getVehicleTravelTime(vehicleId, transitRequest.origin, destination)
+				+ getVehicleTravelTime(vehicleId, vehicleTile, transitRequest.origin, false)
+				+ getVehicleTravelTime(vehicleId, transitRequest.origin, destination, false)
 			;
 			
 			if (travelTime < closestLoadLocationTravelTime)

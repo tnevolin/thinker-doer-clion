@@ -301,33 +301,18 @@ struct TileInfo
 
 struct BasePoliceData
 {
-	int allowedUnitCount;
-	int providedUnitCount;
+	std::array<int, 2> policeTypePowers;
+	std::array<double, 2> policeTypeGains;
+	int allowedPolice;
 	int requiredPower;
-	int providedPower;
-	std::array<int, 2> policePowers;
-	std::array<double, 2> policeGains;
-	
-	double getUnitPoliceGain(int unitId, int factionId)
-	{
-		return policeGains.at(isPolice2xUnit(unitId, factionId));
-	}
-	double getVehiclePoliceGain(int vehicleId)
-	{
-		return policeGains.at(isPolice2xVehicle(vehicleId));
-	}
-	
-	void addVehicle(int vehicleId)
-	{
-		providedUnitCount++;
-		providedPower += policePowers.at(isPolice2xVehicle(vehicleId));
-	}
-	
-	bool isSufficient() const
-	{
-		return providedUnitCount >= allowedUnitCount || providedPower >= requiredPower;
-	}
-	
+	std::vector<int> providedPowers;
+
+	double getUnitPoliceGain(int unitId, int factionId) const;
+	double getVehiclePoliceGain(int vehicleId) const;
+	void addVehicle(int vehicleId);
+	bool isSufficientForType(int policeTypeIndex) const;
+	bool isSufficientForVehicle(int vehicleId) const;
+
 };
 
 struct BaseProbeData
@@ -431,9 +416,13 @@ struct BaseInfo
 	}
 	bool isSufficient()
 	{
-		return policeData.isSufficient() && combatData.isSufficientProtect();
+		return policeData.isSufficientForType(0) && combatData.isSufficientProtect();
 	}
-	
+	bool isSufficientForPoliceType(int policeTypeIndex)
+	{
+		return policeData.isSufficientForType(policeTypeIndex) && combatData.isSufficientProtect();
+	}
+
 };
 
 struct BunkerInfo
@@ -652,10 +641,10 @@ struct ConvoyRequest
 
 enum CombatRequestType
 {
-	CRT_REPAIR,
+	CRT_REPAIR_MONOLITH,	// repair and monolith promotion can collocate
 	CRT_POD,
-	CRT_POLICE,
-	CRT_DEFEND_BASE,
+//	CRT_POLICE,
+	CRT_DEFEND_BASE,		// defend base and police can collocate
 	CRT_DEFEND_BUNKER,
 	CRT_CAPTURE_BASE,
 	CRT_ATTACK_STACK,
@@ -663,9 +652,11 @@ enum CombatRequestType
 struct CombatRequest
 {
 	CombatRequestType type;
-	MAP const *tile;
-	int vehicleId;
+	MAP const *tile = nullptr;
+	int vehicleId = -1;
+	double gain = 0.0;
 
+	CombatRequest(CombatRequestType _type, MAP const *_tile, int _vehicleId, double _gain);
 	CombatRequest(CombatRequestType _type, MAP const *_tile, int _vehicleId);
 	CombatRequest(CombatRequestType _type, MAP const* _tile);
 
@@ -1027,7 +1018,7 @@ double getSensorOffenseMultiplier(int factionId, MAP  *tile);
 double getSensorDefenseMultiplier(int factionId, MAP  *tile);
 double getUnitMeleeOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP  *tile, bool exactLocation);
 double getUnitArtilleryOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP  *tile, bool exactLocation);
-int getBasePoliceRequiredPower(int baseId);
+int getBaseRequiredPolicePower(int baseId);
 double getUnitDestructionGain(int unitId);
 double getProportionalCoefficient(double minValue, double maxValue, double value);
 int generatePad0FromVehicleId(int vehicleId);

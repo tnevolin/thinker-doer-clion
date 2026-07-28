@@ -112,22 +112,31 @@ struct CombatAction
 	
 };
 
+struct CombatOrder
+{
+	int vehicleId;
+	MAP *tile = nullptr;
+	CombatRequest *combatRequest = nullptr;
+
+	explicit CombatOrder(int _vehicleId);
+
+};
+
 void moveCombatStrategy();
+void popualteOrders();
 void generateRequests();
-void generateRepairRequests();
+void generateRepairMonolithRequests();
 void generatePodRequests();
-void generatePoliceRequests();
 void generateDefendBaseRequests();
 void generateDefendBunkerRequests();
 void generateCaptureBaseRequests();
 void generateAttackStackRequests();
+void assignRequests();
+//
 void immediateAttack();
-void movePolice2x();
-void moveInterceptors();
 void moveBaseProtectors();
 void moveBunkerProtectors();
 void moveCombat();
-void populateMonolithTasks(std::vector<TaskPriority> &taskPriorities);
 void populatePolice2xTasks(std::vector<TaskPriority> &taskPriorities);
 void populatePoliceTasks(std::vector<TaskPriority> &taskPriorities);
 void populateEmptyBaseCaptureTasks(std::vector<TaskPriority> &taskPriorities);

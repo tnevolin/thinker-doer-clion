@@ -1485,9 +1485,9 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_combat_priority_repair_partial = atof(value);
     }
-    else if (MATCH("ai_combat_priority_monolith_promotion"))
+    else if (MATCH("ai_combat_priority_monolith_upgrade"))
     {
-        cf->ai_combat_priority_monolith_promotion = atof(value);
+        cf->ai_combat_priority_monolith_upgrade = atof(value);
     }
     else if (MATCH("ai_combat_priority_field_healing"))
     {
