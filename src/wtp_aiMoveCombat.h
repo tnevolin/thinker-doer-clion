@@ -37,23 +37,23 @@ struct TaskPriority
 	bool destructive = true;
 	double effect = 0.0;
 	
-	TaskPriority(int  _vehicleId, double  _priority, TaskPriorityRestriction  _taskPriorityRestriction, TaskType  _taskType, MAP  *_destination, double  _travelTime, int  _baseId, CombatMode  _combatMode, MAP  *_attackTarget, bool  _destructive, double  _effect)
-	: vehicleId(_vehicleId), priority(_priority), taskPriorityRestriction(_taskPriorityRestriction), taskType(_taskType), destination(_destination), travelTime(_travelTime), baseId(_baseId), combatMode(_combatMode), attackTarget(_attackTarget), destructive(_destructive), effect(_effect)
+	TaskPriority(int  _vehicleId, double  _priority, TaskPriorityRestriction  _taskPriorityRestriction, TaskType  _taskType, MAP const *_destination, double  _travelTime, int  _baseId, CombatMode  _combatMode, MAP const *_attackTarget, bool  _destructive, double  _effect)
+	: vehicleId(_vehicleId), priority(_priority), taskPriorityRestriction(_taskPriorityRestriction), taskType(_taskType), destination(const_cast<MAP *>(_destination)), travelTime(_travelTime), baseId(_baseId), combatMode(_combatMode), attackTarget(const_cast<MAP *>(_attackTarget)), destructive(_destructive), effect(_effect)
 	{}
 	
-	TaskPriority(int  _vehicleId, double  _priority, TaskPriorityRestriction  _taskPriorityRestriction, TaskType  _taskType, MAP  *_destination)
+	TaskPriority(int  _vehicleId, double  _priority, TaskPriorityRestriction  _taskPriorityRestriction, TaskType  _taskType, MAP const *_destination)
 	: TaskPriority(_vehicleId, _priority, _taskPriorityRestriction, _taskType, _destination, INF, -1, CM_MELEE, nullptr, true, 0.0)
 	{}
 	
-	TaskPriority(int  _vehicleId, double  _priority, TaskPriorityRestriction  _taskPriorityRestriction, TaskType  _taskType, MAP  *_destination, double  _travelTime)
+	TaskPriority(int  _vehicleId, double  _priority, TaskPriorityRestriction  _taskPriorityRestriction, TaskType  _taskType, MAP const *_destination, double  _travelTime)
 	: TaskPriority(_vehicleId, _priority, _taskPriorityRestriction, _taskType, _destination, _travelTime, -1, CM_MELEE, nullptr, true, 0.0)
 	{}
 	
-	TaskPriority(int  _vehicleId, double  _priority, TaskPriorityRestriction  _taskPriorityRestriction, TaskType  _taskType, MAP  *_destination, double  _travelTime, int  _baseId)
+	TaskPriority(int  _vehicleId, double  _priority, TaskPriorityRestriction  _taskPriorityRestriction, TaskType  _taskType, MAP const *_destination, double  _travelTime, int  _baseId)
 	: TaskPriority(_vehicleId, _priority, _taskPriorityRestriction, _taskType, _destination, _travelTime, _baseId, CM_MELEE, nullptr, true, 0.0)
 	{}
 	
-	TaskPriority(int  _vehicleId, double  _priority, TaskPriorityRestriction  _taskPriorityRestriction, TaskType  _taskType, MAP  *_destination, double  _travelTime, CombatMode  _combatMode, MAP  *_attackTarget, bool  _destructive, double  _effect)
+	TaskPriority(int  _vehicleId, double  _priority, TaskPriorityRestriction  _taskPriorityRestriction, TaskType  _taskType, MAP const *_destination, double  _travelTime, CombatMode  _combatMode, MAP const *_attackTarget, bool  _destructive, double  _effect)
 	: TaskPriority(_vehicleId, _priority, _taskPriorityRestriction, _taskType, _destination, _travelTime, -1, _combatMode, _attackTarget, _destructive, _effect)
 	{}
 	
@@ -148,10 +148,10 @@ int getVehicleProtectionRange(int vehicleId);
 bool compareTaskPriorityDescending( TaskPriority &a,  TaskPriority &b);
 double getDuelCombatCostCoefficient(int vehicleId, double effect, double enemyUnitCost);
 double getBombardmentCostCoefficient(int vehicleId, double effect, double enemyUnitCost);
-bool isPrimaryEffect(int vehicleId, MAP *enemyStackTile, EnemyStackInfo &enemyStackInfo, CombatMode combatMode);
-double getDefendGain(int defenderVehicleId, MAP *tile, double defenderHealth, int excludeEnemyVehiclePad0 = -1);
-double getMeleeAttackGain(int vehicleId, MAP *destination, MAP *target, double hastyCoefficient);
-double getArtilleryAttackGain(int vehicleId, MAP *destination, MAP *target);
+bool isPrimaryEffect(int vehicleId, MAP const *enemyStackTile, EnemyStackInfo &enemyStackInfo, CombatMode combatMode);
+double getDefendGain(int defenderVehicleId, MAP const *tile, double defenderHealth, int excludeEnemyVehiclePad0 = -1);
+double getMeleeAttackGain(int vehicleId, MAP const *destination, MAP const *target, double hastyCoefficient);
+double getArtilleryAttackGain(int vehicleId, MAP const *destination, MAP const *target);
 CombatAction selectVehicleCombatAction(int vehicleId);
 void aiEnemyMoveCombatVehicles();
 

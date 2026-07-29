@@ -203,7 +203,7 @@ TileInfo &Data::getTileInfo(int tileIndex)
 	return aiData.tileInfos.at(tileIndex);
 }
 
-TileInfo &Data::getTileInfo(MAP *tile)
+TileInfo &Data::getTileInfo(MAP const* tile)
 {
 	assert(isOnMap(tile));
 	return aiData.tileInfos.at(tile - *MapTiles);
@@ -221,19 +221,19 @@ TileInfo &Data::getVehicleTileInfo(int vehicleId)
 	return aiData.tileInfos.at(getVehicleMapTileIndex(vehicleId));
 }
 
-bool Data::isSea(MAP *tile)
+bool Data::isSea(MAP const* tile)
 {
 	assert(isOnMap(tile));
 	return aiData.tileInfos.at(tile - *MapTiles).ocean;
 }
 
-bool Data::isLand(MAP *tile)
+bool Data::isLand(MAP const* tile)
 {
 	assert(isOnMap(tile));
 	return !aiData.tileInfos.at(tile - *MapTiles).ocean;
 }
 
-bool Data::isSeaUnitAllowed(MAP *tile, int factionId)
+bool Data::isSeaUnitAllowed(MAP const* tile, int factionId)
 {
 	assert(isOnMap(tile));
 	
@@ -243,7 +243,7 @@ bool Data::isSeaUnitAllowed(MAP *tile, int factionId)
 	
 }
 
-bool Data::isLandUnitAllowed(MAP *tile)
+bool Data::isLandUnitAllowed(MAP const* tile)
 {
 	assert(isOnMap(tile));
 	
@@ -259,10 +259,10 @@ BaseInfo &Data::getBaseInfo(int baseId)
 	return aiData.baseInfos.at(baseId);
 }
 
-BunkerInfo &Data::getBunkerInfo(MAP *tile)
+BunkerInfo &Data::getBunkerInfo(MAP const* tile)
 {
-	assert(tile >= *MapTiles && tile < *MapTiles + *MapAreaTiles);
-	robin_hood::unordered_flat_map<MAP *, BunkerInfo>::iterator bunkerInfoIterator = aiData.bunkerInfos.find(tile);
+	assert(isOnMap(tile));
+	robin_hood::unordered_flat_map<MAP const*, BunkerInfo>::iterator bunkerInfoIterator = aiData.bunkerInfos.find(tile);
 	if (bunkerInfoIterator == aiData.bunkerInfos.end())
 	{
 		debug("ERROR: No bunker at tile = %s\n", getLocationString(tile)); flushlog();
@@ -411,7 +411,7 @@ double CombatEffectTable::getUnitCombatEffect(int attackerFactionId, int attacke
 	return getUnitCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, nullptr, nullptr);
 }
 
-double CombatEffectTable::getVehicleCombatEffect(int attackerVehicleId, int defenderVehicleId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile)
+double CombatEffectTable::getVehicleCombatEffect(int attackerVehicleId, int defenderVehicleId, ENGAGEMENT_MODE engagementMode, MAP const *attackerTile, MAP const *defenderTile)
 {
 	assert(isValidVehicleId(attackerVehicleId));
 	assert(isValidVehicleId(defenderVehicleId));
@@ -419,7 +419,7 @@ double CombatEffectTable::getVehicleCombatEffect(int attackerVehicleId, int defe
 	VEH &attackerVehicle = Vehs[attackerVehicleId];
 	VEH &defenderVehicle = Vehs[defenderVehicleId];
 	
-	double unitCombatEffect = getUnitCombatEffect(attackerVehicle.faction_id, attackerVehicle.unit_id, defenderVehicle.faction_id, defenderVehicle.unit_id, engagementMode, attackerTile, defenderTile);
+	double unitCombatEffect = getUnitCombatEffect(attackerVehicle.faction_id, attackerVehicle.unit_id, defenderVehicle.faction_id, defenderVehicle.unit_id, engagementMode, const_cast<MAP *>(attackerTile), const_cast<MAP *>(defenderTile));
 	
 	return
 		unitCombatEffect
@@ -874,9 +874,9 @@ void Combattant::initialize(robin_hood::unordered_flat_map<int, double>  &damage
 
 // CombatData
 
-void CombatData::initialize(MAP *tile, bool playerAssaults, double targetGain)
+void CombatData::initialize(MAP const *tile, bool playerAssaults, double targetGain)
 {
-	this->tile = tile;
+	this->tile = const_cast<MAP *>(tile);
 	this->airbase = aiData.getTileInfo(tile).airbase;
 	this->playerAssaults = playerAssaults;
 	this->targetGain = targetGain;
@@ -2328,7 +2328,7 @@ std::vector<UnloadRequest> TransportControl::getSeaTransportUnloadRequests(int s
 	return this->unloadRequests[seaTransportVehicle->pad_0];
 }
 
-bool isWarzone(MAP *tile)
+bool isWarzone(MAP const *tile)
 {
 	return aiData.tileInfos.at(tile - *MapTiles).hostileDangerZone;
 }
@@ -4031,7 +4031,7 @@ void assignVehiclesToTransports()
 /*
 Unit can attack enemy at the tile.
 */
-bool isUnitCanMeleeAttack(int factionId, int unitId, MAP *position, MAP *target)
+bool isUnitCanMeleeAttack(int factionId, int unitId, MAP const *position, MAP const *target)
 {
 	UNIT *unit = getUnit(unitId);
 	int triad = unit->triad();
@@ -4053,7 +4053,7 @@ bool isUnitCanMeleeAttack(int factionId, int unitId, MAP *position, MAP *target)
 			
 			// sea unit cannot attack from land without a base
 			
-			if (!positionTileInfo.ocean && !map_has_item(position, BIT_BASE_IN_TILE))
+			if (!positionTileInfo.ocean && !map_has_item(const_cast<MAP *>(position), BIT_BASE_IN_TILE))
 				return false;
 			
 			break;
@@ -4117,7 +4117,7 @@ bool isUnitCanMeleeAttack(int factionId, int unitId, MAP *position, MAP *target)
 			{
 				// amphibious unit cannot attack sea without a base
 				
-				if (targetTileInfo.ocean && !map_has_item(target, BIT_BASE_IN_TILE))
+				if (targetTileInfo.ocean && !map_has_item(const_cast<MAP *>(target), BIT_BASE_IN_TILE))
 					return false;
 				
 			}
@@ -4145,7 +4145,7 @@ bool isUnitCanMeleeAttack(int factionId, int unitId, MAP *position, MAP *target)
 /*
 Vehilce can attack enemy at the tile.
 */
-bool isVehicleCanMeleeAttack(int vehicleId, MAP *position, MAP *target)
+bool isVehicleCanMeleeAttack(int vehicleId, MAP const *position, MAP const *target)
 {
 	VEH &vehicle = Vehs[vehicleId];
 	return isUnitCanMeleeAttack(vehicle.faction_id, vehicle.unit_id, position, target);
@@ -4154,7 +4154,7 @@ bool isVehicleCanMeleeAttack(int vehicleId, MAP *position, MAP *target)
 /*
 Unit can attack enemy at the tile.
 */
-bool isUnitCanArtilleryAttack(int unitId, MAP *position)
+bool isUnitCanArtilleryAttack(int unitId, MAP const *position)
 {
 	UNIT &unit = Units[unitId];
 	int triad = unit.triad();
@@ -4217,7 +4217,7 @@ bool isUnitCanArtilleryAttack(int unitId, MAP *position)
 /*
 Checks if vehicle can use artillery.
 */
-bool isVehicleCanArtilleryAttack(int vehicleId, MAP *position)
+bool isVehicleCanArtilleryAttack(int vehicleId, MAP const *position)
 {
 	return isUnitCanArtilleryAttack(Vehs[vehicleId].unit_id, position);
 }
@@ -4251,7 +4251,7 @@ double getBaseExtraWorkerGain(int baseId)
 	
 }
 
-MapDoubleValue getMeleeAttackPosition(int unitId, MAP *origin, MAP *target)
+MapDoubleValue getMeleeAttackPosition(int unitId, MAP const *origin, MAP const *target)
 {
 	TileInfo &targetTileInfo = aiData.getTileInfo(target);
 	
@@ -4298,12 +4298,12 @@ MapDoubleValue getMeleeAttackPosition(int unitId, MAP *origin, MAP *target)
 	
 }
 
-MapDoubleValue getMeleeAttackPosition(int  vehicleId, MAP  *target)
+MapDoubleValue getMeleeAttackPosition(int  vehicleId, MAP const *target)
 {
 	return getMeleeAttackPosition(getVehicle(vehicleId)->unit_id, getVehicleMapTile(vehicleId), target);
 }
 
-MapDoubleValue getArtilleryAttackPosition(int unitId, MAP *origin, MAP *target)
+MapDoubleValue getArtilleryAttackPosition(int unitId, MAP const *origin, MAP const *target)
 {
 	TileInfo &targetTileInfo = aiData.getTileInfo(target);
 	
@@ -4350,7 +4350,7 @@ MapDoubleValue getArtilleryAttackPosition(int unitId, MAP *origin, MAP *target)
 	
 }
 
-MapDoubleValue getArtilleryAttackPosition(int vehicleId, MAP *target)
+MapDoubleValue getArtilleryAttackPosition(int vehicleId, MAP const *target)
 {
 	return getArtilleryAttackPosition(getVehicle(vehicleId)->unit_id, getVehicleMapTile(vehicleId), target);
 }
@@ -4372,14 +4372,14 @@ double getWinningHealthRatio(double combatEffect)
 	return 0.35 + 0.12* combatEffect;
 }
 
-double getSensorOffenseMultiplier(int factionId, MAP *tile)
+double getSensorOffenseMultiplier(int factionId, MAP const *tile)
 {
 	assert(factionId >= 0 && factionId < MaxPlayerNum);
 	
-	TileInfo &tileInfo = aiData.tileInfos.at(tile - *MapTiles);
+	TileInfo &tileInfo = aiData.getTileInfo(tile);
 	
 	return
-		Rules->combat_defend_sensor != 0 && tileInfo.sensorCoverages.at(factionId) && (conf.sensor_offense && (!is_ocean(tile) || conf.sensor_offense_ocean)) ?
+		Rules->combat_defend_sensor != 0 && tileInfo.sensorCoverages.at(factionId) && (conf.sensor_offense && (!is_ocean(const_cast<MAP *>(tile)) || conf.sensor_offense_ocean)) ?
 			getPercentageBonusMultiplier(Rules->combat_defend_sensor)
 			:
 			1.0
@@ -4387,14 +4387,14 @@ double getSensorOffenseMultiplier(int factionId, MAP *tile)
 	
 }
 
-double getSensorDefenseMultiplier(int factionId, MAP *tile)
+double getSensorDefenseMultiplier(int factionId, MAP const *tile)
 {
 	assert(factionId >= 0 && factionId < MaxPlayerNum);
 	
-	TileInfo &tileInfo = aiData.tileInfos.at(tile - *MapTiles);
+	TileInfo &tileInfo = aiData.getTileInfo(tile);
 	
 	return
-		Rules->combat_defend_sensor != 0 && tileInfo.sensorCoverages.at(factionId) && ((!is_ocean(tile) || conf.sensor_offense_ocean)) ?
+		Rules->combat_defend_sensor != 0 && tileInfo.sensorCoverages.at(factionId) && ((!is_ocean(const_cast<MAP *>(tile)) || conf.sensor_offense_ocean)) ?
 			getPercentageBonusMultiplier(Rules->combat_defend_sensor)
 			:
 			1.0
@@ -4406,17 +4406,19 @@ double getSensorDefenseMultiplier(int factionId, MAP *tile)
 Computes melee attack strength multiplier taking all bonuses/penalties into account.
 exactLocation: whether combat happens at this exact location (base)
 */
-double getUnitMeleeOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP *tile, bool exactLocation)
+double getUnitMeleeOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP const *tile, bool exactLocation)
 {
 	assert(isOnMap(tile));
+	
+	MAP *tilePtr = const_cast<MAP *>(tile);
 	
 	int x = getX(tile);
 	int y = getY(tile);
 	
-	bool ocean = is_ocean(tile);
-	bool fungus = map_has_item(tile, BIT_FUNGUS);
-	bool landRough = !ocean && (map_has_item(tile, BIT_FUNGUS | BIT_FOREST) || map_rockiness(tile) == 2);
-	bool landOpen = !ocean && !(map_has_item(tile, BIT_FUNGUS | BIT_FOREST) || map_rockiness(tile) == 2);
+	bool ocean = is_ocean(tilePtr);
+	bool fungus = map_has_item(tilePtr, BIT_FUNGUS);
+	bool landRough = !ocean && (map_has_item(tilePtr, BIT_FUNGUS | BIT_FOREST) || map_rockiness(tilePtr) == 2);
+	bool landOpen = !ocean && !(map_has_item(tilePtr, BIT_FUNGUS | BIT_FOREST) || map_rockiness(tilePtr) == 2);
 	
 	double offenseStrengthMultiplier = 1.0;
 	
@@ -4471,7 +4473,7 @@ double getUnitMeleeOffenseStrengthMultipler(int attackerFactionId, int attackerU
 		}
 		
 		// mobile attack in open bonus
-
+		
 		if (!isPsiCombat(attackerUnitId, defenderUnitId) && isMobileUnit(attackerUnitId) && landOpen)
 		{
 			offenseStrengthMultiplier *= getPercentageBonusMultiplier(Rules->combat_mobile_open_ground);
@@ -4487,9 +4489,11 @@ double getUnitMeleeOffenseStrengthMultipler(int attackerFactionId, int attackerU
 Computes artillerry attack strength multiplier taking all bonuses/penalties into account.
 exactLocation: whether combat happens at this exact location (base)
 */
-double getUnitArtilleryOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP *tile, bool exactLocation)
+double getUnitArtilleryOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP const *tile, bool exactLocation)
 {
 	assert(isOnMap(tile));
+	
+	MAP *tilePtr = const_cast<MAP *>(tile);
 	
 	int x = getX(tile);
 	int y = getY(tile);
@@ -4541,7 +4545,7 @@ double getUnitArtilleryOffenseStrengthMultipler(int attackerFactionId, int attac
 			attackStrengthMultiplier /= getBaseDefenseMultiplier(baseId, attackerUnitId, defenderUnitId);
 			
 		}
-		else if (isRoughTerrain(tile))
+		else if (isRoughTerrain(tilePtr))
 		{
 			// bombardment defense in rough terrain bonus
 			
@@ -4701,7 +4705,7 @@ void populateVehiclePad0Map(bool initialize)
 Evaluates combat gain for attacker.
 Could be positive or negative.
 */
-double getCombatGain(int  attackerVehicleId, int  defenderVehicleId, ENGAGEMENT_MODE  engagementMode, MAP  *attackerTile, MAP  *defenderTile, double  attackerHealth, double  defenderHealth)
+double getCombatGain(int  attackerVehicleId, int  defenderVehicleId, ENGAGEMENT_MODE  engagementMode, MAP const *attackerTile, MAP const *defenderTile, double  attackerHealth, double  defenderHealth)
 {
 	int defenderUnitId = Vehs[defenderVehicleId].unit_id;
 	Triad defenderTriad = static_cast<Triad>(Units[defenderUnitId].triad());

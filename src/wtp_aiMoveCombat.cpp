@@ -252,8 +252,8 @@ void generateRepairMonolithRequests()
 				"\t\t\t-> %s"
 				" repairPriority=%5.2f"
 				" repairPriorityCoefficient=%5.2f"
-				" promotionPriority=%5.2f"
-				" promotionPriorityCoefficient=%5.2f"
+				" monolithUpgradePriority=%5.2f"
+				" monolithUpgradePriorityCoefficient=%5.2f"
 				" warzoneCoefficient=%5.2f"
 				" unitMineralCost=%2d"
 				" repairBonus=%5.2f"
@@ -266,8 +266,8 @@ void generateRepairMonolithRequests()
 				, getLocationString({x, y})
 				, repairPriority
 				, repairPriorityCoefficient
-				, promotionPriority
-				, promotionPriorityCoefficient
+				, monolithUpgradePriority
+				, conf.ai_combat_priority_monolith_upgrade
 				, warzoneCoefficient
 				, unitMineralCost
 				, repairBonus
@@ -342,7 +342,7 @@ void generateDefendBaseRequests()
 
 void generateDefendBunkerRequests()
 {
-	for (robin_hood::pair<MAP *, BunkerInfo> const &bunkerInfoEntry : aiData.bunkerInfos)
+	for (robin_hood::pair<MAP const*, BunkerInfo> const &bunkerInfoEntry : aiData.bunkerInfos)
 	{
 		MAP const *bunkerTile = bunkerInfoEntry.first;
 		combatRequests.emplace_back(CRT_DEFEND_BUNKER, bunkerTile);
@@ -369,9 +369,9 @@ void generateCaptureBaseRequests()
 
 void generateAttackStackRequests()
 {
-	for (robin_hood::pair<MAP *, EnemyStackInfo> const &enemyStackInfoEntry : aiData.enemyStacks)
+	for (robin_hood::pair<MAP const*, EnemyStackInfo> const &enemyStackInfoEntry : aiData.enemyStacks)
 	{
-		MAP *stackTile = enemyStackInfoEntry.first;
+		MAP const* stackTile = enemyStackInfoEntry.first;
 		combatRequests.emplace_back(CRT_ATTACK_STACK, stackTile);
 	}
 
@@ -502,8 +502,8 @@ void immediateAttack()
 		
 		// collect attackable targets
 		
-		robin_hood::unordered_flat_set<MAP *> meleeAttackTargets;
-		robin_hood::unordered_flat_set<MAP *> artilleryAttackTargets;
+		robin_hood::unordered_flat_set<MAP const*> meleeAttackTargets;
+		robin_hood::unordered_flat_set<MAP const*> artilleryAttackTargets;
 		
 		for (int enemyBaseId : aiData.emptyEnemyBaseIds)
 		{
@@ -522,9 +522,9 @@ void immediateAttack()
 			
 		}
 		
-		for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
+		for (robin_hood::pair<MAP const*, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 		{
-			MAP *enemyStackTile = enemyStackEntry.first;
+			MAP const* enemyStackTile = enemyStackEntry.first;
 			EnemyStackInfo &enemyStackInfo = enemyStackEntry.second;
 			
 			if (!enemyStackInfo.hostile)
@@ -774,7 +774,7 @@ void moveBaseProtectors()
 			"\t\t%5.2f:"
 			" [%4d] %s -> %s"
 			" %-25s"
-			" baseInfo.isSatisfied(0)=%d"
+			" baseInfo.isSufficient()=%d"
 			" baseInfo.combatData.isSufficientProtect()=%d"
 			"\n"
 			, bestTaskPriority->priority
@@ -782,7 +782,7 @@ void moveBaseProtectors()
 			, getLocationString(getVehicleMapTile(bestTaskPriority->vehicleId))
 			, getLocationString(bestTaskPriority->destination)
 			, getBase(bestTaskPriority->baseId)->name
-			, baseInfo.isSufficient(0)
+			, baseInfo.isSufficient()
 			, baseInfo.combatData.isSufficientProtect()
 		);
 		
@@ -962,9 +962,9 @@ void moveBunkerProtectors()
 	
 	debug("\thold current bunker protectors\n");
 	
-	for (robin_hood::pair<MAP *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
+	for (robin_hood::pair<MAP const*, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
 	{
-		MAP *bunkerTile = bunkerInfoEntry.first;
+		MAP const *bunkerTile = bunkerInfoEntry.first;
 		BunkerInfo &bunkerInfo = bunkerInfoEntry.second;
 		
 		TileInfo &bunkerTileInfo = aiData.getTileInfo(bunkerTile);
@@ -1068,7 +1068,7 @@ void moveCombat()
 		targetedLocations.clear();
 		targetedEnemyStacks.clear();
 		
-		for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackInfoEntry : aiData.enemyStacks)
+		for (robin_hood::pair<MAP const*, EnemyStackInfo> &enemyStackInfoEntry : aiData.enemyStacks)
 		{
 			EnemyStackInfo &enemyStackInfo = enemyStackInfoEntry.second;
 			enemyStackInfo.resetAttackParameters();
@@ -1390,7 +1390,7 @@ void moveCombat()
 	
 	// store untargeted stacks for production demand
 	
-	for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
+	for (robin_hood::pair<MAP const*, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 	{
 		EnemyStackInfo *enemyStackInfo = &(enemyStackEntry.second);
 		
@@ -1483,7 +1483,7 @@ void moveCombat()
 	
 	// remove fully destroyed stacks from retaliation threat
 
-	for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackInfoEntry : aiData.enemyStacks)
+	for (robin_hood::pair<MAP const*, EnemyStackInfo> &enemyStackInfoEntry : aiData.enemyStacks)
 	{
 		EnemyStackInfo &enemyStackInfo = enemyStackInfoEntry.second;
 
@@ -1777,9 +1777,9 @@ void populateEnemyStackAttackTasks(std::vector<TaskPriority> &taskPriorities)
 		
 		debug("\t\t[%4d] %s\n", vehicleId, getLocationString(getVehicleMapTile(vehicleId)));
 		
-		for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
+		for (robin_hood::pair<MAP const*, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 		{
-			MAP *enemyStackTile = enemyStackEntry.first;
+			MAP const *enemyStackTile = enemyStackEntry.first;
 			EnemyStackInfo &enemyStackInfo = enemyStackEntry.second;
 			
 			// do not attack alien sea vehicles far from bases
@@ -2015,7 +2015,7 @@ void coordinateAttack()
 	
 	// process targetedStacks
 	
-	for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
+	for (robin_hood::pair<MAP const*, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 	{
 		EnemyStackInfo &enemyStack = enemyStackEntry.second;
 		
@@ -2305,7 +2305,7 @@ bool isPrimaryEffect(int vehicleId, MAP *enemyStackTile, EnemyStackInfo &enemySt
 Estimates the gain of vehicle defending at this location.
 Gain is composed of estimated losses at both sides times unit cost.
 */
-double getDefendGain(int  defenderVehicleId, MAP  *tile, double defenderHealth, int  excludeEnemyVehiclePad0)
+double getDefendGain(int  defenderVehicleId, MAP const *tile, double defenderHealth, int  excludeEnemyVehiclePad0)
 {
 	VEH &defenderVehicle = Vehs[defenderVehicleId];
 
@@ -2414,7 +2414,7 @@ double getDefendGain(int  defenderVehicleId, MAP  *tile, double defenderHealth, 
 Estimates the gain of vehicle melee attacking and then defending at this location.
 Gain is composed of estimated losses at both sides times unit cost.
 */
-double getMeleeAttackGain(int  vehicleId, MAP  *destination, MAP  *target, double  hastyCoefficient)
+double getMeleeAttackGain(int  vehicleId, MAP const *destination, MAP const *target, double  hastyCoefficient)
 {
 	if (!aiData.hasEnemyStack(target))
 		return 0.0;
@@ -2468,7 +2468,7 @@ double getMeleeAttackGain(int  vehicleId, MAP  *destination, MAP  *target, doubl
 Estimates the gain of vehicle artillery attacking and then defending at this location.
 Gain is composed of estimated losses at both sides times unit cost.
 */
-double getArtilleryAttackGain(int vehicleId, MAP *destination, MAP *target)
+double getArtilleryAttackGain(int vehicleId, MAP const *destination, MAP const *target)
 {
 	if (!aiData.hasEnemyStack(target))
 		return 0.0;

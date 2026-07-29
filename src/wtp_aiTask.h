@@ -45,10 +45,10 @@ struct Task
 	int baseId = -1;
 	bool executed = false;
 
-	Task(int _vehicleId, TaskType _type, MAP *_destination, MAP *_attackTarget, int _parameter);
-	Task(int _vehicleId, TaskType _type, MAP *_destination, MAP *_attackTarget);
-	Task(int _vehicleId, TaskType _type, MAP *_destination, int _parameter);
-	Task(int _vehicleId, TaskType _type, MAP *_destination);
+	Task(int _vehicleId, TaskType _type, MAP const *_destination, MAP const *_attackTarget, int _parameter);
+	Task(int _vehicleId, TaskType _type, MAP const *_destination, MAP const *_attackTarget);
+	Task(int _vehicleId, TaskType _type, MAP const *_destination, int _parameter);
+	Task(int _vehicleId, TaskType _type, MAP const *_destination);
 	Task(int _vehicleId, TaskType _type);
 
 	bool operator<(Task  &other);

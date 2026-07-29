@@ -45,16 +45,16 @@ Task *TaskHeap::get()
 
 // Task
 
-Task::Task(int  _vehicleId, TaskType  _type, MAP  *_destination, MAP  *_attackTarget, int  _parameter)
-: vehiclePad0(Vehs[_vehicleId].pad_0), type(_type), destination(_destination), attackTarget(_attackTarget), parameter(_parameter)
+Task::Task(int  _vehicleId, TaskType  _type, MAP const *_destination, MAP const *_attackTarget, int  _parameter)
+: vehiclePad0(Vehs[_vehicleId].pad_0), type(_type), destination(const_cast<MAP *>(_destination)), attackTarget(const_cast<MAP *>(_attackTarget)), parameter(_parameter)
 {}
-Task::Task(int  _vehicleId, TaskType  _type, MAP  *_destination, MAP  *_attackTarget)
+Task::Task(int  _vehicleId, TaskType  _type, MAP const *_destination, MAP const *_attackTarget)
 : Task(_vehicleId, _type, _destination, _attackTarget, -1)
 {}
-Task::Task(int  _vehicleId, TaskType  _type, MAP  *_destination, int _parameter)
+Task::Task(int  _vehicleId, TaskType  _type, MAP const *_destination, int _parameter)
 : Task(_vehicleId, _type, _destination, nullptr, _parameter)
 {}
-Task::Task(int  _vehicleId, TaskType  _type, MAP  *_destination)
+Task::Task(int  _vehicleId, TaskType  _type, MAP const *_destination)
 : Task(_vehicleId, _type, _destination, nullptr, -1)
 {}
 Task::Task(int  _vehicleId, TaskType  _type)

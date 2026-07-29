@@ -1742,7 +1742,7 @@ void populateBunkerInfos()
 	
 	SummaryStatistics baseGainSummary;
 	
-	for (robin_hood::pair<MAP *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
+	for (robin_hood::pair<MAP const*, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
 	{
 		BunkerInfo &bunkerInfo = bunkerInfoEntry.second;
 		
@@ -2148,19 +2148,17 @@ void populateBasePoliceData()
 		
 		debug
 		(
-			"\t\tallowedUnitCount=%d"
-			" providedUnitCounts={%d,%d}"
+			"\t\tallowedPolice=%d"
+			" providedPowers.size()=%d"
 			" requiredPower=%d"
-			" providedPower=%d"
-			" policePowers={%d,%d}"
-			" policeGains={%5.2f,%5.2f}"
+			" policeTypePowers={%d,%d}"
+			" policeTypeGains={%5.2f,%5.2f}"
 			"\n"
-			, basePoliceData.allowedUnitCount
-			, basePoliceData.providedUnitCounts.at(0), basePoliceData.providedUnitCounts.at(1)
+			, basePoliceData.allowedPolice
+			, (int)basePoliceData.providedPowers.size()
 			, basePoliceData.requiredPower
-			, basePoliceData.providedPower
-			, basePoliceData.policePowers.at(0), basePoliceData.policePowers.at(1)
-			, basePoliceData.policeGains.at(0), basePoliceData.policeGains.at(1)
+			, basePoliceData.policeTypePowers.at(0), basePoliceData.policeTypePowers.at(1)
+			, basePoliceData.policeTypeGains.at(0), basePoliceData.policeTypeGains.at(1)
 		);
 		
 	}
@@ -2849,14 +2847,14 @@ void populateEnemyStacks()
 	
 	std::vector<MAP *> emptyEnemyStacks;
 	
-	for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
+	for (robin_hood::pair<MAP const*, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 	{
-		MAP *enemyStackTile = enemyStackEntry.first;
+		MAP const *enemyStackTile = enemyStackEntry.first;
 		EnemyStackInfo &enemyStackInfo = enemyStackEntry.second;
 		
 		if (enemyStackInfo.vehiclePad0s.size() == 0)
 		{
-			emptyEnemyStacks.push_back(enemyStackTile);
+			emptyEnemyStacks.push_back(const_cast<MAP *>(enemyStackTile));
 		}
 		
 	}
@@ -2868,9 +2866,9 @@ void populateEnemyStacks()
 	
 	// select enemy stacks by base range
 	
-	for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
+	for (robin_hood::pair<MAP const*, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 	{
-		MAP *enemyStackTile = enemyStackEntry.first;
+		MAP const *enemyStackTile = enemyStackEntry.first;
 		EnemyStackInfo &enemyStackInfo = enemyStackEntry.second;
 		
 		assert(isOnMap(enemyStackTile));
@@ -2898,12 +2896,12 @@ void populateEnemyStacks()
 	
 	std::vector<MapIntValue> stackTileRanges;
 	
-	for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
+	for (robin_hood::pair<MAP const*, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 	{
-		MAP *enemyStackLocation = enemyStackEntry.first;
+		MAP const *enemyStackLocation = enemyStackEntry.first;
 		EnemyStackInfo &enemyStackInfo = enemyStackEntry.second;
 		
-		stackTileRanges.push_back({enemyStackLocation, enemyStackInfo.baseRange});
+		stackTileRanges.push_back({const_cast<MAP *>(enemyStackLocation), enemyStackInfo.baseRange});
 		
 	}
 	
@@ -2927,7 +2925,7 @@ void populateEnemyStacks()
 	
 	SummaryStatistics unitCostSummary;
 	SummaryStatistics destructionGainSummary;
-	for (robin_hood::pair<MAP *, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
+	for (robin_hood::pair<MAP const*, EnemyStackInfo> &enemyStackEntry : aiData.enemyStacks)
 	{
 		EnemyStackInfo &enemyStackInfo = enemyStackEntry.second;
 		
@@ -3413,9 +3411,9 @@ void evaluateEnemyStacks()
 	
 	std::array<FactionInfo, MaxPlayerNum> &factionInfos = aiData.factionInfos;
 	
-	for (robin_hood::pair<MAP *, EnemyStackInfo> &stackInfoEntry : aiData.enemyStacks)
+	for (robin_hood::pair<MAP const*, EnemyStackInfo> &stackInfoEntry : aiData.enemyStacks)
 	{
-		MAP *enemyStackTile = stackInfoEntry.first;
+		MAP const *enemyStackTile = stackInfoEntry.first;
 		EnemyStackInfo &enemyStackInfo = stackInfoEntry.second;
 		
 		assert(isOnMap(enemyStackTile));
@@ -3716,9 +3714,9 @@ void evaluateBaseDefense()
 	
 	// bunkers
 	
-	for (robin_hood::pair<MAP *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
+	for (robin_hood::pair<MAP const*, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
 	{
-		MAP *tile = bunkerInfoEntry.first;
+		MAP const *tile = bunkerInfoEntry.first;
 		BunkerInfo &bunkerInfo = bunkerInfoEntry.second;
 		
 		CombatData &combatData = bunkerInfo.combatData;
@@ -3729,7 +3727,7 @@ void evaluateBaseDefense()
 	
 }
 
-void evaluateDefense(MAP *tile, CombatData &combatData, double targetGain)
+void evaluateDefense(MAP const *tile, CombatData &combatData, double targetGain)
 {
 	Profiling::start("evaluateBaseDefense", "populateAIData");
 	

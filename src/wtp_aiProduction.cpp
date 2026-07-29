@@ -2685,9 +2685,9 @@ void evaluateBunkerDefenseUnits()
 		
 		double bestGain = 0.0;
 		
-		for (robin_hood::pair<MAP *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
+		for (robin_hood::pair<MAP const*, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
 		{
-			MAP *targetBunkerTile = bunkerInfoEntry.first;
+			MAP const *targetBunkerTile = bunkerInfoEntry.first;
 			BunkerInfo &targetBunkerInfo = bunkerInfoEntry.second;
 			CombatData &targetBunkerCombatData = targetBunkerInfo.combatData;
 			

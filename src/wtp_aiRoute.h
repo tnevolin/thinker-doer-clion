@@ -246,8 +246,8 @@ void populateSharedSeas();
 // Landmark travel time finding algorithm
 // ==================================================
 
-double getVehicleApproachTime(int vehicleId, MAP *dst);
-double getVehicleApproachTime(int vehicleId, MAP *org, MAP *dst);
+double getVehicleApproachTime(int vehicleId, MAP const *dst);
+double getVehicleApproachTime(int vehicleId, MAP const *org, MAP const *dst);
 double getUnitApproachTime(int factionId, int unitId, MAP const* org, MAP const* dst);
 double getGravshipTravelTime(int vechicleSpeed, MAP const* org, MAP const* dst);
 double getRangedAirTravelTime(int factionId, int chassisId, int unitSpeed, MAP const* org, MAP const* dst);
@@ -256,7 +256,7 @@ double getLandLApproachTime(int factionId, MovementType movementType, int unitSp
 double getLandLMovementCost(int factionId, MovementType movementType, MAP *org, MAP *dst);
 
 double getUnitTravelTime(int factionId, int unitId, int unitSpeed, MAP const* org, MAP const* dst, bool attack);
-double getVehicleTravelTime(int vehicleId, MAP *org, MAP *dst, bool attack);
+double getVehicleTravelTime(int vehicleId, MAP const *org, MAP const *dst, bool attack);
 double getVehicleTravelTime(int vehicleId, MAP const* dst, bool attack);
 
 // ==================================================
@@ -277,56 +277,56 @@ double getATravelTime(MovementType movementType, int vehicleSpeed, MAP const* or
 // ============================================================
 
 bool isUnitDestinationReachable(int unitId, MAP const* org, MAP const* dst);
-bool isVehicleDestinationReachable(int vehicleId, MAP  *org, MAP  *dst);
-bool isVehicleDestinationReachable(int vehicleId, MAP  *dst);
+bool isVehicleDestinationReachable(int vehicleId, MAP const* org, MAP const* dst);
+bool isVehicleDestinationReachable(int vehicleId, MAP const* dst);
 
 // ==================================================
 // Helper functions
 // ==================================================
 
-double getRouteVectorDistance(MAP *tile1, MAP *tile2);
+double getRouteVectorDistance(MAP const* tile1, MAP const* tile2);
 MovementType getUnitBasicMovementType(int factionId, int unitId);
 MovementType getUnitMovementType(int factionId, int unitId);
 MovementType getVehicleBasicMovementType(int vehicleId);
 MovementType getVehicleMovementType(int vehicleId);
 
-int getAirCluster(int chassisId, int unitSpeed, MAP *tile);
-int getUnitAirCluster(int unitId, MAP *tile);
+int getAirCluster(int chassisId, int unitSpeed, MAP const* tile);
+int getUnitAirCluster(int unitId, MAP const *tile);
 int getVehicleAirCluster(int vehicleId);
-bool isSameAirCluster(int chassisId, int speed, MAP *tile1, MAP *tile2);
-bool isVehicleSameAirCluster(int vehicleId, MAP *dst);
-bool isMeleeAttackableFromAirCluster(int chassisId, int speed, MAP *org, MAP *target);
-bool isVehicleMeleeAttackableFromAirCluster(int vehicleId, MAP *target);
+bool isSameAirCluster(int chassisId, int speed, MAP const* tile1, MAP const* tile2);
+bool isVehicleSameAirCluster(int vehicleId, MAP const *dst);
+bool isMeleeAttackableFromAirCluster(int chassisId, int speed, MAP const* org, MAP const* target);
+bool isVehicleMeleeAttackableFromAirCluster(int vehicleId, MAP const *target);
 int getSeaCluster(MAP const* tile);
 int getVehicleSeaCluster(int vehicleId);
-int getBaseSeaCluster(MAP  *baseTile);
-bool isSameSeaCluster(int tile1SeaCluster, MAP  *tile2);
-bool isSameSeaCluster(MAP  *tile1, MAP  *tile2);
-bool isVehicleSameSeaCluster(int vehicleId, MAP  *dst);
-bool isMeleeAttackableFromSeaCluster(MAP  *org, MAP  *trg);
-bool isVehicleMeleeAttackableFromSeaCluster(int vehicleId, MAP  *trg);
-bool isArtilleryAttackableFromSeaCluster(MAP  *org, MAP  *trg);
-bool isVehicleArtilleryAttackableFromSeaCluster(int vehicleId, MAP  *trg);
-int getLandCluster(MAP  *tile);
+int getBaseSeaCluster(MAP const *baseTile);
+bool isSameSeaCluster(int tile1SeaCluster, MAP const *tile2);
+bool isSameSeaCluster(MAP const* tile1, MAP const* tile2);
+bool isVehicleSameSeaCluster(int vehicleId, MAP const *dst);
+bool isMeleeAttackableFromSeaCluster(MAP const* org, MAP const* trg);
+bool isVehicleMeleeAttackableFromSeaCluster(int vehicleId, MAP const* trg);
+bool isArtilleryAttackableFromSeaCluster(MAP const* origin, MAP const* target);
+bool isVehicleArtilleryAttackableFromSeaCluster(int vehicleId, MAP const* trg);
+int getLandCluster(MAP const* tile);
 int getVehicleLandCluster(int vehicleId);
-bool isSameLandCluster(MAP  *tile1, MAP  *tile2);
-bool isVehicleSameLandCluster(int vehicleId, MAP  *dst);
-bool isMeleeAttackableFromLandCluster(MAP  *org, MAP  *trg);
-bool isVehicleMeleeAttackableFromLandCluster(int vehicleId, MAP  *trg);
-bool isArtilleryAttackableFromLandCluster(MAP  *org, MAP  *trg);
-bool isVehicleArtilleryAttackableFromLandCluster(int vehicleId, MAP  *trg);
-int getLandTransportedCluster(MAP  *tile);
+bool isSameLandCluster(MAP const *tile1, MAP const *tile2);
+bool isVehicleSameLandCluster(int vehicleId, MAP const *dst);
+bool isMeleeAttackableFromLandCluster(MAP const* org, MAP const* trg);
+bool isVehicleMeleeAttackableFromLandCluster(int vehicleId, MAP const* trg);
+bool isArtilleryAttackableFromLandCluster(MAP const* origin, MAP const* target);
+bool isVehicleArtilleryAttackableFromLandCluster(int vehicleId, MAP const* trg);
+int getLandTransportedCluster(MAP const* tile);
 int getVehicleLandTransportedCluster(int vehicleId);
-bool isSameLandTransportedCluster(MAP  *tile1, MAP  *tile2);
-bool isVehicleSameLandTransportedCluster(int vehicleId, MAP  *dst);
-bool isMeleeAttackableFromLandTransportedCluster(MAP  *org, MAP  *trg);
-bool isVehicleMeleeAttackableFromLandTransportedCluster(int vehicleId, MAP  *trg);
-bool isArtilleryAttackableFromLandTransportedCluster(MAP  *org, MAP  *trg);
-bool isVehicleArtilleryAttackableFromLandTransportedCluster(int vehicleId, MAP  *trg);
-int getSeaCombatCluster(MAP  *tile);
-bool isSameSeaCombatCluster(MAP  *tile1, MAP  *tile2);
-int getLandCombatCluster(MAP  *tile);
-bool isSameLandCombatCluster(MAP  *tile1, MAP  *tile2);
+bool isSameLandTransportedCluster(MAP const* tile1, MAP const* tile2);
+bool isVehicleSameLandTransportedCluster(int vehicleId, MAP const *dst);
+bool isMeleeAttackableFromLandTransportedCluster(MAP const* org, MAP const* trg);
+bool isVehicleMeleeAttackableFromLandTransportedCluster(int vehicleId, MAP const* trg);
+bool isArtilleryAttackableFromLandTransportedCluster(MAP const* origin, MAP const* target);
+bool isVehicleArtilleryAttackableFromLandTransportedCluster(int vehicleId, MAP const* trg);
+int getSeaCombatCluster(MAP const* tile);
+bool isSameSeaCombatCluster(MAP const* tile1, MAP const* tile2);
+int getLandCombatCluster(MAP const* tile);
+bool isSameLandCombatCluster(MAP const* tile1, MAP const* tile2);
 
 std::vector<Transfer> &getTransfers(int landCluster, int seaCluster);
 std::vector<Transfer> &getOceanBaseTransfers(MAP  *baseTile);
@@ -336,21 +336,21 @@ robin_hood::unordered_flat_set<int> &getConnectedLandClusters(MAP  *seaTile);
 robin_hood::unordered_flat_set<int> &getFirstConnectedClusters(int orgCluster, int dstCluster);
 robin_hood::unordered_flat_set<int> &getFirstConnectedClusters(MAP  *org, MAP  *dst);
 
-int getEnemyAirCluster(int factionId, int chassisId, int speed, MAP  *tile);
-bool isSameEnemyAirCluster(int factionId, int chassisId, int speed, MAP  *tile1, MAP  *tile2);
-bool isSameEnemyAirCluster(int vehicleId, MAP  *tile2);
-int getEnemySeaCombatCluster(int factionId, MAP  *tile);
-bool isSameEnemySeaCombatCluster(int factionId, MAP  *tile1, MAP  *tile2);
-bool isSameEnemySeaCombatCluster(int vehicleId, MAP  *tile2);
-int getEnemyLandCombatCluster(int factionId, MAP  *tile);
-bool isSameEnemyLandCombatCluster(int factionId, MAP  *tile1, MAP  *tile2);
-bool isSameEnemyLandCombatCluster(int vehicleId, MAP  *tile2);
-int getCluster(MAP  *tile);
+int getEnemyAirCluster(int factionId, int chassisId, int speed, MAP const *tile);
+bool isSameEnemyAirCluster(int factionId, int chassisId, int speed, MAP const *tile1, MAP const *tile2);
+bool isSameEnemyAirCluster(int vehicleId, MAP const *tile2);
+int getEnemySeaCombatCluster(int factionId, MAP const *tile);
+bool isSameEnemySeaCombatCluster(int factionId, MAP const *tile1, MAP const *tile2);
+bool isSameEnemySeaCombatCluster(int vehicleId, MAP const *tile2);
+int getEnemyLandCombatCluster(int factionId, MAP const *tile);
+bool isSameEnemyLandCombatCluster(int factionId, MAP const *tile1, MAP const *tile2);
+bool isSameEnemyLandCombatCluster(int vehicleId, MAP const *tile2);
+int getCluster(MAP const* tile);
 int getVehicleCluster(int vehicleId);
 
 bool isConnected(int cluster1, int cluster2);
-bool isReachable(MAP  *tile);
-bool isSharedSea(MAP  *tile);
+bool isReachable(MAP const* tile);
+bool isSharedSea(MAP const* tile);
 
 int getSeaClusterArea(int seaCluster);
 

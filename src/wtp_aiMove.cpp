@@ -916,11 +916,11 @@ Transfer getOptimalDropoffTransfer(MAP  *org, MAP  *dst, int  passengerVehicleId
 /*
 Sends vehicle along safest travel waypoints.
 */
-void setSafeMoveTo(int vehicleId, MAP *destination)
+void setSafeMoveTo(int vehicleId, MAP const *destination)
 {
 	debug("setSafeMoveTo [%4d] -> %s\n", vehicleId, getLocationString(destination));
 	
-	MAP *bestTile = destination;
+	MAP const *bestTile = destination;
 	double bestTileWeight = DBL_MAX;
 	
 	bool dangerous = false;
@@ -928,11 +928,11 @@ void setSafeMoveTo(int vehicleId, MAP *destination)
 	Profiling::start("- setSafeMoveTo - getVehicleReachableLocations");
 	for (MoveAction &moveAction : getVehicleMoveActions(vehicleId, false))
 	{
-		MAP *tile = moveAction.destination;
+		MAP const *tile = moveAction.destination;
 		TileInfo &tileInfo = aiData.getTileInfo(tile);
 		
 		double danger = tileInfo.hostileDangerZone ? 1.0 : 0.0;
-		double distance = getEuqlideanDistance(tile, destination);
+		double distance = getEuqlideanDistance(const_cast<MAP *>(tile), const_cast<MAP *>(destination));
 		double weight = danger + 0.2 * distance;
 		
 		if (weight < bestTileWeight)
@@ -967,7 +967,7 @@ void setSafeMoveTo(int vehicleId, MAP *destination)
 	}
 	else
 	{
-		setMoveTo(vehicleId, std::vector<MAP *>{bestTile, destination});
+		setMoveTo(vehicleId, std::vector<MAP *>{const_cast<MAP *>(bestTile), const_cast<MAP *>(destination)});
 	}
 	
 }
@@ -986,10 +986,10 @@ MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoid
 	int triad = vehicle->triad();
 	MAP *vehicleTile = getVehicleMapTile(vehicleId);
 	
-	MAP *closestMonolith = nullptr;
+	MAP const *closestMonolith = nullptr;
 	double closestMonolithTravelTime = INF;
 	
-	for (MAP *tile : aiData.monoliths)
+	for (MAP const *tile : aiData.monoliths)
 	{
 		TileInfo &tileInfo = aiData.getTileInfo(tile);
 		int range = getRange(vehicleTile, tile);
@@ -1014,7 +1014,7 @@ MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoid
 		
 		// exclude warzone if requested
 		
-		if (avoidWarzone && isWarzone(tile))
+		if (avoidWarzone && isWarzone(const_cast<MAP *>(tile)))
 			continue;
 		
 		// get travel time
@@ -1034,7 +1034,7 @@ MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoid
 	}
 	
 	Profiling::stop("- findClosestMonolith");
-	return {closestMonolith, closestMonolithTravelTime};
+	return {const_cast<MAP *>(closestMonolith), closestMonolithTravelTime};
 	
 }
 
@@ -1141,7 +1141,7 @@ MAP *getSafeLocation(int vehicleId, bool unfriendly)
 	
 }
 
-int setMoveTo(int vehicleId, MAP *destination)
+int setMoveTo(int vehicleId, MAP const *destination)
 {
 	assert(isOnMap(destination));
 
@@ -1152,7 +1152,7 @@ int setMoveTo(int vehicleId, MAP *destination)
 	int x = getX(destination);
 	int y = getY(destination);
 	bool vehicleTileOcean = is_ocean(vehicleTile);
-	bool destinationOcean = is_ocean(destination);
+	bool destinationOcean = is_ocean(const_cast<MAP *>(destination));
 
     debug("setMoveTo %s -> %s\n", getLocationString({vehicle->x, vehicle->y}), getLocationString(destination));
 
@@ -1172,7 +1172,7 @@ int setMoveTo(int vehicleId, MAP *destination)
     if (vehicle->triad() == TRIAD_LAND && !vehicleTileOcean && !destinationOcean && vehicleTileRangeToDestination == 1 && !destinationBlocked)
 	{
 		int directMoveHexCost = mod_hex_cost(vehicle->unit_id, vehicle->faction_id, vehicle->x, vehicle->y, x, y, vehicleSpeed1);
-		bool destinationZoc = isZoc(factionId, vehicleTile, destination);
+		bool destinationZoc = isZoc(factionId, vehicleTile, const_cast<MAP *>(destination));
 
 		// set direct move to infinite cost if zoc
 

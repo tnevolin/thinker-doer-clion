@@ -40,10 +40,10 @@ MAP *getNearestFriendlyBase(int vehicleId);
 MAP *getNearestMonolith(int x, int y, int triad);
 Transfer getOptimalPickupTransfer(MAP  *org, MAP  *dst);
 Transfer getOptimalDropoffTransfer(MAP  *org, MAP  *dst, int passengerVehicleId, int transportVehicleId);
-void setSafeMoveTo(int vehicleId, MAP  *destination);
+void setSafeMoveTo(int vehicleId, MAP const *destination);
 MapDoubleValue findClosestMonolith(int vehicleId, int maxSearchRange, bool avoidWarzone);
 MAP *getSafeLocation(int vehicleId, bool hostile);
-int setMoveTo(int vehicleId, MAP  *destination);
+int setMoveTo(int vehicleId, MAP const *destination);
 int setMoveTo(int vehicleId,  std::vector<MAP *> waypoints);
 void aiEnemyMoveVehicles();
 

@@ -2271,21 +2271,21 @@ void removeUnusedBunkers()
 {
 	debug("removeUnusedBunkers - %s\n", MFactions[aiFactionId].noun_faction);
 
-	robin_hood::unordered_flat_set<MAP *> unusedBunkers;
-	for (robin_hood::pair<MAP *, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
+	robin_hood::unordered_flat_set<MAP const*> unusedBunkers;
+	for (robin_hood::pair<MAP const*, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
 	{
-		MAP *bunkerTile = bunkerInfoEntry.first;
+		MAP const *bunkerTile = bunkerInfoEntry.first;
 
-		if (getBunkerGain(bunkerTile) <= 0.0)
+		if (getBunkerGain(const_cast<MAP *>(bunkerTile)) <= 0.0)
 		{
 			unusedBunkers.insert(bunkerTile);
 		}
 
 	}
 
-	for (MAP *unusedBunkerTile : unusedBunkers)
+	for (MAP const *unusedBunkerTile : unusedBunkers)
 	{
-		unusedBunkerTile->items &= (~BIT_BUNKER);
+		const_cast<MAP *>(unusedBunkerTile)->items &= (~BIT_BUNKER);
 		aiData.getTileInfo(unusedBunkerTile).bunker = false;
 		aiData.bunkerInfos.erase(unusedBunkerTile);
 		debug("\t%s\n", getLocationString(unusedBunkerTile));

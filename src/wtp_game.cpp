@@ -398,7 +398,7 @@ char const * getLocationString(int  tileIndex)
 
 }
 
-char const * getLocationString(MAP * tile)
+char const * getLocationString(MAP const * tile)
 {
 	// allow returning for nullptr
 
@@ -406,7 +406,6 @@ char const * getLocationString(MAP * tile)
 		return "-nullptr-";
 
 	return getLocationString(getLocation(tile));
-
 }
 
 // =======================================================
@@ -506,7 +505,7 @@ int getOffsetIndex(MAP *tile1, MAP *tile2)
 /**
 Checks if location is on map (valid location).
 */
-bool isOnMap(MAP *tile)
+bool isOnMap(MAP const* tile)
 {
 	return tile != nullptr && tile >= *MapTiles && tile < *MapTiles + *MapAreaTiles;
 }
@@ -536,7 +535,7 @@ Location getLocation(int tileIndex)
 /**
 Computes location by map tile.
 */
-Location getLocation(MAP *tile)
+Location getLocation(MAP const* tile)
 {
 	assert(isOnMap(tile));
 
@@ -742,7 +741,7 @@ std::vector<int> const getAdjacentTileIndexes(int tileIndex)
 /**
 Returns valid adjacent tiles.
 */
-std::vector<MAP *> const getAdjacentTiles(MAP *tile)
+std::vector<MAP *> const getAdjacentTiles(MAP const* tile)
 {
 	Location location = getLocation(tile);
 	int x = location.x;
@@ -772,7 +771,7 @@ std::vector<MAP *> const getAdjacentTiles(MAP *tile)
 /*
 Returns tiles sharing a side with given tile.
 */
-std::vector<MAP *> getSideTiles(MAP *tile)
+std::vector<MAP *> getSideTiles(MAP const* tile)
 {
 	assert(isOnMap(tile));
 
@@ -803,7 +802,7 @@ std::vector<MAP *> getSideTiles(MAP *tile)
 /**
 Returns tiles from beginIndex (inclusive) to endIndex (exclusive).
 */
-std::vector<MAP *> getSquareOffsetTiles(MAP *center, int beginIndex, int endIndex)
+std::vector<MAP *> getSquareOffsetTiles(MAP const* center, int beginIndex, int endIndex)
 {
 	assert(isOnMap(center));
 
@@ -836,7 +835,7 @@ std::vector<MAP *> getSquareOffsetTiles(MAP *center, int beginIndex, int endInde
 Returns tiles within given index from given center.
 Uses vanilla TABLE_square_offset.
 */
-std::vector<MAP *> getSquareBlockRadiusTiles(MAP *center, int minRadius, int maxRadius)
+std::vector<MAP *> getSquareBlockRadiusTiles(MAP const* center, int minRadius, int maxRadius)
 {
 	assert(isOnMap(center));
 	assert(minRadius >= 0 && minRadius < TABLE_square_block_radius_count);
@@ -876,7 +875,7 @@ Uses vanilla TABLE_square_offset.
 minRadius = 0-8, inclusive
 maxRadius = 0-8, inclusive
 */
-std::vector<MAP *> getRangeTiles(MAP *center, int range, bool includeCenter)
+std::vector<MAP *> getRangeTiles(MAP const* center, int range, bool includeCenter)
 {
 	if (!isOnMap(center))
 	{
@@ -899,7 +898,7 @@ std::vector<MAP *> getRangeTiles(MAP *center, int range, bool includeCenter)
 
 	if (includeCenter)
 	{
-		tiles.push_back(center);
+		tiles.push_back(const_cast<MAP *>(center));
 	}
 
 	int x = getX(center);
@@ -1137,7 +1136,7 @@ bool vehicle_has_ability(int vehicleId, int ability) {
     return Units[Vehs[vehicleId].unit_id].ability_flags & ability;
 }
 
-int map_rainfall(MAP *tile) {
+int map_rainfall(MAP const *tile) {
 	int rainfall;
 	if (tile->climate & TILE_MOIST) {
 		rainfall = 1;
@@ -1151,15 +1150,15 @@ int map_rainfall(MAP *tile) {
 	return rainfall;
 }
 
-int map_level(MAP *tile) {
+int map_level(MAP const *tile) {
 	return tile->climate >> 5;
 }
 
-int map_elevation(MAP *tile) {
+int map_elevation(MAP const *tile) {
 	return map_level(tile) - ALT_SHORE_LINE;
 }
 
-int map_rockiness(MAP *tile) {
+int map_rockiness(MAP const *tile) {
 	return ((tile->val3 & TILE_ROCKY) ? 2 : ((tile->val3 & TILE_ROLLING) ? 1 : 0));
 }
 
@@ -1167,7 +1166,7 @@ int map_rockiness(MAP *tile) {
 Safe check for tile having base.
 NULL pointer returns false.
 */
-bool map_base(MAP *tile) {
+bool map_base(MAP const *tile) {
 	return (tile && (tile->items & BIT_BASE_IN_TILE));
 }
 
@@ -1175,7 +1174,7 @@ bool map_base(MAP *tile) {
 Safe check for tile having item.
 NULL pointer returns false.
 */
-bool map_has_item(MAP *tile, uint32_t item) {
+bool map_has_item(MAP const *tile, uint32_t item) {
 	return (tile && (tile->items & item));
 }
 
@@ -1183,7 +1182,7 @@ bool map_has_item(MAP *tile, uint32_t item) {
 Safe check for tile having landmark.
 NULL pointer returns false.
 */
-bool map_has_landmark(MAP *tile, int landmark)
+bool map_has_landmark(MAP const *tile, int landmark)
 {
 	// null pointer
 
@@ -1200,15 +1199,15 @@ bool map_has_landmark(MAP *tile, int landmark)
 	switch (landmark)
 	{
 	case LM_CRATER:
-		return (tile->code_at() < 9);
+		return (const_cast<MAP *>(tile)->code_at() < 9);
 		break;
 
 	case LM_VOLCANO:
-		return (tile->code_at() < 9);
+		return (const_cast<MAP *>(tile)->code_at() < 9);
 		break;
 
 	case LM_JUNGLE:
-		return (!is_ocean(tile));
+		return (!is_ocean(const_cast<MAP *>(tile)));
 		break;
 
 	case LM_URANIUM:
@@ -1216,7 +1215,7 @@ bool map_has_landmark(MAP *tile, int landmark)
 		break;
 
 	case LM_FRESH:
-		return (is_ocean(tile));
+		return (is_ocean(const_cast<MAP *>(tile)));
 		break;
 
 	case LM_CANYON:
@@ -1232,7 +1231,7 @@ bool map_has_landmark(MAP *tile, int landmark)
 		break;
 
 	case LM_FOSSIL:
-		return (tile->code_at() < 6);
+		return (const_cast<MAP *>(tile)->code_at() < 6);
 		break;
 
 	}
@@ -1241,7 +1240,7 @@ bool map_has_landmark(MAP *tile, int landmark)
 
 }
 
-int isBonusAt(MAP *tile)
+int isBonusAt(MAP const *tile)
 {
 	assert(isOnMap(tile));
 
@@ -1252,7 +1251,7 @@ int isBonusAt(MAP *tile)
 
 }
 
-int getNutrientBonus(MAP *tile)
+int getNutrientBonus(MAP const *tile)
 {
 	assert(isOnMap(tile));
 
@@ -1284,7 +1283,7 @@ int getNutrientBonus(MAP *tile)
 
 }
 
-int getMineralBonus(MAP *tile)
+int getMineralBonus(MAP const *tile)
 {
 	assert(isOnMap(tile));
 
@@ -1320,7 +1319,7 @@ int getMineralBonus(MAP *tile)
 
 }
 
-int getEnergyBonus(MAP *tile)
+int getEnergyBonus(MAP const *tile)
 {
 	assert(isOnMap(tile));
 
@@ -1354,7 +1353,7 @@ int getEnergyBonus(MAP *tile)
 
 }
 
-bool isLandmarkBonus(MAP *tile)
+bool isLandmarkBonus(MAP const *tile)
 {
 	assert(isOnMap(tile));
 
@@ -3633,7 +3632,7 @@ int getVehicleTransportId(int vehicleId)
 /*
 Checks if territory belongs to nobody, us or ally.
 */
-bool isFriendlyTerritory(int factionId, MAP* tile)
+bool isFriendlyTerritory(int factionId, MAP const *tile)
 {
 	return tile->owner == -1 || tile->owner == factionId || has_pact(factionId, tile->owner);
 }
@@ -6265,7 +6264,7 @@ int getBaseAt(MAP *tile)
 	return base_at(getX(tile), getY(tile));
 }
 
-bool isBaseAt(MAP *tile)
+bool isBaseAt(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	return (map_has_item(tile, BIT_BASE_IN_TILE));
@@ -6313,7 +6312,7 @@ bool isEmptyNeutralBaseAt(MAP *tile, int factionId)
 	return isNeutralBaseAt(tile, factionId) && !isVehicleAt(tile);
 }
 
-bool isBunkerAt(MAP *tile)
+bool isBunkerAt(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	return (map_has_item(tile, BIT_BUNKER));
@@ -6404,7 +6403,7 @@ bool isUnitCanInitiateBombardment(int attackerUnitId, int defenderUnitId)
 	return (isArtilleryUnit(attackerUnitId) && isSurfaceUnit(defenderUnitId) && !isArtilleryUnit(defenderUnitId));
 }
 
-bool isAirbaseAt(MAP *tile)
+bool isAirbaseAt(MAP const *tile)
 {
 	return map_has_item(tile, BIT_BASE_IN_TILE | BIT_AIRBASE);
 }
@@ -7040,7 +7039,7 @@ int getAngleByTile(MAP *tile, MAP *anotherTile)
 
 }
 
-bool isPodAt(MAP *tile)
+bool isPodAt(MAP const *tile)
 {
 	assert(isOnMap(tile));
 	return mod_goody_at(getX(tile), getY(tile)) != 0;
@@ -7067,11 +7066,11 @@ std::vector<int> getTransportPassengers(int transportVehicleId)
 Returns max relative bombardment damage for location and triad.
 If tile is not specified, the matching realsm is assumed.
 */
-double getMaxBombardmentDamage(Triad  triad, MAP  *tile)
+double getMaxBombardmentDamage(Triad  triad, MAP const *tile)
 {
 	int maxBombardmentDamagePercentage;
 
-	if (tile != nullptr && tile->is_base_or_bunker())
+	if (tile != nullptr && const_cast<MAP *>(tile)->is_base_or_bunker())
 	{
 		maxBombardmentDamagePercentage = Rules->max_dmg_percent_arty_base_bunker;
 	}
@@ -7088,7 +7087,7 @@ double getMaxBombardmentDamage(Triad  triad, MAP  *tile)
 			break;
 
 		case TRIAD_LAND:
-			if (tile != nullptr && tile->is_sea())
+			if (tile != nullptr && const_cast<MAP *>(tile)->is_sea())
 			{
 				maxBombardmentDamagePercentage = Rules->max_dmg_percent_arty_sea;
 			}
@@ -7109,7 +7108,7 @@ double getMaxBombardmentDamage(Triad  triad, MAP  *tile)
 
 }
 
-double isLethalBombardment(Triad triad, MAP *tile)
+double isLethalBombardment(Triad triad, MAP const *tile)
 {
 	return getMaxBombardmentDamage(triad, tile) >= 1.0;
 }
