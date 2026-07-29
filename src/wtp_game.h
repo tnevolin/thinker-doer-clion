@@ -960,7 +960,7 @@ Location getDiagonalCoordinates(Location rectangular);
 // =======================================================
 
 std::vector<MapAngle> const getAdjacentMapAngles(MAP *tile);
-std::vector<int> const getAdjacentTileIndexes(int tileIndex);
+std::vector<int> getAdjacentTileIndexes(int tileIndex);
 std::vector<MAP *> const getAdjacentTiles(MAP const* tile);
 std::vector<MAP *> getSideTiles(MAP const* tile);
 

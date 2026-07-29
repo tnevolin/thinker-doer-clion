@@ -712,7 +712,7 @@ std::vector<MapAngle> const getAdjacentMapAngles(MAP *tile)
 /**
 Returns valid adjacent tile indexes.
 */
-std::vector<int> const getAdjacentTileIndexes(int tileIndex)
+std::vector<int> getAdjacentTileIndexes(int tileIndex)
 {
 	int x = getX(tileIndex);
 	int y = getY(tileIndex);
