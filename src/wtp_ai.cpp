@@ -3062,7 +3062,7 @@ void populateCombatEffects()
 			unfriendlyFactionIds.push_back(factionId);
 		}
 		
-		// add hostile faction if hostile
+		// add hostile faction
 		
 		if (isHostile(aiFactionId, factionId))
 		{

@@ -91,9 +91,9 @@ private:
 	// each to each unit combat effects
 	// [attackerFactionId][attackerUnitId][defenderFactionId][defenderUnitId][engagementMode][attackerTileIndex][defenderTileIndex] = combatEffect
 	robin_hood::unordered_flat_map<uint64_t, double> combatEffects;
-	
-	inline uint64_t makeKey(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile) noexcept;
-	double computeUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile);
+
+	static inline uint64_t makeKey(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile) noexcept;
+	static double computeUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile);
 	
 public:
 	
@@ -118,8 +118,8 @@ struct Combattant
 	int factionId;
 	int unitId;
 	int key;
-	bool range;
 	bool melee;
+	bool artillery;
 	bool aircraftInFlight;
 	bool needlejetInFlight;
 	bool canAttackNeedlejetInFlight;
@@ -209,6 +209,71 @@ public:
 	
 	static double getEnemyRelativeHealthBonus(std::vector<Combattant> opponentCombattants);
 	
+};
+
+// TODO define ...
+struct DefenseData
+{
+private:
+	MAP const* tile = nullptr;
+	double targetGain = 0.0;
+
+	robin_hood::unordered_flat_map<int, double> attackerUnitWeigths;
+	std::vector<int> defenderVehicleIds;
+
+public:
+
+	DefenseData(MAP const* _tile, double _targetGain);
+
+	void addAttackerUnitWeight(int factionId, int unitId, double weight);
+	void addDefenderVehicle(int vehicleId);
+
+	double getDefenderVehicleCombatEffect(int vehicleId);
+
+	void removeLastAssailant();
+	void removeLastProtector();
+
+	double getAssailantWeightSum();
+	double getProtectorWeightSum();
+	double getAssailantHealthSum(bool range);
+	double getProtectorHealthSum(bool range);
+	double getAssailantRemainingHealthSum(bool range);
+	double getProtectorRemainingHealthSum(bool range);
+
+	// units and their remaining summary weights
+
+	// [FactionUnitKey]
+	robin_hood::unordered_flat_map<int, double> remainingAssailantUnitWeights;
+	double remainingAssailantUnitWeightSum;
+	// [FactionUnitKey]
+	robin_hood::unordered_flat_map<int, double> remainingProtectorUnitWeights;
+	double remainingProtectorUnitWeightSum;
+
+	bool computed = false;
+	bool sufficientAssault;
+	bool sufficientProtect;
+
+	double getAssaultSufficiency(bool artillery);
+	double getProtectSufficiency(bool artillery);
+
+	double getAssailantCombattantContribution(Combattant &combattant);
+	double getProtectorCombattantContribution(Combattant &combattant);
+	double getAssailantUnitContribution(int factionId, int unitId);
+	double getProtectorUnitContribution(int factionId, int unitId);
+	double getAssailantContribution(int vehicleId);
+	double getProtectorContribution(int vehicleId);
+
+	bool isSufficientAssault();
+	bool isSufficientProtect();
+
+	void compute();
+	void compute(robin_hood::unordered_flat_map<int, double> assailantVehicleDamageCoefficients, robin_hood::unordered_flat_map<int, double> protectorVehicleDamageCoefficients);
+	void resolveMutualCombat(CombattantEffect &combattantEffect);
+	CombattantEffect getBestCombattantEffect(std::list<Combattant *> &attackers, std::list<Combattant *> &defenders, ENGAGEMENT_MODE engagementMode, bool attackerAtTile, bool defenderAtTile);
+	robin_hood::unordered_flat_map<int, double> selectInterceptors(robin_hood::unordered_flat_map<int, double> &unitWeights);
+
+	static double getEnemyRelativeHealthBonus(std::vector<Combattant> opponentCombattants);
+
 };
 
 struct TileTransit

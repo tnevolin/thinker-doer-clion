@@ -359,19 +359,19 @@ double CombatEffectTable::computeUnitCombatEffect(int attackerFactionId, int att
 	double combatEffect;
 	if (combatMode == CM_BOMBARDMENT)
 	{
-		// convert bombardment strength to damage
+		// convert bombardment damage to strength
 		
 		int off_value = std::max(1, attackerStrength * Rules->artillery_dmg_numerator);
 		int def_value = std::max(1, defenderStrength * Rules->artillery_dmg_denominator);
-		double damage_value = (double) off_value / (double) def_value;
-		damage_value *= (double) defenderUnit.reactor_id;
-		combatEffect = damage_value / 10.0;
+		double damage_value = static_cast<double>(off_value) / static_cast<double>(def_value);
+		int maxHitPointCount = 10 * conf.ignore_reactor_power ? 1 : defenderUnit.reactor_id;
+		combatEffect = damage_value / static_cast<double>(maxHitPointCount);
 		
 	}
 	else
 	{
 		// mutual fight combat effect
-		combatEffect = defenderStrength == 0.0 ? 10.0 : (double) attackerStrength / (double) defenderStrength;
+		combatEffect = defenderStrength == 0.0 ? 10.0 : static_cast<double>(attackerStrength) / static_cast<double>(defenderStrength);
 	}
 	
 	// combattant without a tile inherits sensor bonus from the other combattant tile
@@ -838,7 +838,7 @@ Combattant::Combattant(int factionId, int unitId, double weight, bool airbase)
 	this->key = FactionUnit::encodeKey(factionId, unitId);
 	this->weight = weight;
 	
-	this->range = isArtilleryUnit(unitId);
+	this->artillery = isArtilleryUnit(unitId);
 	this->melee = isMeleeUnit(unitId);
 	this->aircraftInFlight = !airbase && unit.is_air();
 	this->needlejetInFlight = !airbase && unit.is_needlejet();
@@ -941,22 +941,22 @@ double CombatData::getProtectorWeightSum()
 
 double CombatData::getAssailantHealthSum(bool range)
 {
-	return std::accumulate(assailants.begin(), assailants.end(), 0.0, [range](double sum, Combattant  &combattant) { return sum + (!range || combattant.range ? combattant.health : 0.0); });
+	return std::accumulate(assailants.begin(), assailants.end(), 0.0, [range](double sum, Combattant  &combattant) { return sum + (!range || combattant.artillery ? combattant.health : 0.0); });
 }
 
 double CombatData::getProtectorHealthSum(bool range)
 {
-	return std::accumulate(protectors.begin(), protectors.end(), 0.0, [range](double sum, Combattant  &combattant) { return sum + (!range || combattant.range ? combattant.health : 0.0); });
+	return std::accumulate(protectors.begin(), protectors.end(), 0.0, [range](double sum, Combattant  &combattant) { return sum + (!range || combattant.artillery ? combattant.health : 0.0); });
 }
 
 double CombatData::getAssailantRemainingHealthSum(bool range)
 {
-	return std::accumulate(assailants.begin(), assailants.end(), 0.0, [range](double sum, Combattant  &combattant) { return sum + (!range || combattant.range ? combattant.remainingHealth : 0.0); });
+	return std::accumulate(assailants.begin(), assailants.end(), 0.0, [range](double sum, Combattant  &combattant) { return sum + (!range || combattant.artillery ? combattant.remainingHealth : 0.0); });
 }
 
 double CombatData::getProtectorRemainingHealthSum(bool range)
 {
-	return std::accumulate(protectors.begin(), protectors.end(), 0.0, [range](double sum, Combattant  &combattant) { return sum + (!range || combattant.range ? combattant.remainingHealth : 0.0); });
+	return std::accumulate(protectors.begin(), protectors.end(), 0.0, [range](double sum, Combattant  &combattant) { return sum + (!range || combattant.artillery ? combattant.remainingHealth : 0.0); });
 }
 
 double CombatData::getAssaultSufficiency(bool range)
@@ -1308,14 +1308,14 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 	std::list<Combattant *> rangeProtectors;
 	for (Combattant &assailant : assailants)
 	{
-		if (assailant.remainingHealth > 0.0 && assailant.range)
+		if (assailant.remainingHealth > 0.0 && assailant.artillery)
 		{
 			rangeAssailants.push_back(&assailant);
 		}
 	}
 	for (Combattant &protector : protectors)
 	{
-		if (protector.remainingHealth > 0.0 && protector.range)
+		if (protector.remainingHealth > 0.0 && protector.artillery)
 		{
 			rangeProtectors.push_back(&protector);
 		}
@@ -1702,7 +1702,7 @@ CombattantEffect CombatData::getBestCombattantEffect(std::list<Combattant *> &at
 			switch (engagementMode)
 			{
 			case EM_ARTILLERY:
-				if (!attacker->range)
+				if (!attacker->artillery)
 					continue;
 				if (defender->aircraftInFlight && !attacker->canBombardAircraftInFlight)
 					continue;
@@ -1770,6 +1770,23 @@ double CombatData::getEnemyRelativeHealthBonus(std::vector<Combattant> opponentC
 	
 	return std::max(MIN_OPPONENT_RELATIVE_HEALTH_BONUS, sqrt(1.0 / opponentTotalHP));
 	
+}
+
+// DefenseData
+
+DefenseData::DefenseData(MAP const* _tile, double _targetGain)
+	: tile(_tile), targetGain(_targetGain)
+{}
+
+void DefenseData::addAttackerUnitWeight(int factionId, int unitId, double weight)
+{
+	int factionUnitKey = FactionUnit::encodeKey(factionId, unitId);
+	attackerUnitWeigths[factionUnitKey] += weight;
+}
+
+void DefenseData::addDefenderVehicle(int vehicleId)
+{
+	defenderVehicleIds.push_back(vehicleId);
 }
 
 // EnemyStackInfo
