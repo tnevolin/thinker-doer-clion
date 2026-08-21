@@ -5996,23 +5996,27 @@ Projects base population in given number of turns.
 */
 int getBaseProjectedSize(int baseId, int turns)
 {
-	BASE *base = &(Bases[baseId]);
-	
-	int nutrientCostFactor = mod_cost_factor(base->faction_id, RSC_NUTRIENT, baseId);
-	int nutrientsAccumulated = base->nutrients_accumulated + base->nutrient_surplus * turns;
-	int projectedPopulation = base->pop_size;
-	
-	while (nutrientsAccumulated >= nutrientCostFactor * (projectedPopulation + 1))
-	{
-		nutrientsAccumulated -= nutrientCostFactor * (projectedPopulation + 1);
-		projectedPopulation++;
-	}
-	
-	// do not go over population limit
+	BASE &base = Bases[baseId];
 	
 	int populationLimit = getBasePopulationLimit(baseId);
-	projectedPopulation = std::min(projectedPopulation, std::max((int)base->pop_size, populationLimit));
-	
+	int nutrientCostFactor = mod_cost_factor(base.faction_id, RSC_NUTRIENT, baseId);
+	int nutrientsAccumulated = base.nutrients_accumulated;
+	int projectedPopulation = static_cast<unsigned char>(base.pop_size);
+
+	for (int turn = 0; turn < turns; turn++)
+	{
+		// do not grow over population limit
+
+		if (projectedPopulation >= populationLimit)
+			break;
+
+		nutrientsAccumulated += base.nutrient_surplus;
+
+		if (nutrientsAccumulated >= nutrientCostFactor * (projectedPopulation + 1))
+			projectedPopulation++;
+
+	}
+
 	return projectedPopulation;
 	
 }

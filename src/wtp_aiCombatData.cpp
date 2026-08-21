@@ -834,8 +834,12 @@ void CombatData::compute()
 	// melee cycle
 	
 	if (TRACE) debug("\tmelee cycle\n");
+	int loopCount = 0;
 	while (true)
 	{
+		if (++loopCount >= 1000)
+			break;
+			
 		if (TRACE) debug("\t\t-\n");
 		
 		FactionUnitCombatEffect bestAssailantProtectorMeleeEffect = getBestAttackerDefenderMeleeEffect(combatEffectData, assailants, protectors);

@@ -1466,11 +1466,15 @@ void assignFormerOrders()
 	robin_hood::unordered_flat_map<TERRAFORMING_REQUEST *, TerraformingRequestAssignment> assignments;
 	
 	bool changed;
+	int loopCount = 0;
 	
 	do
 	{
 		changed = false;
 		
+		if (++loopCount >= 1000)
+			break;
+			
 		for (FORMER_ORDER &formerOrder : formerOrders)
 		{
 			int vehicleId = formerOrder.vehicleId;

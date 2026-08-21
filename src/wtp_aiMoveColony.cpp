@@ -481,10 +481,14 @@ void analyzeBasePlacementSites()
     // optimize
 	
 	bool improved;
+	int loopCount = 0;
 	do
 	{
 		improved = false;
 		
+		if (++loopCount >= 100)
+			break;
+			
 		for (unsigned int vehicleIndex1 = 0; vehicleIndex1 < vehicleIds.size(); vehicleIndex1++)
 		{
 			int destinationIndex1 = vehicleDestinations.at(vehicleIndex1);
@@ -1278,9 +1282,14 @@ double getBuildSiteOverlapScore(MAP *buildSite)
 	int minOverlapCount = overlapCount;
 	
 	bool changed;
+	int loopCount = 0;
 	do
 	{
 		changed = false;
+		
+		if (++loopCount >= 100)
+			break;
+			
 		MAP *currentTile = minOverlapTile;
 		
 		for (MAP *adjacentTile : getAdjacentTiles(currentTile))
