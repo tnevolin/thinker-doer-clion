@@ -16,7 +16,8 @@ endif()
 
 project(thinker)
 
-set(CMAKE_CXX_STANDARD 11)
+#set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Global compiler options from CBP
@@ -78,6 +79,7 @@ set(THINKER_SOURCES
     src/lib/tree.hh
     src/main.cpp
     src/main.h
+    src/multikey_map.h
     src/map.cpp
     src/map.h
     src/mapgen.cpp

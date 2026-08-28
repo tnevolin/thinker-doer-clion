@@ -364,7 +364,7 @@ double CombatEffectTable::computeUnitCombatEffect(int attackerFactionId, int att
 		int off_value = std::max(1, attackerStrength * Rules->artillery_dmg_numerator);
 		int def_value = std::max(1, defenderStrength * Rules->artillery_dmg_denominator);
 		double damage_value = static_cast<double>(off_value) / static_cast<double>(def_value);
-		int maxHitPointCount = 10 * conf.ignore_reactor_power ? 1 : defenderUnit.reactor_id;
+		int maxHitPointCount = 10 * (conf.ignore_reactor_power ? 1 : defenderUnit.reactor_id);
 		combatEffect = damage_value / static_cast<double>(maxHitPointCount);
 		
 	}

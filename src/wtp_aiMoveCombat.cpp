@@ -411,11 +411,13 @@ void assignRequests()
 				switch (combatRequest.type)
 				{
 				case CRT_REPAIR_MONOLITH:
-					gain = combatRequest.gain;
+					{
+						gain = combatRequest.gain;
+
+					}
 					break;
 				case CRT_POD:
 					{
-						double travelTime = getVehicleTravelTime(combatOrder.vehicleId, combatRequest.tile, false);
 						gain = combatRequest.gain;
 
 					}
