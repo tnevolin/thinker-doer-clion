@@ -1,5 +1,4 @@
-#ifndef MULTIKEY_MAP_H
-#define MULTIKEY_MAP_H
+#pragma once
 
 #include <tuple>
 #include <type_traits>
@@ -25,7 +24,7 @@ private:
             static size_t hash(const std::tuple<T...>& tuple) {
                 size_t h = HashHelper<Index - 1, T...>::hash(tuple);
                 const auto& val = std::get<Index>(tuple);
-                return h ^ (robin_hood::hash<typename std::decay<decltype(val)>::type>{}(val) + 0x9e3779b9 + (h << 6) + (h >> 2));
+                return h ^ (robin_hood::hash<std::decay_t<decltype(val)>>{}(val) + 0x9e3779b9 + (h << 6) + (h >> 2));
             }
         };
 
@@ -63,8 +62,8 @@ public:
         return m_map.at(std::make_tuple(keys...));
     }
 
-    Value& operator[](KeyType&& key) {
-        return m_map[std::move(key)];
+    Value& operator()(Keys... keys) {
+        return m_map[std::make_tuple(keys...)];
     }
 
     iterator find(Keys... keys) {
@@ -87,5 +86,4 @@ private:
     MapType m_map;
 };
 
-#endif // MULTIKEY_MAP_H
 
