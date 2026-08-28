@@ -8,6 +8,7 @@
 
 #include "main.h"
 #include "engine.h"
+#include "wtp_aiTask.h"
 #include "wtp_game.h"
 
 constexpr int MAX_SAFE_LOCATION_SEARCH_RANGE = 6;

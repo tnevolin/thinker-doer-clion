@@ -404,48 +404,48 @@ void assignRequests()
 				if (combatRequest.vehicleId != -1 && combatOrder.vehicleId != combatRequest.vehicleId)
 					continue;
 
-				// compute gain
-
-				double gain = 0.0;
-
-				switch (combatRequest.type)
-				{
-				case CRT_REPAIR_MONOLITH:
-					{
-						gain = combatRequest.gain;
-
-					}
-					break;
-				case CRT_POD:
-					{
-						gain = combatRequest.gain;
-
-					}
-					break;
-//				case CRT_REPAIR_MONOLITH:
-//					gain = combatRequest.gain;
-//					break;
-//				case CRT_REPAIR_MONOLITH:
-//					gain = combatRequest.gain;
-//					break;
-//				case CRT_REPAIR_MONOLITH:
-//					gain = combatRequest.gain;
-//					break;
-//				case CRT_REPAIR_MONOLITH:
-//					gain = combatRequest.gain;
-//					break;
-//				case CRT_REPAIR_MONOLITH:
-//					gain = combatRequest.gain;
-//					break;
-//				case CRT_REPAIR_MONOLITH:
-//					gain = combatRequest.gain;
-//					break;
-//				case CRT_REPAIR_MONOLITH:
-//					gain = combatRequest.gain;
-//					break;
-				default:
-					continue;
-				}
+//				// compute gain
+//
+//				double gain = 0.0;
+//
+// 				switch (combatRequest.type)
+// 				{
+// 				case CRT_REPAIR_MONOLITH:
+// 					{
+// 						gain = combatRequest.gain;
+//
+// 					}
+// 					break;
+// 				case CRT_POD:
+// 					{
+// 						gain = combatRequest.gain;
+//
+// 					}
+// 					break;
+// //				case CRT_REPAIR_MONOLITH:
+// //					gain = combatRequest.gain;
+// //					break;
+// //				case CRT_REPAIR_MONOLITH:
+// //					gain = combatRequest.gain;
+// //					break;
+// //				case CRT_REPAIR_MONOLITH:
+// //					gain = combatRequest.gain;
+// //					break;
+// //				case CRT_REPAIR_MONOLITH:
+// //					gain = combatRequest.gain;
+// //					break;
+// //				case CRT_REPAIR_MONOLITH:
+// //					gain = combatRequest.gain;
+// //					break;
+// //				case CRT_REPAIR_MONOLITH:
+// //					gain = combatRequest.gain;
+// //					break;
+// //				case CRT_REPAIR_MONOLITH:
+// //					gain = combatRequest.gain;
+// //					break;
+// 				default:
+// 					continue;
+// 				}
 
 				// update best
 
