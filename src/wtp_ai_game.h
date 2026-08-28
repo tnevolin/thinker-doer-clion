@@ -2,13 +2,13 @@
 
 #include <vector>
 #include <set>
-#include <map>
+
 #include "robin_hood.h"
+#include "multikey_map.h"
 
 #include "main.h"
 #include "engine.h"
 #include "wtp_game.h"
-#include "wtp_aiTask.h"
 
 constexpr int MAX_SAFE_LOCATION_SEARCH_RANGE = 6;
 constexpr int STACK_MAX_BASE_RANGE = 20;
@@ -88,15 +88,14 @@ struct CombatEffectTable
 {
 private:
 	
-	// each to each unit combat effects
-	// [attackerFactionId][attackerUnitId][defenderFactionId][defenderUnitId][engagementMode][attackerTileIndex][defenderTileIndex] = combatEffect
-	robin_hood::unordered_flat_map<uint64_t, double> combatEffects;
+	// each to each unit combat effects not counting terrain
+	// [attackerFactionId][attackerUnitId][defenderFactionId][defenderUnitId][engagementMode] = combatEffect
+    MultiKeyMap<double, int, int, int, int, ENGAGEMENT_MODE, MAP *, MAP *> combatEffects;
 
-	static inline uint64_t makeKey(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile) noexcept;
 	static double computeUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile);
 	
 public:
-	
+
 	void clear();
 	double getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile);
 	double getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode);

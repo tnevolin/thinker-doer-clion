@@ -6,8 +6,8 @@ enum Triad {
     TRIAD_SEA = 1,
     TRIAD_AIR = 2,
 };
-size_t const TRIAD_COUNT = TRIAD_AIR + 1;
-std::array<Triad, TRIAD_COUNT> const TRIADS = {TRIAD_LAND, TRIAD_SEA, TRIAD_AIR};
+constexpr size_t TRIAD_COUNT = TRIAD_AIR + 1;
+constexpr std::array<Triad, TRIAD_COUNT> TRIADS = {TRIAD_LAND, TRIAD_SEA, TRIAD_AIR};
 
 
 enum VehMorale {

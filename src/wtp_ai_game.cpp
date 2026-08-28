@@ -273,32 +273,6 @@ BunkerInfo &Data::getBunkerInfo(MAP const* tile)
 
 // CombatEffectTable
 
-inline uint64_t CombatEffectTable::makeKey(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile) noexcept
-{
-	int attackerTileIndex = (attackerTile == nullptr ? 0xFFFF : attackerTile - *MapTiles);
-	int defenderTileIndex = (defenderTile == nullptr ? 0xFFFF : defenderTile - *MapTiles);
-	return
-		static_cast<uint64_t>(attackerFactionId)			//  3 bit
-		|
-		static_cast<uint64_t>(attackerUnitId)		<<  3	// 10 bit
-		|
-		static_cast<uint64_t>(defenderFactionId)	<< 13	//  3 bit
-		|
-		static_cast<uint64_t>(defenderUnitId)		<< 16	// 10 bit
-		|
-		static_cast<uint64_t>(engagementMode)		<< 26	//  1 bit
-		|
-		static_cast<uint64_t>(attackerTileIndex)	<< 27	// 16 bit
-		|
-		static_cast<uint64_t>(defenderTileIndex)	<< 43	// 16 bit
-	;
-}
-
-void CombatEffectTable::clear()
-{
-	combatEffects.clear();
-}
-
 /*
 Computes combat effect using battle_compute.
 Creates fake vehicles using units and optionally battle tile.
@@ -390,19 +364,22 @@ double CombatEffectTable::computeUnitCombatEffect(int attackerFactionId, int att
 	
 }
 
-double CombatEffectTable::getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile)
+void CombatEffectTable::clear()
+{
+	combatEffects.clear();
+}
+
+double CombatEffectTable::getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, MAP * attackerTile, MAP * defenderTile)
 {
 	trace("CombatEffectTable::getCombatModeEffect( attackerFactionId=%d attackerUnitId=%d defenderFactionId=%d defenderUnitId=%d engagementMode=%d attackerTile=%s defenderTile=%s )\n", attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, getLocationString(attackerTile), getLocationString(defenderTile));
 	
-	uint64_t key = this->makeKey(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile);
-	
-	if (combatEffects.find(key) == combatEffects.end())
+	if (combatEffects.contains(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile))
 	{
 		double combatEffect = computeUnitCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile);
-		combatEffects.emplace(key, combatEffect);
+		combatEffects.emplace(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile, combatEffect);
 	}
 	
-	return combatEffects.at(key);
+	return combatEffects.at(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile);
 	
 }
 

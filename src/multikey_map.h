@@ -9,8 +9,10 @@
  * It uses robin_hood::unordered_flat_map for efficient storage.
  */
 template <typename Value, typename... Keys>
-class MultiKeyMap {
+class MultiKeyMap
+{
 private:
+
     using KeyType = std::tuple<Keys...>;
 
     struct HashTuple {
@@ -39,6 +41,7 @@ private:
     using MapType = robin_hood::unordered_flat_map<KeyType, Value, HashTuple>;
 
 public:
+
     using iterator = typename MapType::iterator;
     using const_iterator = typename MapType::const_iterator;
 
@@ -84,6 +87,7 @@ public:
 
 private:
     MapType m_map;
+
 };
 
 
