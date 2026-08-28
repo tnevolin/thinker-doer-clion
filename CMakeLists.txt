@@ -116,6 +116,8 @@ set(THINKER_SOURCES
     src/wtp_ai.h
     src/wtp_ai_game.cpp
     src/wtp_ai_game.h
+    src/wtp_ai_combat_data.cpp
+    src/wtp_ai_combat_data.h
     src/wtp_aiHurry.cpp
     src/wtp_aiHurry.h
     src/wtp_aiMove.cpp
