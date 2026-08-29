@@ -181,22 +181,42 @@ Example energy collection percentage for different faction base count.
 
 ### SUPPORT
 
+#### Alternative support
+
+Enabled by `alternative_support=1` option.
+
 * New base always gets free minerals.
 * Support cost is always 1.
 * Free unit count range is extended from 0-4 (vanilla) to 0-8.
-* Crawlers and Probes require support.
-* Alien Artifact, Tectonic Payload, Fungal Payload and units with Clean Reactor are always free.
 
-| rating | support cost | free units |
+| rating | free units | cost |
 | ----: | ----: | ----: |
-| -4 | 1 | 0 |
+| -4 | 0 | 1 |
 | -3 | 1 | 1 |
-| -2 | 1 | 2 |
-| -1 | 1 | 3 |
-|  0 | 1 | 4 |
-|  1 | 1 | 5 |
-|  2 | 1 | 6 |
-|  3 | 1 | 8 or to base size |
+| -2 | 2 | 1 |
+| -1 | 3 | 1 |
+|  0 | 4 | 1 |
+|  1 | 5 | 1 |
+|  2 | 6 | 1 |
+|  3 | 8 or to base size | 1 |
+
+#### Monetary support
+
+Enabled by `monetary_support=1` option.
+
+* New base always gets free minerals.
+* Support is paid in credits, not minerals.
+
+| rating | free units | support cost |
+| ----: | ----: | ----: |
+| -4 | 0 | 4 |
+| -3 | 0 | 3 |
+| -2 | 0 | 2 |
+| -1 | 1 | 2 |
+|  0 | 2 | 2 |
+|  1 | 3 | 2 |
+|  2 | 4 | 2 |
+|  3 | 6 | 2 |
 
 ### POLICE
 
