@@ -556,11 +556,23 @@ int option_handler(void* user, const char* section, const char* name, const char
     }
     else if (MATCH("capture_base_destroys_facilities"))
     {
-        cf->capture_base_destroys_facilities = (atoi(value) == 0 ? false : true);
+        cf->capture_base_destroys_facilities = (atoi(value) != 0);
     }
     else if (MATCH("alternative_support"))
     {
-        cf->alternative_support = (atoi(value) == 0 ? false : true);
+        cf->alternative_support = (atoi(value) != 0);
+    }
+    else if (MATCH("monetary_support"))
+    {
+        cf->monetary_support = (atoi(value) != 0);
+    }
+    else if (MATCH("monetary_support_free"))
+    {
+        opt_list_parse(cf->monetary_support_free, buf, 8, 0);
+    }
+    else if (MATCH("monetary_support_cost"))
+    {
+        opt_list_parse(cf->monetary_support_cost, buf, 8, 0);
     }
     else if (MATCH("instant_completion_fixed_minerals"))
     {

@@ -1,3 +1,9 @@
+# Version 421
+
+* Uint monetary support cost is paid with energy credits from faction treasury.
+  * Unit support is paid before facility maintenance.
+  * Unit is disbanded if there is not enough energy credits to pay for it.
+
 # Version 420
 
 * [bug] Thinker keeps referencing other faction attack target base after the war. Fixed.

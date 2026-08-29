@@ -1257,7 +1257,7 @@ __cdecl int wtp_mod_base_init(int factionId, int x, int y)
 	
 	// alternative support - disable no free minerals for new base penalty
 	
-	if (conf.alternative_support)
+	if (conf.monetary_support || conf.alternative_support)
 	{
 		base->minerals_accumulated = std::max(Rules->retool_exemption, base->minerals_accumulated);
 	}
@@ -4559,7 +4559,52 @@ int __thiscall wtp_mod_BattleWin_battle_report_Buffer_wrap2(Buffer* This, LPCSTR
  */
 int __cdecl wtp_mod_base_check_support()
 {
-	if (conf.unit_support_energy_credits > 0 && *CurrentBase != nullptr)
+	if (conf.monetary_support)
+	{
+		BASE &base = **CurrentBase;
+		Faction &faction = Factions[base.faction_id];
+		int supportCost = getSupportCost(base.faction_id);
+
+		for (int vehicleId = *VehCount; vehicleId >= 0; vehicleId--)
+		{
+			VEH &vehicle = Vehs[vehicleId];
+
+			// this home base
+			if (vehicle.home_base_id != *CurrentBaseID)
+				continue;
+
+			// requires support
+			if ((vehicle.state & VSTATE_REQUIRES_SUPPORT) == 0)
+				continue;
+
+			// subtract monetary support
+
+			if (faction.energy_credits >= supportCost)
+			{
+				faction.energy_credits -= supportCost;
+			}
+			else
+			{
+				// no support popup
+
+				parse_says(1, Units[vehicle.unit_id].name, -1, -1);
+				popb("NOSUPPORTENERGYRESERVES", WARN_STOP_ENERGY_SHORTAGE, 0xD, "genwarning_sm.pcx", 0);
+
+				// disband vehicle
+
+				mod_veh_kill(vehicleId);
+
+			}
+
+		}
+
+		// remove base mineral support requirements
+
+		*BaseForcesMaintCount = 0;
+		*BaseForcesMaintCost = 0;
+
+	}
+	else if (conf.unit_support_energy_credits > 0 && *CurrentBase != nullptr)
 	{
 		int baseId = *CurrentBaseID;
 		BASE &base = **CurrentBase;
@@ -4610,6 +4655,39 @@ int __cdecl wtp_mod_base_check_support()
 	// execute original code
 
 	return base_check_support();
+
+}
+
+/*
+ * Current base monetary support cost.
+ */
+int __cdecl wtp_mod_monetary_support_cost()
+{
+	if (!conf.monetary_support)
+		return 0;
+
+	BASE &base = **CurrentBase;
+	Faction &faction = Factions[base.faction_id];
+	int monetarySupportCost = conf.monetary_support_cost[4 + faction.SE_support_pending];
+
+	return monetarySupportCost;
+
+}
+
+/*
+ * Modifies society effect datalink article.
+*/
+int __thiscall wtp_Datalinks_effect_popup_start(Win* This, const char* filename, const char* label, int a4, int a5, int a6, int a7)
+{
+	if (strcmp(label, "HELPEFFECT2") == 0)
+	{
+		if (conf.monetary_support)
+		{
+			label = "HELPEFFECT2MONETARY";
+		}
+	}
+
+	return Popup_start(This, filename, label, a4, a5, a6, a7);
 
 }
 

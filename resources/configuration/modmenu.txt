@@ -243,3 +243,11 @@ The minerals output of $BASENAME0 is not sufficient to support unit:
 ^$UNITTYPE1
 ^{$NUM2} credits has been paid from reserves to support it.
 
+#NOSUPPORTENERGYRESERVES
+#xs 320
+#wave 24
+#caption Operations Director
+There is not enough energy reserves to support
+^{$UNITTYPE1} unit.
+^The unit has been disbanded.
+

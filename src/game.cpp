@@ -1,6 +1,7 @@
 
 #include "game.h"
 
+#include "wtp_game.h"
 #include "wtp_mod.h"
 
 static uint32_t custom_game_rules = 0;
@@ -661,7 +662,8 @@ void __cdecl mod_repair_phase(int faction_id) {
     do_all_draws();
 }
 
-void __cdecl mod_production_phase(int faction_id) {
+void __cdecl mod_production_phase(int faction_id)
+{
     Faction* f = &Factions[faction_id];
     MFaction* m = &MFactions[faction_id];
     debug("production_phase %d %d\n", *CurrentTurn, faction_id);
@@ -777,6 +779,7 @@ void __cdecl mod_production_phase(int faction_id) {
             }
         }
     }
+
 }
 
 uint32_t offset_next(int32_t faction, uint32_t position, uint32_t amount) {

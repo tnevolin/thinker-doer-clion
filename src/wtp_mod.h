@@ -278,4 +278,6 @@ int __cdecl wtp_mod_has_abil_air_superiority_attack_needlejet(int unit_id, VehAb
 int __thiscall StringList__sort_nop(int *This, int sortType);
 int __thiscall wtp_mod_BattleWin_battle_report_Buffer_wrap2(Buffer* This, LPCSTR lpString, int x, int y, int a5);
 int __cdecl wtp_mod_base_check_support();
+int __cdecl wtp_mod_monetary_support_cost();
+int __thiscall wtp_Datalinks_effect_popup_start(Win* This, const char* filename, const char* label, int a4, int a5, int a6, int a7);
 
