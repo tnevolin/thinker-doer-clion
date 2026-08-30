@@ -19,7 +19,7 @@
 #pragma once
 
 #ifdef BUILD_REL
-    #define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v.421"
+    #define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v.422"
 #else
     #define MOD_VERSION "Thinker Mod develop build"
 #endif
@@ -330,6 +330,8 @@ struct Config {
     // implemented in Thinker?
     bool alternative_prototype_cost_formula = false;
     int reactor_cost_factors[4];
+    int reactor_cost_factor;
+    int reactor_combat_bonus;
     bool hurry_minimal_minerals = false;
     bool flat_hurry_cost = false;
     int flat_hurry_cost_multiplier_unit = 1;

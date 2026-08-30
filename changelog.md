@@ -1,3 +1,12 @@
+# Version 422
+
+* Reactor effect on prototype cost and combat changed.
+  * Each subsequent advanced reactor increases prototype cost by 50% and adds 25% combat bonus to weapon/armor.
+* Weapon and armor cost are growing slower than their strength.
+  * String Disruptor: strenght = 30, cost = 16.
+  * Stasis Generator: strength = 26, cost = 15.
+* Missile chassis cost is reduced to be equal to Infantry.
+
 # Version 421
 
 * Uint monetary support cost is paid with energy credits from faction treasury.

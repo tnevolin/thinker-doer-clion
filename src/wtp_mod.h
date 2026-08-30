@@ -166,7 +166,7 @@ const std::vector<BaseComputeTestCase> BASE_COMPUTE_TEST_CASES =
 };
 
 __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId, int *attackerStrengthPointer, int *defenderStrengthPointer, int combat_type);
-__cdecl int wtp_mod_proto_cost(int chassisTypeId, int weaponTypeId, int armorTypeId, int abilities, int reactorTypeId);
+__cdecl int wtp_mod_proto_cost(int chassisId, int weaponId, int armorId, int abilities, int reactor);
 
 double standard_combat_mechanics_calculate_attacker_winning_probability(double p, int attacker_hp, int defender_hp);
 double binomial_koefficient(int n, int k);
