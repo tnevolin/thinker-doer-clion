@@ -547,8 +547,16 @@ void __cdecl mod_base_support() {
         {1, 6}, //  2, Support 6 units free per base!
         {1, max((int)base->pop_size, 8)}, // 3, Support 8 units OR up to base size for free!!
     };
-    
-    if (conf.alternative_support)
+
+    if (conf.monetary_support)
+	{
+		for (int i = 0; i < 8; i ++)
+		{
+			SupportCosts[i][0] = conf.monetary_support_cost[i];
+			SupportCosts[i][1] = conf.monetary_support_free[i];
+		}
+	}
+    else if (conf.alternative_support)
 	{
 		for (int i = 0; i < 8; i ++)
 		{
@@ -558,7 +566,7 @@ void __cdecl mod_base_support() {
 			}
 		}
 	}
-	
+
     // [WTP] alternative support - end
     
     const int support_val = clamp(f->SE_support_pending + 4, 0, 7);
@@ -999,8 +1007,20 @@ void __cdecl mod_base_minerals() {
     base->mineral_intake_2 += BaseResourceConvoyTo[RSC_MINERAL];
     base->mineral_intake_2 = (base->mineral_intake_2
         * (mineral_output_modifier(base_id) + 2)) / 2;
+
+    // [WTP]
+    // monetary support does not affect mineral consumption
+    if (conf.monetary_support)
+    {
+    base->mineral_consumption = BaseResourceConvoyFrom[RSC_MINERAL];
+    }
+    else
+    {
     base->mineral_consumption = *BaseForcesMaintCost
         + BaseResourceConvoyFrom[RSC_MINERAL];
+    }
+    //
+
     base->mineral_surplus = base->mineral_intake_2
         - base->mineral_consumption;
     base->mineral_inefficiency = 0; // unused

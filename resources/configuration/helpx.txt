@@ -845,6 +845,21 @@ will begin to lose $LINK<energy=10059> to inefficiency.
 ^+2 = Support 6 units free per base!
 ^+3 = Support 8 units OR up to base size for free!!
 
+#;SUPPORT
+#HELPEFFECT2MONETARY
+{Support} affects units {energy credit} support cost payable from faction accumulated $LINK<Energy Reserves=10062>.
+When there are not enough energy reserves, unit is disbanded.
+^Alien Artifact, Tectonic Payload, Fungal Payload and units with Clean Reactor are always free.
+^
+^-4 = Support {0} units free per base; Each unit costs {4} to support
+^-3 = Support {0} unit  free per base; Each unit costs {3} to support
+^-2 = Support {0} units free per base; Each unit costs {2} to support
+^-1 = Support {1} units free per base; Each unit costs {2} to support
+^+0 = Support {2} units free per base; Each unit costs {2} to support
+^+1 = Support {3} units free per base; Each unit costs {2} to support
+^+2 = Support {4} units free per base; Each unit costs {2} to support
+^+3 = Support {6} units free per base; Each unit costs {2} to support !!
+
 #;TALENT -- NOTUSED!!!
 #HELPEFFECT3
 fsdjflsdjfslkdfj

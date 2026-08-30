@@ -1441,6 +1441,7 @@ bool isMapValueEmpty(robin_hood::unordered_flat_map<int, double>  &map, int key)
 int getBaseDoctorCount(int baseId);
 int getBaseSpecialistPsych(int baseId);
 bool isFriendlyBaseInRangeHasFacility(int factionId, int x, int y, int range, FacilityId facilityId);
+int getSupportCost(int factionId);
 bool isRangedAirUnit(int unitId);
 bool isRangedAirVehicle(int vehicleId);
 char * getAbilitiesString(int unitType);

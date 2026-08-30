@@ -181,22 +181,42 @@ Example energy collection percentage for different faction base count.
 
 ### SUPPORT
 
+#### Alternative support
+
+Enabled by `alternative_support=1` option.
+
 * New base always gets free minerals.
 * Support cost is always 1.
 * Free unit count range is extended from 0-4 (vanilla) to 0-8.
-* Crawlers and Probes require support.
-* Alien Artifact, Tectonic Payload, Fungal Payload and units with Clean Reactor are always free.
 
-| rating | support cost | free units |
+| rating | free units | cost |
 | ----: | ----: | ----: |
-| -4 | 1 | 0 |
+| -4 | 0 | 1 |
 | -3 | 1 | 1 |
-| -2 | 1 | 2 |
-| -1 | 1 | 3 |
-|  0 | 1 | 4 |
-|  1 | 1 | 5 |
-|  2 | 1 | 6 |
-|  3 | 1 | 8 or to base size |
+| -2 | 2 | 1 |
+| -1 | 3 | 1 |
+|  0 | 4 | 1 |
+|  1 | 5 | 1 |
+|  2 | 6 | 1 |
+|  3 | 8 or to base size | 1 |
+
+#### Monetary support
+
+Enabled by `monetary_support=1` option.
+
+* New base always gets free minerals.
+* Support is paid in credits, not minerals.
+
+| rating | free units | support cost |
+| ----: | ----: | ----: |
+| -4 | 0 | 4 |
+| -3 | 0 | 3 |
+| -2 | 0 | 2 |
+| -1 | 1 | 2 |
+|  0 | 2 | 2 |
+|  1 | 3 | 2 |
+|  2 | 4 | 2 |
+|  3 | 6 | 2 |
 
 ### POLICE
 
@@ -325,26 +345,24 @@ Besides, why promotion should be easier for lower morale levels? That benefits w
 
 # Unit cost
 
-Unit cost formula is reworked and is greatly simplified to resemble Civ 1/2 model. Now it is **MUCH** easier to understand this. For example, both 6-1-1 and 1-6-1 infantry units now cost 6 rows of minerals. Imagine the simplicity! New formula completely removes a quadratic armor cost growth problem. High end mixed inrantry units now cost comparable to speeder and fully armored foil units are comparable to hovertank.
+Unit cost formula is reworked and is greatly simplified to resemble Civ 1/2 model. For example, both 6-1-1 and 1-6-1 infantry units now cost 6 rows of minerals. Imagine the simplicity! New formula completely removes a quadratic armor cost growth problem. High end mixed infantry units now cost comparable to speeder and fully armored foil units are comparable to hovertank.
 
-## Reactors
+## Reactors and max hit points
 
-Reactor power does not multiply unit max hit points anymore. All units (conventional and native) have 10 max hit points regardless of reactor. Each hit removes 10% of total unit power.
-
-Instead each subsequent reactor decreases weapon/armor cost by approximately 20%. Modules are not discounted. Player **does not** get refund when upgrading unit to cheaper one with more powerful reactor.
+Reactor does not multiply unit max hit points. All units (conventional and native) have 10 max hit points regardless of reactor. Each hit removes 10% of total unit power.
 
 ## Unit pricing principles
 
-* Stronger reactor decreases weapon/armor cost by 20% comparing to previous generation. Modules are not discounted.
+* Stronger reactor adds 25% combat bonus and 50% unit cost.
 * Primary item (most expensive module/weapon/armor item) defines base cost.
 * Secondary item (least expensive module/weapon/armor item) increases cost by 50% of its value.
-* Faster chassis make unit proportionally more expensive. Speeder/Cruiser are 1.5 times and Hovertank is 2 times more expensive than Infantry.
+* Faster chassis make unit proportionally more expensive. Speeder/Foil is 50% more expensive and Hovertank/Cruiser is 100% more expensive than Infantry.
+* Non combat sea units (colony, former, trawler, transport) use their matching land chassis cost: Foil -> Infantry, Cruiser -> Speeder.
 * Abilities have proportional and flat cost components those can be set independently for each ability. Proportional one works as in original and increases cost by 25% for each unit of value. Flat one adds given number of minerals rows to the cost.
 
 ### Special cases
 
-* Planet Buster, Tectonic Payload, Fungal Payload power is directly proportional to reactor and, therefore, their price is multiplied by reactor!
-* Sea colony/former/supply/transport on foil chassis cost same as infantry, and criuser same as speeder.
+* Planet Buster, Tectonic Payload, Fungal Payload power is directly proportional to reactor and, therefore, their price is multiplied by reactor.
 * Probe armor cost is halved.
 
 ## Unit cost formula
@@ -355,25 +373,11 @@ Ability proportional and flat costs are packed into a singe value for ability co
 
 module cost is not modified
 Planet Buster, Tectonic Payload, Fungal Payload cost is not modified
-weapon/armor reactor modified cost = item cost * (reactor value / Fission reactor value)
 
-unit cost = round(round([primary item cost + secondary item shifted cost / 2] * chassis cost / 2) * abilities cost factor + abilities flat cost)
-(rounded normally)
-
-primary item = the one with higher reactor modified cost
-secondary item = the one with lower reactor modified cost
-
-primary item cost = item cost * (reactor value / 100)
-secondary item shifted cost = (item cost - 1) * (reactor value / 100)
-
-abilities cost factor = (1 + 0.25 * (ability1 proportional cost + ability2 proportional cost))
-abilities flat cost = ability1 flat cost + ability2 flat cost
+unit cost = (primary item cost + secondary item cost / 2) * (chassis cost / Infantry cost) * reactor cost factor * abilities cost factor + abilities flat cost
+round down
 
 </pre>
-
-## Weapon and armor cost
-
-Weapon and armor cost grows slightly slower than their value. That makes stronger weapon/armor more cost effective against stronger opponent. However, it is still cheaper to build weaker units when top item is overkill.
 
 ## Flat extra prototype cost
 

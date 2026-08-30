@@ -1815,7 +1815,7 @@ void assignFormerOrders()
 
 		MAP* tile = bestRequest->tile;
 		FormerItem action = bestRequest->action;
-		
+
 		bestCombination.order->tile = tile;
 		bestCombination.order->action = action;
 
@@ -1858,7 +1858,7 @@ void assignFormerOrders()
 			debug("\t\t[%4d] (COOP) travelTime=%5.2f workLeftAtArrival=%5.2f candidateWorkTime=%5.2f gain=%5.2f\n", bestCombination.order->vehicleId, bestCombination.travelTime, workLeftAtArrival, candidateFormerWorkTime, bestCombination.gain);
 
 		}
-		
+
 		cooperatingFormers.push_back(bestCombination);
 		// Sort cooperating formers by travel time so that the work calculation in subsequent iterations (if any) is correct.
 		// Actually, the current logic for work calculation assumes they are ordered or at least handles it.

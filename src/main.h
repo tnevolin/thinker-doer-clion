@@ -19,7 +19,7 @@
 #pragma once
 
 #ifdef BUILD_REL
-    #define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v420"
+    #define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v.422"
 #else
     #define MOD_VERSION "Thinker Mod develop build"
 #endif
@@ -340,6 +340,8 @@ struct Config {
     // implemented in Thinker?
     bool alternative_prototype_cost_formula = false;
     int reactor_cost_factors[4];
+    int reactor_cost_factor;
+    int reactor_combat_bonus;
     bool hurry_minimal_minerals = false;
     bool flat_hurry_cost = false;
     int flat_hurry_cost_multiplier_unit = 1;
@@ -391,6 +393,9 @@ struct Config {
 	double alternative_mind_control_happiness_power_base;
 	bool capture_base_destroys_facilities;
 	bool alternative_support = false;
+	bool monetary_support = false;
+	int monetary_support_free[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+	int monetary_support_cost[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 	int instant_completion_fixed_minerals;
 	bool sensor_indestructible;
 	bool artillery_duel_uses_bonuses;

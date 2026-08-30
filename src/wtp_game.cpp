@@ -8320,3 +8320,26 @@ void applyTerraforming(MAP *tile, FormerItem action)
 	tile->items &= ~Terraform[action].bit_incompatible;
 }
 
+int getSupportCost(int factionId)
+{
+	int seSupportPending = Factions[factionId].SE_support_pending;
+
+	int supportCost = 0;
+
+	if (conf.monetary_support)
+	{
+		supportCost = conf.monetary_support_cost[4 + seSupportPending];
+	}
+	else if (conf.alternative_support)
+	{
+		supportCost = 1;
+	}
+	else
+	{
+		supportCost = seSupportPending <= 4 ? 2 : 1;
+	}
+
+	return supportCost;
+
+}
+

@@ -72,7 +72,48 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 	
 	mod_battle_compute(attackerVehicleId, defenderVehicleId, attackerStrengthPointer, defenderStrengthPointer, combat_type);
 	
-    // ----------------------------------------------------------------------------------------------------
+	// ----------------------------------------------------------------------------------------------------
+	// weapon/armor based bonuses
+	// ----------------------------------------------------------------------------------------------------
+
+	int attackerBonus = 0;
+	int defenderBonus = 0;
+
+	// conventional power contributes to psi combat
+
+	if (psiCombat && conf.conventional_power_psi_percentage > 0 && attackerUnit.offense_value() > 0)
+	{
+		attackerBonus += conf.conventional_power_psi_percentage * attackerUnit.offense_value();
+	}
+
+	if (psiCombat && conf.conventional_power_psi_percentage > 0 && defenderUnit.defense_value() > 0)
+	{
+		defenderBonus += conf.conventional_power_psi_percentage * defenderUnit.defense_value();
+	}
+
+	// reactor bonus for conventional combat
+
+	if (!psiCombat && conf.reactor_combat_bonus > 0 && attackerUnit.offense_value() > 0)
+	{
+		attackerBonus += conf.reactor_combat_bonus * (attackerUnit.reactor_id - 1);
+	}
+
+	if (!psiCombat && conf.reactor_combat_bonus > 0 && defenderUnit.offense_value() > 0)
+	{
+		defenderBonus += conf.reactor_combat_bonus * (defenderUnit.reactor_id - 1);
+	}
+
+	if (attackerBonus > 0)
+	{
+		addAttackerBonus(attackerStrengthPointer, attackerBonus, LABEL_WEAPON);
+	}
+
+	if (defenderBonus > 0)
+	{
+		addDefenderBonus(defenderStrengthPointer, defenderBonus, LABEL_ARMOR);
+	}
+
+	// ----------------------------------------------------------------------------------------------------
     // conventional air-air weapon-weapon combat uses Air Superiority bonus
     // ----------------------------------------------------------------------------------------------------
 	
@@ -318,21 +359,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 		}
 		
 	}
-	
-    // ----------------------------------------------------------------------------------------------------
-    // conventional power contributes to psi combat
-    // ----------------------------------------------------------------------------------------------------
-	
-    if (psiCombat && conf.conventional_power_psi_percentage > 0 && attackerUnit.offense_value() > 0)
-	{
-		addAttackerBonus(attackerStrengthPointer, conf.conventional_power_psi_percentage * attackerUnit.offense_value(), LABEL_WEAPON);
-	}
-	
-    if (psiCombat && conf.conventional_power_psi_percentage > 0 && defenderUnit.defense_value() > 0)
-	{
-		addDefenderBonus(defenderStrengthPointer, conf.conventional_power_psi_percentage * defenderUnit.defense_value(), LABEL_ARMOR);
-	}
-	
+
     // ----------------------------------------------------------------------------------------------------
     // AAA range effect
     // ----------------------------------------------------------------------------------------------------
@@ -516,28 +543,20 @@ char const *triadFacilityFieldLabels[3] = {"PD - field", "NY - field", "AC - fie
 /*
 Prototype cost calculation.
 
-Sea transport, colony, former, supply chassis cost similar to their land counterparts.
+Sea non combat unit (colony, former, supply, transport) chassis cost similar to their land counterparts.
 foil	= infantry
 cruiser	= speeder
 
-Buster missile (Planet Buster, Tectonic Payload, Fungal Payload) cost is multiplied by reactor.
-This is a special case because their power is directly proportional to reactor.
-
-- Calculate module and weapon/armor reactor modified costs.
-module cost is unchanged
-buster cost			= item cost * reactor
-weapon/armor cost	= item cost * (reactor value / Fission reactor value)
-
-- Select primary and secondary item
-primary item = the one with higher reactor modified cost
-secondary item = the one with lower reactor modified cost
-
-- Calculate primary item cost and secondary item shifted cost
-primary item cost	= item cost
-secondary item cost	= item cost - 1
+- Select primary and secondary item (weapon/module vs. armor)
+primary item = the one with higher cost
+secondary item = the one with lower cost
 
 - Calculate unit base cost
-unit base cost		= [<primary item cost> + <secondary item cost> / 2] * <chassis cost> / <infrantry chassis cost>
+unit base cost		= (<primary item cost> + <secondary item cost> / 2) * (<chassis cost> / <infrantry chassis cost>)
+
+- Multiply by reactor cost factor
++25% for normal unit
+times reactor power for buster
 
 - Multiply by ability cost factor
 ability bytes 0-3 is cost factor
@@ -548,104 +567,62 @@ ability bytes 4-7 is flat cost
 - Round down
 
 */
-__cdecl int wtp_mod_proto_cost(int chassis_id, int weapon_id, int armor_id, int abilities, int reactor)
+__cdecl int wtp_mod_proto_cost(int chassisId, int weaponId, int armorId, int abilities, int reactor)
 {
-    double weapon_cost	= (double)Weapon[weapon_id].cost;
-    double armor_cost	= (double)Armor[armor_id].cost;
-    double chassis_cost	= (double)Chassis[chassis_id].cost;
+	// component values
 	
-    // reactor cost factors
+	int weapon_offence_value = Weapon[weaponId].offense_value;
+	int armor_defense_value = Armor[armorId].defense_value;
+	int chassis_speed = Chassis[chassisId].speed;
 	
-    double reactor_cost_factor = (double)conf.reactor_cost_factors[reactor - 1] / (double)conf.reactor_cost_factors[0];
-	
-    // component values
-	
-    int weapon_offence_value = Weapon[weapon_id].offense_value;
-    int armor_defense_value = Armor[armor_id].defense_value;
-    int chassis_speed = Chassis[chassis_id].speed;
-	
-    // modified component costs
-    
-    double weaponModifiedCost;
-    switch (weapon_id)
-    {
-	case WPN_PLANET_BUSTER:
-	case WPN_TECTONIC_PAYLOAD:
-	case WPN_FUNGAL_PAYLOAD:
-		weaponModifiedCost = weapon_cost * (double)reactor;
-		break;
-	case WPN_TROOP_TRANSPORT:
+	// weapon and armor, primary and secondary costs
+
+	double weapon_cost = Weapon[weaponId].cost;
+	double armor_cost = Armor[armorId].cost;
+	double primary_component_cost = std::max(weapon_cost, armor_cost);
+	double secondary_component_cost = std::min(weapon_cost, armor_cost);
+
+	// chassisCostFactor
+	// use corresponding level land chassis for sea non combat modules
+
+	switch (weaponId)
+	{
 	case WPN_COLONY_MODULE:
 	case WPN_TERRAFORMING_UNIT:
-	case WPN_SUPPLY_TRANSPORT:
-	case WPN_PROBE_TEAM:
-	case WPN_ALIEN_ARTIFACT:
-		weaponModifiedCost = weapon_cost;
-		break;
-	default:
-		weaponModifiedCost = weapon_cost * reactor_cost_factor;
-    }
-    
-    double armorModifiedCost;
-    switch (weapon_id)
-    {
-	case WPN_PROBE_TEAM:
-		armorModifiedCost = armor_cost * reactor_cost_factor * 0.5;
-		break;
-	default:
-		armorModifiedCost = armor_cost * reactor_cost_factor;
-    }
-	
-    // modified chassis cost for sea based non combat related modules
-	
-    double chassisModifiedCost;
-    switch (weapon_id)
-    {
 	case WPN_TROOP_TRANSPORT:
-	case WPN_COLONY_MODULE:
-	case WPN_TERRAFORMING_UNIT:
 	case WPN_SUPPLY_TRANSPORT:
-		switch (chassis_id)
+		switch (chassisId)
 		{
 		case CHS_FOIL:
-			chassisModifiedCost = Chassis[CHS_INFANTRY].cost;
+			chassisId = CHS_INFANTRY;
 			break;
 		case CHS_CRUISER:
-			chassisModifiedCost = Chassis[CHS_SPEEDER].cost;
+			chassisId = CHS_SPEEDER;
 			break;
 		default:
-			chassisModifiedCost = chassis_cost;
+			;
 		}
 		break;
 	default:
-		chassisModifiedCost = chassis_cost;
-    }
-    
-    double chassisCostFactor = chassisModifiedCost / (double)Chassis[CHS_INFANTRY].cost;
-    
-    // primary item and secondary item shifted costs
-	
-    double primary_item_cost;
-    double secondary_item_cost;
-	
-    if (weaponModifiedCost >= armorModifiedCost)
-	{
-		primary_item_cost	= weaponModifiedCost;
-		secondary_item_cost	= armorModifiedCost;
+		;
 	}
-	else
-	{
-		primary_item_cost	= armorModifiedCost;
-		secondary_item_cost	= weaponModifiedCost;
-	}
+	double chassisCostFactor = static_cast<double>(Chassis[chassisId].cost) / static_cast<double>(Chassis[CHS_INFANTRY].cost);
 	
-    // set minimal cost to reactor level (this is checked in some other places so we should do this here to avoid any conflicts)
+    // reactor cost factor
+	
+	double reactor_cost_factor = 1.0 + conf.reactor_cost_factor * static_cast<double>(reactor - 1) / 100.0;
+
+	// set minimal cost to reactor level (this is checked in some other places so we should do this here to avoid any conflicts)
 	
     int minimal_cost = reactor;
 	
     // calculate base unit cost without abilities
 	
-    double base_cost = (primary_item_cost + 0.5 * secondary_item_cost) * chassisCostFactor;
+    double cost = (primary_component_cost + 0.5 * secondary_component_cost) * chassisCostFactor;
+
+	// apply reactor cost factor
+
+	cost *= reactor_cost_factor;
 	
     // get abilities cost modifications
 	
@@ -720,7 +697,7 @@ __cdecl int wtp_mod_proto_cost(int chassis_id, int weapon_id, int armor_id, int 
 			
             // special case: cost increased for land units
 			
-            if ((Ability[ability_id].flags & AFLAG_COST_INC_LAND_UNIT) && Chassis[chassis_id].triad == TRIAD_LAND)
+            if ((Ability[ability_id].flags & AFLAG_COST_INC_LAND_UNIT) && Chassis[chassisId].triad == TRIAD_LAND)
 			{
 				abilities_cost_factor += 1;
 			}
@@ -729,12 +706,20 @@ __cdecl int wtp_mod_proto_cost(int chassis_id, int weapon_id, int armor_id, int 
 		
     }
 	
-    // calculate final cost
+	// apply ability cost factor
+
+	cost *= 1.0 + 0.25 * static_cast<double>(abilities_cost_factor);
+	cost += abilities_cost_addition;
+
+    // round down
+
+	int int_cost = static_cast<int>(floor(cost));
 	
-	int finalCost = (int)floor(base_cost * (1.0 + 0.25 * (double)abilities_cost_factor)) + abilities_cost_addition;
-    int cost = std::max(minimal_cost, finalCost);
+	// apply minimal cost
 	
-    return cost;
+    int_cost = std::max(minimal_cost, int_cost);
+
+    return int_cost;
 	
 }
 
@@ -1034,7 +1019,7 @@ __cdecl int wtp_mod_base_init(int factionId, int x, int y)
 	
 	// alternative support - disable no free minerals for new base penalty
 	
-	if (conf.alternative_support)
+	if (conf.monetary_support || conf.alternative_support)
 	{
 		base->minerals_accumulated = std::max(Rules->retool_exemption, base->minerals_accumulated);
 	}
@@ -4310,7 +4295,52 @@ int __thiscall wtp_mod_BattleWin_battle_report_Buffer_wrap2(Buffer* This, LPCSTR
  */
 int __cdecl wtp_mod_base_check_support()
 {
-	if (conf.unit_support_energy_credits > 0 && *CurrentBase != nullptr)
+	if (conf.monetary_support)
+	{
+		BASE &base = **CurrentBase;
+		Faction &faction = Factions[base.faction_id];
+		int supportCost = getSupportCost(base.faction_id);
+
+		for (int vehicleId = *VehCount; vehicleId >= 0; vehicleId--)
+		{
+			VEH &vehicle = Vehs[vehicleId];
+
+			// this home base
+			if (vehicle.home_base_id != *CurrentBaseID)
+				continue;
+
+			// requires support
+			if ((vehicle.state & VSTATE_REQUIRES_SUPPORT) == 0)
+				continue;
+
+			// subtract monetary support
+
+			if (faction.energy_credits >= supportCost)
+			{
+				faction.energy_credits -= supportCost;
+			}
+			else
+			{
+				// no support popup
+
+				parse_says(1, Units[vehicle.unit_id].name, -1, -1);
+				popb("NOSUPPORTENERGYRESERVES", WARN_STOP_ENERGY_SHORTAGE, 0xD, "genwarning_sm.pcx", 0);
+
+				// disband vehicle
+
+				mod_veh_kill(vehicleId);
+
+			}
+
+		}
+
+		// remove base mineral support requirements
+
+		*BaseForcesMaintCount = 0;
+		*BaseForcesMaintCost = 0;
+
+	}
+	else if (conf.unit_support_energy_credits > 0 && *CurrentBase != nullptr)
 	{
 		int baseId = *CurrentBaseID;
 		BASE &base = **CurrentBase;
@@ -4361,6 +4391,39 @@ int __cdecl wtp_mod_base_check_support()
 	// execute original code
 
 	return base_check_support();
+
+}
+
+/*
+ * Current base monetary support cost.
+ */
+int __cdecl wtp_mod_monetary_support_cost()
+{
+	if (!conf.monetary_support)
+		return 0;
+
+	BASE &base = **CurrentBase;
+	Faction &faction = Factions[base.faction_id];
+	int monetarySupportCost = conf.monetary_support_cost[4 + faction.SE_support_pending];
+
+	return monetarySupportCost;
+
+}
+
+/*
+ * Modifies society effect datalink article.
+*/
+int __thiscall wtp_Datalinks_effect_popup_start(Win* This, const char* filename, const char* label, int a4, int a5, int a6, int a7)
+{
+	if (strcmp(label, "HELPEFFECT2") == 0)
+	{
+		if (conf.monetary_support)
+		{
+			label = "HELPEFFECT2MONETARY";
+		}
+	}
+
+	return Popup_start(This, filename, label, a4, a5, a6, a7);
 
 }
 

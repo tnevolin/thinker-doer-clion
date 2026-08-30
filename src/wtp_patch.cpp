@@ -1708,7 +1708,7 @@ void patch_enemy_move()
 {
 	// in enemy_move_check
 	write_call(0x00579362, (int)wtp_mod_enemy_move);
-	
+
 }
 
 void patch_faction_upkeep()
@@ -3173,7 +3173,7 @@ void patch_veh_kill()
 	write_call(0x005B33EA, (int)wtp_mod_veh_kill); // eliminate_player
 	write_call(0x005B9560, (int)wtp_mod_veh_kill); // stack_kill
 	write_call(0x005C0C1F, (int)wtp_mod_veh_kill); // kill
-	
+
 }
 
 void patch_datalinks()
@@ -3326,6 +3326,23 @@ void patch_bypass_multiplayer_password()
 
 }
 
+void patch_monetary_support()
+{
+	// energy consumption icon
+	write_word(0x0040D081 + 0x1, 0x0075B52C, 0x0075B5DC);
+
+	// number of energy credits
+	int energy_credit_count_bytes_length = 0xc;
+	byte energy_credit_count_bytes_old[] = { 0x8B, 0x55, 0xE8, 0x33, 0xC0, 0x83, 0xFA, 0xFC, 0x0F, 0x9E, 0xC0, 0x40 };
+	byte energy_credit_count_bytes_new[] = { 0xE8, 0x00, 0x00, 0x00, 0x00, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+	write_bytes(0x0040CDF8, energy_credit_count_bytes_old, energy_credit_count_bytes_new, energy_credit_count_bytes_length);
+	write_call(0x0040CDF8, reinterpret_cast<int32_t>(wtp_mod_monetary_support_cost));
+
+	// modify SUPPORT help article
+	write_call(0x004308A9, reinterpret_cast<int32_t>(wtp_Datalinks_effect_popup_start));
+
+}
+
 
 // =======================================================
 // main patch option selection
@@ -3333,8 +3350,10 @@ void patch_bypass_multiplayer_password()
 
 void patch_setup_wtp(Config* cf)
 {
+	patch_bypass_multiplayer_password();
+
 	// debug mode game speedup
-	
+
 	if (DEBUG)
 	{
 		patch_disable_boom_delay();
@@ -3344,7 +3363,7 @@ void patch_setup_wtp(Config* cf)
 		patch_disable_battle_calls();
 		patch_disable_focus();
 	}
-	
+
 	// patch battle_compute
 	
 	patch_battle_compute();
@@ -3660,9 +3679,9 @@ void patch_setup_wtp(Config* cf)
 	}
 
 	patch_veh_kill();
-	
+
 	patch_enemy_turn();
-	
+
 	patch_datalinks();
 	
 	patch_battle_report();
@@ -3674,8 +3693,10 @@ void patch_setup_wtp(Config* cf)
 		patch_base_psych_label();
 	}
 
-
-	// patch_bypass_multiplayer_password();
+	if (conf.monetary_support)
+	{
+		patch_monetary_support();
+	}
 
 }
 

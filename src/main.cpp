@@ -381,6 +381,12 @@ int option_handler(void* user, const char* section, const char* name, const char
     else if (MATCH("reactor_cost_factors")) {
 		opt_list_parse(cf->reactor_cost_factors, buf, 4, 0);
     }
+    else if (MATCH("reactor_cost_factor")) {
+        cf->reactor_cost_factor = atoi(value);
+    }
+    else if (MATCH("reactor_combat_bonus")) {
+        cf->reactor_combat_bonus = atoi(value);
+    }
     else if (MATCH("hurry_minimal_minerals")) {
         cf->hurry_minimal_minerals = (atoi(value) == 0 ? false : true);
     }
@@ -552,11 +558,23 @@ int option_handler(void* user, const char* section, const char* name, const char
     }
     else if (MATCH("capture_base_destroys_facilities"))
     {
-        cf->capture_base_destroys_facilities = (atoi(value) == 0 ? false : true);
+        cf->capture_base_destroys_facilities = (atoi(value) != 0);
     }
     else if (MATCH("alternative_support"))
     {
-        cf->alternative_support = (atoi(value) == 0 ? false : true);
+        cf->alternative_support = (atoi(value) != 0);
+    }
+    else if (MATCH("monetary_support"))
+    {
+        cf->monetary_support = (atoi(value) != 0);
+    }
+    else if (MATCH("monetary_support_free"))
+    {
+        opt_list_parse(cf->monetary_support_free, buf, 8, 0);
+    }
+    else if (MATCH("monetary_support_cost"))
+    {
+        opt_list_parse(cf->monetary_support_cost, buf, 8, 0);
     }
     else if (MATCH("instant_completion_fixed_minerals"))
     {

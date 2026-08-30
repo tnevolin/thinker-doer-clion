@@ -160,7 +160,7 @@ void init_save_game(int faction_id) {
         || u->chassis_id > CHS_MISSILE) {
             for (int j = *VehCount-1; j >= 0; j--) {
                 if (Vehs[j].unit_id == unit_id) {
-					
+
 					// [WTP]
 					// intercept veh_kill
 					/*
@@ -168,7 +168,7 @@ void init_save_game(int faction_id) {
 					*/
 					wtp_mod_veh_kill(j);
 					//
-					
+
                 }
             }
             for (int j = 0; j < *BaseCount; j++) {
@@ -671,7 +671,8 @@ void __cdecl mod_repair_phase(int faction_id) {
     do_all_draws();
 }
 
-void __cdecl mod_production_phase(int faction_id) {
+void __cdecl mod_production_phase(int faction_id)
+{
     Faction* f = &Factions[faction_id];
     MFaction* m = &MFactions[faction_id];
     debug("production_phase %d %d\n", *CurrentTurn, faction_id);
@@ -787,6 +788,7 @@ void __cdecl mod_production_phase(int faction_id) {
             }
         }
     }
+
 }
 
 uint32_t offset_next(int32_t faction, uint32_t position, uint32_t amount) {
