@@ -852,7 +852,7 @@ void populateTerraformingData()
 
 		}
 
-		if (DEBUG)
+	 	if constexpr (DEBUG)
 		{
 			for (ResourceYield unworkedTileYeild : unworkedTileYields)
 			{

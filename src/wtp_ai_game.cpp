@@ -73,6 +73,10 @@ double CombatStrength::getAttackEffect(int vehicleId)
 		
 		break;
 		
+	default:
+		
+		break;
+		
 	}
 	
 	return effect;
@@ -200,44 +204,44 @@ void Data::clear()
 TileInfo &Data::getTileInfo(int tileIndex)
 {
 	assert(tileIndex >= 0 && tileIndex < *MapAreaTiles);
-	return aiData.tileInfos.at(tileIndex);
+	return this->tileInfos.at(tileIndex);
 }
 
 TileInfo &Data::getTileInfo(MAP const* tile)
 {
 	assert(isOnMap(tile));
-	return aiData.tileInfos.at(tile - *MapTiles);
+	return this->tileInfos.at(tile - *MapTiles);
 }
 
 TileInfo &Data::getBaseTileInfo(int baseId)
 {
 	assert(baseId >= 0 && baseId < *BaseCount);
-	return aiData.tileInfos.at(getBaseMapTileIndex(baseId));
+	return this->tileInfos.at(getBaseMapTileIndex(baseId));
 }
 
 TileInfo &Data::getVehicleTileInfo(int vehicleId)
 {
 	assert(vehicleId >= 0 && vehicleId < *VehCount);
-	return aiData.tileInfos.at(getVehicleMapTileIndex(vehicleId));
+	return this->tileInfos.at(getVehicleMapTileIndex(vehicleId));
 }
 
 bool Data::isSea(MAP const* tile)
 {
 	assert(isOnMap(tile));
-	return aiData.tileInfos.at(tile - *MapTiles).ocean;
+	return this->tileInfos.at(tile - *MapTiles).ocean;
 }
 
 bool Data::isLand(MAP const* tile)
 {
 	assert(isOnMap(tile));
-	return !aiData.tileInfos.at(tile - *MapTiles).ocean;
+	return !this->tileInfos.at(tile - *MapTiles).ocean;
 }
 
 bool Data::isSeaUnitAllowed(MAP const* tile, int factionId)
 {
 	assert(isOnMap(tile));
 	
-	TileInfo &tileInfo = aiData.tileInfos.at(tile - *MapTiles);
+	TileInfo &tileInfo = this->tileInfos.at(tile - *MapTiles);
 	
 	return tileInfo.ocean || (tileInfo.base && isFriendly(factionId, tile->owner));
 	
@@ -247,7 +251,7 @@ bool Data::isLandUnitAllowed(MAP const* tile)
 {
 	assert(isOnMap(tile));
 	
-	TileInfo &tileInfo = aiData.tileInfos.at(tile - *MapTiles);
+	TileInfo &tileInfo = this->tileInfos.at(tile - *MapTiles);
 	
 	return !tileInfo.ocean;
 	
@@ -256,14 +260,14 @@ bool Data::isLandUnitAllowed(MAP const* tile)
 BaseInfo &Data::getBaseInfo(int baseId)
 {
 	assert(baseId >= 0 && baseId < *BaseCount);
-	return aiData.baseInfos.at(baseId);
+	return this->baseInfos.at(baseId);
 }
 
 BunkerInfo &Data::getBunkerInfo(MAP const* tile)
 {
 	assert(isOnMap(tile));
-	robin_hood::unordered_flat_map<MAP const*, BunkerInfo>::iterator bunkerInfoIterator = aiData.bunkerInfos.find(tile);
-	if (bunkerInfoIterator == aiData.bunkerInfos.end())
+	robin_hood::unordered_flat_map<MAP const*, BunkerInfo>::iterator bunkerInfoIterator = this->bunkerInfos.find(tile);
+	if (bunkerInfoIterator == this->bunkerInfos.end())
 	{
 		debug("ERROR: No bunker at tile = %s\n", getLocationString(tile)); flushlog();
 		exit(1);
@@ -412,397 +416,6 @@ double CombatEffectTable::getVehicleCombatEffect(int attackerVehicleId, int defe
 double CombatEffectTable::getVehicleCombatEffect(int attackerVehicleId, int defenderVehicleId, EngagementMode engagementMode)
 {
 	return getVehicleCombatEffect(attackerVehicleId, defenderVehicleId, engagementMode, getVehicleMapTile(attackerVehicleId), getVehicleMapTile(defenderVehicleId));
-}
-
-/*
-Calculates relative unit strength for melee attack.
-How many defender units can attacker destroy until own complete destruction.
-*/
-double CombatEffectTable::getMeleeRelativeUnitStrength(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId)
-{
-//	debug("CombatEffectTable::getMeleeRelativeUnitStrength( attackerFactionId=%d attackerUnitId=%d defenderFactionId=%d defenderUnitId=%d )\n", attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId);
-	
-	UNIT *attackerUnit = &(Units[attackerUnitId]);
-	UNIT *defenderUnit = &(Units[defenderUnitId]);
-	int attackerOffenseValue = getUnitOffenseValue(attackerUnitId);
-	int defenderDefenseValue = getUnitDefenseValue(defenderUnitId);
-	Triad attackerTriad = (Triad) attackerUnit->triad();
-	Triad defenderTriad = (Triad) defenderUnit->triad();
-	
-	// weapon to weapon combat
-	
-	if (attackerTriad == TRIAD_AIR && defenderTriad == TRIAD_AIR && has_abil(defenderUnitId, ABL_AIR_SUPERIORITY))
-	{
-		defenderDefenseValue = getUnitOffenseValue(defenderUnitId);
-	}
-	
-	// attacker should be melee unit
-	
-	if (!isMeleeUnit(attackerUnitId))
-	{
-		return 0.0;
-	}
-	
-	// calculate relative strength
-	
-	double relativeStrength;
-	
-	if (isPsiCombat(attackerUnitId, defenderUnitId))
-	{
-		relativeStrength = getPsiCombatBaseOdds(attackerTriad);
-		
-		// reactor
-		// psi combat ignores reactor
-		
-		// abilities
-		
-		if (unit_has_ability(attackerUnitId, ABL_EMPATH))
-		{
-			relativeStrength *= getPercentageBonusMultiplier(Rules->combat_bonus_empath_song_vs_psi);
-		}
-		
-		if (unit_has_ability(defenderUnitId, ABL_TRANCE))
-		{
-			relativeStrength /= getPercentageBonusMultiplier(Rules->combat_bonus_trance_vs_psi);
-		}
-		
-		// hybrid item
-		
-		if (attackerUnit->weapon_id == WPN_RESONANCE_LASER || attackerUnit->weapon_id == WPN_RESONANCE_LASER)
-		{
-			relativeStrength *= 1.25;
-		}
-		
-		if (defenderUnit->armor_id == ARM_RESONANCE_3_ARMOR || defenderUnit->armor_id == ARM_RESONANCE_8_ARMOR)
-		{
-			relativeStrength /= 1.25;
-		}
-		
-		// PLANET bonus
-		
-		relativeStrength *= getFactionSEPlanetOffenseModifier(attackerFactionId);
- 		if (conf.planet_defense_bonus)
-		{
-			relativeStrength /= getFactionSEPlanetOffenseModifier(defenderFactionId);
-		}
-		
-		// gear bonus
-		
-		if (conf.conventional_power_psi_percentage != 0)
-		{
-			if (attackerOffenseValue > 0)
-			{
-				relativeStrength *= getPercentageBonusMultiplier(conf.conventional_power_psi_percentage * attackerOffenseValue);
-			}
-			
-			if (defenderDefenseValue > 0)
-			{
-				relativeStrength /= getPercentageBonusMultiplier(conf.conventional_power_psi_percentage * defenderDefenseValue);
-			}
-			
-		}
-		
-	}
-	else
-	{
-		relativeStrength = (double)attackerOffenseValue / (double)defenderDefenseValue;
-		
-		// reactor
-		
-		if (!conf.ignore_reactor_power)
-		{
-			relativeStrength *= (double)attackerUnit->reactor_id / (double)defenderUnit->reactor_id;
-		}
-		
-		// abilities
-		
-		if (attackerTriad == TRIAD_AIR && unit_has_ability(attackerUnitId, ABL_AIR_SUPERIORITY))
-		{
-			if (defenderUnit->triad() == TRIAD_AIR)
-			{
-				relativeStrength *= getPercentageBonusMultiplier(Rules->combat_bonus_air_supr_vs_air);
-			}
-			else
-			{
-				relativeStrength *= getPercentageBonusMultiplier(-Rules->combat_penalty_air_supr_vs_ground);
-			}
-		}
-		
-		if (defenderTriad == TRIAD_AIR && unit_has_ability(attackerUnitId, ABL_AIR_SUPERIORITY))
-		{
-			if (attackerUnit->triad() == TRIAD_AIR)
-			{
-				relativeStrength /= getPercentageBonusMultiplier(Rules->combat_bonus_air_supr_vs_air);
-			}
-		}
-		
-		if (unit_has_ability(attackerUnitId, ABL_NERVE_GAS))
-		{
-			relativeStrength *= 1.5;
-		}
-		
-		// fanatic bonus
-		
-		relativeStrength *= getFactionFanaticBonusMultiplier(attackerFactionId);
-		
-	}
-	
-	// ability applied regardless of combat type
-	
-	if
-	(
-		attackerUnit->triad() == TRIAD_LAND && attackerUnit->speed() > 1
-		&& unit_has_ability(defenderUnitId, ABL_COMM_JAMMER)
-		&& !unit_has_ability(attackerUnitId, ABL_DISSOCIATIVE_WAVE)
-	)
-	{
-		relativeStrength /= getPercentageBonusMultiplier(Rules->combat_comm_jammer_vs_mobile);
-	}
-	
-	if
-	(
-		attackerUnit->triad() == TRIAD_AIR
-		&& unit_has_ability(defenderUnitId, ABL_AAA)
-		&& !unit_has_ability(attackerUnitId, ABL_DISSOCIATIVE_WAVE)
-	)
-	{
-		relativeStrength /= getPercentageBonusMultiplier(Rules->combat_aaa_bonus_vs_air);
-	}
-	
-	if (unit_has_ability(attackerUnitId, ABL_SOPORIFIC_GAS) && !isNativeUnit(defenderUnitId))
-	{
-		relativeStrength *= 1.25;
-	}
-	
-	// faction bonuses
-	
-	relativeStrength *= getFactionOffenseMultiplier(attackerFactionId);
-	relativeStrength /= getFactionDefenseMultiplier(defenderFactionId);
-	
-	// artifact and no armor probe are explicitly weak
-	
-	if (defenderUnit->weapon_id == WPN_ALIEN_ARTIFACT || (defenderUnit->weapon_id == WPN_PROBE_TEAM && defenderUnit->armor_id == ARM_NO_ARMOR))
-	{
-		relativeStrength *= 50.0;
-	}
-	
-	// alien fight on half a strength in early game
-	
-	if (attackerFactionId == 0 && *CurrentTurn <= conf.native_weak_until_turn)
-	{
-		relativeStrength *= getAlienTurnOffenseModifier();
-	}
-	if (defenderFactionId == 0 && *CurrentTurn <= conf.native_weak_until_turn)
-	{
-		relativeStrength /= getAlienTurnDefenseModifier();
-	}
-	
-//	debug("\t%5.2f\n", relativeStrength);
-	return relativeStrength;
-	
-}
-
-/**
-Calculates relative unit strength for artillery duel attack.
-How many defender units can attacker destroy until own complete destruction.
-*/
-double CombatEffectTable::getArtilleryDuelRelativeUnitStrength(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId)
-{
-//	debug("CombatEffectTable::getArtilleryDuelRelativeUnitStrength( attackerFactionId=%d attackerUnitId=%d defenderFactionId=%d defenderUnitId=%d )\n", attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId);
-	
-	UNIT *attackerUnit = &(Units[attackerUnitId]);
-	UNIT *defenderUnit = &(Units[defenderUnitId]);
-	int attackerOffenseValue = getUnitOffenseValue(attackerUnitId);
-	int defenderDefenseValue = getUnitDefenseValue(defenderUnitId);
-	
-	// both units should be artillery capable
-	
-	if (!isArtilleryUnit(attackerUnitId) || !isArtilleryUnit(defenderUnitId))
-	{
-		return 0.0;
-	}
-	
-	// calculate relative strength
-	
-	double relativeStrength;
-	
-	if (attackerOffenseValue < 0 || defenderDefenseValue < 0)
-	{
-		relativeStrength = getPsiCombatBaseOdds(attackerUnit->triad());
-		
-		// reactor
-		// psi combat ignores reactor
-		
-		// PLANET bonus
-		
-		relativeStrength *= getFactionSEPlanetOffenseModifier(attackerFactionId);
-		relativeStrength /= getFactionSEPlanetOffenseModifier(defenderFactionId);
-		
-		// gear bonus
-		
-		if (conf.conventional_power_psi_percentage != 0)
-		{
-			if (attackerOffenseValue > 0)
-			{
-				relativeStrength *= getPercentageBonusMultiplier(conf.conventional_power_psi_percentage * attackerOffenseValue);
-			}
-			
-			if (defenderDefenseValue > 0)
-			{
-				relativeStrength /= getPercentageBonusMultiplier(conf.conventional_power_psi_percentage * defenderDefenseValue);
-			}
-			
-		}
-		
-	}
-	else
-	{
-		attackerOffenseValue = Weapon[attackerUnit->weapon_id].offense_value;
-		defenderDefenseValue = Weapon[defenderUnit->weapon_id].offense_value;
-		
-		// get relative strength
-		
-		relativeStrength = (double)attackerOffenseValue / (double)defenderDefenseValue;
-		
-		// reactor
-		
-		if (!conf.ignore_reactor_power)
-		{
-			relativeStrength *= (double)attackerUnit->reactor_id / (double)defenderUnit->reactor_id;
-		}
-		
-	}
-	
-	// ability applied regardless of combat type
-	
-	// faction bonuses
-	
-	relativeStrength *= getFactionOffenseMultiplier(attackerFactionId);
-	relativeStrength /= getFactionDefenseMultiplier(defenderFactionId);
-	
-	// alien fight on half a strength in early game
-	
-	if (attackerFactionId == 0 && *CurrentTurn <= conf.native_weak_until_turn)
-	{
-		relativeStrength *= getAlienTurnOffenseModifier();
-	}
-	if (defenderFactionId == 0 && *CurrentTurn <= conf.native_weak_until_turn)
-	{
-		relativeStrength /= getAlienTurnDefenseModifier();
-	}
-	
-	// land vs. sea guns bonus
-	
-	if (attackerUnit->triad() == TRIAD_LAND && defenderUnit->triad() == TRIAD_SEA)
-	{
-		relativeStrength *= getPercentageBonusMultiplier(Rules->combat_land_vs_sea_artillery);
-	}
-	else if (attackerUnit->triad() == TRIAD_SEA && defenderUnit->triad() == TRIAD_LAND)
-	{
-		relativeStrength /= getPercentageBonusMultiplier(Rules->combat_land_vs_sea_artillery);
-	}
-	
-	return relativeStrength;
-	
-}
-
-/**
-Calculates relative bombardment damage for units.
-How many defender units can attacker destroy with single shot.
-*/
-double CombatEffectTable::getUnitBombardmentDamage(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId)
-{
-//	debug("CombatEffectTable::getUnitBombardmentDamage( attackerFactionId=%d attackerUnitId=%d defenderFactionId=%d defenderUnitId=%d )\n", attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId);
-	
-	UNIT *attackerUnit = &(Units[attackerUnitId]);
-	UNIT *defenderUnit = &(Units[defenderUnitId]);
-	int attackerOffenseValue = Weapon[attackerUnit->weapon_id].offense_value;
-	int defenderDefenseValue = Armor[defenderUnit->armor_id].defense_value;
-	
-	// attacker is artillery and defender is not
-	
-	if (!isArtilleryUnit(attackerUnitId) || isArtilleryUnit(defenderUnitId))
-	{
-		return 0.0;
-	}
-	
-	// calculate relative damage
-	
-	double relativeStrength = 1.0;
-	
-	if (attackerOffenseValue < 0 || defenderDefenseValue < 0)
-	{
-		relativeStrength = getPsiCombatBaseOdds(attackerUnit->triad());
-		
-		// reactor
-		// psi combat ignores reactor
-		
-		// PLANET bonus
-		
-		relativeStrength *= getFactionSEPlanetOffenseModifier(attackerFactionId);
-		relativeStrength /= getFactionSEPlanetOffenseModifier(defenderFactionId);
-		
-		// gear bonus
-		
-		if (conf.conventional_power_psi_percentage != 0)
-		{
-			if (attackerOffenseValue > 0)
-			{
-				relativeStrength *= getPercentageBonusMultiplier(conf.conventional_power_psi_percentage * attackerOffenseValue);
-			}
-			
-			if (defenderDefenseValue > 0)
-			{
-				relativeStrength /= getPercentageBonusMultiplier(conf.conventional_power_psi_percentage * defenderDefenseValue);
-			}
-			
-		}
-		
-	}
-	else
-	{
-		relativeStrength = (double)attackerOffenseValue / (double)defenderDefenseValue;
-		
-		// reactor
-		
-		if (!conf.ignore_reactor_power)
-		{
-			relativeStrength *= 1.0 / (double)defenderUnit->reactor_id;
-		}
-		
-	}
-	
-	// faction bonuses
-	
-	relativeStrength *= getFactionOffenseMultiplier(attackerFactionId);
-	relativeStrength /= getFactionDefenseMultiplier(defenderFactionId);
-	
-	// artifact and no armor probe are explicitly weak
-	
-	if (defenderUnit->weapon_id == WPN_ALIEN_ARTIFACT || (defenderUnit->weapon_id == WPN_PROBE_TEAM && defenderUnit->armor_id == ARM_NO_ARMOR))
-	{
-		relativeStrength *= 50.0;
-	}
-	
-	// alien fight on half a strength in early game
-	
-	if (attackerFactionId == 0 && *CurrentTurn <= conf.native_weak_until_turn)
-	{
-		relativeStrength *= getAlienTurnOffenseModifier();
-	}
-	if (defenderFactionId == 0 && *CurrentTurn <= conf.native_weak_until_turn)
-	{
-		relativeStrength /= getAlienTurnDefenseModifier();
-	}
-	
-	// artillery damage numerator/denominator
-	
-	relativeStrength *= (double)Rules->artillery_dmg_numerator / (double)Rules->artillery_dmg_denominator;
-	
-	// divide by 10 to convert damage to units destroyed
-	
-	return relativeStrength / 10.0;
-	
 }
 
 Combattant::Combattant(int factionId, int unitId, double weight, bool airbase) : remainingHealth(0)
@@ -1036,7 +649,7 @@ double CombatData::getProtectSufficiency(bool artillery)
 	
 	compute();
 	
-	if (TRACE)
+	if constexpr (TRACE)
 	{
 		trace("\tassailants\n")
 		for (Combattant &assailant : assailants)
@@ -1261,7 +874,7 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 		combattant.remainingHealth *= (1.0 + enemyRelativeHealthBonus);
 	}
 	
-	if (TRACE)
+	if constexpr (TRACE)
 	{
 		trace("\tassailants\n")
 		for (Combattant &assailant : assailants)
@@ -1310,7 +923,7 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 	{
 		CombattantEffect bestAssailantProtectorEffect = getBestCombattantEffect(rangeAssailants, rangeProtectors, EM_ARTILLERY, false, true);
 		CombattantEffect bestProtectorAssailantEffect = getBestCombattantEffect(rangeProtectors, rangeAssailants, EM_ARTILLERY, true, false);
-		if (TRACE)
+		if constexpr (TRACE)
 		{
 			if (bestAssailantProtectorEffect.attacker != nullptr && bestAssailantProtectorEffect.defender != nullptr)
 			{
@@ -1398,7 +1011,7 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 		debug("ERROR: !rangeAssailants.empty() && !rangeProtectors.empty() - after artillery duels\n");
 	}
 	
-	if (TRACE)
+	if constexpr (TRACE)
 	{
 		trace("\tassailants\n")
 		for (Combattant &assailant : assailants)
@@ -1440,7 +1053,7 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 		
 		double minBombardmentHealth = 1.0 - aiData.getTileInfo(this->tile).maxBombardmentDamage;
 		
-		double totalProtectorLostHealth = 0.0;
+//		double totalProtectorLostHealth = 0.0;
 		for (Combattant &protector : protectors)
 		{
 			if (protector.aircraftInFlight && !rangeAssailantCanBombardAircraftInFlight)
@@ -1450,7 +1063,7 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 				continue;
 			
 			double protectorLostHealth = protector.remainingHealth - minBombardmentHealth;
-			totalProtectorLostHealth += protectorLostHealth;
+//			totalProtectorLostHealth += protectorLostHealth;
 			protector.remainingHealth -= protectorLostHealth;
 			
 		}
@@ -1495,7 +1108,7 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 		
 	}
 	
-	if (TRACE)
+	if constexpr (TRACE)
 	{
 		trace("\tassailants\n")
 		for (Combattant &assailant : assailants)
@@ -1536,7 +1149,7 @@ void CombatData::compute(robin_hood::unordered_flat_map<int, double> assailantVe
 	{
 		CombattantEffect bestAssailantProtectorEffect = getBestCombattantEffect(meleeAssailants, meleeProtectors, EM_MELEE, false, true);
 		CombattantEffect bestProtectorAssailantEffect = getBestCombattantEffect(meleeProtectors, meleeAssailants, EM_MELEE, true, false);
-		if (TRACE)
+		if constexpr (TRACE)
 		{
 			if (bestAssailantProtectorEffect.attacker != nullptr && bestAssailantProtectorEffect.defender != nullptr)
 			{
@@ -1694,6 +1307,11 @@ CombattantEffect CombatData::getBestCombattantEffect(std::list<Combattant *> &at
 				if (defender->needlejetInFlight && !attacker->canAttackNeedlejetInFlight)
 					continue;
 				break;
+				
+			default:
+				
+				break;
+				
 			}
 			
 			double combatEffect = getCombattantCombatEffect(*attacker, *defender, engagementMode, attackerAtTile, defenderAtTile);
@@ -1726,7 +1344,7 @@ CombattantEffect CombatData::getBestCombattantEffect(std::list<Combattant *> &at
 		
 	}
 	
-	if (TRACE)
+	if constexpr (TRACE)
 	{
 		if (bestAttacker != nullptr && bestDefender != nullptr)
 		{
@@ -2095,7 +1713,7 @@ void EnemyStackInfo::addVehicle(int vehicleId)
 	{
 		vehiclePad0s.push_back(vehiclePad0);
 		
-		if (triad == TRIAD_AIR && !airbase)
+		if (triad == TRIAD_AIR && !tileAirbase)
 		{
 			airVehiclePad0s.push_back(vehiclePad0);
 		}
@@ -2148,7 +1766,8 @@ void EnemyStackInfo::addVehicle(int vehicleId)
 		case BSC_LOCUSTS_OF_CHIRON:
 			alienMelee = true;
 			break;
-		default:;
+		default:
+			break;
 		}
 		
 	}
@@ -2216,7 +1835,7 @@ bool EnemyStackInfo::isUnitCanMeleeAttackStack(int unitId, MAP *position) const
 		{
 			// land amphibious vehicle can attack sea base but not open sea
 			
-			if (ocean && !base)
+			if (ocean && !tileBase)
 				return false;
 		
 		}
@@ -2231,7 +1850,9 @@ bool EnemyStackInfo::isUnitCanMeleeAttackStack(int unitId, MAP *position) const
 		
 		break;
 
-	default:;
+	default:
+		
+		break;
 
 	}
 	
@@ -2270,7 +1891,9 @@ bool EnemyStackInfo::isUnitCanMeleeAttackStack(int unitId, MAP *position) const
 			
 			break;
 
-		default:;
+		default:
+			
+			break;
 
 		}
 		
@@ -2321,6 +1944,10 @@ bool EnemyStackInfo::isUnitCanArtilleryAttackStack(int unitId, MAP *position) co
 			
 			if (positionOcean && !positionBase)
 				return false;
+			
+			break;
+			
+		default:
 			
 			break;
 			
@@ -2377,7 +2004,7 @@ double EnemyStackInfo::getTotalBombardmentEffect() const
 	if (artillery || !bombardment || combinedBombardmentEffect == 0.0)
 		return 0.0;
 	
-	return std::min(maxBombardmentEffect, (double)BOMBARDMENT_ROUNDS * combinedBombardmentEffect);
+	return std::min(maxBombardmentEffect, static_cast<double>(BOMBARDMENT_ROUNDS) * combinedBombardmentEffect);
 	
 }
 
@@ -2406,8 +2033,7 @@ Returns total destruction ratio after bombardment if any.
 double EnemyStackInfo::getDestructionRatio() const
 {
 	double totalBombardmentEffect = getTotalBombardmentEffect();
-	double destructionRatio = combinedDirectEffect / (weight - totalBombardmentEffect + extraWeight);
-	return destructionRatio;
+	return combinedDirectEffect / (weight - totalBombardmentEffect + extraWeight);
 }
 
 /*
@@ -2426,7 +2052,7 @@ Rejects melee if provided desired melee effect is already satisfied.
 Updates attack parameters.
 Returns true if accepted.
 */
-bool EnemyStackInfo::addAttacker(IdDoubleValue vehicleTravelTime)
+bool EnemyStackInfo::addAttacker(IdDoubleValue const &vehicleTravelTime)
 {
 	int vehicleId = vehicleTravelTime.id;
 	
@@ -2438,7 +2064,7 @@ bool EnemyStackInfo::addAttacker(IdDoubleValue vehicleTravelTime)
 	if (bombardmentEffect > 0.0 && !artillery && bombardment && !bombardmentSufficient)
 	{
 		combinedBombardmentEffect += bombardmentEffect;
-		bombardmentSufficient = (double)BOMBARDMENT_ROUNDS * combinedBombardmentEffect >= maxBombardmentEffect;
+		bombardmentSufficient = static_cast<double>(BOMBARDMENT_ROUNDS) * combinedBombardmentEffect >= maxBombardmentEffect;
 		bombardmentVechileTravelTimes.push_back(vehicleTravelTime);
 		accepted = true;
 	}
@@ -2507,15 +2133,15 @@ void EnemyStackInfo::computeAttackParameters()
 
 	// compute additional weight
 	
-	if (baseId != -1)
+	if (tileBaseId != -1)
 	{
-		BASE *base = getBase(baseId);
+		BASE *base = getBase(tileBaseId);
 		int factionId = base->faction_id;
 		FactionInfo &factionInfo = aiData.factionInfos.at(factionId);
 		
-		double scoutPatrolBuildTime = getBaseItemBuildTime(baseId, BSC_SCOUT_PATROL);
+		double scoutPatrolBuildTime = getBaseItemBuildTime(tileBaseId, BSC_SCOUT_PATROL);
 		double extraScoutPatrols = scoutPatrolBuildTime <= 0.0 ? 0.0 : coordinatorTravelTime / scoutPatrolBuildTime;
-		extraWeight = factionInfo.maxConDefenseValue <= 0 ? INF : extraScoutPatrols / (double)factionInfo.maxConDefenseValue;
+		extraWeight = factionInfo.maxConDefenseValue <= 0 ? INF : extraScoutPatrols / static_cast<double>(factionInfo.maxConDefenseValue);
 		
 	}
 	
@@ -2660,7 +2286,7 @@ double getVehicleDestructionGain(int vehicleId)
 		
 		int baseRange = tileInfo.baseRanges.at(vehicle.triad());
 		
-		double travelTime = (double) baseRange / (double) getVehicleSpeed(vehicleId);
+		double travelTime = static_cast<double>(baseRange) / static_cast<double>(getVehicleSpeed(vehicleId));
 		double travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, travelTime);
 		
 		vehicleDestructionGain *= travelTimeCoefficient;
@@ -2705,7 +2331,7 @@ void computeUnitDestructionGains()
 		
 	}
 	
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		for (int unitId = 0; unitId < MaxProtoNum; unitId++)
 		{
@@ -2997,7 +2623,7 @@ int getBaseProjectedSize(int baseId, int turns)
 	// do not go over population limit
 	
 	int populationLimit = getBasePopulationLimit(baseId);
-	projectedPopulation = std::min(projectedPopulation, std::max((int)base->pop_size, populationLimit));
+	projectedPopulation = std::min(projectedPopulation, std::max(static_cast<int>(base->pop_size), populationLimit));
 	
 	return projectedPopulation;
 	
@@ -3076,7 +2702,7 @@ Estimates base population size growth rate.
 double getBaseSizeGrowth(int baseId)
 {
 	BASE *base = getBase(baseId);
-	double age = std::max(10.0, std::max(conf.ai_base_size_b, (double)getBaseAge(baseId)));
+	double age = std::max(10.0, std::max(conf.ai_base_size_b, static_cast<double>(getBaseAge(baseId))));
 	double sqrtValue = std::max(1.0, sqrt(age - conf.ai_base_size_b));
 	double growthRatio =
 		(conf.ai_base_size_a / 2.0 / sqrtValue)
@@ -3133,7 +2759,7 @@ double getHarmonicMean(std::vector<std::vector<double>> parameters)
 	if (count == 0)
 		return 0.0;
 
-	return 1.0 / (reciprocalSum / (double)count);
+	return 1.0 / (reciprocalSum / static_cast<double>(count));
 
 }
 
@@ -3545,7 +3171,7 @@ robin_hood::unordered_flat_map<int, double> getMeleeAttackLocations(int vehicleI
 				
 				// update attack
 				
-				double hastyCoefficient = currentTileMovementAllowance >= Rules->move_rate_roads ? 1.0 : (double)currentTileMovementAllowance / (double)Rules->move_rate_roads;
+				double hastyCoefficient = currentTileMovementAllowance >= Rules->move_rate_roads ? 1.0 : static_cast<double>(currentTileMovementAllowance) / static_cast<double>(Rules->move_rate_roads);
 				if (attackLocations.find(adjacentTileIndex) == attackLocations.end() || hastyCoefficient > attackLocations.at(adjacentTileIndex))
 				{
 					attackLocations[adjacentTileIndex] = hastyCoefficient;
@@ -3828,7 +3454,8 @@ bool isUnitCanCaptureBase(int unitId, MAP *baseTile)
 		case CHS_MISSILE:
 			return false;
 			break;
-		
+		default:
+			break;
 		}
 		
 		break;
@@ -3850,8 +3477,10 @@ bool isUnitCanCaptureBase(int unitId, MAP *baseTile)
 			return false;
 		
 		break;
-
-	default:;
+		
+	default:
+		
+		break;
 
 	}
 	
@@ -3988,7 +3617,7 @@ Computes average base citizen income.
 double getBaseCitizenIncome(int baseId)
 {
 	BASE *base = getBase(baseId);
-	return getBaseIncome(baseId) / (double)base->pop_size;
+	return getBaseIncome(baseId) / static_cast<double>(base->pop_size);
 }
 
 /**
@@ -4061,7 +3690,7 @@ double getAverageBaseIncome()
 		sumBaseIncome += getBaseIncome(baseId);
 	}
 	
-	return sumBaseIncome / (double)aiData.baseIds.size();
+	return sumBaseIncome / static_cast<double>(aiData.baseIds.size());
 	
 }
 
@@ -4171,7 +3800,7 @@ double getBaseValue(int  baseId)
 Computes expected base improvement gain adjusting for current base income.
 Compares the mean base gain adjusted for current age with same but with improved growth.
 */
-double getBaseImprovementGain(int baseId, Resource oldBaseIntake2, Resource newBaseIntake2)
+double getBaseImprovementGain(int baseId, Resource const &oldBaseIntake2, Resource const &newBaseIntake2)
 {
 	double oldGain = getBaseGain(baseId, oldBaseIntake2);
 	double newGain = getBaseGain(baseId, newBaseIntake2);
@@ -4233,6 +3862,10 @@ CombatStrength getMeleeAttackCombatStrength(int vehicleId)
 			combatStrength.values.at(CT_CON).at(CT_CON) = conOffenseStrength;
 			
 		}
+		
+		break;
+		
+	default:
 		
 		break;
 		
@@ -4373,9 +4006,11 @@ bool isUnitCanMeleeAttack(int factionId, int unitId, MAP const *position, MAP co
 			
 			break;
 
-        default:;
+		default:
+			
+			break;
 
-        }
+		}
 			
 	}
 	
@@ -4432,9 +4067,11 @@ bool isUnitCanMeleeAttack(int factionId, int unitId, MAP const *position, MAP co
 			
 			break;
 
-        default:;
+		default:
+			
+			break;
 
-        }
+		}
 		
 	}
 	
@@ -4506,7 +4143,9 @@ bool isUnitCanArtilleryAttack(int unitId, MAP const *position)
 			
 			break;
 
-		default:;
+		default:
+			
+			break;
 
 		}
 			
@@ -4917,7 +4556,7 @@ double getUnitDestructionGain(int unitId)
 	UNIT &unit = Units[unitId];
 	
 	int mineralCost = Rules->mineral_cost_multi * unit.cost;
-	double resourceScore = getResourceScore(0.0, (double) mineralCost, 0.0);
+	double resourceScore = getResourceScore(0.0, static_cast<double>(mineralCost), 0.0);
 	double destructionGain = getGainBonus(resourceScore);
 	
 	if (isCombatUnit(unitId))
@@ -4937,7 +4576,9 @@ double getUnitDestructionGain(int unitId)
 			destructionGain *= 2.0;
 			break;
 
-		default:;
+		default:
+			
+			break;
 
 		}
 		

@@ -165,7 +165,7 @@ void strategy(bool computer)
 		productionStrategy();
 	}
 	
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		debug("Tasks - %s\n", MFactions[aiFactionId].noun_faction);
 		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
@@ -357,8 +357,8 @@ void populateTileInfos()
 		tileInfo.adjacentLand = adjacentLandTileCount > 0;
 		tileInfo.adjacentSea = adjacentSeaTileCount > 0;
 		tileInfo.coast = tileInfo.land && tileInfo.adjacentSea;
-		tileInfo.adjacentLandRatio = adjacentTileCount <= 0 ? 0.0 : (double) adjacentLandTileCount / (double) adjacentTileCount;
-		tileInfo.adjacentSeaRatio = adjacentTileCount <= 0 ? 0.0 : (double) adjacentSeaTileCount / (double) adjacentTileCount;
+		tileInfo.adjacentLandRatio = adjacentTileCount <= 0 ? 0.0 : static_cast<double>(adjacentLandTileCount) / static_cast<double>(adjacentTileCount);
+		tileInfo.adjacentSeaRatio = adjacentTileCount <= 0 ? 0.0 : static_cast<double>(adjacentSeaTileCount) / static_cast<double>(adjacentTileCount);
 		
 	}
 	
@@ -794,7 +794,7 @@ void populateTileInfos()
 		// bombardment damage
 
 		int maxBombardmentDamagePercent = (tileInfo.base || tileInfo.bunker) ? Rules->max_dmg_percent_arty_base_bunker : tileInfo.land ? Rules->max_dmg_percent_arty_open : Rules->max_dmg_percent_arty_sea;
-		tileInfo.maxBombardmentDamage = (double)maxBombardmentDamagePercent / 100.0;
+		tileInfo.maxBombardmentDamage = static_cast<double>(maxBombardmentDamagePercent) / 100.0;
 
 		// strength multipliers
 
@@ -1237,7 +1237,7 @@ void populatePlayerBaseRanges()
 		
 	}
 	
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		for (TileInfo &tileInfo : aiData.tileInfos)
 		{
@@ -1523,7 +1523,7 @@ void populateFactionInfos()
 
 		}
 
-		if (DEBUG)
+		if constexpr (DEBUG)
 		{
 			debug("\tavailableUnitIds\n");
 			for (int unitId : factionInfo.availableUnitIds)
@@ -1576,8 +1576,8 @@ void populateFactionInfos()
 		
 	}
 	
-	aiData.avgConOffenseValue = countConOffenseValue == 0 ? 1.0 : (double)sumConOffenseValue / (double)countConOffenseValue;
-	aiData.avgConDefenseValue = countConDefenseValue == 0 ? 1.0 : (double)sumConDefenseValue / (double)countConDefenseValue;
+	aiData.avgConOffenseValue = countConOffenseValue == 0 ? 1.0 : static_cast<double>(sumConOffenseValue) / static_cast<double>(countConOffenseValue);
+	aiData.avgConDefenseValue = countConDefenseValue == 0 ? 1.0 : static_cast<double>(sumConDefenseValue) / static_cast<double>(countConDefenseValue);
 
 	// stolenTechnologyGain
 	// = 0.5 * most expensive stoleable tech cost
@@ -1858,9 +1858,9 @@ void populatePlayerGlobalVariables()
 			
 			double energyEfficiencyCoefficient = getBaseEnergyEfficiencyCoefficient(baseId);
 			
-			double economyAllocation = (double)(10 - aiFaction->SE_alloc_labs + aiFaction->SE_alloc_psych) / 10.0;
-			double labsAllocation = (double)(aiFaction->SE_alloc_labs) / 10.0;
-			double psychAllocation = (double)(aiFaction->SE_alloc_psych) / 10.0;
+			double economyAllocation = static_cast<double>(10 - aiFaction->SE_alloc_labs + aiFaction->SE_alloc_psych) / 10.0;
+			double labsAllocation = static_cast<double>(aiFaction->SE_alloc_labs) / 10.0;
+			double psychAllocation = static_cast<double>(aiFaction->SE_alloc_psych) / 10.0;
 			
 			double mineralMultiplier = getBaseMineralMultiplier(baseId);
 			double economyMultiplier = getBaseEconomyMultiplier(baseId);
@@ -1897,15 +1897,15 @@ void populatePlayerGlobalVariables()
 			
 		}
 		
-		aiData.averageCitizenMineralIntake = citizenCount == 0 ? 0.0 : citizenMineralIntakeSum / (double)citizenCount;
-		aiData.averageCitizenEconomyIntake = citizenCount == 0 ? 0.0 : citizenEconomyIntakeSum / (double)citizenCount;
-		aiData.averageCitizenLabsIntake = citizenCount == 0 ? 0.0 : citizenLabsIntakeSum / (double)citizenCount;
-		aiData.averageCitizenPsychIntake = citizenCount == 0 ? 0.0 : citizenPsychIntakeSum / (double)citizenCount;
-		aiData.averageCitizenMineralIntake2 = citizenCount == 0 ? 0.0 : citizenMineralIntake2Sum / (double)citizenCount;
-		aiData.averageCitizenEconomyIntake2 = citizenCount == 0 ? 0.0 : citizenEconomyIntake2Sum / (double)citizenCount;
-		aiData.averageCitizenLabsIntake2 = citizenCount == 0 ? 0.0 : citizenLabsIntake2Sum / (double)citizenCount;
-		aiData.averageCitizenPsychIntake2 = citizenCount == 0 ? 0.0 : citizenPsychIntake2Sum / (double)citizenCount;
-		aiData.averageCitizenResourceIncome = citizenCount == 0 ? 0.0 : citizenResourceIncomeSum / (double)citizenCount;
+		aiData.averageCitizenMineralIntake = citizenCount == 0 ? 0.0 : citizenMineralIntakeSum / static_cast<double>(citizenCount);
+		aiData.averageCitizenEconomyIntake = citizenCount == 0 ? 0.0 : citizenEconomyIntakeSum / static_cast<double>(citizenCount);
+		aiData.averageCitizenLabsIntake = citizenCount == 0 ? 0.0 : citizenLabsIntakeSum / static_cast<double>(citizenCount);
+		aiData.averageCitizenPsychIntake = citizenCount == 0 ? 0.0 : citizenPsychIntakeSum / static_cast<double>(citizenCount);
+		aiData.averageCitizenMineralIntake2 = citizenCount == 0 ? 0.0 : citizenMineralIntake2Sum / static_cast<double>(citizenCount);
+		aiData.averageCitizenEconomyIntake2 = citizenCount == 0 ? 0.0 : citizenEconomyIntake2Sum / static_cast<double>(citizenCount);
+		aiData.averageCitizenLabsIntake2 = citizenCount == 0 ? 0.0 : citizenLabsIntake2Sum / static_cast<double>(citizenCount);
+		aiData.averageCitizenPsychIntake2 = citizenCount == 0 ? 0.0 : citizenPsychIntake2Sum / static_cast<double>(citizenCount);
+		aiData.averageCitizenResourceIncome = citizenCount == 0 ? 0.0 : citizenResourceIncomeSum / static_cast<double>(citizenCount);
 		
 	}
 	
@@ -1927,7 +1927,7 @@ void populatePlayerGlobalVariables()
 			for(MAP *tile : getBaseWorkedTiles(baseId))
 			{
 				int nutrientYield = mod_crop_yield(aiFactionId, baseId, getX(tile), getY(tile), 0);
-				double nutrientIntake2 = (double)(nutrientYield - Rules->nutrient_intake_req_citizen);
+				double nutrientIntake2 = static_cast<double>(nutrientYield - Rules->nutrient_intake_req_citizen);
 				
 				workerCount++;
 				workerNutrientIntake2Sum += nutrientIntake2;
@@ -1936,7 +1936,7 @@ void populatePlayerGlobalVariables()
 			
 		}
 		
-		aiData.averageWorkerNutrientIntake2 = workerCount == 0 ? 0.0 : workerNutrientIntake2Sum / (double)workerCount;
+		aiData.averageWorkerNutrientIntake2 = workerCount == 0 ? 0.0 : workerNutrientIntake2Sum / static_cast<double>(workerCount);
 		
 	}
 	
@@ -1964,8 +1964,8 @@ void populatePlayerGlobalVariables()
 				int mineralYield = mod_mine_yield(aiFactionId, baseId, getX(tile), getY(tile), 0);
 				int energyYield = mod_energy_yield(aiFactionId, baseId, getX(tile), getY(tile), 0);
 				
-				double mineralIntake2 = mineralCoefficient * (double)mineralYield;
-				double energyIntake2 = energyCoefficient * (double)energyYield;
+				double mineralIntake2 = mineralCoefficient * static_cast<double>(mineralYield);
+				double energyIntake2 = energyCoefficient * static_cast<double>(energyYield);
 				
 				workerCount++;
 				workerMineralIntake2Sum += mineralIntake2;
@@ -1975,8 +1975,8 @@ void populatePlayerGlobalVariables()
 			
 		}
 		
-		aiData.averageWorkerMineralIntake2 = workerCount == 0 ? 0.0 : workerMineralIntake2Sum / (double)workerCount;
-		aiData.averageWorkerEnergyIntake2 = workerCount == 0 ? 0.0 : workerEnergyIntake2Sum / (double)workerCount;
+		aiData.averageWorkerMineralIntake2 = workerCount == 0 ? 0.0 : workerMineralIntake2Sum / static_cast<double>(workerCount);
+		aiData.averageWorkerEnergyIntake2 = workerCount == 0 ? 0.0 : workerEnergyIntake2Sum / static_cast<double>(workerCount);
 		aiData.averageWorkerResourceIncome = getResourceScore(aiData.averageWorkerMineralIntake2, aiData.averageWorkerEnergyIntake2);
 		
 	}
@@ -2155,7 +2155,7 @@ void populateBasePoliceData()
 			" policeTypeGains={%5.2f,%5.2f}"
 			"\n"
 			, basePoliceData.allowedPolice
-			, (int)basePoliceData.providedPowers.size()
+			, static_cast<int>(basePoliceData.providedPowers.size())
 			, basePoliceData.requiredPower
 			, basePoliceData.policeTypePowers.at(0), basePoliceData.policeTypePowers.at(1)
 			, basePoliceData.policeTypeGains.at(0), basePoliceData.policeTypeGains.at(1)
@@ -2881,10 +2881,10 @@ void populateEnemyStacks()
 		
 		// populate base/bunker/airbase
 		
-		enemyStackInfo.base = isBaseAt(enemyStackTile);
-		enemyStackInfo.baseOrBunker = isBaseAt(enemyStackTile) || isBunkerAt(enemyStackTile);
-		enemyStackInfo.airbase = isAirbaseAt(enemyStackTile);
-		enemyStackInfo.baseId = base_at(getX(enemyStackTile), getY(enemyStackTile));
+		enemyStackInfo.tileBase = isBaseAt(enemyStackTile);
+		enemyStackInfo.tileBaseOrBunker = isBaseAt(enemyStackTile) || isBunkerAt(enemyStackTile);
+		enemyStackInfo.tileAirbase = isAirbaseAt(enemyStackTile);
+		enemyStackInfo.tileBaseId = base_at(getX(enemyStackTile), getY(enemyStackTile));
 		
 		// bombardmentDestructive
 		
@@ -3331,7 +3331,7 @@ void populateEnemyBaseProtectorWeights()
 				}
 				
 				int range = getRange(vehicleTile, baseTile);
-				double weight = 1.0 / (2.0 + (double)range / defenseRange);
+				double weight = 1.0 / (2.0 + static_cast<double>(range) / defenseRange);
 				baseWeights.push_back({baseId, weight});
 				
 				sumWeight += weight;
@@ -3497,7 +3497,7 @@ void evaluateEnemyStacks()
 			
 			// not air in flight
 			
-			if (triad == TRIAD_AIR && !enemyStackInfo.airbase)
+			if (triad == TRIAD_AIR && !enemyStackInfo.tileAirbase)
 				continue;
 			
 			// not artillery
@@ -3581,7 +3581,7 @@ void evaluateEnemyStacks()
 					
 				}
 				
-				double averageLoss = (battleCount <= 0 ? 0.0 : totalLoss / (double)battleCount);
+				double averageLoss = (battleCount <= 0 ? 0.0 : totalLoss / static_cast<double>(battleCount));
 				double averageEffect = (averageLoss <= 0.0 ? 0.0 : 1.0 / averageLoss);
 				debug("\t\t\t\t%-15s %5.2f\n", "melee", averageEffect);
 				
@@ -3624,7 +3624,7 @@ void evaluateEnemyStacks()
 					
 				}
 				
-				double averageLoss = (battleCount <= 0 ? 0.0 : totalLoss / (double)battleCount);
+				double averageLoss = (battleCount <= 0 ? 0.0 : totalLoss / static_cast<double>(battleCount));
 				double averageEffect = (averageLoss <= 0.0 ? 0.0 : 1.0 / averageLoss);
 				debug("\t\t\t\t%-15s %5.2f\n", "artilleryDuel", averageEffect);
 				
@@ -3930,7 +3930,7 @@ void evaluateDefense(MAP const *tile, CombatData &combatData, double targetGain)
 		
 		if (base != nullptr && tileInfo.land)
 		{
-			alienCount += (((double)aiFaction->clean_minerals_modifier / 3.0) * ((double)base->eco_damage / 20.0));
+			alienCount += ((static_cast<double>(aiFaction->clean_minerals_modifier) / 3.0) * (static_cast<double>(base->eco_damage) / 20.0));
 		}
 		
 		double weight = moraleMultiplier * gameTurnCoefficient * alienCount;
@@ -3939,9 +3939,9 @@ void evaluateDefense(MAP const *tile, CombatData &combatData, double targetGain)
 		
 		if (base != nullptr)
 		{
-			if (alienCount < (double)base->pop_size)
+			if (alienCount < static_cast<double>(base->pop_size))
 			{
-				weight *= alienCount / (double)base->pop_size;
+				weight *= alienCount / static_cast<double>(base->pop_size);
 			}
 		}
 		else
@@ -4088,7 +4088,7 @@ void evaluateDefense(MAP const *tile, CombatData &combatData, double targetGain)
 
 	}
 
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		debug("\tfoeUnitWeights\n");
 
@@ -4299,7 +4299,7 @@ void evaluateBaseProbeDefense()
 			
 			// defense multiplier
 			
-			double defenseMultiplier = 1.0 / (getBaseDefenseMultiplier(baseId, 4) * getSensorDefenseMultiplier(aiFactionId, baseTile));
+			double defenseMultiplier = 1.0 / (getBaseDefenseMultiplier(baseId, static_cast<AttackTriad>(4)) * getSensorDefenseMultiplier(aiFactionId, baseTile));
 			
 			if (defenseMultiplier <= 0.0)
 			{

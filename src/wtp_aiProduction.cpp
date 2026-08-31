@@ -63,8 +63,8 @@ void ProductionDemand::initialize(int _baseId)
 	priority = 0.0;
 	
 	baseGain = getBaseGain(baseId);
-	baseCitizenGain = baseGain / (double)base->pop_size;
-	baseWorkerGain = baseGain / (double)getBaseWorkerCount(baseId);
+	baseCitizenGain = baseGain / static_cast<double>(base->pop_size);
+	baseWorkerGain = baseGain / static_cast<double>(getBaseWorkerCount(baseId));
 	
 }
 
@@ -259,13 +259,13 @@ void evaluateGlobalColonyDemand()
 		
 	}
 	
-	double averagePsychMultiplier = sumPsychMultiplier / (double)aiData.baseIds.size();
-	double averageBaseSize = (double)sumPopulation / (double)aiData.baseIds.size();
+	double averagePsychMultiplier = sumPsychMultiplier / static_cast<double>(aiData.baseIds.size());
+	double averageBaseSize = static_cast<double>(sumPopulation) / static_cast<double>(aiData.baseIds.size());
 	
 	// average efficiency loss
 	
 	double doctorsPerDrone = 1.0 / averagePsychMultiplier;
-	double doctorsPerNewBase = doctorsPerDrone * (double)newBaseBDrones;
+	double doctorsPerNewBase = doctorsPerDrone * static_cast<double>(newBaseBDrones);
 	globalColonyDemand = 1.0 - doctorsPerNewBase / averageBaseSize;
 	
 	// reduce colony demand proportionally
@@ -322,11 +322,11 @@ void evaluateGlobalSeaTransportDemand()
 			
 			// adjust value for capacity and speed
 			
-			transportationCoverage += 0.5 * remainingCapacity * ((double)vehicleSpeed / (double)transportFoilSpeed);
+			transportationCoverage += 0.5 * remainingCapacity * (static_cast<double>(vehicleSpeed) / static_cast<double>(transportFoilSpeed));
 			
 		}
 		
-		seaTransportDemands[seaCluster] = std::max(0.0, (double)seaTransportRequestCount - transportationCoverage);
+		seaTransportDemands[seaCluster] = std::max(0.0, static_cast<double>(seaTransportRequestCount) - transportationCoverage);
 		
 		// best base
 		
@@ -491,7 +491,7 @@ void applyBaseProductions()
 		
 		// WTP
 
-    	if (DEBUG)
+    	if constexpr (DEBUG)
     	{
     		std::vector<robin_hood::pair<int, double>> sortedItemPriorities(productionDemand.itemPriorities.begin(), productionDemand.itemPriorities.end());
     		std::sort(sortedItemPriorities.begin(), sortedItemPriorities.end(), [](const robin_hood::pair<int, double>& a, const robin_hood::pair<int, double>& b) { return a.second > b.second; });
@@ -631,7 +631,7 @@ void evaluateHeadquarters()
 	// add demand
 	
 	int budgetImprovement = bestHQProductionDemandBudget - currentBudget;
-	double income = getResourceScore(0.0, (double)budgetImprovement);
+	double income = getResourceScore(0.0, static_cast<double>(budgetImprovement));
 	double gain = getGainIncome(income);
 	double priority = getItemPriority(-facilityId, gain);
 	bestHQProductionDemand->addItemPriority(-facilityId, priority);
@@ -717,7 +717,7 @@ void evaluateProject()
 		// turns to completion
 		
 		int buildTime = getBaseItemBuildTime(baseId, -selectedProjectFacilityId, false);
-		double buildTimeCoefficient = 1.0 / (double)std::max(1, buildTime);
+		double buildTimeCoefficient = 1.0 / static_cast<double>(std::max(1, buildTime));
 		
 		// threat coefficient
 		
@@ -745,7 +745,7 @@ void evaluateProject()
 	
 	// add project priority
 	
-	double buildTimeCoefficient = conf.ai_production_current_project_priority_build_time / (double)std::max(1, bestBaseBuildTime);
+	double buildTimeCoefficient = conf.ai_production_current_project_priority_build_time / static_cast<double>(std::max(1, bestBaseBuildTime));
 	double priority = buildTimeCoefficient;
 	
 	bestProductionDemand->addItemPriority(-selectedProjectFacilityId, priority);
@@ -854,10 +854,10 @@ void evaluateStockpileEnergy()
 	
 	int facilityId = FAC_STOCKPILE_ENERGY;
 	
-	double extraEnergy = 0.5 * (isFactionHasProject(aiFactionId, FAC_PLANETARY_ENERGY_GRID) ? 1.25 : 1.00) * (double) base->mineral_surplus;
+	double extraEnergy = 0.5 * (isFactionHasProject(aiFactionId, FAC_PLANETARY_ENERGY_GRID) ? 1.25 : 1.00) * static_cast<double>(base->mineral_surplus);
 	double income = getResourceScore(0.0, extraEnergy);
 	double gain = getGainBonus(income);
-	double cost = (double)base->mineral_surplus / (double)mod_cost_factor(base->faction_id, RSC_MINERAL, -1);
+	double cost = static_cast<double>(base->mineral_surplus) / static_cast<double>(mod_cost_factor(base->faction_id, RSC_MINERAL, -1));
 	double priority = gain / cost;
 	
 	productionDemand.addItemPriority(-facilityId, priority);
@@ -1078,7 +1078,7 @@ void evaluateIncomeFacilities()
 			int lifecycle = facilityLifecycleIterator->second;
 			
 			double proportionalMineralBonus = getMoraleProportionalMineralBonus({0, 0, 0, lifecycle});
-			moraleIncome = getResourceScore(proportionalMineralBonus * (double)base->mineral_intake_2, 0.0);
+			moraleIncome = getResourceScore(proportionalMineralBonus * static_cast<double>(base->mineral_intake_2), 0.0);
 			
 		}
 		
@@ -1136,7 +1136,7 @@ void evaluateMineralMultiplyingFacilities()
 		
 		// gain
 		
-		double extraMineralIntake = 0.5 * (double)base->mineral_intake;
+		double extraMineralIntake = 0.5 * static_cast<double>(base->mineral_intake);
 		double income = getResourceScore(extraMineralIntake, 0.0);
 		double incomeGain = getGainIncome(income);
 		
@@ -1320,8 +1320,8 @@ void evaluateMilitaryFacilities()
 	// how much each defense structure level increases defense
 	double defenseStructureMultipliers[2] =
 	{
-		(1.0 + (double)conf.facility_defense_bonus[0] / 2.0) / getPercentageBonusMultiplier(Rules->combat_bonus_intrinsic_base_def),
-		(1.0 + (double)conf.facility_defense_bonus[3] / 2.0) / (1.0 + (double)conf.facility_defense_bonus[0] / 2.0),
+		(1.0 + static_cast<double>(conf.facility_defense_bonus[0]) / 2.0) / getPercentageBonusMultiplier(Rules->combat_bonus_intrinsic_base_def),
+		(1.0 + static_cast<double>(conf.facility_defense_bonus[3]) / 2.0) / (1.0 + static_cast<double>(conf.facility_defense_bonus[0]) / 2.0),
 	};
 	
 	// how often land/ocean base experiences each triad attack
@@ -1365,7 +1365,7 @@ void evaluateMilitaryFacilities()
 		if (militaryFacility.morale)
 		{
 			double proportionalMineralBonus = getMoraleProportionalMineralBonus(militaryFacility.moraleBonuses);
-			double mineralBonus = proportionalMineralBonus * (double)base->mineral_intake_2;
+			double mineralBonus = proportionalMineralBonus * static_cast<double>(base->mineral_intake_2);
 			moraleIncome = getResourceScore(mineralBonus, 0.0);
 		}
 		
@@ -1414,13 +1414,13 @@ void evaluateMilitaryFacilities()
 						continue;
 					
 					double defenseStructureMultiplier = defenseStructureMultipliers[defenseLevel - 1];
-					double triadReduction = 1.0 - ((double)offenseValue + (double)defenseValue) / ((double)offenseValue + (double)defenseValue * defenseStructureMultiplier);
+					double triadReduction = 1.0 - (static_cast<double>(offenseValue) + static_cast<double>(defenseValue)) / (static_cast<double>(offenseValue) + static_cast<double>(defenseValue) * defenseStructureMultiplier);
 					reduction += triadWeight * triadReduction;
 					
 				}
 				
 				defenseBuildCostSave += mineralCostFactor * vehicle->cost() * reduction;
-				defenseSupportSave += (double)getVehicleSupport(vehicleId) * reduction;
+				defenseSupportSave += static_cast<double>(getVehicleSupport(vehicleId)) * reduction;
 				
 			}
 			
@@ -1521,7 +1521,7 @@ void evaluatePrototypingFacilities()
 		
 	}
 	
-	double skunkworksRatio = (double)skunkworksCount / (double)aiData.baseIds.size();
+	double skunkworksRatio = static_cast<double>(skunkworksCount) / static_cast<double>(aiData.baseIds.size());
 	double useMultiplier = std::max(0.0, (0.1 - skunkworksRatio) / 0.1);
 	
 	if (useMultiplier <= 0.0)
@@ -1981,7 +1981,7 @@ void evaluateTerraformUnits()
 			
 			// distance
 			
-			double distance = (double)getRange(baseTile, formerRequest.tile);
+			double distance = static_cast<double>(getRange(baseTile, formerRequest.tile));
 			distanceHarmonicSummary.add(distance);
 			
 			// terraforming gain
@@ -2006,7 +2006,7 @@ void evaluateTerraformUnits()
 		
 		// extra former gain
 		
-		double existingFormerCount = (double)existingFormerCounts[triad];
+		double existingFormerCount = static_cast<double>(existingFormerCounts[triad]);
 		double existingFormerAccumulatedTime = 0.0;
 		double existingFormerTotalGain = 0.0;
 		double extraFormerCount = existingFormerCount + 1.0;
@@ -2086,7 +2086,7 @@ debug("extraFormerGains= %5.2f %5.2f %5.2f\n", extraFormerGains[0], extraFormerG
 		
 		// upkeep gain
 		
-		double upkeepIncome = getResourceScore(-(double)getUnitSupport(unitId), 0.0);
+		double upkeepIncome = getResourceScore(-static_cast<double>(getUnitSupport(unitId)), 0.0);
 		double upkeepGain = getGainIncome(upkeepIncome);
 		
 		// gain
@@ -3035,7 +3035,7 @@ void evaluateEnemyBaseAssaultUnits()
 			
 			// range coefficient
 			
-			double rangeCoefficient = enemyBaseInfo.closestPlayerBaseRange <= TARGET_ENEMY_BASE_RANGE ? 1.0 : (double)TARGET_ENEMY_BASE_RANGE / (double)enemyBaseInfo.closestPlayerBaseRange;
+			double rangeCoefficient = enemyBaseInfo.closestPlayerBaseRange <= TARGET_ENEMY_BASE_RANGE ? 1.0 : static_cast<double>(TARGET_ENEMY_BASE_RANGE) / static_cast<double>(enemyBaseInfo.closestPlayerBaseRange);
 			double captureGain = rangeCoefficient * incomeGain;
 			
 			// upkeep gain
@@ -3230,7 +3230,7 @@ int findScoutUnit(int triad)
 		// calculate speed and proportional speed
 
 		int unitChassisSpeed = unit_chassis_speed(unitId);
-		double proportionalUnitChassisSpeed = (double)unit_chassis_speed(unitId) / (double)unit->cost;
+		double proportionalUnitChassisSpeed = static_cast<double>(unit_chassis_speed(unitId)) / static_cast<double>(unit->cost);
 
 		// find fastest/cheapest unit
 
@@ -3320,7 +3320,7 @@ int getRegionBasesMaxPopulationSize(int factionId, int region)
 	{
 		BASE *base = &(Bases[baseId]);
 
-		maxPopulationSize = std::max(maxPopulationSize, (int)base->pop_size);
+		maxPopulationSize = std::max(maxPopulationSize, static_cast<int>(base->pop_size));
 
 	}
 
@@ -3515,7 +3515,7 @@ double getUnitPriorityCoefficient(int baseId, int unitId)
 	
 	int maxSurplus = base->mineral_intake_2 - reservedMineralSurplus;
 	int newSurplus = base->mineral_surplus - reservedMineralSurplus - nextUnitSupport;
-	double suprlusRatio = (double)newSurplus / (double)maxSurplus;
+	double suprlusRatio = static_cast<double>(newSurplus) / static_cast<double>(maxSurplus);
 	
 	return suprlusRatio * suprlusRatio;
 	
@@ -3540,8 +3540,8 @@ int findInfantryPoliceUnit(bool first)
 
 		// calculate effectiveness
 
-		double benefit = 1.0 + (first ? 0.0 : ((double)(defenseValue - 1) / (double)aiData.maxConDefenseValue) / 2.0);
-		double cost = (double)unit->cost;
+		double benefit = 1.0 + (first ? 0.0 : (static_cast<double>(defenseValue - 1) / static_cast<double>(aiData.maxConDefenseValue)) / 2.0);
+		double cost = static_cast<double>(unit->cost);
 
 		if (!isUnitHasAbility(unitId, ABL_CLEAN_REACTOR))
 		{
@@ -3582,8 +3582,8 @@ int findInfantryPoliceUnit(bool first)
 
 		// calculate effectiveness
 
-		double benefit = 1.0 + (first ? 0.0 : ((double)(defenseValue - 1) / (double)aiData.maxConDefenseValue) / 2.0);
-		double cost = (double)unit->cost;
+		double benefit = 1.0 + (first ? 0.0 : (static_cast<double>(defenseValue - 1) / static_cast<double>(aiData.maxConDefenseValue)) / 2.0);
+		double cost = static_cast<double>(unit->cost);
 
 		if (!isUnitHasAbility(unitId, ABL_CLEAN_REACTOR))
 		{
@@ -3751,12 +3751,12 @@ double getFacilityGain(int baseId, int facilityId, bool build)
 		// fungal pop increase
 		
 		int ecoDamage = newEcoDamage - oldEcoDamage;
-		double fungalPops = (double)ecoDamage / 100.0;
-		double fungalPopTiles = fungalPops * (double)getFaction(aiFactionId)->clean_minerals_modifier / 3.0;
+		double fungalPops = static_cast<double>(ecoDamage) / 100.0;
+		double fungalPopTiles = fungalPops * static_cast<double>(getFaction(aiFactionId)->clean_minerals_modifier) / 3.0;
 		
 		// fungal pop gain
 		
-		ecoDamageIncome = - 0.5 * fungalPopTiles * getBaseIncome(baseId) / (double)base->pop_size;
+		ecoDamageIncome = - 0.5 * fungalPopTiles * getBaseIncome(baseId) / static_cast<double>(base->pop_size);
 		
 	}
 	
@@ -3887,7 +3887,7 @@ double getMoraleProportionalMineralBonus(std::array<int,4> levels)
 
 	// proportional bonus on average base production
 
-	return (aiData.totalMineralIntake2 <= 0 ? 0.0 : std::min(1.0, mineralReduction / (double)aiData.totalMineralIntake2));
+	return (aiData.totalMineralIntake2 <= 0 ? 0.0 : std::min(1.0, mineralReduction / static_cast<double>(aiData.totalMineralIntake2)));
 
 }
 
@@ -4158,17 +4158,17 @@ double getBasePopulationGain(int baseId,  Interval &baseSizeInterval)
 
 	int baseSize = base->pop_size;
 	double baseStatisticalSize = getBaseStatisticalSize(baseAge);
-	double baseSizeProportionalCoefficient = (double)baseSize / baseStatisticalSize;
+	double baseSizeProportionalCoefficient = static_cast<double>(baseSize) / baseStatisticalSize;
 
 	int baseMineralIntake2 = base->mineral_intake_2;
 	double baseStatisticalMineralIntake2 = getBaseStatisticalMineralIntake2(baseAge);
-	double baseMineralProportionalCoefficient = (double)baseMineralIntake2 / baseStatisticalMineralIntake2;
+	double baseMineralProportionalCoefficient = static_cast<double>(baseMineralIntake2) / baseStatisticalMineralIntake2;
 
 	int baseBudgetIntake2 = base->economy_total + base->psych_total + base->labs_total;
 	double baseStatisticalBudgetIntake2 = getBaseStatisticalBudgetIntake2(baseAge);
-	double baseBudgetProportionalCoefficient = (double)baseBudgetIntake2 / baseStatisticalBudgetIntake2;
+	double baseBudgetProportionalCoefficient = static_cast<double>(baseBudgetIntake2) / baseStatisticalBudgetIntake2;
 
-	if (TRACE)
+	if constexpr (TRACE)
 	{
 		debug
 		(
@@ -4229,7 +4229,7 @@ double getBasePopulationGain(int baseId,  Interval &baseSizeInterval)
 		if (futureBaseSize <= baseSizeInterval.min)
 			continue;
 
-		double populationProportion = (std::min(futureBaseSize, (double)baseSizeInterval.max) - (double)baseSizeInterval.min) / futureBaseSize;
+		double populationProportion = (std::min(futureBaseSize, static_cast<double>(baseSizeInterval.max)) - static_cast<double>(baseSizeInterval.min)) / futureBaseSize;
 
 		double futureBaseMineralIntake2 = getBaseStatisticalMineralIntake2(futureBaseAge) * baseMineralProportionalCoefficient;
 		double futureBaseBudgetIntake2 = getBaseStatisticalBudgetIntake2(futureBaseAge) * baseBudgetProportionalCoefficient;
@@ -4243,7 +4243,7 @@ double getBasePopulationGain(int baseId,  Interval &baseSizeInterval)
 		double turnGain = getResourceScore(futureBaseMineralWeight, futureBaseBudgetWeight);
 		gain += turnGain;
 
-		if (TRACE)
+		if constexpr (TRACE)
 		{
 			debug
 			(
@@ -4285,7 +4285,7 @@ double getBasePopulationGain(int baseId,  Interval &baseSizeInterval)
 
 	}
 
-	if (TRACE)
+	if constexpr (TRACE)
 	{
 		debug
 		(
@@ -4318,11 +4318,11 @@ double getBasePopulationGrowthGain(int baseId, int delay, double proportionalGro
 
 	int baseMineralIntake2 = base->mineral_intake_2;
 	double baseStatisticalMineralIntake2 = getBaseStatisticalMineralIntake2(baseId);
-	double baseMineralProportionalCoefficient = (double)baseMineralIntake2 / baseStatisticalMineralIntake2;
+	double baseMineralProportionalCoefficient = static_cast<double>(baseMineralIntake2) / baseStatisticalMineralIntake2;
 
 	int baseBudgetIntake2 = base->economy_total + base->psych_total + base->labs_total;
 	double baseStatisticalBudgetIntake2 = getBaseStatisticalBudgetIntake2(baseId);
-	double baseBudgetProportionalCoefficient = (double)baseBudgetIntake2 / baseStatisticalBudgetIntake2;
+	double baseBudgetProportionalCoefficient = static_cast<double>(baseBudgetIntake2) / baseStatisticalBudgetIntake2;
 
 	// summarize gain
 
@@ -4330,8 +4330,8 @@ double getBasePopulationGrowthGain(int baseId, int delay, double proportionalGro
 
 	for (int futureTurn = initialTurn; futureTurn <= LAST_TURN; futureTurn++)
 	{
-		double futureBaseAge1 = (double)(baseAge + delay) + (double)(futureTurn - initialTurn);
-		double futureBaseAge2 = (double)(baseAge + delay) + (double)(futureTurn - initialTurn) * proportionalGrowthIncrease;
+		double futureBaseAge1 = static_cast<double>(baseAge + delay) + static_cast<double>(futureTurn - initialTurn);
+		double futureBaseAge2 = static_cast<double>(baseAge + delay) + static_cast<double>(futureTurn - initialTurn) * proportionalGrowthIncrease;
 
 		double futureFactionStatisticalMineralIntake2 = getFactionStatisticalMineralIntake2(futureTurn);
 		double futureFactionStatisticalBudgetIntake2 = getFactionStatisticalBudgetIntake2(futureTurn);
@@ -4380,7 +4380,7 @@ double getBaseProportionalMineralIntakeGain(int baseId, int delay, double propor
 
 	int baseMineralIntake = base->mineral_intake;
 	double baseStatisticalMineralIntake = getBaseStatisticalMineralIntake(baseId);
-	double baseMineralProportionalCoefficient = (double)baseMineralIntake / baseStatisticalMineralIntake;
+	double baseMineralProportionalCoefficient = static_cast<double>(baseMineralIntake) / baseStatisticalMineralIntake;
 
 	// summarize gain
 
@@ -4422,7 +4422,7 @@ double getBaseProportionalBudgetIntakeGain(int baseId, int delay, double proport
 	Budget baseBudgetIntakeByType = getBaseBudgetIntake(baseId);
 	int baseBudgetIntake = baseBudgetIntakeByType.economy + baseBudgetIntakeByType.psych + baseBudgetIntakeByType.labs;
 	double baseStatisticalBudgetIntake = getBaseStatisticalBudgetIntake(baseId);
-	double baseBudgetProportionalCoefficient = (double)baseBudgetIntake / baseStatisticalBudgetIntake;
+	double baseBudgetProportionalCoefficient = static_cast<double>(baseBudgetIntake) / baseStatisticalBudgetIntake;
 
 	// summarize gain
 
@@ -4465,7 +4465,7 @@ double getBaseProportionalMineralIntake2Gain(int baseId, int delay, double propo
 
 	int baseMineralIntake2 = base->mineral_intake_2;
 	double baseStatisticalMineralIntake2 = getBaseStatisticalMineralIntake2(baseId);
-	double baseMineralProportionalCoefficient = (double)baseMineralIntake2 / baseStatisticalMineralIntake2;
+	double baseMineralProportionalCoefficient = static_cast<double>(baseMineralIntake2) / baseStatisticalMineralIntake2;
 
 	// summarize gain
 
@@ -4508,7 +4508,7 @@ double getBaseProportionalBudgetIntake2Gain(int baseId, int delay, double propor
 
 	int baseBudgetIntake2 = base->economy_total + base->psych_total + base->labs_total;
 	double baseStatisticalBudgetIntake2 = getBaseStatisticalBudgetIntake2(baseId);
-	double baseBudgetProportionalCoefficient = (double)baseBudgetIntake2 / baseStatisticalBudgetIntake2;
+	double baseBudgetProportionalCoefficient = static_cast<double>(baseBudgetIntake2) / baseStatisticalBudgetIntake2;
 
 	// summarize gain
 
@@ -4645,7 +4645,7 @@ double getBasePoliceGain(int baseId, bool police2x)
 	
 	// police gain
 	
-	double policeGain = (double)policePower * extraWorkerGain;
+	double policeGain = static_cast<double>(policePower) * extraWorkerGain;
 	return policeGain;
 	
 }

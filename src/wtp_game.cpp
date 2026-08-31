@@ -22,7 +22,7 @@ double const INF = std::numeric_limits<double>::infinity();
 
 void Profile::start()
 {
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		if (running)
 		{
@@ -37,7 +37,7 @@ void Profile::start()
 }
 void Profile::pause()
 {
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		if (!running)
 		{
@@ -52,7 +52,7 @@ void Profile::pause()
 }
 void Profile::resume()
 {
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		if (running)
 		{
@@ -67,7 +67,7 @@ void Profile::resume()
 }
 void Profile::stop()
 {
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		if (!running)
 		{
@@ -169,7 +169,7 @@ void Profiling::reset()
 }
 void Profiling::start(std::string name)
 {
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		if (profiles.empty())
 		{
@@ -184,7 +184,7 @@ void Profiling::start(std::string name)
 }
 void Profiling::start(std::string name, std::string parentName)
 {
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		if (profiles.empty())
 		{
@@ -199,7 +199,7 @@ void Profiling::start(std::string name, std::string parentName)
 }
 void Profiling::pause(std::string name)
 {
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		Profile *profile = getProfile(name);
 		profile->pause();
@@ -207,7 +207,7 @@ void Profiling::pause(std::string name)
 }
 void Profiling::resume(std::string name)
 {
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		Profile *profile = getProfile(name);
 		profile->resume();
@@ -215,7 +215,7 @@ void Profiling::resume(std::string name)
 }
 void Profiling::stop(std::string name)
 {
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		Profile *profile = getProfile(name);
 		profile->stop();
@@ -232,10 +232,10 @@ void Profiling::print()
 		Profile &profile = iterator->profile;
 
 		std::string prefixedName = std::string(4 * depth, ' ') + name;
-		std::string displayName = prefixedName + " " + std::string(std::max(0, NAME_LENGTH - 1 - (int)prefixedName.length()), '.');
+		std::string displayName = prefixedName + " " + std::string(std::max(0, NAME_LENGTH - 1 - static_cast<int>(prefixedName.length())), '.');
 		int executionCount = profile.executionCount;
-		double totalExecutionTime = (double)profile.totalTime / (double)CLOCKS_PER_SEC;
-		double averageExecutionTime = (executionCount == 0 ? 0.0 : totalExecutionTime / (double)executionCount);
+		double totalExecutionTime = static_cast<double>(profile.totalTime) / static_cast<double>(CLOCKS_PER_SEC);
+		double averageExecutionTime = (executionCount == 0 ? 0.0 : totalExecutionTime / static_cast<double>(executionCount));
 
 		debug
 		(
@@ -1112,7 +1112,7 @@ int unit_triad(int id) {
 }
 
 double random_double(double scale) {
-    return scale * ((double)rand() / (double)(RAND_MAX + 1));
+    return scale * (static_cast<double>(rand()) / static_cast<double>(RAND_MAX + 1));
 }
 
 bool isSeaBase(int baseId) {
@@ -1535,7 +1535,7 @@ double getUnitPsiOffenseStrength(int factionId, int unitId)
 
 	// initial value
 
-	double psiOffenseStrength = (double)Rules->psi_combat_ratio_atk[triad] / (double)Rules->psi_combat_ratio_def[triad];
+	double psiOffenseStrength = static_cast<double>(Rules->psi_combat_ratio_atk[triad]) / static_cast<double>(Rules->psi_combat_ratio_def[triad]);
 
 	// faction PLANET rating modifier
 
@@ -1586,7 +1586,7 @@ double getUnitConOffenseStrength(int unitId)
 {
 	UNIT *unit = &(Units[unitId]);
 
-	return (double)Weapon[unit->weapon_id].offense_value;
+	return static_cast<double>(Weapon[unit->weapon_id].offense_value);
 
 }
 
@@ -1594,13 +1594,13 @@ double getUnitConDefenseStrength(int unitId)
 {
 	UNIT *unit = &(Units[unitId]);
 
-	return (double)Armor[unit->armor_id].defense_value;
+	return static_cast<double>(Armor[unit->armor_id].defense_value);
 
 }
 
 double getUnitConArtilleryDuelStrength(int unitId)
 {
-	return (double)(Weapon[Units[unitId].weapon_id].offense_value);
+	return static_cast<double>(Weapon[Units[unitId].weapon_id].offense_value);
 }
 
 double getVehiclePsiOffenseStrength(int vehicleId, bool ignoreDamage)
@@ -1668,7 +1668,7 @@ double getVehicleConOffenseStrength(int vehicleId, bool ignoreDamage)
 
 	// strength
 
-	double conventionalOffenseStrength = (double)vehicle->offense_value();
+	double conventionalOffenseStrength = static_cast<double>(vehicle->offense_value());
 
 	// morale modifier
 
@@ -1698,7 +1698,7 @@ double getVehicleConDefenseStrength(int vehicleId, bool ignoreDamage)
 
 	// conventional defense strength
 
-	double conventionalDefenseStrength = (double)vehicle->defense_value();
+	double conventionalDefenseStrength = static_cast<double>(vehicle->defense_value());
 
 	// morale modifier
 
@@ -1756,7 +1756,7 @@ double getFactionSEPlanetDefenseModifier(int factionId)
 
 double getPsiCombatBaseOdds(int triad)
 {
-	return (double)Rules->psi_combat_ratio_atk[triad] / (double)Rules->psi_combat_ratio_def[triad];
+	return static_cast<double>(Rules->psi_combat_ratio_atk[triad]) / static_cast<double>(Rules->psi_combat_ratio_def[triad]);
 }
 
 bool isCombatUnit(int unitId)
@@ -1849,21 +1849,21 @@ double calculatePsiDamageAttack(int vehicleId, int enemyVehicleId)
 			getFactionSEPlanetDefenseModifier(enemyVehicle->faction_id)
 		)
 		*
-		(double)(10 * vehicle->reactor_type() - vehicle->damage_taken) / (double)vehicle->reactor_type()
+		static_cast<double>(10 * vehicle->reactor_type() - vehicle->damage_taken) / static_cast<double>(vehicle->reactor_type())
 	;
 
 	// attacker empath increases damage
 
 	if (vehicle_has_ability(vehicleId, ABL_EMPATH))
 	{
-		damage *= (1 + (double)Rules->combat_bonus_empath_song_vs_psi / 100.0);
+		damage *= (1 + static_cast<double>(Rules->combat_bonus_empath_song_vs_psi) / 100.0);
 	}
 
 	// defender trance decreases damage
 
 	if (vehicle_has_ability(enemyVehicleId, ABL_TRANCE))
 	{
-		damage /= (1 + (double)Rules->combat_bonus_trance_vs_psi / 100.0);
+		damage /= (1 + static_cast<double>(Rules->combat_bonus_trance_vs_psi) / 100.0);
 	}
 
 	return damage;
@@ -1895,21 +1895,21 @@ double calculatePsiDamageDefense(int vehicleId, int enemyVehicleId)
 			getFactionSEPlanetOffenseModifier(enemyVehicle->faction_id)
 		)
 		*
-		(double)(10 - vehicle->damage_taken)
+		static_cast<double>(10 - vehicle->damage_taken)
 	;
 
 	// attacker empath decreases damage
 
 	if (vehicle_has_ability(enemyVehicleId, ABL_EMPATH))
 	{
-		damage /= (1 + (double)Rules->combat_bonus_empath_song_vs_psi / 100.0);
+		damage /= (1 + static_cast<double>(Rules->combat_bonus_empath_song_vs_psi) / 100.0);
 	}
 
 	// defender trance increases damage
 
 	if (vehicle_has_ability(vehicleId, ABL_TRANCE))
 	{
-		damage *= (1 + (double)Rules->combat_bonus_trance_vs_psi / 100.0);
+		damage *= (1 + static_cast<double>(Rules->combat_bonus_trance_vs_psi) / 100.0);
 	}
 
 	return damage;
@@ -2223,7 +2223,7 @@ double evaluateUnitConDefenseEffectiveness(int id)
 		cost += 4;
 	}
 
-	return (double)defenseValue / (double)cost;
+	return static_cast<double>(defenseValue) / static_cast<double>(cost);
 
 }
 
@@ -2243,7 +2243,7 @@ double evaluateUnitConOffenseEffectiveness(int id)
 		cost += 4;
 	}
 
-	return (double)offenseValue / (double)cost;
+	return static_cast<double>(offenseValue) / static_cast<double>(cost);
 
 }
 
@@ -2260,7 +2260,7 @@ double evaluateUnitPsiDefenseEffectiveness(int id)
 
 	if (unit_has_ability(id, ABL_TRANCE))
 	{
-		defenseValue *= 1.0 + (double)Rules->combat_bonus_trance_vs_psi / 100.0;
+		defenseValue *= 1.0 + static_cast<double>(Rules->combat_bonus_trance_vs_psi) / 100.0;
 	}
 
 	// cost
@@ -2274,7 +2274,7 @@ double evaluateUnitPsiDefenseEffectiveness(int id)
 		cost += 4;
 	}
 
-	return defenseValue / (double)cost;
+	return defenseValue / static_cast<double>(cost);
 
 }
 
@@ -2291,7 +2291,7 @@ double evaluateUnitPsiOffenseEffectiveness(int id)
 
 	if (unit_has_ability(id, ABL_EMPATH))
 	{
-		offenseValue *= 1.0 + (double)Rules->combat_bonus_trance_vs_psi / 100.0;
+		offenseValue *= 1.0 + static_cast<double>(Rules->combat_bonus_trance_vs_psi) / 100.0;
 	}
 
 	// cost
@@ -2305,7 +2305,7 @@ double evaluateUnitPsiOffenseEffectiveness(int id)
 		cost += 4;
 	}
 
-	return offenseValue / (double)cost;
+	return offenseValue / static_cast<double>(cost);
 
 }
 
@@ -2362,7 +2362,7 @@ double getBaseDefenseMultiplier(int baseId, int attackerUnitId, int defenderUnit
 	UNIT *attackerUnit = getUnit(attackerUnitId);
 	int attackerUnitTriad = attackerUnit->triad();
 
-	return getBaseDefenseMultiplier(baseId, isPsiCombat(attackerUnitId, defenderUnitId) ? 3 : attackerUnitTriad);
+	return getBaseDefenseMultiplier(baseId, static_cast<AttackTriad>(isPsiCombat(attackerUnitId, defenderUnitId) ? 3 : attackerUnitTriad));
 
 }
 
@@ -2538,7 +2538,7 @@ std::vector<int> getDesignedFactionUnitIds(int factionId, bool includeObsolete, 
 
 	}
 
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		debug("getDesignedFactionUnitIds(%d, %d, %d) - %s\n", factionId, includeObsolete, includeNotPrototyped, aiMFaction->noun_faction);
 		for (int unitId : designedFactionUnitIds)
@@ -2866,7 +2866,7 @@ double estimateUnitBaseLandNativeProtection(int unitId, int factionId, bool ocea
 
 	// add base defense bonus
 
-	nativeProtection *= 1.0 + (double)Rules->combat_bonus_intrinsic_base_def / 100.0;
+	nativeProtection *= 1.0 + static_cast<double>(Rules->combat_bonus_intrinsic_base_def) / 100.0;
 
 	// add faction defense bonus
 
@@ -2880,7 +2880,7 @@ double estimateUnitBaseLandNativeProtection(int unitId, int factionId, bool ocea
 
 	if (unit_has_ability(unitId, ABL_TRANCE))
 	{
-		nativeProtection *= 1.0 + (double)Rules->combat_bonus_trance_vs_psi / 100.0;
+		nativeProtection *= 1.0 + static_cast<double>(Rules->combat_bonus_trance_vs_psi) / 100.0;
 	}
 
 	// correction for native base attack penalty until turn 50
@@ -2927,7 +2927,7 @@ double getFactionOffenseMultiplier(int factionId)
 
 		if (bonusId == RULE_OFFENSE)
 		{
-			factionOffenseMultiplier *= ((double)MFaction->faction_bonus_val1[bonusIndex] / 100.0);
+			factionOffenseMultiplier *= (static_cast<double>(MFaction->faction_bonus_val1[bonusIndex]) / 100.0);
 		}
 
 	}
@@ -2948,7 +2948,7 @@ double getFactionDefenseMultiplier(int factionId)
 
 		if (bonusId == RULE_DEFENSE)
 		{
-			factionDefenseMultiplier *= ((double)MFaction->faction_bonus_val1[bonusIndex] / 100.0);
+			factionDefenseMultiplier *= (static_cast<double>(MFaction->faction_bonus_val1[bonusIndex]) / 100.0);
 		}
 
 	}
@@ -2965,7 +2965,7 @@ double getFactionFanaticBonusMultiplier(int factionId)
 
 	if (MFaction->rule_flags & RFLAG_FANATIC)
 	{
-		factionOffenseMultiplier *= (1.0 + (double)Rules->combat_bonus_fanatic / 100.0);
+		factionOffenseMultiplier *= (1.0 + static_cast<double>(Rules->combat_bonus_fanatic) / 100.0);
 	}
 
 	return factionOffenseMultiplier;
@@ -2982,13 +2982,13 @@ double getVehicleBaseNativeProtectionPotential(int vehicleId)
 
 	// calculate base damage (vehicle defending)
 
-	double protectionPotential = 1.0 / getPsiCombatBaseOdds(TRIAD_LAND) * getVehicleMoraleMultiplier(vehicleId) * getFactionSEPlanetDefenseModifier(vehicle->faction_id) * (1.0 + (double)Rules->combat_bonus_intrinsic_base_def / 100.0);
+	double protectionPotential = 1.0 / getPsiCombatBaseOdds(TRIAD_LAND) * getVehicleMoraleMultiplier(vehicleId) * getFactionSEPlanetDefenseModifier(vehicle->faction_id) * (1.0 + static_cast<double>(Rules->combat_bonus_intrinsic_base_def) / 100.0);
 
 	// defender trance increases combat protectionPotential
 
 	if (vehicle_has_ability(vehicleId, ABL_TRANCE))
 	{
-		protectionPotential *= (1 + (double)Rules->combat_bonus_trance_vs_psi / 100.0);
+		protectionPotential *= (1 + static_cast<double>(Rules->combat_bonus_trance_vs_psi) / 100.0);
 	}
 
 	// double potential before turn 50
@@ -3000,7 +3000,7 @@ double getVehicleBaseNativeProtectionPotential(int vehicleId)
 
 	// adjustment to native base lifecycle
 
-	protectionPotential /= (1.0 + (double)(*CurrentTurn / 50 - 2) * 0.125);
+	protectionPotential /= (1.0 + static_cast<double>(*CurrentTurn / 50 - 2) * 0.125);
 
 	return protectionPotential;
 
@@ -3029,7 +3029,7 @@ double getVehicleBaseNativeProtectionEfficiency(int vehicleId)
 		cost += 4;
 	}
 
-	return protectionPotential / (double)cost;
+	return protectionPotential / static_cast<double>(cost);
 
 }
 
@@ -3134,7 +3134,7 @@ char *getVehicleUnitName(int vehicleId)
 
 int getVehicleUnitPlan(int vehicleId)
 {
-	return (int)Units[vehicleId].plan;
+	return static_cast<int>(Units[vehicleId].plan);
 }
 
 /*
@@ -4096,7 +4096,7 @@ double battleCompute(int attackerVehicleId, int defenderVehicleId, bool longRang
 
 	// calculate relative strength
 
-	double relativeStrength = (double)attackerOffenseValue / (double)defenderStrength;
+	double relativeStrength = static_cast<double>(attackerOffenseValue) / static_cast<double>(defenderStrength);
 
 	// adjust for aliens to fight at half strength
 
@@ -4125,7 +4125,7 @@ double battleComputeStack(int attackerVehicleId, int defenderVehicleId, bool lon
 
 	// find best defender
 
-	int bestDefenderVehicleId = mod_best_defender(defenderVehicleId, attackerVehicleId, (int)longRangeCombat);
+	int bestDefenderVehicleId = mod_best_defender(defenderVehicleId, attackerVehicleId, static_cast<int>(longRangeCombat));
 
 	// compute relative strength against best defender
 
@@ -4596,7 +4596,7 @@ double getBattleOdds(int attackerVehicleId, int defenderVehicleId, int longRange
 
 	// calculate odds
 
-	return relativeStrength * ((double)attackerPower / (double)defenderPower);
+	return relativeStrength * (static_cast<double>(attackerPower) / static_cast<double>(defenderPower));
 
 }
 
@@ -4672,7 +4672,7 @@ double getAttackEffect(int attackerVehicleId, int defenderVehicleId, bool longRa
 
 	// calculate effect
 
-	double attackEffect = relativeStrength * (double)attackerHP / (double)defenderHP;
+	double attackEffect = relativeStrength * static_cast<double>(attackerHP) / static_cast<double>(defenderHP);
 
 	return attackEffect;
 
@@ -5089,7 +5089,7 @@ double getVehicleRelativeDamage(int vehicleId)
 {
 	VEH *vehicle = getVehicle(vehicleId);
 
-	return (double)vehicle->damage_taken / (double)(10 * vehicle->reactor_type());
+	return static_cast<double>(vehicle->damage_taken) / static_cast<double>(10 * vehicle->reactor_type());
 
 }
 
@@ -5398,7 +5398,7 @@ int getFactionGrossIncome(int factionId)
 double getFactionTechPerTurn(int factionId)
 {
 	energy_compute(factionId, 0);
-	return (double)*tech_per_turn / 100.0;
+	return static_cast<double>(*tech_per_turn) / 100.0;
 }
 
 bool isVehicleOnSentry(int vehicleId)
@@ -6557,7 +6557,7 @@ double getBaseEnergyEfficiencyCoefficient(int baseId)
 {
 	BASE *base = getBase(baseId);
 
-	return base->energy_intake <= 0 ? 1.0 : 1.0 - (double)base->energy_inefficiency / (double)base->energy_intake;
+	return base->energy_intake <= 0 ? 1.0 : 1.0 - static_cast<double>(base->energy_inefficiency) / static_cast<double>(base->energy_intake);
 
 }
 
@@ -6643,7 +6643,7 @@ double getBaseEconomyMultiplier(int baseId)
 		multiplierNumerator += 2;
 	}
 
-	return (double)multiplierNumerator / (double)multiplierDenominator;
+	return static_cast<double>(multiplierNumerator) / static_cast<double>(multiplierDenominator);
 
 }
 
@@ -6887,7 +6887,7 @@ double getEuqlideanDistanceSquared(MAP *origin, MAP *destination)
 
 	Location delta = getDelta(origin, destination);
 
-	return (double)(delta.x * delta.x + delta.y * delta.y) / 2.0;
+	return static_cast<double>(delta.x * delta.x + delta.y * delta.y) / 2.0;
 }
 
 /*
@@ -7193,7 +7193,7 @@ double getBasePopulationGrowth(int baseId)
 {
 	BASE *base = getBase(baseId);
 	int requiredNutrients = (base->pop_size + 1) * mod_cost_factor(base->faction_id, RSC_NUTRIENT, baseId);
-	return 1.0 / ((double)requiredNutrients / (double)std::max(1, base->nutrient_surplus) + 1);
+	return 1.0 / (static_cast<double>(requiredNutrients) / static_cast<double>(std::max(1, base->nutrient_surplus)) + 1);
 }
 
 /**
@@ -7203,7 +7203,7 @@ double getBasePopulationGrowthIncrease(int baseId, double nutrientSurplusIncreas
 {
 	BASE *base = getBase(baseId);
 	int requiredNutrients = (base->pop_size + 1) * mod_cost_factor(base->faction_id, RSC_NUTRIENT, baseId);
-	return 1.0 / ((double)requiredNutrients / nutrientSurplusIncrease + 1);
+	return 1.0 / (static_cast<double>(requiredNutrients) / nutrientSurplusIncrease + 1);
 }
 
 /*
@@ -7212,7 +7212,7 @@ Calculates how much population growths a turn. RELATIVE to current base size.
 double getBasePopulationGrowthRate(int baseId)
 {
 	BASE *base = getBase(baseId);
-	return getBasePopulationGrowth(baseId) / (double)base->pop_size;
+	return getBasePopulationGrowth(baseId) / static_cast<double>(base->pop_size);
 }
 
 int getBaseTurnsToPopulation(int baseId, int population)
@@ -7378,7 +7378,7 @@ Returns 0.0 for empty vector.
 */
 double average(std::vector<double> v)
 {
-	return v.empty() ? 0.0 : std::accumulate(v.begin(), v.end(), 0.0) / (double)v.size();
+	return v.empty() ? 0.0 : std::accumulate(v.begin(), v.end(), 0.0) / static_cast<double>(v.size());
 }
 
 bool isBattleOgreUnit(int unitId)
@@ -7605,7 +7605,7 @@ Resource getBaseResourceIntake2(int baseId)
 {
 	BASE *base = getBase(baseId);
 
-	return {(double)base->nutrient_surplus, (double)base->mineral_intake_2, (double)(base->economy_total + base->labs_total)};
+	return {static_cast<double>(base->nutrient_surplus), static_cast<double>(base->mineral_intake_2), static_cast<double>(base->economy_total + base->labs_total)};
 
 }
 
@@ -7677,7 +7677,7 @@ int getBaseNextUnitSupport(int baseId, int unitId)
 			nextUnitSupport = (supportRequiredVehicleCount + 1) <= 6 ? 0 : 1;
 			break;
 		case +3:
-			nextUnitSupport = ((supportRequiredVehicleCount + 1) <= std::max(8, (int)base->pop_size)) ? 0 : 1;
+			nextUnitSupport = ((supportRequiredVehicleCount + 1) <= std::max(8, static_cast<int>(base->pop_size))) ? 0 : 1;
 			break;
 		default:
 			nextUnitSupport = 0;
@@ -7708,7 +7708,7 @@ int getBaseNextUnitSupport(int baseId, int unitId)
 			nextUnitSupport = (supportRequiredVehicleCount + 1) <= 4 ? 0 : 1;
 			break;
 		case +3:
-			nextUnitSupport = ((supportRequiredVehicleCount + 1) <= std::max(4, (int)base->pop_size)) ? 0 : 1;
+			nextUnitSupport = ((supportRequiredVehicleCount + 1) <= std::max(4, static_cast<int>(base->pop_size))) ? 0 : 1;
 			break;
 		default:
 			nextUnitSupport = 0;
@@ -8015,7 +8015,7 @@ int getClosestNotOwnedOrSeaTileRange(int factionId, MAP *tile, int minRadius, in
 
 AttackTriad getAttackTriad(int attackUnitId, int defendUnitId)
 {
-	return isPsiCombat(attackUnitId, defendUnitId) ? ATTACK_TRIAD_PSI : (AttackTriad) Units[attackUnitId].triad();
+	return isPsiCombat(attackUnitId, defendUnitId) ? ATTACK_TRIAD_PSI : static_cast<AttackTriad>(Units[attackUnitId].triad());
 }
 
 bool isUnitObsolete(int unitId, int factionId)

@@ -51,8 +51,8 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 	
 	// triad
 	
-	Triad attackerTriad = (Triad) attackerUnit.triad();
-	Triad defenderTriad = (Triad) defenderUnit.triad();
+	Triad attackerTriad = static_cast<Triad>(attackerUnit.triad());
+	Triad defenderTriad = static_cast<Triad>(defenderUnit.triad());
 	
 	// get item values
 	
@@ -743,7 +743,7 @@ double standard_combat_mechanics_calculate_attacker_winning_probability
 
     // determine round probability
 
-//    double p = (double)attacker_strength / ((double)attacker_strength + (double)defender_strength);
+//    double p = static_cast<double>(attacker_strength) / (static_cast<double>(attacker_strength) + static_cast<double>(defender_strength));
     double q = 1 - p;
 
     // calculate attacker winning probability
@@ -773,7 +773,7 @@ double binomial_koefficient(int n, int k)
 
     for (int i = 0; i < k; i++)
     {
-        c *= (double)(n - i) / (double)(k - i);
+        c *= static_cast<double>(n - i) / static_cast<double>(k - i);
 
     }
 
@@ -894,18 +894,18 @@ int wtp_tech_cost(int fac, int tech)
     double b1 =   0.0;
     double c1 =  14.7;
     double d1 =  10.3;
-    double b2 = 840.0 * ((double)*MapAreaTiles / 3200.0);
+    double b2 = 840.0 * (static_cast<double>(*MapAreaTiles) / 3200.0);
     double x0 = (-c1 + sqrt(c1 * c1 - 3 * d1 * (b1 - b2))) / (3 * d1);
     double a2 = a1 + b1 * x0 + c1 * x0 * x0 + d1 * x0 * x0 * x0 - b2 * x0;
-    double x = (double)(level - 1);
+    double x = static_cast<double>(level - 1);
 	
     double base = (x < x0 ? a1 + b1 * x + c1 * x * x + d1 * x * x * x : a2 + b2 * x);
 	
     double cost =
         base
-        * (double)m->rule_techcost / 100.0
+        * static_cast<double>(m->rule_techcost) / 100.0
         * (*GameRules & RULES_TECH_STAGNATION ? 1.5 : 1.0)
-        * (double)Rules->tech_discovery_rate / 100.0
+        * static_cast<double>(Rules->tech_discovery_rate) / 100.0
     ;
 	
     double dw;
@@ -957,14 +957,14 @@ int wtp_tech_cost(int fac, int tech)
 			
 		}
 		
-		double correction = ((double)discoveredTechCount / (double)totalTechCount) / ((double)*CurrentTurn / 350.0);
+		double correction = (static_cast<double>(discoveredTechCount) / static_cast<double>(totalTechCount)) / (static_cast<double>(*CurrentTurn) / 350.0);
 		debug("tech_cost correction: discoveredTechCount = %d, totalTechCount = %d, current_turn = %d, end_turn = %d, correction = %f\n", discoveredTechCount, totalTechCount, *CurrentTurn, 350, correction);
 		
 		cost *= correction;
 		
 	}
 	
-    return std::max(2, (int)cost);
+    return std::max(2, static_cast<int>(cost));
 	
 }
 
@@ -1053,11 +1053,11 @@ __cdecl int wtp_mod_base_init(int factionId, int x, int y)
 			
 		}
 		
-		double averageFactionBaseSize = (double)totalFactionPopulation / (double)totalFactionBaseCount;
+		double averageFactionBaseSize = static_cast<double>(totalFactionPopulation) / static_cast<double>(totalFactionBaseCount);
 		
 		// calculate new base size
 		
-		int newBaseSize = std::max(1, std::min(3, (int)floor(averageFactionBaseSize) - conf.pts_new_base_size_less_average));
+		int newBaseSize = std::max(1, std::min(3, static_cast<int>(floor(averageFactionBaseSize)) - conf.pts_new_base_size_less_average));
 		
 		// set base size
 		
@@ -1402,7 +1402,7 @@ __cdecl int modifiedBestDefender(int defenderVehicleId, int attackerVehicleId, i
 			int defenderStrength;
 			wtp_mod_battle_compute(attackerVehicleId, stackedVehicleId, &attackerOffenseValue, &defenderStrength, 0);
 			
-			double defenderEffectiveness = ((double)defenderStrength / (double)attackerOffenseValue) * ((double)(stackedVehicleUnit->reactor_id * 10 - stackedVehicle->damage_taken) / (double)(stackedVehicleUnit->reactor_id * 10));
+			double defenderEffectiveness = (static_cast<double>(defenderStrength) / static_cast<double>(attackerOffenseValue)) * (static_cast<double>(stackedVehicleUnit->reactor_id * 10 - stackedVehicle->damage_taken) / static_cast<double>(stackedVehicleUnit->reactor_id * 10));
 			
 			if (bestDefenderVehicleId == -1 || defenderEffectiveness > bestDefenderEffectiveness)
 			{
@@ -1579,7 +1579,7 @@ __cdecl int modifiedSocialWinDrawSocialCalculateSpriteOffset(int spriteBaseIndex
 
 	// convert and return value
 
-	return (int)sprite;
+	return static_cast<int>(reinterpret_cast<uintptr_t>(sprite));
 
 }
 
@@ -1685,7 +1685,7 @@ void applyBaseComputeTestCase(int baseId, BaseComputeTestCase const &testCase)
 	// it risks corrupting the BIT_BASE_IN_TILE/owner encoding the engine relies on for the base tile.
 	// tiles[1..20] are the worked ring and are copied verbatim, then forced into the test faction's territory.
 
-	for (int i = 1; i < (int)testCase.tiles.size(); i++)
+	for (int i = 1; i < static_cast<int>(testCase.tiles.size()); i++)
 	{
 		int x = wrap(base->x + TableOffsetX[i]);
 		int y = base->y + TableOffsetY[i];
@@ -1957,11 +1957,11 @@ int __cdecl modifiedMindControlCost(int baseId, int probeFactionId, int cornerMa
 
 	// count surplus
 
-	mindControlCost += conf.alternative_mind_control_nutrient_cost * (double)base->nutrient_surplus;
-	mindControlCost += conf.alternative_mind_control_mineral_cost * (double)base->mineral_surplus;
-	mindControlCost += conf.alternative_mind_control_energy_cost * (double)base->economy_total;
-	mindControlCost += conf.alternative_mind_control_energy_cost * (double)base->psych_total;
-	mindControlCost += conf.alternative_mind_control_energy_cost * (double)base->labs_total;
+	mindControlCost += conf.alternative_mind_control_nutrient_cost * static_cast<double>(base->nutrient_surplus);
+	mindControlCost += conf.alternative_mind_control_mineral_cost * static_cast<double>(base->mineral_surplus);
+	mindControlCost += conf.alternative_mind_control_energy_cost * static_cast<double>(base->economy_total);
+	mindControlCost += conf.alternative_mind_control_energy_cost * static_cast<double>(base->psych_total);
+	mindControlCost += conf.alternative_mind_control_energy_cost * static_cast<double>(base->labs_total);
 
 	// count built facilities
 
@@ -1969,7 +1969,7 @@ int __cdecl modifiedMindControlCost(int baseId, int probeFactionId, int cornerMa
 	{
 		if (isBaseHasFacility(baseId, facilityId))
 		{
-			mindControlCost += conf.alternative_mind_control_facility_cost_multiplier * (double)Facility[facilityId].cost;
+			mindControlCost += conf.alternative_mind_control_facility_cost_multiplier * static_cast<double>(Facility[facilityId].cost);
 		}
 	}
 
@@ -1979,7 +1979,7 @@ int __cdecl modifiedMindControlCost(int baseId, int probeFactionId, int cornerMa
 	{
 		if (isBaseHasFacility(baseId, facilityId))
 		{
-			mindControlCost += conf.alternative_mind_control_project_cost_multiplier * (double)Facility[facilityId].cost;
+			mindControlCost += conf.alternative_mind_control_project_cost_multiplier * static_cast<double>(Facility[facilityId].cost);
 		}
 	}
 
@@ -2005,16 +2005,16 @@ int __cdecl modifiedMindControlCost(int baseId, int probeFactionId, int cornerMa
 
 	if (hqDistance >= 0 && hqDistance < *MapHalfX / 2)
 	{
-		mindControlCost *= (2.0 - (double)hqDistance / (double)(*MapHalfX / 2));
+		mindControlCost *= (2.0 - static_cast<double>(hqDistance) / static_cast<double>(*MapHalfX / 2));
 	}
 
 	// happiness factor
 
-	mindControlCost *= pow(conf.alternative_mind_control_happiness_power_base, ((double)base->talent_total - (double)base->drone_total) / (double)base->pop_size);
+	mindControlCost *= pow(conf.alternative_mind_control_happiness_power_base, (static_cast<double>(base->talent_total) - static_cast<double>(base->drone_total)) / static_cast<double>(base->pop_size));
 
 	// previous MC factor
 
-	mindControlCost *= 1.0 + (0.1 * (double)(baseFaction->mind_control_total / 4));
+	mindControlCost *= 1.0 + (0.1 * static_cast<double>(baseFaction->mind_control_total / 4));
 
 	// recapturing factor
 
@@ -2038,13 +2038,13 @@ int __cdecl modifiedMindControlCost(int baseId, int probeFactionId, int cornerMa
 
 	if (!is_human(probeFactionId) && is_human(base->faction_id) && baseFaction->diff_level > 3)
 	{
-		mindControlCost *= 3.0 / (double)baseFaction->diff_level;
+		mindControlCost *= 3.0 / static_cast<double>(baseFaction->diff_level);
 	}
 
 	// corner market ends here
 
 	if (cornerMarket != 0)
-		return (int)round(mindControlCost);
+		return static_cast<int>(round(mindControlCost));
 
 	// global scaling factor
 
@@ -2070,7 +2070,7 @@ int __cdecl modifiedMindControlCost(int baseId, int probeFactionId, int cornerMa
 
 		// add subversion cost
 
-		totalSubversionCost += (double)getBasicAlternativeSubversionCostWithHQDistance(vehicleId, hqDistance);
+		totalSubversionCost += static_cast<double>(getBasicAlternativeSubversionCostWithHQDistance(vehicleId, hqDistance));
 
 	}
 
@@ -2078,7 +2078,7 @@ int __cdecl modifiedMindControlCost(int baseId, int probeFactionId, int cornerMa
 
 	if (!is_human(probeFactionId) && is_human(base->faction_id) && baseFaction->diff_level > 3)
 	{
-		totalSubversionCost *= 3.0 / (double)baseFaction->diff_level;
+		totalSubversionCost *= 3.0 / static_cast<double>(baseFaction->diff_level);
 	}
 
 	// add total subversion cost to mind control cost
@@ -2087,7 +2087,7 @@ int __cdecl modifiedMindControlCost(int baseId, int probeFactionId, int cornerMa
 
 	// return rounded value
 
-	return (int)round(mindControlCost);
+	return static_cast<int>(round(mindControlCost));
 
 }
 
@@ -2138,13 +2138,13 @@ int getBasicAlternativeSubversionCostWithHQDistance(int vehicleId, int hqDistanc
 
 	// calculate base unit subversion cost
 
-	double subversionCost = 10.0 * conf.alternative_subversion_unit_cost_multiplier * (double)vehicleUnit->cost;
+	double subversionCost = 10.0 * conf.alternative_subversion_unit_cost_multiplier * static_cast<double>(vehicleUnit->cost);
 
 	// distance to HQ factor
 
 	if (hqDistance >= 0 && hqDistance < *MapHalfX / 2)
 	{
-		subversionCost *= (2.0 - (double)hqDistance / (double)(*MapHalfX / 2));
+		subversionCost *= (2.0 - static_cast<double>(hqDistance) / static_cast<double>(*MapHalfX / 2));
 	}
 
 	// count number of friendly PE units in vicinity
@@ -2176,7 +2176,7 @@ int getBasicAlternativeSubversionCostWithHQDistance(int vehicleId, int hqDistanc
 
 	// PE factor
 
-	subversionCost *= (1.0 + (double)peVehCount);
+	subversionCost *= (1.0 + static_cast<double>(peVehCount));
 
 	// unit plan factor
 
@@ -2191,7 +2191,7 @@ int getBasicAlternativeSubversionCostWithHQDistance(int vehicleId, int hqDistanc
 
 	// return rounded value
 
-	return (int)round(subversionCost);
+	return static_cast<int>(round(subversionCost));
 
 }
 
@@ -2250,7 +2250,7 @@ void __cdecl modifiedTurnUpkeep()
 {
 	// executionProfiles
 	
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		Profiling::print();
 		Profiling::reset();
@@ -2258,7 +2258,7 @@ void __cdecl modifiedTurnUpkeep()
 	
 	// collect statistics
 	
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		std::vector<int> computerFactions;
 		for (int factionId = 1; factionId < MaxPlayerNum; factionId++)
@@ -2315,7 +2315,7 @@ void __cdecl modifiedTurnUpkeep()
 	//		double labsMultiplier = getBaseLabsMultiplier(baseId);
 			int ecolabIntake = budgetIntake.economy + budgetIntake.labs;
 			int ecolabIntake2 = budgetIntake2.economy + budgetIntake2.labs;
-			double ecolabMultiplier = ecolabIntake <= 0 ? 1.0 : (double)ecolabIntake2 / (double)ecolabIntake;
+			double ecolabMultiplier = ecolabIntake <= 0 ? 1.0 : static_cast<double>(ecolabIntake2) / static_cast<double>(ecolabIntake);
 			
 			// totals
 			
@@ -2368,11 +2368,11 @@ void __cdecl modifiedTurnUpkeep()
 		
 		// faction
 		
-		double averageFactionBaseCount = (factionCount == 0 ? 0.0 : (double)totalBaseCount / (double)factionCount);
-		double averageFactionCitizenCount = (factionCount == 0 ? 0.0 : (double)totalCitizenCount / (double)factionCount);
-		double averageFactionWorkerCount = (factionCount == 0 ? 0.0 : (double)totalWorkerCount / (double)factionCount);
-		double averageFactionMinerals = (factionCount == 0 ? 0.0 : totalMinerals / (double)factionCount);
-		double averageFactionEcoLab = (factionCount == 0 ? 0.0 : totalEcoLab / (double)factionCount);
+		double averageFactionBaseCount = (factionCount == 0 ? 0.0 : static_cast<double>(totalBaseCount) / static_cast<double>(factionCount));
+		double averageFactionCitizenCount = (factionCount == 0 ? 0.0 : static_cast<double>(totalCitizenCount) / static_cast<double>(factionCount));
+		double averageFactionWorkerCount = (factionCount == 0 ? 0.0 : static_cast<double>(totalWorkerCount) / static_cast<double>(factionCount));
+		double averageFactionMinerals = (factionCount == 0 ? 0.0 : totalMinerals / static_cast<double>(factionCount));
+		double averageFactionEcoLab = (factionCount == 0 ? 0.0 : totalEcoLab / static_cast<double>(factionCount));
 		
 		for (int factionId = 1; factionId < MaxPlayerNum; factionId++)
 		{
@@ -2394,8 +2394,8 @@ void __cdecl modifiedTurnUpkeep()
 			
 		}
 		
-		double averageFactionTechCount = (factionCount == 0 ? 0.0 : (double)totalTechCount / (double)factionCount);
-		double averageFactionResearch = (factionCount == 0 ? 0.0 : totalResearch / (double)factionCount);
+		double averageFactionTechCount = (factionCount == 0 ? 0.0 : static_cast<double>(totalTechCount) / static_cast<double>(factionCount));
+		double averageFactionResearch = (factionCount == 0 ? 0.0 : totalResearch / static_cast<double>(factionCount));
 		
 		FILE* statistics_faction_log = fopen("statistics_faction.txt", "a");
 		fprintf
@@ -3170,7 +3170,7 @@ void addBattleBonus(int side, int *strengthPointer, double bonus, char const *la
 	
 	// modify strength
 	
-	*strengthPointer = (int)round((double)(*strengthPointer) * (100.0 + bonus) / 100.0);
+	*strengthPointer = static_cast<int>(round(static_cast<double>(*strengthPointer) * (100.0 + bonus) / 100.0));
 	
 	// add effect description
 	
@@ -4038,7 +4038,7 @@ void wtp_mod_social_ai(int factionId)
 			// how many credits one lab is worth
 			
 			double totalLabsWorth =
-				(double) totalLabs
+				static_cast<double>(totalLabs)
 				*
 				(
 					conf.flat_hurry_cost ?
@@ -4048,7 +4048,7 @@ void wtp_mod_social_ai(int factionId)
 				)
 			;
 			
-			double score = getResourceScore((double) totalNutrient, (double) totalMineral, (double) totalEconomy + totalLabsWorth);
+			double score = getResourceScore(static_cast<double>(totalNutrient), static_cast<double>(totalMineral), static_cast<double>(totalEconomy) + totalLabsWorth);
 			
 			debug
 			(

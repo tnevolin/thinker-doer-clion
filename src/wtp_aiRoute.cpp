@@ -104,7 +104,7 @@ void populateMapSnapshot()
 	
 	// check changes
 	
-	if (mapSnapshot.mapTilesReferencingAddress != *MapTiles || (int)mapSnapshot.surfaceTypes.size() != *MapAreaTiles)
+	if (mapSnapshot.mapTilesReferencingAddress != *MapTiles || static_cast<int>(mapSnapshot.surfaceTypes.size()) != *MapAreaTiles)
 	{
 		// map size changed - invalidate everything
 		
@@ -407,7 +407,7 @@ void populateImpediments(int factionId)
 		}
 
 		double vehicleImpediment = isHostile(factionId, vehicle.faction_id) ? IMPEDIMENT_HOSTILE : isUnfriendly(factionId, vehicle.faction_id) ? IMPEDIMENT_NEUTRAL : 0.0;
-		double impedimentDensity = vehicleImpediment / (double)(2 * range + 1);
+		double impedimentDensity = vehicleImpediment / static_cast<double>(2 * range + 1);
 		for (MAP *rangeTile : getRangeTiles(vehicleTileInfo.tile, range, true))
 		{
 			// same realm for surface vehicle
@@ -421,7 +421,7 @@ void populateImpediments(int factionId)
 		
 	}
 
-	if (DEBUG)
+	 if constexpr (DEBUG)
 	{
 		for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
 		{
@@ -786,7 +786,7 @@ void populateAirClusters(int factionId)
 
 	}
 
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusterEntry : airClusters)
 		{
@@ -922,7 +922,7 @@ void populateAirCluster(int factionId, int chassisId, int speed)
 
 	}
 
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusterEntry : airClusters)
 		{
@@ -1062,7 +1062,7 @@ void populateSeaTransportWaitTimes(int factionId)
 		
 		// parameters
 		
-		double capacityCoefficient = initialTile.capacity >= 8 ? 1.0 : 1.0 + 1.0 * (1.0 - (double)initialTile.capacity / (double)8);
+		double capacityCoefficient = initialTile.capacity >= 8 ? 1.0 : 1.0 + 1.0 * (1.0 - static_cast<double>(initialTile.capacity) / static_cast<double>(8));
 		
 		// process tiles
 		
@@ -1103,9 +1103,9 @@ void populateSeaTransportWaitTimes(int factionId)
 					if (hexCost == -1)
 						continue;
 					
-					double stepCost = (double)hexCost + impediments.at(adjacentTileIndex);
+					double stepCost = static_cast<double>(hexCost) + impediments.at(adjacentTileIndex);
 					
-					double moveTime = stepCost / (double)initialTile.moveRate;
+					double moveTime = stepCost / static_cast<double>(initialTile.moveRate);
 					double waitTime = WAIT_TIME_MULTIPLIER * capacityCoefficient * moveTime;
 					double adjacentTileWaitTime = currentTileWaitTime + waitTime;
 					
@@ -1732,7 +1732,7 @@ void populateLandLandmarks(int factionId)
 								
 								LandLandmarkTileInfo &adjacentTileLandLandmarkTileInfo = landmark.tileInfos.at(adjacentTileIndex);
 								
-								double stepCost = (double)hexCost + impediments.at(adjacentTileIndex);
+								double stepCost = static_cast<double>(hexCost) + impediments.at(adjacentTileIndex);
 								
 								// update value
 								
@@ -1759,7 +1759,7 @@ void populateLandLandmarks(int factionId)
 								LandLandmarkTileInfo &adjacentTileLandLandmarkTileInfo = landmark.tileInfos.at(adjacentTileIndex);
 								
 								double seaTransportWaitTime = seaTransportWaitTimes.at(adjacentTileIndex);
-								double stepCost = (double)Rules->move_rate_roads;
+								double stepCost = static_cast<double>(Rules->move_rate_roads);
 								
 								// update value
 								
@@ -1819,7 +1819,7 @@ void populateLandLandmarks(int factionId)
 							{
 								LandLandmarkTileInfo &adjacentTileLandLandmarkTileInfo = landmark.tileInfos.at(adjacentTileIndex);
 								
-								double stepCost = (double)Rules->move_rate_roads;
+								double stepCost = static_cast<double>(Rules->move_rate_roads);
 								
 								// update value
 								
@@ -1911,7 +1911,7 @@ void populateLandLandmarks(int factionId)
 			
 	}
 	
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		for (size_t landMovementTypeIndex = 0; landMovementTypeIndex < BASIC_LAND_MOVEMENT_TYPE_COUNT; landMovementTypeIndex++)
 		{
@@ -2076,7 +2076,7 @@ void populateSeaClusters(int  factionId)
 		
 	}
 	
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 		{
@@ -2208,7 +2208,7 @@ void populateLandClusters()
 		
 	}
 	
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 		{
@@ -2325,7 +2325,7 @@ void populateLandTransportedClusters()
 			
 	}
 	
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 		{
@@ -2843,7 +2843,7 @@ double getGravshipTravelTime(int vechicleSpeed, MAP const* org, MAP const* dst)
 	
 	int range = getRange(org, dst);
 
-	return (double)range / (double)vechicleSpeed;
+	return static_cast<double>(range) / static_cast<double>(vechicleSpeed);
 	
 }
 
@@ -2927,7 +2927,7 @@ double getSeaLApproachTime(int factionId, MovementType movementType, int unitSpe
 		return INF;
 	}
 
-	double maxLandmarkTravelTime = maxLandmarkMovementCost / (double)(Rules->move_rate_roads * unitSpeed);
+	double maxLandmarkTravelTime = maxLandmarkMovementCost / static_cast<double>(Rules->move_rate_roads * unitSpeed);
 	
 	Profiling::stop("- getSeaLApproachTime");
 	return maxLandmarkTravelTime;
@@ -2994,11 +2994,11 @@ double getLandLApproachTime(int factionId, MovementType movementType, int unitSp
 			
 			orgLandmarkTravelTime =
 				+ orgLandLandmarkTileInfo.seaTransportWaitTime
-				+ orgLandLandmarkTileInfo.landMovementCost / (double)(Rules->move_rate_roads * unitSpeed)
+				+ orgLandLandmarkTileInfo.landMovementCost / static_cast<double>(Rules->move_rate_roads * unitSpeed)
 			;
 			dstLandmarkTravelTime =
 				+ dstLandLandmarkTileInfo.seaTransportWaitTime
-				+ dstLandLandmarkTileInfo.landMovementCost / (double)(Rules->move_rate_roads * unitSpeed)
+				+ dstLandLandmarkTileInfo.landMovementCost / static_cast<double>(Rules->move_rate_roads * unitSpeed)
 			;
 			
 		}
@@ -3006,13 +3006,13 @@ double getLandLApproachTime(int factionId, MovementType movementType, int unitSp
 		{
 			orgLandmarkTravelTime =
 				+ orgLandLandmarkTileInfo.seaTransportWaitTime
-				+ orgLandLandmarkTileInfo.seaMovementCost / (double)(Rules->move_rate_roads * factionInfo.bestSeaTransportUnitSpeed)
-				+ orgLandLandmarkTileInfo.landMovementCost / (double)(Rules->move_rate_roads * unitSpeed)
+				+ orgLandLandmarkTileInfo.seaMovementCost / static_cast<double>(Rules->move_rate_roads * factionInfo.bestSeaTransportUnitSpeed)
+				+ orgLandLandmarkTileInfo.landMovementCost / static_cast<double>(Rules->move_rate_roads * unitSpeed)
 			;
 			dstLandmarkTravelTime =
 				+ dstLandLandmarkTileInfo.seaTransportWaitTime
-				+ dstLandLandmarkTileInfo.seaMovementCost / (double)(Rules->move_rate_roads * factionInfo.bestSeaTransportUnitSpeed)
-				+ dstLandLandmarkTileInfo.landMovementCost / (double)(Rules->move_rate_roads * unitSpeed)
+				+ dstLandLandmarkTileInfo.seaMovementCost / static_cast<double>(Rules->move_rate_roads * factionInfo.bestSeaTransportUnitSpeed)
+				+ dstLandLandmarkTileInfo.landMovementCost / static_cast<double>(Rules->move_rate_roads * unitSpeed)
 			;
 			
 		}
@@ -3199,7 +3199,7 @@ double getATravelTime(MovementType movementType, int  vehicleSpeed, MAP const* o
 	std::priority_queue<FValue, std::vector<FValue>, FValueComparator> openNodes;
 	
 	travelTimes[orgIndex] = 0.0;
-	double orgF = getRouteVectorDistance(org, dst) / (double)vehicleSpeed;
+	double orgF = getRouteVectorDistance(org, dst) / static_cast<double>(vehicleSpeed);
 	openNodes.push({orgIndex, orgF});
 	
 	// process path
@@ -3287,7 +3287,7 @@ double getATravelTime(MovementType movementType, int  vehicleSpeed, MAP const* o
 					
 					// stepTime
 					
-					stepTime = (double)hexCost / (double)(Rules->move_rate_roads * vehicleSpeed);
+					stepTime = static_cast<double>(hexCost) / static_cast<double>(Rules->move_rate_roads * vehicleSpeed);
 					
 				}
 				
@@ -3320,7 +3320,7 @@ double getATravelTime(MovementType movementType, int  vehicleSpeed, MAP const* o
 					
 					// stepTime
 					
-					stepTime = (double)hexCost / (double)(Rules->move_rate_roads * vehicleSpeed);
+					stepTime = static_cast<double>(hexCost) / static_cast<double>(Rules->move_rate_roads * vehicleSpeed);
 					
 				}
 				else if (currentTileInfo.ocean && adjacentTileInfo.ocean) // sea-sea transport movement
@@ -3336,7 +3336,7 @@ double getATravelTime(MovementType movementType, int  vehicleSpeed, MAP const* o
 					
 					// stepTime
 					
-					stepTime = (double)hexCost / (double)(Rules->move_rate_roads * aiFactionInfo->bestSeaTransportUnitSpeed);
+					stepTime = static_cast<double>(hexCost) / static_cast<double>(Rules->move_rate_roads * aiFactionInfo->bestSeaTransportUnitSpeed);
 					
 				}
 				else if (!currentTileInfo.ocean && adjacentTileInfo.ocean) // boarding
@@ -3386,7 +3386,7 @@ double getATravelTime(MovementType movementType, int  vehicleSpeed, MAP const* o
 				
 				// f value
 				
-				double adjacentTileF = travelTime + getRouteVectorDistance(adjacentTile, dst) / (double)vehicleSpeed;
+				double adjacentTileF = travelTime + getRouteVectorDistance(adjacentTile, dst) / static_cast<double>(vehicleSpeed);
 				openNodes.push({adjacentTileIndex, adjacentTileF});
 				
 			}
@@ -3571,7 +3571,7 @@ double getRouteVectorDistance(MAP const* tile1, MAP const* tile2)
 		}
 	}
 	
-	return (double)(std::max(dx, dy) - ((((dx + dy) / 2) - std::min(dx, dy) + 1) / 2));
+	return static_cast<double>(std::max(dx, dy) - ((((dx + dy) / 2) - std::min(dx, dy) + 1) / 2));
 	
 }
 
@@ -4130,7 +4130,7 @@ int getEnemyAirCluster(int  factionId, int  chassisId, int  speed, MAP const *ti
 		||
 		airClusters.at(chassisId).find(speed) == airClusters.at(chassisId).end()
 		||
-		!(tileIndex >= 0 && tileIndex < (int)airClusters.at(chassisId).at(speed).size())
+		!(tileIndex >= 0 && tileIndex < static_cast<int>(airClusters.at(chassisId).at(speed).size()))
 	)
 	{
 		debug("ERROR: No airCluster key: factionId=%d chassisId=%d speed=%d tileIndex=%d\n", factionId, chassisId, speed, tileIndex);flushlog();

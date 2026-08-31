@@ -1664,8 +1664,8 @@
 //
 // 		// repair bonus
 //
-// 		double fullRepairBonus = conf.ai_combat_strength_increase_value * std::max(0.0, getVehicleRelativeDamage(vehicleId) - 0.0) * (double)unitMineralCost;
-// 		double partRepairBonus = conf.ai_combat_strength_increase_value * std::max(0.0, getVehicleRelativeDamage(vehicleId) - 0.2) * (double)unitMineralCost;
+// 		double fullRepairBonus = conf.ai_combat_strength_increase_value * std::max(0.0, getVehicleRelativeDamage(vehicleId) - 0.0) * static_cast<double>(unitMineralCost);
+// 		double partRepairBonus = conf.ai_combat_strength_increase_value * std::max(0.0, getVehicleRelativeDamage(vehicleId) - 0.2) * static_cast<double>(unitMineralCost);
 //
 // 		// best priority
 //
@@ -1749,7 +1749,7 @@
 // 			if (travelTime == INF)
 // 				continue;
 //
-// 			double totalTime = std::max(1.0, travelTime + (double)repairInfo.time);
+// 			double totalTime = std::max(1.0, travelTime + static_cast<double>(repairInfo.time));
 // 			double totalTimeCoefficient = getExponentialCoefficient(conf.ai_combat_travel_time_scale, totalTime);
 //
 // 			// repairGain
@@ -1883,7 +1883,7 @@
 // 			// repair gain
 //
 // 			int unitMineralCost = Rules->mineral_cost_multi * vehicle->cost();
-// 			double fullRepairBonus = conf.ai_combat_strength_increase_value * getVehicleRelativeDamage(vehicleId) * (double)unitMineralCost;
+// 			double fullRepairBonus = conf.ai_combat_strength_increase_value * getVehicleRelativeDamage(vehicleId) * static_cast<double>(unitMineralCost);
 // 			double repairBonus = fullRepairBonus;
 // 			double repairGain = getGainBonus(repairBonus) * totalTimeCoefficient;
 //
@@ -1934,7 +1934,7 @@
 //
 // 			int unitMineralCost = Rules->mineral_cost_multi * vehicle->cost();
 // 			double strengthIncrease = getMoraleMultiplier(vehicle->morale + 1) / getMoraleMultiplier(vehicle->morale) - 1.0;
-// 			double promotionBonus = conf.ai_combat_strength_increase_value * strengthIncrease * (double)unitMineralCost;
+// 			double promotionBonus = conf.ai_combat_strength_increase_value * strengthIncrease * static_cast<double>(unitMineralCost);
 // 			double promotionGain = getGainBonus(promotionBonus) * totalTimeCoefficient;
 //
 // 			promotionPriority =
@@ -2155,7 +2155,7 @@
 //
 // 			// police required power
 //
-// 			double requiredPower = (double)baseInfo.policeData.requiredPower;
+// 			double requiredPower = static_cast<double>(baseInfo.policeData.requiredPower);
 //
 // 			// travel time coefficient
 //
@@ -2949,7 +2949,7 @@
 // {
 // 	trace("getDuelCombatCostCoefficient\n");
 //
-// 	double vehicleUnitCost = (double)getVehicleUnitCost(vehicleId);
+// 	double vehicleUnitCost = static_cast<double>(getVehicleUnitCost(vehicleId));
 //
 // 	if (vehicleUnitCost <= 0.0 || enemyUnitCost <= 0.0)
 // 		return 0.0;
@@ -2999,7 +2999,7 @@
 // {
 // 	trace("getDuelCombatCostCoefficient\n");
 //
-// 	double vehicleUnitCost = (double)getVehicleUnitCost(vehicleId);
+// 	double vehicleUnitCost = static_cast<double>(getVehicleUnitCost(vehicleId));
 //
 // 	if (vehicleUnitCost <= 0.0 || enemyUnitCost <= 0.0)
 // 		return 0.0;

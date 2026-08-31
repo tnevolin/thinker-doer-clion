@@ -1243,7 +1243,7 @@ double getBuildSiteOverlapScore(MAP *buildSite)
 
 	double overlapScore =
 		overlapCountAdjusted <= conf.ai_expansion_radius_overlap_ignored ? 0.0 :
-			conf.ai_expansion_radius_overlap_coefficient * (double)std::max(0, overlapCountAdjusted - conf.ai_expansion_radius_overlap_ignored)
+			conf.ai_expansion_radius_overlap_coefficient * static_cast<double>(std::max(0, overlapCountAdjusted - conf.ai_expansion_radius_overlap_ignored))
 	;
 
 	debug

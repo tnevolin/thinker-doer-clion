@@ -550,7 +550,7 @@ bool deliverFormer(int transportVehicleId, int formerVehicleId)
 		int baseCount = kv.second;
 		int formerCount = (regionFormerCounts.count(region) == 0 ? 0 : regionFormerCounts[region]);
 		
-		double formerRatio = (double)formerCount / (double)baseCount;
+		double formerRatio = static_cast<double>(formerCount) / static_cast<double>(baseCount);
 		
 		if (mostDemandingRegion == -1 || formerRatio < minFormerRatio)
 		{

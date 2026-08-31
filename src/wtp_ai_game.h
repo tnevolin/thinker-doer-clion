@@ -103,13 +103,6 @@ public:
 	double getVehicleCombatEffect(int attackerVehicleId, int defenderVehicleId, EngagementMode engagementMode, MAP const *attackerTile, MAP const *defenderTile);
 	double getVehicleCombatEffect(int attackerVehicleId, int defenderVehicleId, EngagementMode engagementMode);
 	
-private:
-	
-	// TODO: do I need it?
-	double getMeleeRelativeUnitStrength(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId);
-	double getArtilleryDuelRelativeUnitStrength(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId);
-	double getUnitBombardmentDamage(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId);
-	
 };
 
 struct Combattant
@@ -203,10 +196,9 @@ public:
 	
 	void compute();
 	void compute(robin_hood::unordered_flat_map<int, double> assailantVehicleDamageCoefficients, robin_hood::unordered_flat_map<int, double> protectorVehicleDamageCoefficients);
-	void resolveMutualCombat(CombattantEffect &combattantEffect);
+	static void resolveMutualCombat(CombattantEffect &combattantEffect);
 	CombattantEffect getBestCombattantEffect(std::list<Combattant *> &attackers, std::list<Combattant *> &defenders, EngagementMode engagementMode, bool attackerAtTile, bool defenderAtTile);
-	robin_hood::unordered_flat_map<int, double> selectInterceptors(robin_hood::unordered_flat_map<int, double> &unitWeights);
-	
+
 	static double getEnemyRelativeHealthBonus(std::vector<Combattant> opponentCombattants);
 	
 };
@@ -553,10 +545,10 @@ public:
 	std::vector<int> nonArtilleryVehiclePad0s;
 	
 	int baseRange;
-	bool base;
-	bool baseOrBunker;
-	bool airbase;
-	int baseId;
+	bool tileBase;
+	bool tileBaseOrBunker;
+	bool tileAirbase;
+	int tileBaseId;
 	
 	bool hostile = false;
 	bool breakTreaty = false;
@@ -636,7 +628,7 @@ public:
 	double getRequiredEffect() const;
 	double getDestructionRatio() const;
 	bool isSufficient(bool desired) const;
-	bool addAttacker(IdDoubleValue vehicleTravelTime);
+	bool addAttacker(IdDoubleValue const &vehicleTravelTime);
 	void computeAttackParameters();
 	
 };
@@ -933,7 +925,7 @@ struct Data
 	void clear();
 	
 	// access global data arrays
-	
+
 	TileInfo &getTileInfo(int tileIndex);
 	TileInfo &getTileInfo(MAP const* tile);
 	TileInfo &getBaseTileInfo(int baseId);
@@ -942,7 +934,7 @@ struct Data
 	bool isLand(MAP const* tile);
 	bool isSeaUnitAllowed(MAP const* tile, int factionId);
 	bool isLandUnitAllowed(MAP const* tile);
-	
+
 	BaseInfo &getBaseInfo(int baseId);
 	BunkerInfo &getBunkerInfo(MAP const* tile);
 	
@@ -1042,7 +1034,7 @@ double getBaseGain(int popSize, int nutrientCostFactor, Resource & baseIntake2);
 double getBaseGain(int baseId, Resource baseIntake2);
 double getBaseGain(int baseId);
 double getBaseValue(int baseId);
-double getBaseImprovementGain(int baseId, Resource oldBaseIntake2, Resource newBaseIntake2);
+double getBaseImprovementGain(int baseId, Resource const &oldBaseIntake2, Resource const &newBaseIntake2);
 COMBAT_TYPE getWeaponType(int vehicleId);
 COMBAT_TYPE getArmorType(int vehicleId);
 CombatStrength getMeleeAttackCombatStrength(int vehicleId);

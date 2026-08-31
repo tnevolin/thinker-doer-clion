@@ -30,9 +30,9 @@ void patch_battle_compute()
 {
     // wrap battle computation into custom function
 	
-    write_call_over(0x0050474C, (int)wtp_mod_battle_compute);
-    write_call_over(0x00506EA6, (int)wtp_mod_battle_compute);
-    write_call_over(0x005085E0, (int)wtp_mod_battle_compute);
+    write_call_over(0x0050474C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_battle_compute)));
+    write_call_over(0x00506EA6, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_battle_compute)));
+    write_call_over(0x005085E0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_battle_compute)));
 	
 }
 
@@ -387,32 +387,32 @@ Enables alternative prototype cost formula.
 */
 void patch_alternative_prototype_cost_formula()
 {
-    write_call_over(0x00436ADD, (int)wtp_mod_proto_cost);
-	write_call_over(0x0043704C, (int)wtp_mod_proto_cost);
-	write_call_over(0x005817C9, (int)wtp_mod_proto_cost);
-    write_call_over(0x00581833, (int)wtp_mod_proto_cost);
-    write_call_over(0x00581BB3, (int)wtp_mod_proto_cost);
-    write_call_over(0x00581BCB, (int)wtp_mod_proto_cost);
-    write_call_over(0x00582339, (int)wtp_mod_proto_cost);
-    write_call_over(0x00582359, (int)wtp_mod_proto_cost);
-    write_call_over(0x00582378, (int)wtp_mod_proto_cost);
-    write_call_over(0x00582398, (int)wtp_mod_proto_cost);
-    write_call_over(0x005823B0, (int)wtp_mod_proto_cost);
-    write_call_over(0x00582482, (int)wtp_mod_proto_cost);
-    write_call_over(0x0058249A, (int)wtp_mod_proto_cost);
-    write_call_over(0x0058254A, (int)wtp_mod_proto_cost);
-    write_call_over(0x005827E4, (int)wtp_mod_proto_cost);
-    write_call_over(0x00582EC5, (int)wtp_mod_proto_cost);
-    write_call_over(0x00582FEC, (int)wtp_mod_proto_cost);
-    write_call_over(0x005A5D35, (int)wtp_mod_proto_cost);
-    write_call_over(0x005A5F15, (int)wtp_mod_proto_cost);
+    write_call_over(0x00436ADD, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+	write_call_over(0x0043704C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+	write_call_over(0x005817C9, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x00581833, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x00581BB3, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x00581BCB, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x00582339, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x00582359, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x00582378, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x00582398, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x005823B0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x00582482, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x0058249A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x0058254A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x005827E4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x00582EC5, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x00582FEC, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x005A5D35, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
+    write_call_over(0x005A5F15, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_proto_cost)));
 	
 }
 
 void patch_hurry_popup()
 {
-    write_call(0x41916B, (int)wtp_BaseWin_popup_start);
-    write_call(0x4195A6, (int)wtp_BaseWin_ask_number);
+    write_call(0x41916B, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_BaseWin_popup_start)));
+    write_call(0x4195A6, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_BaseWin_ask_number)));
 	
 }
 
@@ -452,7 +452,7 @@ void patch_hurry_minimal_minerals()
 	
 	// intercept call
 	
-	write_call(0x00418F9D, (int)wpt_mod_Base_hurry_cost_factor_mineral_cost);
+	write_call(0x00418F9D, static_cast<int>(reinterpret_cast<uintptr_t>(wpt_mod_Base_hurry_cost_factor_mineral_cost)));
 	
 	// do not mulitpy by item cost - it is already done in the call above
 	
@@ -539,7 +539,7 @@ f:  ff 35 70 93 68 00       push   DWORD PTR ds:0x689370
     )
     ;
 	
-    write_call(0x0041901C + 0x15, (int)hurry_cost);
+    write_call(0x0041901C + 0x15, static_cast<int>(reinterpret_cast<uintptr_t>(hurry_cost)));
 	
 }
 
@@ -890,7 +890,7 @@ void patch_alternative_artillery_damage()
 	
     // custom artillery damage generator
 	
-    write_call(0x00508616 + 0x5, (int)modified_artillery_damage);
+    write_call(0x00508616 + 0x5, static_cast<int>(reinterpret_cast<uintptr_t>(modified_artillery_damage)));
 	
 }
 
@@ -1017,7 +1017,7 @@ Displays additional base population info in F4 screen.
 */
 void patch_display_base_population_info()
 {
-    write_call(0x0049DCB1, (int)sayBase);
+    write_call(0x0049DCB1, static_cast<int>(reinterpret_cast<uintptr_t>(sayBase)));
 
 }
 
@@ -1027,9 +1027,9 @@ This is for The Planetary Transit System patch.
 */
 void patch_base_init()
 {
-    write_call(0x004C9870, (int)wtp_mod_base_init);
-    write_call(0x005AF926, (int)wtp_mod_base_init);
-    write_call(0x005B2BB8, (int)wtp_mod_base_init);
+    write_call(0x004C9870, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_base_init)));
+    write_call(0x005AF926, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_base_init)));
+    write_call(0x005B2BB8, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_base_init)));
 
 }
 
@@ -1040,7 +1040,7 @@ void patch_hsa_does_not_kill_probe()
 {
 	// HSA does not kill probe but exhausts its movement points instead.
 
-    write_call(0x0059F6EA, (int)mod_veh_skip);
+    write_call(0x0059F6EA, static_cast<int>(reinterpret_cast<uintptr_t>(mod_veh_skip)));
 
 }
 
@@ -1085,18 +1085,18 @@ void patch_help_ability_cost_text()
 {
 	// in Datalinks
 	
-    write_call(0x0042EF7A, (int)getAbilityCostText);
+    write_call(0x0042EF7A, static_cast<int>(reinterpret_cast<uintptr_t>(getAbilityCostText)));
 	
     // in workshop
 	
-    write_call(0x0043B202, (int)appendAbilityCostTextInWorkshop);
-    write_call(0x0043B29D, (int)appendAbilityCostTextInWorkshop);
-    write_call(0x0043B334, (int)appendAbilityCostTextInWorkshop);
-    write_call(0x0043B168, (int)appendAbilityCostTextInWorkshop);
-    write_call(0x0043B417, (int)appendAbilityCostTextInWorkshop);
-    write_call(0x0043B4FC, (int)appendAbilityCostTextInWorkshop);
-    write_call(0x0043B5E1, (int)appendAbilityCostTextInWorkshop);
-    write_call(0x0043B6A7, (int)appendAbilityCostTextInWorkshop);
+    write_call(0x0043B202, static_cast<int>(reinterpret_cast<uintptr_t>(appendAbilityCostTextInWorkshop)));
+    write_call(0x0043B29D, static_cast<int>(reinterpret_cast<uintptr_t>(appendAbilityCostTextInWorkshop)));
+    write_call(0x0043B334, static_cast<int>(reinterpret_cast<uintptr_t>(appendAbilityCostTextInWorkshop)));
+    write_call(0x0043B168, static_cast<int>(reinterpret_cast<uintptr_t>(appendAbilityCostTextInWorkshop)));
+    write_call(0x0043B417, static_cast<int>(reinterpret_cast<uintptr_t>(appendAbilityCostTextInWorkshop)));
+    write_call(0x0043B4FC, static_cast<int>(reinterpret_cast<uintptr_t>(appendAbilityCostTextInWorkshop)));
+    write_call(0x0043B5E1, static_cast<int>(reinterpret_cast<uintptr_t>(appendAbilityCostTextInWorkshop)));
+    write_call(0x0043B6A7, static_cast<int>(reinterpret_cast<uintptr_t>(appendAbilityCostTextInWorkshop)));
 	
 }
 
@@ -1170,7 +1170,7 @@ void patch_display_base_nutrient_cost_factor()
 	
 	// overwrite text
 	
-	write_call(0x004113B0, (int)displayBaseNutrientCostFactor);
+	write_call(0x004113B0, static_cast<int>(reinterpret_cast<uintptr_t>(displayBaseNutrientCostFactor)));
 	
 }
 
@@ -1220,7 +1220,7 @@ void patch_growth_turns_population_boom()
 	
 	// overwrite text
 	
-	write_call(0x004118BE, (int)correctGrowthTurnsIndicator);
+	write_call(0x004118BE, static_cast<int>(reinterpret_cast<uintptr_t>(correctGrowthTurnsIndicator)));
 	
 }
 
@@ -1334,7 +1334,7 @@ Displays base production for pact faction bases same way as for infiltration.
 */
 void patch_pact_base_map_production_display()
 {
-	write_call(0x0046836E, (int)modifiedSpyingForPactBaseProductionDisplay);
+	write_call(0x0046836E, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedSpyingForPactBaseProductionDisplay)));
 	
 }
 
@@ -1372,11 +1372,11 @@ f:  83 c4 08                add    esp,0x8
 		modified_probe_risk_hook_bytes_length
 	);
 	
-	write_call(0x005A314B, (int)modifiedProbeActionRisk);
+	write_call(0x005A314B, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedProbeActionRisk)));
 	
 	// procure research data success_rates
 	
-	write_call(0x0059FEBB, (int)wtp_mod_probe_success_rates_procure_research_data);
+	write_call(0x0059FEBB, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_success_rates_procure_research_data)));
 	
 }
 
@@ -1409,7 +1409,7 @@ Wraps best_defender call.
 */
 void patch_best_defender()
 {
-	write_call(0x00506D07, (int)modifiedBestDefender);
+	write_call(0x00506D07, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBestDefender)));
 	
 }
 
@@ -1418,10 +1418,10 @@ Requests for break treaty before fight.
 */
 void patch_break_treaty_before_fight()
 {
-	write_call(0x00506ADE, (int)wtp_mod_battle_fight_2);
-	write_call(0x00568B1C, (int)wtp_mod_battle_fight_2);
-	write_call(0x005697AC, (int)wtp_mod_battle_fight_2);
-	write_call(0x0056A2E2, (int)wtp_mod_battle_fight_2);
+	write_call(0x00506ADE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_battle_fight_2)));
+	write_call(0x00568B1C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_battle_fight_2)));
+	write_call(0x005697AC, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_battle_fight_2)));
+	write_call(0x0056A2E2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_battle_fight_2)));
 	
 }
 
@@ -1541,7 +1541,7 @@ b:  e8 fd ff ff ff          call   d <_main+0xd>
 		calculate_sprite_offset_bytes_length
 	);
 	
-	write_call(0x004AF825 + 0xb, (int)modifiedSocialWinDrawSocialCalculateSpriteOffset);
+	write_call(0x004AF825 + 0xb, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedSocialWinDrawSocialCalculateSpriteOffset)));
 	
 	// do not skip TALENT when counting icons in description
 	
@@ -1701,20 +1701,20 @@ Disables air transport unload everywhere.
 */
 void patch_disable_air_transport_unload_everywhere()
 {
-    write_call(0x004D0509, (int)modifiedVehicleCargoForAirTransportUnload);
+    write_call(0x004D0509, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedVehicleCargoForAirTransportUnload)));
 }
 
 void patch_enemy_move()
 {
 	// in enemy_move_check
-	write_call(0x00579362, (int)wtp_mod_enemy_move);
+	write_call(0x00579362, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_enemy_move)));
 
 }
 
 void patch_faction_upkeep()
 {
-    write_call(0x00528214, (int)modifiedFactionUpkeep);
-    write_call(0x0052918F, (int)modifiedFactionUpkeep);
+    write_call(0x00528214, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedFactionUpkeep)));
+    write_call(0x0052918F, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedFactionUpkeep)));
 }
 
 /*
@@ -1747,13 +1747,13 @@ void patch_disable_move_territory_restrictions()
 
 void patch_silent_vendetta_warning()
 {
-    write_call(0x004A050D, (int)modifiedBreakTreaty);
-    write_call(0x004CC766, (int)modifiedBreakTreaty);
-    write_call(0x004D498F, (int)modifiedBreakTreaty);
-    write_call(0x004D5A06, (int)modifiedBreakTreaty);
-    write_call(0x004D8334, (int)modifiedBreakTreaty);
-    write_call(0x00507117, (int)modifiedBreakTreaty);
-    write_call(0x00597551, (int)modifiedBreakTreaty);
+    write_call(0x004A050D, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
+    write_call(0x004CC766, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
+    write_call(0x004D498F, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
+    write_call(0x004D5A06, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
+    write_call(0x004D8334, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
+    write_call(0x00507117, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
+    write_call(0x00597551, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
 
 }
 
@@ -1941,18 +1941,18 @@ void patch_carry_over_minerals()
 	
 	// disable penalty after base production
 	
-    write_call(0x004179A8, (int)modifiedBaseMaking);
-    write_call(0x004179BC, (int)modifiedBaseMaking);
-    write_call(0x00417A2E, (int)modifiedBaseMaking);
-    write_call(0x00417A3F, (int)modifiedBaseMaking);
-    write_call(0x004932D3, (int)modifiedBaseMaking);
-    write_call(0x004932E5, (int)modifiedBaseMaking);
-    write_call(0x0049365A, (int)modifiedBaseMaking);
-    write_call(0x0049366B, (int)modifiedBaseMaking);
-    write_call(0x004E4850, (int)modifiedBaseMaking);
-    write_call(0x004E485F, (int)modifiedBaseMaking);
-    write_call(0x004E5B06, (int)modifiedBaseMaking);
-    write_call(0x004E5B1B, (int)modifiedBaseMaking);
+    write_call(0x004179A8, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBaseMaking)));
+    write_call(0x004179BC, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBaseMaking)));
+    write_call(0x00417A2E, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBaseMaking)));
+    write_call(0x00417A3F, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBaseMaking)));
+    write_call(0x004932D3, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBaseMaking)));
+    write_call(0x004932E5, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBaseMaking)));
+    write_call(0x0049365A, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBaseMaking)));
+    write_call(0x0049366B, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBaseMaking)));
+    write_call(0x004E4850, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBaseMaking)));
+    write_call(0x004E485F, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBaseMaking)));
+    write_call(0x004E5B06, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBaseMaking)));
+    write_call(0x004E5B1B, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBaseMaking)));
 	
 }
 
@@ -2027,17 +2027,17 @@ void patch_subversion_allow_stacked_units()
 	
 	// move subverted unit to probe tile
 	
-    write_call(0x0056E19C, (int)wtp_mod_probe);
-    write_call(0x00578512, (int)wtp_mod_probe);
-    write_call(0x00595026, (int)wtp_mod_probe);
-    write_call(0x00596615, (int)wtp_mod_probe);
+    write_call(0x0056E19C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe)));
+    write_call(0x00578512, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe)));
+    write_call(0x00595026, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe)));
+    write_call(0x00596615, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe)));
 	
-    write_call(0x005A4250, (int)modifiedSubveredVehicleDrawTile);
+    write_call(0x005A4250, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedSubveredVehicleDrawTile)));
     
     // intercepting enemy_move is done in patch_enemy_move
     
-//    write_call(0x00512842, (int)wtp_mod_enemy_move);
-//    write_call(0x00579362, (int)wtp_mod_enemy_move);
+//    write_call(0x00512842, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_enemy_move)));
+//    write_call(0x00579362, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_enemy_move)));
     
 }
 
@@ -2088,7 +2088,7 @@ void patch_alternative_subversion_and_mind_control()
 		alternative_subversion_cost_bytes_length
 	);
 
-    write_call(0x005A153A + 0x3, (int)getBasicAlternativeSubversionCost);
+    write_call(0x005A153A + 0x3, static_cast<int>(reinterpret_cast<uintptr_t>(getBasicAlternativeSubversionCost)));
 
 	// disable vanilla PE effect computation - it is already accounted for
 
@@ -2159,8 +2159,8 @@ void patch_alternative_subversion_and_mind_control()
 
 	// wrap mind_cost to add plain unit cost
 
-    write_call(0x0059EEA1, (int)modifiedMindControlCost);
-    write_call(0x005A20E8, (int)modifiedMindControlCost);
+    write_call(0x0059EEA1, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedMindControlCost)));
+    write_call(0x005A20E8, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedMindControlCost)));
 
 }
 
@@ -2348,8 +2348,8 @@ void patch_obsoletion()
 
 void patch_turn_upkeep()
 {
-    write_call_over(0x52768A, (int)modifiedTurnUpkeep);
-    write_call_over(0x52A4AD, (int)modifiedTurnUpkeep);
+    write_call_over(0x52768A, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedTurnUpkeep)));
+    write_call_over(0x52A4AD, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedTurnUpkeep)));
 }
 
 void patch_sensor_indestructible()
@@ -2357,34 +2357,34 @@ void patch_sensor_indestructible()
 	// Console::destroy
 	// disable sensor destruction
 	
-    write_call(0x0046D4D6, (int)wtp_mod_Console_destroy);
-    write_call(0x00517589, (int)wtp_mod_Console_destroy);
-    write_call(0x0051C8EF, (int)wtp_mod_Console_destroy);
+    write_call(0x0046D4D6, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_destroy)));
+    write_call(0x00517589, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_destroy)));
+    write_call(0x0051C8EF, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_destroy)));
 	
 	// action_destroy
 	// disable sensor destruction
 	
-    write_call(0x004CD181, (int)wtp_mod_action_destroy);
-    write_call(0x004D5B71, (int)wtp_mod_action_destroy);
-    write_call(0x00536A7C, (int)wtp_mod_action_destroy);
-    write_call(0x00536AB6, (int)wtp_mod_action_destroy);
-    write_call(0x005671B4, (int)wtp_mod_action_destroy);
-    write_call(0x0056778F, (int)wtp_mod_action_destroy);
-    write_call(0x00570DDF, (int)wtp_mod_action_destroy);
-    write_call(0x00570EF0, (int)wtp_mod_action_destroy);
-    write_call(0x0057108E, (int)wtp_mod_action_destroy);
-    write_call(0x00578D94, (int)wtp_mod_action_destroy);
+    write_call(0x004CD181, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
+    write_call(0x004D5B71, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
+    write_call(0x00536A7C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
+    write_call(0x00536AB6, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
+    write_call(0x005671B4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
+    write_call(0x0056778F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
+    write_call(0x00570DDF, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
+    write_call(0x00570EF0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
+    write_call(0x0057108E, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
+    write_call(0x00578D94, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
 	
 }
 
 void patch_tech_value()
 {
-	write_call_over(0x005BDC4C, (int)modified_tech_value);
+	write_call_over(0x005BDC4C, static_cast<int>(reinterpret_cast<uintptr_t>(modified_tech_value)));
 }
 
 void patch_disable_vanilla_base_hurry()
 {
-	write_call(0x4F7A38, (int)wtp_mod_base_hurry);
+	write_call(0x4F7A38, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_base_hurry)));
 }
 
 /*
@@ -2392,8 +2392,8 @@ Vehicle moves entry point.
 */
 void patch_enemy_turn()
 {
-    write_call(0x00528289, (int)wtp_mod_enemy_turn); // control_turn
-    write_call(0x005295C0, (int)wtp_mod_enemy_turn); // net_upkeep
+    write_call(0x00528289, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_enemy_turn))); // control_turn
+    write_call(0x005295C0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_enemy_turn))); // net_upkeep
 
 }
 
@@ -2431,8 +2431,8 @@ void patch_tech_ai_randomization()
 
 void patch_pact_withdraw()
 {
-	write_call(0x0053C69E, (int)modified_pact_withdraw);
-	write_call(0x0053C6A8, (int)modified_pact_withdraw);
+	write_call(0x0053C69E, static_cast<int>(reinterpret_cast<uintptr_t>(modified_pact_withdraw)));
+	write_call(0x0053C6A8, static_cast<int>(reinterpret_cast<uintptr_t>(modified_pact_withdraw)));
 	
 }
 
@@ -2468,11 +2468,11 @@ void patch_disengagement_from_stack()
 
 void patch_order_veh()
 {
-   	write_call(0x004CB3BA, (int)wtp_mod_order_veh);
-   	write_call(0x004CBA24, (int)wtp_mod_order_veh);
-   	write_call(0x0053179F, (int)wtp_mod_order_veh);
-   	write_call(0x00531AC5, (int)wtp_mod_order_veh);
-   	write_call(0x005367EC, (int)wtp_mod_order_veh);
+   	write_call(0x004CB3BA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_order_veh)));
+   	write_call(0x004CBA24, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_order_veh)));
+   	write_call(0x0053179F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_order_veh)));
+   	write_call(0x00531AC5, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_order_veh)));
+   	write_call(0x005367EC, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_order_veh)));
 	
 }
 
@@ -2617,7 +2617,7 @@ Disables transport to pick not boarded vehicles.
 */
 void patch_transport_pick_everybody()
 {
-   	write_call(0x005980AE, (int)modified_stack_veh_disable_transport_pick_everybody);
+   	write_call(0x005980AE, static_cast<int>(reinterpret_cast<uintptr_t>(modified_stack_veh_disable_transport_pick_everybody)));
 	
 }
 
@@ -2626,21 +2626,21 @@ Disables non transport vehicles to stop turn in base.
 */
 void patch_non_transport_stop_in_base()
 {
-   	write_call(0x004CB53C, (int)modified_veh_skip_disable_non_transport_stop_in_base);
+   	write_call(0x004CB53C, static_cast<int>(reinterpret_cast<uintptr_t>(modified_veh_skip_disable_non_transport_stop_in_base)));
 	
 }
 
 void patch_disable_alien_ranged_from_transport()
 {
-   	write_call(0x0056B65E, (int)modified_alien_move);
-   	write_call(0x00566ED9, (int)modified_can_arty_in_alien_move);
+   	write_call(0x0056B65E, static_cast<int>(reinterpret_cast<uintptr_t>(modified_alien_move)));
+   	write_call(0x00566ED9, static_cast<int>(reinterpret_cast<uintptr_t>(modified_can_arty_in_alien_move)));
 	
 }
 
 void patch_disable_kill_ai()
 {
-   	write_call(0x00561C32, (int)modified_kill);
-   	write_call(0x00561D3A, (int)modified_kill);
+   	write_call(0x00561C32, static_cast<int>(reinterpret_cast<uintptr_t>(modified_kill)));
+   	write_call(0x00561D3A, static_cast<int>(reinterpret_cast<uintptr_t>(modified_kill)));
 	
 }
 
@@ -2707,7 +2707,7 @@ void patch_status_win_info()
 {
 //	write_call(0x004B78D5, (int)modStatusWinLandmark_strlen);
 //	write_call(0x004B7A0C, (int)modStatusWinRiverVegetation_strlen);
-	write_call(0x004B7C2E, (int)modStatusWinBonus_bonus_at);
+	write_call(0x004B7C2E, static_cast<int>(reinterpret_cast<uintptr_t>(modStatusWinBonus_bonus_at)));
 //	write_call(0x004B7CA8, (int)modStatusWinBonus_strlen);
 	
 }
@@ -2717,10 +2717,10 @@ Sets moved factions = 8 if there is no human player.
 */
 void patch_load_game()
 {
-	write_call(0x0047D5CE, (int)modified_load_game);
-	write_call(0x0051BBE3, (int)modified_load_game);
-	write_call(0x0058E7A1, (int)modified_load_game);
-	write_call(0x0058E879, (int)modified_load_game);
+	write_call(0x0047D5CE, static_cast<int>(reinterpret_cast<uintptr_t>(modified_load_game)));
+	write_call(0x0051BBE3, static_cast<int>(reinterpret_cast<uintptr_t>(modified_load_game)));
+	write_call(0x0058E7A1, static_cast<int>(reinterpret_cast<uintptr_t>(modified_load_game)));
+	write_call(0x0058E879, static_cast<int>(reinterpret_cast<uintptr_t>(modified_load_game)));
 	
 }
 
@@ -2729,7 +2729,7 @@ Disables formers running away from aliens.
 */
 void patch_scary_former()
 {
-	write_call(0x0056B8C5, (int)modified_zoc_veh);
+	write_call(0x0056B8C5, static_cast<int>(reinterpret_cast<uintptr_t>(modified_zoc_veh)));
 	
 }
 
@@ -2738,63 +2738,63 @@ Deletes supported units in more sane order.
 */
 void patch_base_check_support()
 {
-	write_call(0x004F7A75, (int)modified_base_check_support);
+	write_call(0x004F7A75, static_cast<int>(reinterpret_cast<uintptr_t>(modified_base_check_support)));
 	
 }
 
 void patch_zoc_disabled()
 {
-	write_call(0x005969B7, (int)wtp_mod_quick_zoc);
-	write_call(0x005969D2, (int)wtp_mod_quick_zoc);
-	write_call(0x00522A70, (int)wtp_mod_zoc_any);
-	write_call(0x005668E2, (int)wtp_mod_zoc_any);
-	write_call(0x00566DE0, (int)wtp_mod_zoc_any);
-	write_call(0x00579351, (int)wtp_mod_zoc_any);
-	write_call(0x0057B638, (int)wtp_mod_zoc_any);
-	write_call(0x005998FA, (int)wtp_mod_zoc_any);
-	write_call(0x0056702F, (int)wtp_mod_zoc_veh);
-	write_call(0x0056B8C5, (int)wtp_mod_zoc_veh);
-	write_call(0x0056BB82, (int)wtp_mod_zoc_veh);
-	write_call(0x005716B0, (int)wtp_mod_zoc_veh);
-	write_call(0x005758FA, (int)wtp_mod_zoc_veh);
-	write_call(0x00577393, (int)wtp_mod_zoc_veh);
-	write_call(0x00577963, (int)wtp_mod_zoc_veh);
-	write_call(0x00577B27, (int)wtp_mod_zoc_veh);
-	write_call(0x00577E4E, (int)wtp_mod_zoc_veh);
-	write_call(0x00577E80, (int)wtp_mod_zoc_veh);
-	write_call(0x00598F8E, (int)wtp_mod_zoc_veh);
-	write_call(0x0059A089, (int)wtp_mod_zoc_veh);
-	write_call(0x0059CDF9, (int)wtp_mod_zoc_veh);
-	write_call(0x004EC828, (int)wtp_mod_zoc_sea);
-	write_call(0x00560C91, (int)wtp_mod_zoc_sea);
-	write_call(0x00561A7F, (int)wtp_mod_zoc_sea);
-	write_call(0x00561D21, (int)wtp_mod_zoc_sea);
-	write_call(0x0056C5A3, (int)wtp_mod_zoc_sea);
-	write_call(0x00571820, (int)wtp_mod_zoc_sea);
-	write_call(0x005724F2, (int)wtp_mod_zoc_sea);
-	write_call(0x00577281, (int)wtp_mod_zoc_sea);
-	write_call(0x0057745B, (int)wtp_mod_zoc_sea);
-	write_call(0x00577681, (int)wtp_mod_zoc_sea);
-	write_call(0x00577FA2, (int)wtp_mod_zoc_sea);
-	write_call(0x005C8D8C, (int)wtp_mod_zoc_sea);
-	write_call(0x004CC5E3, (int)wtp_mod_zoc_move);
-	write_call(0x004ED6EE, (int)wtp_mod_zoc_move);
-	write_call(0x00509478, (int)wtp_mod_zoc_move);
-	write_call(0x0056B8B1, (int)wtp_mod_zoc_move);
-	write_call(0x0056BBA1, (int)wtp_mod_zoc_move);
-	write_call(0x0056C1FF, (int)wtp_mod_zoc_move);
-	write_call(0x005723FE, (int)wtp_mod_zoc_move);
-	write_call(0x005725EE, (int)wtp_mod_zoc_move);
-	write_call(0x00573D7D, (int)wtp_mod_zoc_move);
-	write_call(0x00577614, (int)wtp_mod_zoc_move);
-	write_call(0x00595395, (int)wtp_mod_zoc_move);
-	write_call(0x005953AA, (int)wtp_mod_zoc_move);
-	write_call(0x0059BEB2, (int)wtp_mod_zoc_move);
-	write_call(0x0059C0B7, (int)wtp_mod_zoc_move);
-	write_call(0x0059A937, (int)wtp_mod_zoc_path);
-	write_call(0x0059AF1A, (int)wtp_mod_zoc_path);
-	write_call(0x0059B45F, (int)wtp_mod_zoc_path);
-	write_call(0x0059B7B1, (int)wtp_mod_zoc_path);
+	write_call(0x005969B7, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_quick_zoc)));
+	write_call(0x005969D2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_quick_zoc)));
+	write_call(0x00522A70, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_any)));
+	write_call(0x005668E2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_any)));
+	write_call(0x00566DE0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_any)));
+	write_call(0x00579351, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_any)));
+	write_call(0x0057B638, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_any)));
+	write_call(0x005998FA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_any)));
+	write_call(0x0056702F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x0056B8C5, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x0056BB82, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x005716B0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x005758FA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x00577393, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x00577963, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x00577B27, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x00577E4E, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x00577E80, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x00598F8E, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x0059A089, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x0059CDF9, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
+	write_call(0x004EC828, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
+	write_call(0x00560C91, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
+	write_call(0x00561A7F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
+	write_call(0x00561D21, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
+	write_call(0x0056C5A3, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
+	write_call(0x00571820, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
+	write_call(0x005724F2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
+	write_call(0x00577281, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
+	write_call(0x0057745B, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
+	write_call(0x00577681, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
+	write_call(0x00577FA2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
+	write_call(0x005C8D8C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
+	write_call(0x004CC5E3, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x004ED6EE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x00509478, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x0056B8B1, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x0056BBA1, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x0056C1FF, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x005723FE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x005725EE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x00573D7D, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x00577614, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x00595395, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x005953AA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x0059BEB2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x0059C0B7, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
+	write_call(0x0059A937, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_path)));
+	write_call(0x0059AF1A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_path)));
+	write_call(0x0059B45F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_path)));
+	write_call(0x0059B7B1, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_path)));
 	
 }
 
@@ -2863,12 +2863,12 @@ void patch_psych_specialist_content()
 	// in BaseWin__draw_psych
 	// intercept BaseWin__psych_raw call to disable drawing specialists
 	
-	write_call(0x00408E3B, (int)wtp_mod_BaseWin_psych_row);
+	write_call(0x00408E3B, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_BaseWin_psych_row)));
 	
 	// in BaseWin__pop_click
 	// intercept call to display popup for bases with pop_size >= min_base_size_specialists
 	
-	write_call(0x0040A9EB, (int)wtp_mod_BaseWin_pop_click_popup_start);
+	write_call(0x0040A9EB, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_BaseWin_pop_click_popup_start)));
 	
 }
 
@@ -2920,7 +2920,7 @@ e:  c7 45 b0 00 00 00 00    mov    DWORD PTR [ebp-0x50],0x0
     byte revolt_new[] = { 0xC7, 0x45, 0xA8, 0x00, 0x00, 0x00, 0x00, 0xC7, 0x45, 0xAC, 0x00, 0x00, 0x00, 0x00, 0xC7, 0x45, 0xB0, 0x00, 0x00, 0x00, 0x00, 0xC7, 0x45, 0xB4, 0x00, 0x00, 0x00, 0x00, 0xC7, 0x45, 0xB8, 0x00, 0x00, 0x00, 0x00, 0xC7, 0x45, 0xBC, 0x00, 0x00, 0x00, 0x00, 0xC7, 0x45, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0xE8, 0xFD, 0xFF, 0xFF, 0xFF, 0x89, 0xC2 };
     write_bytes(0x004F52F7, revolt_old, revolt_new, revolt_length);
 	
-	write_call(0x004F52F7 + 0x3b, (int)wtp_mod_base_police_pending);
+	write_call(0x004F52F7 + 0x3b, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_base_police_pending)));
 	
 }
 
@@ -2938,184 +2938,184 @@ void patch_drone_riot_does_not_intensify()
 
 void patch_disable_popb()
 {
-	write_call(0x004EF2D9, (int)mod_popb);
-	write_call(0x004EF64C, (int)mod_popb);
-	write_call(0x004EF667, (int)mod_popb);
-	write_call(0x004EF9A0, (int)mod_popb);
-	write_call(0x004EF9BF, (int)mod_popb);
-	write_call(0x004EF9FB, (int)mod_popb);
-	write_call(0x004EFA25, (int)mod_popb);
-	write_call(0x004EFA44, (int)mod_popb);
-	write_call(0x004EFA99, (int)mod_popb);
-	write_call(0x004EFAB8, (int)mod_popb);
-	write_call(0x004EFAF4, (int)mod_popb);
-	write_call(0x004EFB1E, (int)mod_popb);
-	write_call(0x004EFB3D, (int)mod_popb);
-	write_call(0x004F1825, (int)mod_popb);
-	write_call(0x004F1A12, (int)mod_popb);
-	write_call(0x004F1B95, (int)mod_popb);
-	write_call(0x004F1C8D, (int)mod_popb);
-	write_call(0x004F1CA8, (int)mod_popb);
-	write_call(0x004F261C, (int)mod_popb);
-	write_call(0x004F2747, (int)mod_popb);
-	write_call(0x004F4A43, (int)mod_popb);
-	write_call(0x004F50D0, (int)mod_popb);
-	write_call(0x004F5400, (int)mod_popb);
-	write_call(0x004F541D, (int)mod_popb);
-	write_call(0x004F5D4A, (int)mod_popb);
-	write_call(0x004F5DBE, (int)mod_popb);
-	write_call(0x004F5EDD, (int)mod_popb);
-	write_call(0x004F642B, (int)mod_popb);
-	write_call(0x004F6448, (int)mod_popb);
-	write_call(0x004F67B2, (int)mod_popb);
+	write_call(0x004EF2D9, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EF64C, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EF667, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EF9A0, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EF9BF, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EF9FB, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EFA25, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EFA44, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EFA99, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EFAB8, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EFAF4, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EFB1E, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EFB3D, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F1825, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F1A12, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F1B95, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F1C8D, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F1CA8, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F261C, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F2747, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F4A43, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F50D0, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F5400, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F541D, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F5D4A, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F5DBE, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F5EDD, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F642B, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F6448, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004F67B2, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
 	
 }
 
 void patch_console_human_turn()
 {
-	write_call(0x00527661, (int)wtp_mod_Console_human_turn);
-	write_call(0x0052826E, (int)wtp_mod_Console_human_turn);
-	write_call(0x005282C9, (int)wtp_mod_Console_human_turn);
-	write_call(0x0052A765, (int)wtp_mod_Console_human_turn);
+	write_call(0x00527661, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_human_turn)));
+	write_call(0x0052826E, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_human_turn)));
+	write_call(0x005282C9, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_human_turn)));
+	write_call(0x0052A765, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_human_turn)));
 	
 }
 
 void patch_enemy_diplomacy()
 {
-	write_call(0x005272E4, (int)wtp_mod_enemy_diplomacy);
+	write_call(0x005272E4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_enemy_diplomacy)));
 	
 }
 
 void patch_diplomacy_probe_action_vendetta_global_friction()
 {
-	write_call(0x005A4C2F, (int)wtp_mod_probe_treaty_on);
-	write_call(0x005A4EB8, (int)wtp_mod_probe_treaty_on);
-	write_call(0x005A5375, (int)wtp_mod_probe_treaty_on);
-	write_call(0x005A53C2, (int)wtp_mod_probe_treaty_on);
-	write_call(0x005A56AA, (int)wtp_mod_probe_treaty_on);
-	write_call(0x005A5801, (int)wtp_mod_probe_treaty_on);
+	write_call(0x005A4C2F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_treaty_on)));
+	write_call(0x005A4EB8, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_treaty_on)));
+	write_call(0x005A5375, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_treaty_on)));
+	write_call(0x005A53C2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_treaty_on)));
+	write_call(0x005A56AA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_treaty_on)));
+	write_call(0x005A5801, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_treaty_on)));
 	
 }
 
 void patch_steal_energy()
 {
-	write_call(0x005A371C, (int)wtp_mod_steal_energy);
+	write_call(0x005A371C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_steal_energy)));
 	
 }
 
 void patch_diplomacy_caption_display_numeric_mood()
 {
-	write_call(0x00539B20, (int)wtp_mod_diplomacy_caption_say_fac_special);
+	write_call(0x00539B20, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_diplomacy_caption_say_fac_special)));
 	
 }
 
 void patch_infiltrate_datalinks_no_promotion()
 {
-	write_call(0x005A4688, (int)wtp_mod_probe_veh_skip);
+	write_call(0x005A4688, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_veh_skip)));
 	
 }
 
 void patch_tidal_harness_terraform_rate()
 {
-	write_call(0x0040E216, (int)wtp_mod_action_terraform);
-	write_call(0x00461AD9, (int)wtp_mod_action_terraform);
-	write_call(0x004B5C71, (int)wtp_mod_action_terraform);
-	write_call(0x004B85A7, (int)wtp_mod_action_terraform);
-	write_call(0x004CB70A, (int)wtp_mod_action_terraform);
-	write_call(0x004CB7FA, (int)wtp_mod_action_terraform);
-	write_call(0x004CB88D, (int)wtp_mod_action_terraform);
-	write_call(0x004CF766, (int)wtp_mod_action_terraform);
-	write_call(0x004D31DE, (int)wtp_mod_action_terraform);
-	write_call(0x00536A1E, (int)wtp_mod_action_terraform);
+	write_call(0x0040E216, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
+	write_call(0x00461AD9, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
+	write_call(0x004B5C71, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
+	write_call(0x004B85A7, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
+	write_call(0x004CB70A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
+	write_call(0x004CB7FA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
+	write_call(0x004CB88D, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
+	write_call(0x004CF766, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
+	write_call(0x004D31DE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
+	write_call(0x00536A1E, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
 	
 }
 
 void patch_psi_gate_unlimited()
 {
-	write_call(0x0046D368, (int)wtp_mod_Console_go_to);
-	write_call(0x00516833, (int)wtp_mod_Console_go_to);
-	write_call(0x00517397, (int)wtp_mod_Console_go_to);
-	write_call(0x005173FE, (int)wtp_mod_Console_go_to);
-	write_call(0x0051840D, (int)wtp_mod_Console_go_to);
-	write_call(0x0051ABF6, (int)wtp_mod_Console_go_to);
-	write_call(0x0051C68D, (int)wtp_mod_Console_go_to);
-	write_call(0x0051C8DC, (int)wtp_mod_Console_go_to);
-	write_call(0x0051CA49, (int)wtp_mod_Console_go_to);
-	write_call(0x0051CA73, (int)wtp_mod_Console_go_to);
+	write_call(0x0046D368, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_go_to)));
+	write_call(0x00516833, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_go_to)));
+	write_call(0x00517397, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_go_to)));
+	write_call(0x005173FE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_go_to)));
+	write_call(0x0051840D, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_go_to)));
+	write_call(0x0051ABF6, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_go_to)));
+	write_call(0x0051C68D, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_go_to)));
+	write_call(0x0051C8DC, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_go_to)));
+	write_call(0x0051CA49, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_go_to)));
+	write_call(0x0051CA73, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_go_to)));
 	
 }
 
 void patch_tech_achieved()
 {
-	write_call(0x00428136, (int)wtp_mod_tech_achieved);
-	write_call(0x00428145, (int)wtp_mod_tech_achieved);
-	write_call(0x004DFD3B, (int)wtp_mod_tech_achieved);
-	write_call(0x0050C469, (int)wtp_mod_tech_achieved);
-	write_call(0x005371C4, (int)wtp_mod_tech_achieved);
-	write_call(0x00539652, (int)wtp_mod_tech_achieved);
-	write_call(0x0053A3F1, (int)wtp_mod_tech_achieved);
-	write_call(0x0053A450, (int)wtp_mod_tech_achieved);
-	write_call(0x0053FC48, (int)wtp_mod_tech_achieved);
-	write_call(0x0053FC9C, (int)wtp_mod_tech_achieved);
-	write_call(0x0053FCF0, (int)wtp_mod_tech_achieved);
-	write_call(0x0053FD44, (int)wtp_mod_tech_achieved);
-	write_call(0x005405E2, (int)wtp_mod_tech_achieved);
-	write_call(0x00540C16, (int)wtp_mod_tech_achieved);
-	write_call(0x00540C7F, (int)wtp_mod_tech_achieved);
-	write_call(0x00541F9F, (int)wtp_mod_tech_achieved);
-	write_call(0x00541FF8, (int)wtp_mod_tech_achieved);
-	write_call(0x00542A2A, (int)wtp_mod_tech_achieved);
-	write_call(0x00542B4F, (int)wtp_mod_tech_achieved);
-	write_call(0x00542CFD, (int)wtp_mod_tech_achieved);
-	write_call(0x00542F80, (int)wtp_mod_tech_achieved);
-	write_call(0x00542FCE, (int)wtp_mod_tech_achieved);
-	write_call(0x005447F3, (int)wtp_mod_tech_achieved);
-	write_call(0x00544850, (int)wtp_mod_tech_achieved);
-	write_call(0x005457A6, (int)wtp_mod_tech_achieved);
-	write_call(0x00546ED6, (int)wtp_mod_tech_achieved);
-	write_call(0x00546F38, (int)wtp_mod_tech_achieved);
-	write_call(0x00546F95, (int)wtp_mod_tech_achieved);
-	write_call(0x00546FEE, (int)wtp_mod_tech_achieved);
-	write_call(0x005489F4, (int)wtp_mod_tech_achieved);
-	write_call(0x00548B48, (int)wtp_mod_tech_achieved);
-	write_call(0x0054A3A2, (int)wtp_mod_tech_achieved);
-	write_call(0x0054A49C, (int)wtp_mod_tech_achieved);
-	write_call(0x0054DA5F, (int)wtp_mod_tech_achieved);
-	write_call(0x00551274, (int)wtp_mod_tech_achieved);
-	write_call(0x0055D667, (int)wtp_mod_tech_achieved);
-	write_call(0x0055D674, (int)wtp_mod_tech_achieved);
-	write_call(0x0055D6FB, (int)wtp_mod_tech_achieved);
-	write_call(0x0055D744, (int)wtp_mod_tech_achieved);
-	write_call(0x0057C239, (int)wtp_mod_tech_achieved);
-	write_call(0x0057D1D4, (int)wtp_mod_tech_achieved);
-	write_call(0x005A33B1, (int)wtp_mod_tech_achieved);
-	write_call(0x005B29D0, (int)wtp_mod_tech_achieved);
-	write_call(0x005B2A01, (int)wtp_mod_tech_achieved);
-	write_call(0x005B2A0D, (int)wtp_mod_tech_achieved);
-	write_call(0x005B2A79, (int)wtp_mod_tech_achieved);
-	write_call(0x005BC24B, (int)wtp_mod_tech_achieved);
-	write_call(0x005BC3FF, (int)wtp_mod_tech_achieved);
-	write_call(0x005BE603, (int)wtp_mod_tech_achieved);
+	write_call(0x00428136, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00428145, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x004DFD3B, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0050C469, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005371C4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00539652, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0053A3F1, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0053A450, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0053FC48, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0053FC9C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0053FCF0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0053FD44, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005405E2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00540C16, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00540C7F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00541F9F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00541FF8, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00542A2A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00542B4F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00542CFD, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00542F80, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00542FCE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005447F3, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00544850, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005457A6, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00546ED6, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00546F38, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00546F95, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00546FEE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005489F4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00548B48, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0054A3A2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0054A49C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0054DA5F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x00551274, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0055D667, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0055D674, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0055D6FB, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0055D744, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0057C239, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x0057D1D4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005A33B1, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005B29D0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005B2A01, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005B2A0D, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005B2A79, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005BC24B, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005BC3FF, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
+	write_call(0x005BE603, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	
 }
 
 void patch_alien_veh_init()
 {
-	write_call(0x004CEB0A, (int)wtp_mod_alien_veh_init); // action_fungal
-	write_call(0x004CECBF, (int)wtp_mod_alien_veh_init); // action_fungal
-	write_call(0x004F7143, (int)wtp_mod_alien_veh_init); // base_ecology
-	write_call(0x004F7407, (int)wtp_mod_alien_veh_init); // base_ecology
-	write_call(0x004F74FC, (int)wtp_mod_alien_veh_init); // base_ecology
-	write_call(0x00522789, (int)wtp_mod_alien_veh_init); // alien_fauna
-	write_call(0x005227C7, (int)wtp_mod_alien_veh_init); // alien_fauna
-	write_call(0x00522820, (int)wtp_mod_alien_veh_init); // alien_fauna
-	write_call(0x00522858, (int)wtp_mod_alien_veh_init); // alien_fauna
-	write_call(0x00522ABB, (int)wtp_mod_alien_veh_init); // alien_fauna
-	write_call(0x00522BA3, (int)wtp_mod_alien_veh_init); // alien_fauna
-	write_call(0x00522C49, (int)wtp_mod_alien_veh_init); // alien_fauna
-	write_call(0x00522D9B, (int)wtp_mod_alien_veh_init); // alien_fauna
-	write_call(0x00522DB2, (int)wtp_mod_alien_veh_init); // alien_fauna
-	write_call(0x0059571C, (int)wtp_mod_alien_veh_init); // order_veh
+	write_call(0x004CEB0A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // action_fungal
+	write_call(0x004CECBF, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // action_fungal
+	write_call(0x004F7143, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // base_ecology
+	write_call(0x004F7407, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // base_ecology
+	write_call(0x004F74FC, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // base_ecology
+	write_call(0x00522789, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // alien_fauna
+	write_call(0x005227C7, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // alien_fauna
+	write_call(0x00522820, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // alien_fauna
+	write_call(0x00522858, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // alien_fauna
+	write_call(0x00522ABB, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // alien_fauna
+	write_call(0x00522BA3, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // alien_fauna
+	write_call(0x00522C49, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // alien_fauna
+	write_call(0x00522D9B, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // alien_fauna
+	write_call(0x00522DB2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // alien_fauna
+	write_call(0x0059571C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // order_veh
 	
 }
 
@@ -3123,56 +3123,56 @@ void patch_capture_base()
 {
 	// wrap reset_territory when base is captured or killed
 	
-    write_call(0x004CCF13, (int)wtp_mod_capture_base); // action_airdrop
-    write_call(0x00598778, (int)wtp_mod_capture_base); // order_veh
-    write_call(0x005A4AB0, (int)wtp_mod_capture_base); // probe
+    write_call(0x004CCF13, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_capture_base))); // action_airdrop
+    write_call(0x00598778, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_capture_base))); // order_veh
+    write_call(0x005A4AB0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_capture_base))); // probe
     
 }
 
 void patch_retire_proto()
 {
-    write_call(0x00438322, (int)wtp_mod_retire_proto); // action_airdrop
-    write_call(0x0043890A, (int)wtp_mod_retire_proto); // action_airdrop
-    write_call(0x00536C68, (int)wtp_mod_retire_proto); // action_airdrop
-    write_call(0x00580F4F, (int)wtp_mod_retire_proto); // action_airdrop
+    write_call(0x00438322, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_retire_proto))); // action_airdrop
+    write_call(0x0043890A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_retire_proto))); // action_airdrop
+    write_call(0x00536C68, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_retire_proto))); // action_airdrop
+    write_call(0x00580F4F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_retire_proto))); // action_airdrop
 	
 }
 
 void patch_land_air_superiority_attack_needlejet_at_sea()
 {
-    write_call(0x005950E4, (int)wtp_mod_has_abil_land_air_superiority_attack_needlejet_at_sea); // order_veh
+    write_call(0x005950E4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_has_abil_land_air_superiority_attack_needlejet_at_sea))); // order_veh
     
 }
 
 void patch_air_superiority_attack_needlejet()
 {
-    write_call(0x00595274, (int)wtp_mod_has_abil_air_superiority_attack_needlejet); // order_veh
-    write_call(0x00578456, (int)wtp_mod_has_abil_air_superiority_attack_needlejet); // enemy_move
-    write_call(0x005A132A, (int)wtp_mod_has_abil_air_superiority_attack_needlejet); // probe
+    write_call(0x00595274, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_has_abil_air_superiority_attack_needlejet))); // order_veh
+    write_call(0x00578456, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_has_abil_air_superiority_attack_needlejet))); // enemy_move
+    write_call(0x005A132A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_has_abil_air_superiority_attack_needlejet))); // probe
     
 }
 
 void patch_veh_kill()
 {
-	write_call(0x004C9936, (int)wtp_mod_veh_kill); // action_build
-	write_call(0x004DBCCA, (int)wtp_mod_veh_kill); // Console::editor_reset_tech
-	write_call(0x00506116, (int)wtp_mod_veh_kill); // battle_kill
-	write_call(0x00518929, (int)wtp_mod_veh_kill); // Console::on_key_click
-	write_call(0x00520CDA, (int)wtp_mod_veh_kill); // random_events
-	write_call(0x0052116A, (int)wtp_mod_veh_kill); // random_events
-	write_call(0x00561E3D, (int)wtp_mod_veh_kill); // enemy_strategy
-	write_call(0x00561E58, (int)wtp_mod_veh_kill); // enemy_strategy
-	write_call(0x0057D06F, (int)wtp_mod_veh_kill); // study_artifact
-	write_call(0x00589126, (int)wtp_mod_veh_kill); // alien_start
-	write_call(0x00591639, (int)wtp_mod_veh_kill); // alt_set
-	write_call(0x005970B1, (int)wtp_mod_veh_kill); // order_veh
-	write_call(0x005985FC, (int)wtp_mod_veh_kill); // order_veh
-	write_call(0x005A3C7A, (int)wtp_mod_veh_kill); // probe
-	write_call(0x005A4771, (int)wtp_mod_veh_kill); // probe
-	write_call(0x005B0D42, (int)wtp_mod_veh_kill); // scenario_setup
-	write_call(0x005B33EA, (int)wtp_mod_veh_kill); // eliminate_player
-	write_call(0x005B9560, (int)wtp_mod_veh_kill); // stack_kill
-	write_call(0x005C0C1F, (int)wtp_mod_veh_kill); // kill
+	write_call(0x004C9936, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // action_build
+	write_call(0x004DBCCA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // Console::editor_reset_tech
+	write_call(0x00506116, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // battle_kill
+	write_call(0x00518929, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // Console::on_key_click
+	write_call(0x00520CDA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // random_events
+	write_call(0x0052116A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // random_events
+	write_call(0x00561E3D, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // enemy_strategy
+	write_call(0x00561E58, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // enemy_strategy
+	write_call(0x0057D06F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // study_artifact
+	write_call(0x00589126, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // alien_start
+	write_call(0x00591639, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // alt_set
+	write_call(0x005970B1, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // order_veh
+	write_call(0x005985FC, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // order_veh
+	write_call(0x005A3C7A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // probe
+	write_call(0x005A4771, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // probe
+	write_call(0x005B0D42, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // scenario_setup
+	write_call(0x005B33EA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // eliminate_player
+	write_call(0x005B9560, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // stack_kill
+	write_call(0x005C0C1F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // kill
 
 }
 
@@ -3190,7 +3190,7 @@ void patch_datalinks()
 	
 	if (!conf.datalinks_sort)
 	{
-		write_call(0x0042A485, (int)StringList__sort_nop); // Datalink::set_cat
+		write_call(0x0042A485, static_cast<int>(reinterpret_cast<uintptr_t>(StringList__sort_nop))); // Datalink::set_cat
 	}
 	
 	// window size
@@ -3300,7 +3300,7 @@ void patch_datalinks()
 
 void patch_battle_report()
 {
-    write_call(0x00422A66, (int)wtp_mod_BattleWin_battle_report_Buffer_wrap2); // BattleWin::battle_report
+    write_call(0x00422A66, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_BattleWin_battle_report_Buffer_wrap2))); // BattleWin::battle_report
     
 }
 
@@ -3706,7 +3706,7 @@ void shiftVehicleAddress(byte *bytes, int position)
 		return;
 	
 	int address = 0x1000000 * bytes[position + 3] + 0x10000 * bytes[position + 2] + 0x100 * bytes[position + 1] + 0x1 * bytes[position + 0];
-	address += ((int)VehsMod - (int)VehsDef);
+	address += (static_cast<int>(reinterpret_cast<uintptr_t>(VehsMod)) - static_cast<int>(reinterpret_cast<uintptr_t>(VehsDef)));
 	bytes[position + 3] = (address >> 24) % 0x100;
 	bytes[position + 2] = (address >> 16) % 0x100;
 	bytes[position + 1] = (address >>  8) % 0x100;

@@ -355,7 +355,7 @@ bool transitVehicle(Task  task)
 	if (destination == nullptr)
 		return false;
 
-	if (TRACE)
+	if constexpr (TRACE)
 	{
 		debug
 		(
@@ -372,7 +372,7 @@ bool transitVehicle(Task  task)
 
 	if (vehicleTile == destination)
 	{
-		if (TRACE)
+		if constexpr (TRACE)
 		{
 			debug("\tat destination\n");
 		}
@@ -390,7 +390,7 @@ bool transitVehicle(Task  task)
 	{
 	case TRIAD_AIR:
 		{
-			if (TRACE)
+			if constexpr (TRACE)
 			{
 				debug("\tair unit\n");
 			}
@@ -401,13 +401,13 @@ bool transitVehicle(Task  task)
 
 	case TRIAD_SEA:
 		{
-			if (TRACE)
+			if constexpr (TRACE)
 			{
 				debug("\tsea unit\n");
 			}
 			if (isSameSeaCluster(vehicleTile, destination))
 			{
-				if (TRACE)
+				if constexpr (TRACE)
 				{
 					debug("\t\tsame sea cluster\n");
 				}
@@ -416,7 +416,7 @@ bool transitVehicle(Task  task)
 			}
 			else
 			{
-				if (TRACE)
+				if constexpr (TRACE)
 				{
 					debug("\t\tdifferent sea cluster\n");
 				}
@@ -603,7 +603,7 @@ void balanceVehicleSupport()
 				
 				// compute relative support
 				
-				double otherBaseRelativeSupport = 1.0 - (double)otherBase->mineral_surplus / (double)otherBase->mineral_intake_2;
+				double otherBaseRelativeSupport = 1.0 - static_cast<double>(otherBase->mineral_surplus) / static_cast<double>(otherBase->mineral_intake_2);
 				
 				// check support/surplus
 				
@@ -879,8 +879,8 @@ Transfer getOptimalDropoffTransfer(MAP  *org, MAP  *dst, int  passengerVehicleId
 		
 		// estimated travel time
 		
-		double transportTravelTime = (double)transportStopRange / (double)transportSpeed;
-		double passengerTravelTime = (double)passengerStopRange / (double)passengerSpeed;
+		double transportTravelTime = static_cast<double>(transportStopRange) / static_cast<double>(transportSpeed);
+		double passengerTravelTime = static_cast<double>(passengerStopRange) / static_cast<double>(passengerSpeed);
 		
 		double totalTravelTime = transportTravelTime + passengerTravelTime;
 		

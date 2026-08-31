@@ -84,7 +84,7 @@ void considerHurryingProduction(int factionId)
 
 		// calculate weight
 
-		double weight = 1.0 / (double)(std::max(1, mineralSurplus));
+		double weight = 1.0 / static_cast<double>(std::max(1, mineralSurplus));
 
 		// sort bases
 
@@ -136,7 +136,7 @@ void considerHurryingProduction(int factionId)
 
 		for (BASE_WEIGHT &baseWeight : unprotectedBases)
 		{
-			int allowance = (int)(floor(spendPortion * (double)spendPool * baseWeight.weight / unprotectedBasesWeightSum));
+			int allowance = static_cast<int>(floor(spendPortion * static_cast<double>(spendPool) * baseWeight.weight / unprotectedBasesWeightSum));
 			hurryProductionPartially(baseWeight.baseId, allowance);
 			debug("\t\t%-25s allowance=%d, spendPool=%d, relativeWeight=%5.2f\n", Bases[baseWeight.baseId].name, allowance, spendPool, baseWeight.weight / unprotectedBasesWeightSum);
 
@@ -156,7 +156,7 @@ void considerHurryingProduction(int factionId)
 		{
 			BASE_WEIGHT *baseWeight = &(*importantFacilityBasesIterator);
 
-			int allowance = (int)(floor(spendPortion * (double)spendPool * baseWeight->weight / importantFacilityBasesWeightSum));
+			int allowance = static_cast<int>(floor(spendPortion * static_cast<double>(spendPool) * baseWeight->weight / importantFacilityBasesWeightSum));
 			hurryProductionPartially(baseWeight->baseId, allowance);
 		}
 
@@ -174,7 +174,7 @@ void considerHurryingProduction(int factionId)
 		{
 			BASE_WEIGHT *baseWeight = &(*facilityBasesIterator);
 
-			int allowance = (int)(floor(spendPortion * (double)spendPool * baseWeight->weight / facilityBasesWeightSum));
+			int allowance = static_cast<int>(floor(spendPortion * static_cast<double>(spendPool) * baseWeight->weight / facilityBasesWeightSum));
 			hurryProductionPartially(baseWeight->baseId, allowance);
 		}
 
@@ -192,7 +192,7 @@ void considerHurryingProduction(int factionId)
 		{
 			BASE_WEIGHT *baseWeight = &(*unitBasesIterator);
 
-			int allowance = (int)(floor(spendPortion * (double)spendPool * baseWeight->weight / unitBasesWeightSum));
+			int allowance = static_cast<int>(floor(spendPortion * static_cast<double>(spendPool) * baseWeight->weight / unitBasesWeightSum));
 			hurryProductionPartially(baseWeight->baseId, allowance);
 		}
 

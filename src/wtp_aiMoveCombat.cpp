@@ -699,7 +699,7 @@ void moveBaseProtectors()
 	
 	std::vector<TaskPriority> taskPriorities;
 
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		debug("\tsortedTasks\n");
 
@@ -859,7 +859,7 @@ void moveBunkerProtectors()
 	
 	std::vector<TaskPriority> taskPriorities;
 
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		debug("\tsortedTasks\n");
 
@@ -1027,7 +1027,7 @@ void moveCombat()
 	
 	std::sort(taskPriorities.begin(), taskPriorities.end(), compareTaskPriorityDescending);
 	
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		debug("\tsortedTasks\n");
 
@@ -1145,7 +1145,7 @@ void moveCombat()
 				
 			}
 			
-			if (DEBUG)
+  	if constexpr (DEBUG)
 			{
 				debug
 				(
@@ -1373,7 +1373,7 @@ void moveCombat()
 			debug("ERROR: transitVehicle failed.");
 		}
 
-		if (DEBUG)
+	if constexpr (DEBUG)
 		{
 			debug
 			(
@@ -1564,7 +1564,7 @@ void populatePolice2xTasks(std::vector<TaskPriority> &taskPriorities)
 			
 			// police required power
 			
-			double requiredPower = (double)baseInfo.policeData.requiredPower;
+			double requiredPower = static_cast<double>(baseInfo.policeData.requiredPower);
 			
 			// travel time coefficient
 			
@@ -1826,7 +1826,7 @@ void populateEnemyStackAttackTasks(std::vector<TaskPriority> &taskPriorities)
 			
 			if
 			(
-				enemyStackInfo.baseOrBunker
+				enemyStackInfo.tileBaseOrBunker
 				||
 				enemyStackTile->owner == aiFactionId
 				||
@@ -2178,7 +2178,7 @@ double getDuelCombatCostCoefficient(int vehicleId, double effect, double enemyUn
 {
 	trace("getDuelCombatCostCoefficient\n");
 
-	double vehicleUnitCost = (double)getVehicleUnitCost(vehicleId);
+	double vehicleUnitCost = static_cast<double>(getVehicleUnitCost(vehicleId));
 
 	if (vehicleUnitCost <= 0.0 || enemyUnitCost <= 0.0)
 		return 0.0;
@@ -2197,7 +2197,7 @@ double getDuelCombatCostCoefficient(int vehicleId, double effect, double enemyUn
 
 	double relativeCostBonus = costBonus / (vehicleUnitCost + enemyUnitCost);
 
-	if (TRACE)
+	if constexpr (TRACE)
 	{
 		debug
 		(
@@ -2228,7 +2228,7 @@ double getBombardmentCostCoefficient(int vehicleId, double effect, double enemyU
 {
 	trace("getDuelCombatCostCoefficient\n");
 
-	double vehicleUnitCost = (double)getVehicleUnitCost(vehicleId);
+	double vehicleUnitCost = static_cast<double>(getVehicleUnitCost(vehicleId));
 
 	if (vehicleUnitCost <= 0.0 || enemyUnitCost <= 0.0)
 		return 0.0;
@@ -2247,7 +2247,7 @@ double getBombardmentCostCoefficient(int vehicleId, double effect, double enemyU
 
 	double relativeCostBonus = costBonus / (vehicleUnitCost + enemyUnitCost);
 
-	if (TRACE)
+	if constexpr (TRACE)
 	{
 		debug
 		(
@@ -2546,7 +2546,7 @@ CombatAction selectVehicleCombatAction(int vehicleId)
 
 	debug("\tmove\n");
 	std::vector<MoveAction> moveActions = getVehicleMoveActions(vehicleId, true);
-	if (DEBUG)
+	if constexpr (DEBUG)
 	{
 		// sort for debug purposes
 		std::sort
