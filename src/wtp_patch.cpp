@@ -3350,19 +3350,19 @@ void patch_monetary_support()
 
 void patch_setup_wtp(Config* cf)
 {
-	patch_bypass_multiplayer_password();
+//	patch_bypass_multiplayer_password();
 
-	// debug mode game speedup
-
-	if (DEBUG)
-	{
-		patch_disable_boom_delay();
-		patch_disable_battle_refresh();
-		patch_accelerate_order_veh();
-		patch_disable_boom();
-		patch_disable_battle_calls();
-		patch_disable_focus();
-	}
+//	// debug mode game speedup
+//
+//	if (DEBUG)
+//	{
+//		patch_disable_boom_delay();
+//		patch_disable_battle_refresh();
+//		patch_accelerate_order_veh();
+//		patch_disable_boom();
+//		patch_disable_battle_calls();
+//		patch_disable_focus();
+//	}
 
 	// patch battle_compute
 	

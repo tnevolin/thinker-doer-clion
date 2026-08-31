@@ -277,7 +277,7 @@ BunkerInfo &Data::getBunkerInfo(MAP const* tile)
 Computes combat effect using battle_compute.
 Creates fake vehicles using units and optionally battle tile.
 */
-double CombatEffectTable::computeUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, MAP *attackerTile, MAP *defenderTile)
+double CombatEffectTable::computeUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, EngagementMode engagementMode, MAP const *attackerTile, MAP const *defenderTile)
 {
 	UNIT &attackerUnit = Units[attackerUnitId];
 	UNIT &defenderUnit = Units[defenderUnitId];
@@ -369,7 +369,7 @@ void CombatEffectTable::clear()
 	combatEffects.clear();
 }
 
-double CombatEffectTable::getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, MAP * attackerTile, MAP * defenderTile)
+double CombatEffectTable::getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, EngagementMode engagementMode, MAP const *attackerTile, MAP const *defenderTile)
 {
 	trace("CombatEffectTable::getCombatModeEffect( attackerFactionId=%d attackerUnitId=%d defenderFactionId=%d defenderUnitId=%d engagementMode=%d attackerTile=%s defenderTile=%s )\n", attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, getLocationString(attackerTile), getLocationString(defenderTile));
 	
@@ -383,12 +383,13 @@ double CombatEffectTable::getUnitCombatEffect(int attackerFactionId, int attacke
 	
 }
 
-double CombatEffectTable::getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode)
+double CombatEffectTable::getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, EngagementMode engagementMode)
 {
-	return getUnitCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, nullptr, nullptr);
+	return getUnitCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode,
+							   nullptr, nullptr);
 }
 
-double CombatEffectTable::getVehicleCombatEffect(int attackerVehicleId, int defenderVehicleId, ENGAGEMENT_MODE engagementMode, MAP const *attackerTile, MAP const *defenderTile)
+double CombatEffectTable::getVehicleCombatEffect(int attackerVehicleId, int defenderVehicleId, EngagementMode engagementMode, MAP const *attackerTile, MAP const *defenderTile)
 {
 	assert(isValidVehicleId(attackerVehicleId));
 	assert(isValidVehicleId(defenderVehicleId));
@@ -396,7 +397,9 @@ double CombatEffectTable::getVehicleCombatEffect(int attackerVehicleId, int defe
 	VEH &attackerVehicle = Vehs[attackerVehicleId];
 	VEH &defenderVehicle = Vehs[defenderVehicleId];
 	
-	double unitCombatEffect = getUnitCombatEffect(attackerVehicle.faction_id, attackerVehicle.unit_id, defenderVehicle.faction_id, defenderVehicle.unit_id, engagementMode, const_cast<MAP *>(attackerTile), const_cast<MAP *>(defenderTile));
+	double unitCombatEffect = getUnitCombatEffect(attackerVehicle.faction_id, attackerVehicle.unit_id,
+												  defenderVehicle.faction_id, defenderVehicle.unit_id, engagementMode,
+												  const_cast<MAP *>(attackerTile), const_cast<MAP *>(defenderTile));
 	
 	return
 		unitCombatEffect
@@ -406,7 +409,7 @@ double CombatEffectTable::getVehicleCombatEffect(int attackerVehicleId, int defe
 	
 }
 
-double CombatEffectTable::getVehicleCombatEffect(int attackerVehicleId, int defenderVehicleId, ENGAGEMENT_MODE engagementMode)
+double CombatEffectTable::getVehicleCombatEffect(int attackerVehicleId, int defenderVehicleId, EngagementMode engagementMode)
 {
 	return getVehicleCombatEffect(attackerVehicleId, defenderVehicleId, engagementMode, getVehicleMapTile(attackerVehicleId), getVehicleMapTile(defenderVehicleId));
 }
@@ -802,30 +805,29 @@ double CombatEffectTable::getUnitBombardmentDamage(int attackerFactionId, int at
 	
 }
 
-Combattant::Combattant(int factionId, int unitId, double weight, bool airbase)
+Combattant::Combattant(int factionId, int unitId, double weight, bool airbase) : remainingHealth(0)
 {
 	assert(isValidFactionId(factionId));
 	assert(isValidUnitId(unitId));
 	assert(weight > 0.0);
-	
+
 	UNIT &unit = Units[unitId];
-	
+
 	this->factionId = factionId;
 	this->unitId = unitId;
 	this->key = FactionUnit::encodeKey(factionId, unitId);
 	this->weight = weight;
-	
+
 	this->artillery = isArtilleryUnit(unitId);
 	this->melee = isMeleeUnit(unitId);
 	this->aircraftInFlight = !airbase && unit.is_air();
 	this->needlejetInFlight = !airbase && unit.is_needlejet();
 	this->canAttackNeedlejetInFlight = isUnitCanAttackNeedlejetInFlight(unitId);
 	this->canBombardAircraftInFlight = isUnitCanBombardAircraftInFlight(unitId);
-	
+
 	this->pad0 = -1;
 	this->strengthCoefficient = 1.0;
 	this->health = 1.0;
-	
 }
 
 Combattant::Combattant(int vehicleId, double weight, bool airbase)
@@ -851,12 +853,12 @@ void Combattant::initialize(robin_hood::unordered_flat_map<int, double>  &damage
 
 // CombatData
 
-void CombatData::initialize(MAP const *tile, bool playerAssaults, double targetGain)
+void CombatData::initialize(MAP const *_tile, bool _playerAssaults, double _targetGain)
 {
-	this->tile = const_cast<MAP *>(tile);
-	this->airbase = aiData.getTileInfo(tile).airbase;
-	this->playerAssaults = playerAssaults;
-	this->targetGain = targetGain;
+	this->tile = const_cast<MAP *>(_tile);
+	this->airbase = aiData.getTileInfo(_tile).airbase;
+	this->playerAssaults = _playerAssaults;
+	this->targetGain = _targetGain;
 	
 	this->assailants.clear();
 	this->protectors.clear();
@@ -870,14 +872,16 @@ void CombatData::initialize(MAP const *tile, bool playerAssaults, double targetG
 	
 }
 
-double CombatData::getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode, bool attackerAtTile, bool defenderAtTile)
+double CombatData::getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, EngagementMode engagementMode, bool attackerAtTile, bool defenderAtTile)
 {
 	return
-		aiData.combatEffectTable.getUnitCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerAtTile ? tile : nullptr, defenderAtTile ? tile : nullptr)
+		aiData.combatEffectTable.getUnitCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId,
+														defenderUnitId, engagementMode, attackerAtTile ? tile : nullptr,
+														defenderAtTile ? tile : nullptr)
 	;
 }
 
-double CombatData::getCombattantCombatEffect(Combattant  &attacker, Combattant  &defender, ENGAGEMENT_MODE engagementMode, bool attackerAtTile, bool defenderAtTile)
+double CombatData::getCombattantCombatEffect(Combattant  &attacker, Combattant  &defender, EngagementMode engagementMode, bool attackerAtTile, bool defenderAtTile)
 {
 	return
 		getUnitCombatEffect(attacker.factionId, attacker.unitId, defender.factionId, defender.unitId, engagementMode, attackerAtTile, defenderAtTile)
@@ -1659,7 +1663,7 @@ void CombatData::resolveMutualCombat(CombattantEffect &combattantEffect)
 }
 
 
-CombattantEffect CombatData::getBestCombattantEffect(std::list<Combattant *> &attackers, std::list<Combattant *> &defenders, ENGAGEMENT_MODE engagementMode, bool attackerAtTile, bool defenderAtTile)
+CombattantEffect CombatData::getBestCombattantEffect(std::list<Combattant *> &attackers, std::list<Combattant *> &defenders, EngagementMode engagementMode, bool attackerAtTile, bool defenderAtTile)
 {
 	trace("CombatData::getBestCombattantEffect( ... )\n");
 	
@@ -1753,17 +1757,311 @@ double CombatData::getEnemyRelativeHealthBonus(std::vector<Combattant> opponentC
 
 DefenseData::DefenseData(MAP const* _tile, double _targetGain)
 	: tile(_tile), targetGain(_targetGain)
-{}
-
-void DefenseData::addAttackerUnitWeight(int factionId, int unitId, double weight)
 {
-	int factionUnitKey = FactionUnit::encodeKey(factionId, unitId);
-	attackerUnitWeigths[factionUnitKey] += weight;
+}
+
+double DefenseData::getCombatEffect(int attackerFactionId, int attackerUnitId, int defenderVehicleId, EngagementMode engagementMode)
+{
+	VEH defenderVehicle = Vehs[defenderVehicleId];
+
+	double unitCombatEffect =
+		aiData.combatEffectTable.getUnitCombatEffect(attackerFactionId, attackerUnitId, defenderVehicle.faction_id, defenderVehicle.unit_id, engagementMode, nullptr, this->tile)
+		* getVehicleMoraleMultiplier(defenderVehicleId)
+	;
+
+	return unitCombatEffect;
+
 }
 
 void DefenseData::addDefenderVehicle(int vehicleId)
 {
-	defenderVehicleIds.push_back(vehicleId);
+	VEH &vehicle = Vehs[vehicleId];
+
+	Triad triad = static_cast<Triad>(vehicle.triad());
+	bool artillery = isArtilleryVehicle(vehicleId);
+	double maxBombardmentDamage = getMaxBombardmentDamage(triad, this->tile);
+	double minBombardmentHealth = 1.0 - maxBombardmentDamage;
+	double health = getVehicleRelativeHealth(vehicleId);
+
+	defenders.push_back({vehicleId, vehicle.faction_id, vehicle.unit_id, triad, artillery, minBombardmentHealth, health});
+
+}
+
+bool DefenseData::isSufficient()
+{
+	// return hashed value
+	if (this->computed)
+		return this->sufficient;
+
+	// set computed
+	this->computed = true;
+
+	// reset defender contributions
+	this->defenderContributions.clear();
+
+	// no attackers = defense is sufficient
+	if (this->attackers.empty())
+		return this->sufficient = true;
+
+	// no defenders = defense is insufficient
+	if (this->defenders.empty())
+		return this->sufficient = false;
+
+	// initialize remaining healths
+
+    std::vector remainingAttackers(this->attackers);
+    std::vector remainingDefenders(this->defenders);
+
+	// seelect defender artillery vehicles
+
+	robin_hood::unordered_flat_set<int> defenderArtilleryVehicleIds;
+	for (auto &defender : this->defenders)
+	{
+		if (isArtilleryUnit(defender.vehicleId))
+			defenderArtilleryVehicleIds.insert(defender.vehicleId);
+	}
+
+    // combat cycle
+    for (int cycle = 0; cycle < 1000; cycle++)
+    {
+	    // select best attacker vs. best defender
+
+    	double bestAttackerBestDefenderEffect = 0.0;
+    	DefenseAttacker *bestAttacker = nullptr;
+    	bool bestAttackerBombardment = false;
+    	DefenseDefender *bestAttackerBestDefender = nullptr;
+    	robin_hood::unordered_flat_map<int, double> bestAttackerBombardmentDamages;
+
+    	for (auto &attacker : remainingAttackers)
+    	{
+    		// live attacker
+    		if (attacker.health <= 0)
+    			continue;
+
+    		// melee
+
+    		double attackerBestMeleeDefenderEffect = 0.0;
+    		DefenseDefender *attackerBestAttackerMeleeDefender = nullptr;
+
+    		if (attacker.melee)
+    		{
+    			for (auto &defender : remainingDefenders)
+    			{
+    				// live defender
+    				if (defender.health <= 0)
+    					continue;
+
+    				// select best defender by the lowest effect
+    				if (double effect = this->getCombatEffect(attacker.factionId, attacker.unitId, defender.vehicleId, EM_MELEE); effect < attackerBestMeleeDefenderEffect)
+    				{
+    					attackerBestMeleeDefenderEffect = effect;
+    					attackerBestAttackerMeleeDefender = &defender;
+    				}
+
+    			}
+
+    		}
+
+    		// artillery
+
+    		bool attackerBombardment = false;
+    		double attackerBestArtilleryDuelDefenderEffect = 0.0;
+    		DefenseDefender *attackerBestArtilleryDuelDefender = nullptr;
+    		double attackerTotalBombardmentEffect = 0.0;
+    		robin_hood::unordered_flat_map<int, double> attackerBombardmentDamages;
+
+    		if (attacker.artillery)
+    		{
+    			if (!defenderArtilleryVehicleIds.empty())
+    			{
+    				// artillery duel
+
+    				attackerBombardment = false;
+
+    				for (auto &defender : remainingDefenders)
+    				{
+    					// live defender
+    					if (defender.health <= 0)
+    						continue;
+
+    					// artillery defender
+    					if (!defender.artillery)
+    						continue;
+
+    					// select best defender by the lowest effect
+    					if (double effect = this->getCombatEffect(attacker.factionId, attacker.unitId, defender.vehicleId, EM_ARTILLERY); effect < attackerBestArtilleryDuelDefenderEffect)
+    					{
+    						attackerBestArtilleryDuelDefender = &defender;
+    						attackerBestArtilleryDuelDefenderEffect = effect;
+    					}
+
+    				}
+
+    			}
+    			else
+    			{
+    				// bombardment
+
+    				attackerBombardment = true;
+
+    				for (auto &defender : remainingDefenders)
+    				{
+    					// live defender
+    					if (defender.health <= 0)
+    						continue;
+
+    					// non artillery defender
+    					if (defender.artillery)
+    					{
+    						debug("ERROR: alive artillery defender found during bombardment calculation.");
+    						continue;
+    					}
+
+    					// bombardable
+    					if (!attacker.bombardAir && defender.triad == TRIAD_AIR)
+    						continue;
+
+    					// compute bombardment damage
+    					double bombardmentEffect = this->getCombatEffect(attacker.factionId, attacker.unitId, defender.vehicleId, EM_ARTILLERY);
+    					double maxBombardmentEffect = std::max(0.0, defender.health - defender.minBombardmentHealth);
+    					double effect = std::min(maxBombardmentEffect, bombardmentEffect);
+    					attackerBombardmentDamages[defender.vehicleId] = effect;
+    					attackerTotalBombardmentEffect += effect;
+
+    				}
+
+    			}
+
+    		}
+
+    		// pick best attacker effect
+
+    		double attackerBestDefenderEffect = 0.0;
+    		DefenseDefender *attackerBestDefender = nullptr;
+
+    		if (!attackerBombardment)
+    		{
+    			if (attackerBestMeleeDefenderEffect > attackerBestArtilleryDuelDefenderEffect)
+    			{
+	   				attackerBestDefenderEffect = attackerBestMeleeDefenderEffect;
+    				attackerBestDefender = attackerBestAttackerMeleeDefender;
+    			}
+    			else
+    			{
+    				attackerBestDefenderEffect = attackerBestArtilleryDuelDefenderEffect;
+    				attackerBestDefender = attackerBestArtilleryDuelDefender;
+    			}
+
+    		}
+    		else
+    		{
+    			if (attackerBestMeleeDefenderEffect > attackerTotalBombardmentEffect)
+    			{
+    				attackerBestDefenderEffect = attackerBestMeleeDefenderEffect;
+    				attackerBestDefender = attackerBestAttackerMeleeDefender;
+    				// clear bombardment flag
+    				attackerBombardment = true;
+    			}
+    			else
+    			{
+    				attackerBestDefenderEffect = attackerTotalBombardmentEffect;
+    				attackerBestDefender = nullptr;
+    			}
+
+    		}
+
+    		// select best attacker by the highest effect
+    		if (attackerBestDefenderEffect > bestAttackerBestDefenderEffect)
+    		{
+    			bestAttackerBestDefenderEffect = attackerBestDefenderEffect;
+    			bestAttacker = &attacker;
+    			bestAttackerBombardment = attackerBombardment;
+    			bestAttackerBestDefender = attackerBestDefender;
+    			bestAttackerBombardmentDamages = attackerBombardmentDamages;
+    		}
+
+    	}
+
+    	// no more attackers can attack
+    	if (bestAttacker == nullptr)
+    		break;
+
+    	// apply best attacker-defender pair result
+
+    	if (!bestAttackerBombardment)
+    	{
+    		if (bestAttackerBestDefenderEffect < bestAttackerBestDefender->health / bestAttacker->health)
+    		{
+    			double attackerDamage = bestAttacker->health;
+    			double defenderDamage = bestAttackerBestDefenderEffect * bestAttacker->health;
+
+    			bestAttacker->health -= attackerDamage;
+    			bestAttackerBestDefender->health -= defenderDamage;
+
+    			this->defenderContributions[bestAttackerBestDefender->vehicleId] += attackerDamage;
+
+    		}
+    		else
+    		{
+    			double attackerDamage = (1.0 / bestAttackerBestDefenderEffect) * bestAttackerBestDefender->health;
+    			double defenderDamage = bestAttackerBestDefender->health;
+
+    			bestAttacker->health -= attackerDamage;
+    			bestAttackerBestDefender->health -= defenderDamage;
+
+    			this->defenderContributions[bestAttackerBestDefender->vehicleId] += attackerDamage;
+
+    		}
+
+    		// remove deceased defender from artillery list
+    		if (bestAttackerBestDefender->health <= 0.0)
+    		{
+    			defenderArtilleryVehicleIds.erase(bestAttackerBestDefender->vehicleId);
+    		}
+
+    	}
+    	else
+    	{
+    		// apply bombardment damages
+
+    		for (auto &defender : defenders)
+    		{
+    			if (bestAttackerBombardmentDamages.contains(defender.vehicleId))
+    			{
+    				defender.health -= bestAttackerBombardmentDamages.at(defender.vehicleId);
+    			}
+
+    		}
+
+    	}
+
+    }
+
+	// check alive units
+
+	bool attackerAlive = std::any_of(attackers.begin(), attackers.end(), [&](DefenseAttacker const &e) { return e.health > 0.0; });
+	bool defenderAlive = std::any_of(defenders.begin(), defenders.end(), [&](DefenseDefender const &e) { return e.health > 0.0; });
+
+	if (!attackerAlive)
+		return this->sufficient = true;
+
+	if (!defenderAlive)
+		return this->sufficient = false;
+
+	debug("ERROR: both attacker and defender alive.");
+	return this->sufficient = true;
+
+}
+
+double DefenseData::getVehicleContribution(int vehicleId)
+{
+	if (!this->computed)
+	{
+		isSufficient();
+	}
+
+	return this->defenderContributions.contains(vehicleId) ? this->defenderContributions.at(vehicleId) : 0.0;
+
 }
 
 // EnemyStackInfo
@@ -1850,6 +2148,7 @@ void EnemyStackInfo::addVehicle(int vehicleId)
 		case BSC_LOCUSTS_OF_CHIRON:
 			alienMelee = true;
 			break;
+		default:;
 		}
 		
 	}
@@ -1879,8 +2178,7 @@ bool EnemyStackInfo::isUnitCanMeleeAttackStack(int unitId, MAP *position) const
 	UNIT *unit = getUnit(unitId);
 	int triad = unit->triad();
 	bool ocean = is_ocean(this->tile);
-	bool base = this->base;
-	
+
 	// melee unit
 	
 	if (!isMeleeUnit(unitId))
@@ -1932,7 +2230,9 @@ bool EnemyStackInfo::isUnitCanMeleeAttackStack(int unitId, MAP *position) const
 		}
 		
 		break;
-		
+
+	default:;
+
 	}
 	
 	// check position if given
@@ -1969,7 +2269,9 @@ bool EnemyStackInfo::isUnitCanMeleeAttackStack(int unitId, MAP *position) const
 			}
 			
 			break;
-			
+
+		default:;
+
 		}
 		
 	}
@@ -3076,7 +3378,7 @@ std::vector<AttackAction> getMeleeAttackActions(int vehicleId, bool regardObstac
 			
 			// can melee attack tile
 			
-			if (!isVehicleCanMeleeAttack(vehicleId, tile, targetTile))
+			if (!isVehicleCanMeleeAttack(vehicleId, tile, targetTile, false))
 				continue;
 			
 			// add action
@@ -3238,7 +3540,7 @@ robin_hood::unordered_flat_map<int, double> getMeleeAttackLocations(int vehicleI
 				
 				// can melee attack
 				
-				if (!isVehicleCanMeleeAttack(vehicleId, currentTile, adjacentTile))
+				if (!isVehicleCanMeleeAttack(vehicleId, currentTile, adjacentTile, false))
 					continue;
 				
 				// update attack
@@ -3548,7 +3850,9 @@ bool isUnitCanCaptureBase(int unitId, MAP *baseTile)
 			return false;
 		
 		break;
-		
+
+	default:;
+
 	}
 	
 	// all checks passed
@@ -4025,7 +4329,7 @@ void assignVehiclesToTransports()
 /*
 Unit can attack enemy at the tile.
 */
-bool isUnitCanMeleeAttack(int factionId, int unitId, MAP const *position, MAP const *target)
+bool isUnitCanMeleeAttack(int factionId, int unitId, MAP const *position, MAP const *target, bool checkNeedlejetInFlight)
 {
 	UNIT *unit = getUnit(unitId);
 	int triad = unit->triad();
@@ -4068,8 +4372,10 @@ bool isUnitCanMeleeAttack(int factionId, int unitId, MAP const *position, MAP co
 			}
 			
 			break;
-			
-		}
+
+        default:;
+
+        }
 			
 	}
 	
@@ -4081,7 +4387,7 @@ bool isUnitCanMeleeAttack(int factionId, int unitId, MAP const *position, MAP co
 		
 		// cannot attack needlejet in flight without air superiority
 		
-		if (targetTileInfo.unfriendlyNeedlejetInFlights.at(factionId) && !isUnitHasAbility(unitId, ABL_AIR_SUPERIORITY))
+		if (checkNeedlejetInFlight && targetTileInfo.unfriendlyNeedlejetInFlights.at(factionId) && !isUnitCanAttackNeedlejetInFlight(unitId))
 			return false;
 		
 		// check movement
@@ -4125,8 +4431,10 @@ bool isUnitCanMeleeAttack(int factionId, int unitId, MAP const *position, MAP co
 			}
 			
 			break;
-			
-		}
+
+        default:;
+
+        }
 		
 	}
 	
@@ -4139,10 +4447,10 @@ bool isUnitCanMeleeAttack(int factionId, int unitId, MAP const *position, MAP co
 /*
 Vehilce can attack enemy at the tile.
 */
-bool isVehicleCanMeleeAttack(int vehicleId, MAP const *position, MAP const *target)
+bool isVehicleCanMeleeAttack(int vehicleId, MAP const *position, MAP const *target, bool checkNeedlejetInFlight)
 {
 	VEH &vehicle = Vehs[vehicleId];
-	return isUnitCanMeleeAttack(vehicle.faction_id, vehicle.unit_id, position, target);
+	return isUnitCanMeleeAttack(vehicle.faction_id, vehicle.unit_id, position, target, checkNeedlejetInFlight);
 }
 
 /*
@@ -4197,7 +4505,9 @@ bool isUnitCanArtilleryAttack(int unitId, MAP const *position)
 			}
 			
 			break;
-			
+
+		default:;
+
 		}
 			
 	}
@@ -4269,7 +4579,7 @@ MapDoubleValue getMeleeAttackPosition(int unitId, MAP const *origin, MAP const *
 		
 		// can melee attack
 		
-		if (!isUnitCanMeleeAttack(aiFactionId, unitId, positionTile, target))
+		if (!isUnitCanMeleeAttack(aiFactionId, unitId, positionTile, target, false))
 			continue;
 		
 		// travelTime
@@ -4626,6 +4936,9 @@ double getUnitDestructionGain(int unitId)
 			// faction loss + capturer gain
 			destructionGain *= 2.0;
 			break;
+
+		default:;
+
 		}
 		
 	}
@@ -4699,7 +5012,7 @@ void populateVehiclePad0Map(bool initialize)
 Evaluates combat gain for attacker.
 Could be positive or negative.
 */
-double getCombatGain(int  attackerVehicleId, int  defenderVehicleId, ENGAGEMENT_MODE  engagementMode, MAP const *attackerTile, MAP const *defenderTile, double  attackerHealth, double  defenderHealth)
+double getCombatGain(int  attackerVehicleId, int  defenderVehicleId, EngagementMode  engagementMode, MAP const *attackerTile, MAP const *defenderTile, double  attackerHealth, double  defenderHealth)
 {
 	int defenderUnitId = Vehs[defenderVehicleId].unit_id;
 	Triad defenderTriad = static_cast<Triad>(Units[defenderUnitId].triad());

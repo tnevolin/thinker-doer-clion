@@ -38,7 +38,7 @@ void CombatAction::setMove(int _vehicleId, double _gain, MAP *_destination, int 
 	this->hastyCoefficient = 1.0;
 }
 
-void CombatAction::setAttack(int _vehicleId, double _gain, MAP *_destination, int _remainingMoves, ENGAGEMENT_MODE _engagementMode, MAP *_target, double _hastyCoefficient)
+void CombatAction::setAttack(int _vehicleId, double _gain, MAP *_destination, int _remainingMoves, EngagementMode _engagementMode, MAP *_target, double _hastyCoefficient)
 {
 	this->vehicleId = _vehicleId;
 	this->gain = _gain;
@@ -2337,7 +2337,7 @@ double getDefendGain(int  defenderVehicleId, MAP const *tile, double defenderHea
 
 		// bombardment
 
-		ENGAGEMENT_MODE engagementMode = potentialAttack.engagementMode;
+		EngagementMode engagementMode = potentialAttack.engagementMode;
 		CombatMode combatMode = getCombatMode(engagementMode, defenderVehicle.unit_id);
 		if (combatMode != CM_BOMBARDMENT)
 			continue;
@@ -2380,7 +2380,7 @@ double getDefendGain(int  defenderVehicleId, MAP const *tile, double defenderHea
 
 		// not bombardment
 
-		ENGAGEMENT_MODE engagementMode = potentialAttack.engagementMode;
+		EngagementMode engagementMode = potentialAttack.engagementMode;
 		CombatMode combatMode = getCombatMode(engagementMode, defenderVehicle.unit_id);
 		if (combatMode == CM_BOMBARDMENT)
 			continue;

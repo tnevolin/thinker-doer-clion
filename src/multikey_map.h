@@ -77,6 +77,14 @@ public:
         return m_map.find(std::make_tuple(keys...));
     }
 
+    iterator begin() {
+        return m_map.begin();
+    }
+
+    const_iterator begin() const {
+        return m_map.begin();
+    }
+
     iterator end() {
         return m_map.end();
     }

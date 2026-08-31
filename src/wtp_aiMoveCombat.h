@@ -103,12 +103,12 @@ struct CombatAction
 	double gain;
 	MAP *destination;
 	int remainingMoves;
-	ENGAGEMENT_MODE engagementMode;
+	EngagementMode engagementMode;
 	MAP *target;
 	double hastyCoefficient;
 	
 	void setMove(int _vehicleId, double _gain, MAP *_destination, int _remainingMoves);
-	void setAttack(int _vehicleId, double _gain, MAP *_destination, int _remainingMoves, ENGAGEMENT_MODE _engagementMode, MAP *_target, double _hastyCoefficient);
+	void setAttack(int _vehicleId, double _gain, MAP *_destination, int _remainingMoves, EngagementMode _engagementMode, MAP *_target, double _hastyCoefficient);
 	
 };
 

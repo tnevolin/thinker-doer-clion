@@ -125,13 +125,13 @@ enum SurfaceType
 };
 static constexpr int SurfaceTypeCount = ST_SEA + 1;
 
-enum ENGAGEMENT_MODE
+enum EngagementMode
 {
 	EM_MELEE,
 	EM_ARTILLERY,
 };
 int const ENGAGEMENT_MODE_COUNT = EM_ARTILLERY + 1;
-std::array<ENGAGEMENT_MODE, ENGAGEMENT_MODE_COUNT> const ENGAGEMENT_MODES = {EM_MELEE, EM_ARTILLERY};
+std::array<EngagementMode, ENGAGEMENT_MODE_COUNT> const ENGAGEMENT_MODES = {EM_MELEE, EM_ARTILLERY};
 
 enum CombatMode
 {
@@ -184,12 +184,12 @@ struct FactionUnitCombat
 {
 	FactionUnit attackerFactionUnit;
 	FactionUnit defenderFactionUnit;
-	ENGAGEMENT_MODE engagementMode;
+	EngagementMode engagementMode;
 
-	static int encodeKey(int attackerKey, int defenderKey, ENGAGEMENT_MODE engagementMode);
-	static int encodeKey(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode);
+	static int encodeKey(int attackerKey, int defenderKey, EngagementMode engagementMode);
+	static int encodeKey(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, EngagementMode engagementMode);
 
-	FactionUnitCombat(FactionUnit _attackerFactionUnit, FactionUnit _defenderFactionUnit, ENGAGEMENT_MODE _engagementMode);
+	FactionUnitCombat(FactionUnit _attackerFactionUnit, FactionUnit _defenderFactionUnit, EngagementMode _engagementMode);
 	FactionUnitCombat(int _key);
 
 };
@@ -1086,7 +1086,7 @@ double evaluateUnitConDefenseEffectiveness(int id);
 double evaluateUnitConOffenseEffectiveness(int id);
 double evaluateUnitPsiDefenseEffectiveness(int id);
 double evaluateUnitPsiOffenseEffectiveness(int id);
-double getBaseDefenseMultiplier(int baseId, int extendedTriad);
+double getBaseDefenseMultiplier(int baseId, AttackTriad attackTriad);
 double getBaseDefenseMultiplier(int baseId, int attackerUnitId, int defenderUnitId);
 int estimateBaseItemProductionTime(int baseId, int item);
 int estimateBaseProductionTurnsToComplete(int id);
@@ -1371,8 +1371,8 @@ int getAngleByTile(MAP  *tile, MAP  *anotherTile);
 bool isPodAt(MAP const *tile);
 std::vector<int> getTransportPassengers(int transportVehicleId);
 double getMaxBombardmentDamage(Triad triad, MAP const *tile);
-double isLethalBombardment(Triad triad, MAP const *tile);
-double getVehicleRemainingBombardmentDamage(int vehicleId);
+bool isLethalBombardment(Triad triad, MAP const *tile);
+double getVehicleRemainingBombardmentDamage(int vehicleId, MAP const *tile);
 int getBasePopulationLimit(int baseId);
 bool isWithinBaseRadius(int x1, int y1, int x2, int y2);
 bool isWithinBaseRadius(MAP  *tile1, MAP  *tile2);
@@ -1432,9 +1432,9 @@ bool isUnitObsolete(int unitId, int factionId);
 bool isUnitAvailable(int unitId, int factionId);
 bool isUnitPsiOffense(int unitId);
 bool isUnitPsiDefense(int unitId);
-CombatMode getCombatMode(ENGAGEMENT_MODE engagementMode, int defenderUnitId);
-bool isMutualCombat(ENGAGEMENT_MODE engagementMode, int defenderUnitId);
-bool isBombardment(ENGAGEMENT_MODE engagementMode, int defenderUnitId);
+CombatMode getCombatMode(EngagementMode engagementMode, int defenderUnitId);
+bool isMutualCombat(EngagementMode engagementMode, int defenderUnitId);
+bool isBombardment(EngagementMode engagementMode, int defenderUnitId);
 double getVehicleStrenghtMultiplier(int vehicleId);
 double getVehicleBombardmentStrenghtMultiplier(int vehicleId);
 bool isMapValueEmpty(robin_hood::unordered_flat_map<int, double>  &map, int key);

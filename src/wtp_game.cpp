@@ -327,7 +327,7 @@ int FactionUnit::encodeKey()
 
 // FactionUnitCombat
 
-int FactionUnitCombat::encodeKey(int attackerKey, int defenderKey, ENGAGEMENT_MODE engagementMode)
+int FactionUnitCombat::encodeKey(int attackerKey, int defenderKey, EngagementMode engagementMode)
 {
 	return
 		+ attackerKey	* 2 * (MaxPlayerNum * (2 * MaxProtoFactionNum))
@@ -336,17 +336,17 @@ int FactionUnitCombat::encodeKey(int attackerKey, int defenderKey, ENGAGEMENT_MO
 	;
 }
 
-int FactionUnitCombat::encodeKey(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, ENGAGEMENT_MODE engagementMode)
+int FactionUnitCombat::encodeKey(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, EngagementMode engagementMode)
 {
 	return encodeKey(FactionUnit::encodeKey(attackerFactionId, attackerUnitId), FactionUnit::encodeKey(defenderFactionId, defenderUnitId), engagementMode);
 }
 
-FactionUnitCombat::FactionUnitCombat(FactionUnit _attackerFactionUnit, FactionUnit _defenderFactionUnit, ENGAGEMENT_MODE _engagementMode)
+FactionUnitCombat::FactionUnitCombat(FactionUnit _attackerFactionUnit, FactionUnit _defenderFactionUnit, EngagementMode _engagementMode)
 : attackerFactionUnit(_attackerFactionUnit), defenderFactionUnit(_defenderFactionUnit), engagementMode(_engagementMode)
 {}
 
 FactionUnitCombat::FactionUnitCombat(int _key)
-: attackerFactionUnit(FactionUnit(_key / (2 * (MaxPlayerNum * (2 * MaxProtoFactionNum))))), defenderFactionUnit(FactionUnit(_key / 2 % (MaxPlayerNum * (2 * MaxProtoFactionNum)))), engagementMode((ENGAGEMENT_MODE) (_key % (2 * (MaxPlayerNum * (2 * MaxProtoFactionNum)))))
+: attackerFactionUnit(FactionUnit(_key / (2 * (MaxPlayerNum * (2 * MaxProtoFactionNum))))), defenderFactionUnit(FactionUnit(_key / 2 % (MaxPlayerNum * (2 * MaxProtoFactionNum)))), engagementMode((EngagementMode) (_key % (2 * (MaxPlayerNum * (2 * MaxProtoFactionNum)))))
 {}
 
 // FactionUnitCombatEffect
@@ -2312,11 +2312,11 @@ double evaluateUnitPsiOffenseEffectiveness(int id)
 /*
 extendedTriad: 0 = land, 1 = sea, 2 = air, 3 = psi, 4 = probe
 */
-double getBaseDefenseMultiplier(int baseId, int extendedTriad)
+double getBaseDefenseMultiplier(int baseId, AttackTriad attackTriad)
 {
 	int defenseBonus = 0;
 
-	switch (extendedTriad)
+	switch (attackTriad)
 	{
 	case 4:
 		defenseBonus = conf.probe_combat_uses_bonuses ? Rules->combat_bonus_intrinsic_base_def : 0;
@@ -2328,7 +2328,7 @@ double getBaseDefenseMultiplier(int baseId, int extendedTriad)
 	case 1:
 	case 0:
 		{
-			bool firstLevelDefense = has_facility(TRIAD_DEFENSIVE_FACILITIES[extendedTriad], baseId);
+			bool firstLevelDefense = has_facility(TRIAD_DEFENSIVE_FACILITIES[attackTriad], baseId);
 			bool secondLevelDefense = has_facility(FAC_TACHYON_FIELD, baseId);
 
 			if (!firstLevelDefense && !secondLevelDefense)
@@ -2339,7 +2339,7 @@ double getBaseDefenseMultiplier(int baseId, int extendedTriad)
 			{
 				if (firstLevelDefense)
 				{
-					defenseBonus += conf.facility_defense_bonus[extendedTriad];
+					defenseBonus += conf.facility_defense_bonus[attackTriad];
 				}
 				if (secondLevelDefense)
 				{
@@ -7104,19 +7104,19 @@ double getMaxBombardmentDamage(Triad  triad, MAP const *tile)
 
 	}
 
-	return (double) maxBombardmentDamagePercentage / 100.0;
+	return static_cast<double>(maxBombardmentDamagePercentage) / 100.0;
 
 }
 
-double isLethalBombardment(Triad triad, MAP const *tile)
+bool isLethalBombardment(Triad triad, MAP const *tile)
 {
 	return getMaxBombardmentDamage(triad, tile) >= 1.0;
 }
 
-double getVehicleRemainingBombardmentDamage(int vehicleId)
+double getVehicleRemainingBombardmentDamage(int vehicleId, MAP const *tile)
 {
-	Triad triad = (Triad) Vehs[vehicleId].triad();
-	MAP *vehicleTile = getVehicleMapTile(vehicleId);
+	Triad triad = static_cast<Triad>(Vehs[vehicleId].triad());
+	MAP const *vehicleTile = tile != nullptr ? tile : getVehicleMapTile(vehicleId);
 
 	double maxBombardmentDamage = getMaxBombardmentDamage(triad, vehicleTile);
 	double relativeDamage = getVehicleRelativeDamage(vehicleId);
@@ -8050,21 +8050,21 @@ bool isUnitPsiDefense(int unitId)
 /*
 Returns combat mode by engagement mode.
 */
-CombatMode getCombatMode(ENGAGEMENT_MODE engagementMode, int defenderUnitId)
+CombatMode getCombatMode(EngagementMode engagementMode, int defenderUnitId)
 {
 	return engagementMode == EM_MELEE ? CM_MELEE : isArtilleryUnit(defenderUnitId) ? CM_ARTILLERY_DUEL : CM_BOMBARDMENT;
 }
 /*
 Determines if engagement results in mutual combat: melee combat or artillery duel.
 */
-bool isMutualCombat(ENGAGEMENT_MODE engagementMode, int defenderUnitId)
+bool isMutualCombat(EngagementMode engagementMode, int defenderUnitId)
 {
 	return !isBombardment(engagementMode, defenderUnitId);
 }
 /*
 Determines if engagement results in bombardment
 */
-bool isBombardment(ENGAGEMENT_MODE engagementMode, int defenderUnitId)
+bool isBombardment(EngagementMode engagementMode, int defenderUnitId)
 {
 	CombatMode combatMode = getCombatMode(engagementMode, defenderUnitId);
 	return combatMode == CM_BOMBARDMENT;
