@@ -3727,12 +3727,51 @@ void evaluateDefendLocations()
 
 	}
 
+	// no defend locations - no further processing
+	if (aiData.defendLocations.empty())
+	{
+		Profiling::stop("evaluateDefendLocation");
+		return;
+	}
+
+	// collect each faction other potential targets
+	// only hostile targets included for other factions
+
+	std::array<std::vector<MAP const *>, MaxPlayerNum> factionOtherAttackTargets;
+
+	for (int factionId = 0; factionId < MaxPlayerNum; ++factionId)
+	{
+		// unfriendly
+		if (isFriendly(aiFactionId,factionId))
+			continue;
+
+		// other faction bases
+		for (int baseId = 0; baseId < *BaseCount; ++baseId)
+		{
+			BASE const &base = Bases[baseId];
+			MAP *baseTile = getBaseMapTile(baseId);
+
+			// other faction
+			if (base.faction_id == aiFactionId)
+				continue;
+
+			// hostile to other faction
+			if (!isHostile(factionId, base.faction_id))
+				continue;
+
+			factionOtherAttackTargets[factionId].push_back(baseTile);
+
+		}
+
+	}
+
 	// evaluate threat
 
 	Profiling::start("evaluate threat", "evaluateDefendLocation");
 
 	robin_hood::unordered_flat_map<MAP const *, robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, double>>> defendLocationAttackerWeights;
 
+	debug("vehicles\n");
 	for (int vehicleId = 0; vehicleId < *VehCount; ++vehicleId)
 	{
 		VEH &vehicle = Vehs[vehicleId];
@@ -3759,49 +3798,84 @@ void evaluateDefendLocations()
 		// health coefficient
 		double healthCoefficient = getVehicleRelativeHealth(vehicleId);
 
-		// find approach time coefficients to all defend locations
+		// find approach times and attractions
 
 		robin_hood::unordered_flat_map<MAP const *, double> defendLocationApproachTimes;
-		double minApproachTime = INF;
+		robin_hood::unordered_flat_map<MAP const *, double> defendLocationApproachTimeCoefficients;
+		robin_hood::unordered_flat_map<MAP const *, double> defendLocationAttractions;
+		double totalAttraction = 0.0;
 
 		for (DefendData &defendData : aiData.defendLocations)
 		{
 			double approachTime = getVehicleApproachTime(vehicleId, defendData.tile);
-			if (approachTime == INF)
-				continue;
-
 			defendLocationApproachTimes[defendData.tile] = approachTime;
-			minApproachTime = std::min(minApproachTime, approachTime);
+			double approachTimeCoefficient = approachTime == INF ? 0.0 : getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, approachTime);
+			defendLocationApproachTimeCoefficients[defendData.tile] = approachTimeCoefficient;
+
+			if (approachTime == INF)
+			{
+				defendLocationAttractions[defendData.tile] = 0.0;
+			}
+			else
+			{
+				double attractionThreatCoeficient = isHostile(aiFactionId, vehicle.faction_id) ? 1.0 : isNeutral(aiFactionId, vehicle.faction_id) ? 0.1 : 0.0;
+				double attraction = attractionThreatCoeficient * 1.0 / approachTime;
+				defendLocationAttractions[defendData.tile] = attraction;
+
+				totalAttraction += attraction;
+
+			}
 
 		}
 
-		// reduce approach time coefficient further for distanter locations
-
-		robin_hood::unordered_flat_map<MAP const *, double> defendLocationApproachTimeCoefficients;
-
-		for (auto const &defendLocationApproachTime : defendLocationApproachTimes)
+		for (MAP const *attackTarget : factionOtherAttackTargets[vehicle.faction_id])
 		{
-			double approachTimeCoefficient =
-				// time decay coefficient
-				getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, defendLocationApproachTime.second)
-				*
-				// reduce approach time coefficient further for distanter locations
-				sqrt(minApproachTime / defendLocationApproachTime.second)
-			;
-			defendLocationApproachTimeCoefficients[defendLocationApproachTime.first] = approachTimeCoefficient;
+			double approachTime = getVehicleApproachTime(vehicleId, attackTarget);
+			if (approachTime == INF)
+				continue;
 
+			// attractionCoeficient = 1.0: hostile other targets only
+			double attractionThreatCoeficient = 1.0;
+			double attraction = attractionThreatCoeficient * 1.0 / approachTime;
+
+			totalAttraction += attraction;
+
+		}
+
+		if (totalAttraction == 0.0)
+		{
+			debug("ERROR: evaluateDefendLocations totalAttraction == 0.0\n");
+			continue;
+		}
+
+		// find attraction coefficients
+
+		robin_hood::unordered_flat_map<MAP const *, double> defendLocationAttractionCoefficients;
+
+		for (DefendData &defendData : aiData.defendLocations)
+		{
+			defendLocationAttractionCoefficients[defendData.tile] = defendLocationAttractions.contains(defendData.tile) ? defendLocationAttractions.at(defendData.tile) / totalAttraction : 0.0;
 		}
 
 		// collect defend location attackers
 
+		debug("\t%s %-24s %-32s\n", getLocationString(getVehicleMapTile(vehicleId)), MFactions[vehicle.faction_id].noun_faction, Units[vehicle.unit_id].name);
 		for (auto &defendLocation : aiData.defendLocations)
 		{
-			if (!defendLocationApproachTimeCoefficients.contains(defendLocation.tile))
+			if (!defendLocationApproachTimeCoefficients.contains(defendLocation.tile) || !defendLocationAttractionCoefficients.contains(defendLocation.tile))
 				continue;
 
+			double approachTime = defendLocationApproachTimes.at(defendLocation.tile);
 			double approachTimeCoefficient = defendLocationApproachTimeCoefficients.at(defendLocation.tile);
-			double weight = approachTimeCoefficient * threatCoefficient * moraleCoefficient * healthCoefficient;
+			double attractionCoefficient = defendLocationAttractionCoefficients.at(defendLocation.tile);
+			double weight = threatCoefficient * moraleCoefficient * healthCoefficient * approachTimeCoefficient * attractionCoefficient;
 			defendLocationAttackerWeights[defendLocation.tile][vehicle.faction_id][vehicle.unit_id] += weight;
+
+			debug
+			(
+				"\t\t%s weight=%5.2f threatCoefficient=%5.2f moraleCoefficient=%5.2f healthCoefficient=%5.2f approachTime=%5.2f approachTimeCoefficient=%5.2f attractionCoefficient=%5.2f\n"
+				, getLocationString(defendLocation.tile), weight, threatCoefficient, moraleCoefficient, healthCoefficient, approachTime, approachTimeCoefficient, attractionCoefficient
+			);
 
 		}
 
@@ -3834,6 +3908,7 @@ void evaluateDefendLocations()
 
 	// calculate potential alien strength due to random appearance and eco-damage
 
+	debug("potential alien\n");
 	for (auto &defendLocation : aiData.defendLocations)
 	{
 		TileInfo &tileInfo = aiData.getTileInfo(defendLocation.tile);
@@ -3892,8 +3967,18 @@ void evaluateDefendLocations()
 
 		if (weight > existingAlienWeight)
 		{
+			debug("\t%s weight=%5.2f\n", getLocationString(defendLocation.tile), weight);
 			weight = weight - existingAlienWeight;
-			defendLocation.addAttackerUnit(0, alienUnitId, weight);
+
+			if (auto defendAttackerIterator = std::find_if(defendLocation.attackers.begin(), defendLocation.attackers.end(), [&](DefendDataAttacker const &a) { return a.factionId == 0 && a.unitId == alienUnitId; }); defendAttackerIterator != defendLocation.attackers.end())
+			{
+				defendAttackerIterator->health += weight;
+			}
+			else
+			{
+				defendLocation.addAttackerUnit(0, alienUnitId, weight);
+			}
+
 		}
 
 	}
@@ -3950,6 +4035,22 @@ void evaluateDefendLocations()
 	Profiling::stop("evaluate threat");
 	
 	Profiling::stop("evaluateDefendLocation");
+
+	if constexpr (DEBUG)
+	{
+		debug("defend locations\n");
+		for (DefendData const &defendLocation : aiData.defendLocations)
+		{
+			debug("\t%s\n", getLocationString(defendLocation.tile));
+
+			for (DefendDataAttacker const &attacker : defendLocation.attackers)
+			{
+				debug("\t\t%-24s %-32s %5.2f\n", MFactions[attacker.factionId].noun_faction, Units[attacker.unitId].name, attacker.health);
+			}
+
+		}
+
+	}
 	
 }
 
