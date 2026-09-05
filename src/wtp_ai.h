@@ -35,8 +35,8 @@ void populateEnemyBaseCaptureGains();
 void populateEnemyBaseProtectorWeights();
 
 void evaluateEnemyStacks();
-void evaluateBaseDefense();
-void evaluateDefense(MAP const *tile, CombatData &combatData, double targetGain);
+void evaluateDefendLocations();
+void evaluateDefendLocation(DefendData &defendData);
 void evaluateBaseProbeDefense();
 
 void designUnits();

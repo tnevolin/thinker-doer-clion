@@ -377,7 +377,7 @@ double CombatEffectTable::getUnitCombatEffect(int attackerFactionId, int attacke
 {
 	trace("CombatEffectTable::getCombatModeEffect( attackerFactionId=%d attackerUnitId=%d defenderFactionId=%d defenderUnitId=%d engagementMode=%d attackerTile=%s defenderTile=%s )\n", attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, getLocationString(attackerTile), getLocationString(defenderTile));
 	
-	if (combatEffects.contains(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile))
+	if (!combatEffects.contains(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile))
 	{
 		double combatEffect = computeUnitCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile);
 		combatEffects.emplace(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile, combatEffect);
@@ -1373,12 +1373,12 @@ double CombatData::getEnemyRelativeHealthBonus(std::vector<Combattant> opponentC
 
 // DefenseData
 
-DefenseData::DefenseData(MAP const* _tile, double _targetGain)
+DefendData::DefendData(MAP const* _tile, double _targetGain)
 	: tile(_tile), targetGain(_targetGain)
 {
 }
 
-double DefenseData::getCombatEffect(int attackerFactionId, int attackerUnitId, int defenderVehicleId, EngagementMode engagementMode)
+double DefendData::getCombatEffect(int attackerFactionId, int attackerUnitId, int defenderVehicleId, EngagementMode engagementMode)
 {
 	VEH defenderVehicle = Vehs[defenderVehicleId];
 
@@ -1391,7 +1391,20 @@ double DefenseData::getCombatEffect(int attackerFactionId, int attackerUnitId, i
 
 }
 
-void DefenseData::addDefenderVehicle(int vehicleId)
+void DefendData::addAttackerUnit(int _factionId, int _unitId, double _health)
+{
+	UNIT &unit = Units[_unitId];
+
+	Triad triad = static_cast<Triad>(unit.triad());
+	bool melee = isMeleeUnit(_unitId);
+	bool artillery = isArtilleryUnit(_unitId);
+	bool canBombardAircraftInFlight = isUnitCanBombardAircraftInFlight(_unitId);
+
+	this->attackers.push_back({_factionId, _unitId, triad, _health, melee, artillery, canBombardAircraftInFlight});
+
+}
+
+void DefendData::addDefenderVehicle(int vehicleId)
 {
 	VEH &vehicle = Vehs[vehicleId];
 
@@ -1401,11 +1414,11 @@ void DefenseData::addDefenderVehicle(int vehicleId)
 	double minBombardmentHealth = 1.0 - maxBombardmentDamage;
 	double health = getVehicleRelativeHealth(vehicleId);
 
-	defenders.push_back({vehicleId, vehicle.faction_id, vehicle.unit_id, triad, artillery, minBombardmentHealth, health});
+	defenders.push_back({vehicleId, vehicle.faction_id, vehicle.unit_id, triad, health, artillery, minBombardmentHealth});
 
 }
 
-bool DefenseData::isSufficient()
+bool DefendData::isSufficient()
 {
 	// return hashed value
 	if (this->computed)
@@ -1445,9 +1458,9 @@ bool DefenseData::isSufficient()
 	    // select best attacker vs. best defender
 
     	double bestAttackerBestDefenderEffect = 0.0;
-    	DefenseAttacker *bestAttacker = nullptr;
+    	DefendDataAttacker *bestAttacker = nullptr;
     	bool bestAttackerBombardment = false;
-    	DefenseDefender *bestAttackerBestDefender = nullptr;
+    	DefendDataDefender *bestAttackerBestDefender = nullptr;
     	robin_hood::unordered_flat_map<int, double> bestAttackerBombardmentDamages;
 
     	for (auto &attacker : remainingAttackers)
@@ -1459,7 +1472,7 @@ bool DefenseData::isSufficient()
     		// melee
 
     		double attackerBestMeleeDefenderEffect = 0.0;
-    		DefenseDefender *attackerBestAttackerMeleeDefender = nullptr;
+    		DefendDataDefender *attackerBestAttackerMeleeDefender = nullptr;
 
     		if (attacker.melee)
     		{
@@ -1484,7 +1497,7 @@ bool DefenseData::isSufficient()
 
     		bool attackerBombardment = false;
     		double attackerBestArtilleryDuelDefenderEffect = 0.0;
-    		DefenseDefender *attackerBestArtilleryDuelDefender = nullptr;
+    		DefendDataDefender *attackerBestArtilleryDuelDefender = nullptr;
     		double attackerTotalBombardmentEffect = 0.0;
     		robin_hood::unordered_flat_map<int, double> attackerBombardmentDamages;
 
@@ -1555,7 +1568,7 @@ bool DefenseData::isSufficient()
     		// pick best attacker effect
 
     		double attackerBestDefenderEffect = 0.0;
-    		DefenseDefender *attackerBestDefender = nullptr;
+    		DefendDataDefender *attackerBestDefender = nullptr;
 
     		if (!attackerBombardment)
     		{
@@ -1657,8 +1670,8 @@ bool DefenseData::isSufficient()
 
 	// check alive units
 
-	bool attackerAlive = std::any_of(attackers.begin(), attackers.end(), [&](DefenseAttacker const &e) { return e.health > 0.0; });
-	bool defenderAlive = std::any_of(defenders.begin(), defenders.end(), [&](DefenseDefender const &e) { return e.health > 0.0; });
+	bool attackerAlive = std::any_of(attackers.begin(), attackers.end(), [&](DefendDataAttacker const &e) { return e.health > 0.0; });
+	bool defenderAlive = std::any_of(defenders.begin(), defenders.end(), [&](DefendDataDefender const &e) { return e.health > 0.0; });
 
 	if (!attackerAlive)
 		return this->sufficient = true;
@@ -1671,7 +1684,7 @@ bool DefenseData::isSufficient()
 
 }
 
-double DefenseData::getVehicleContribution(int vehicleId)
+double DefendData::getVehicleContribution(int vehicleId)
 {
 	if (!this->computed)
 	{

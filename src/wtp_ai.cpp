@@ -247,7 +247,7 @@ void populateAIData()
 
 	// evaluate defense
 
-	evaluateBaseDefense();
+	evaluateDefendLocations();
 	evaluateBaseProbeDefense();
 	
 	Profiling::stop("populateAIData");
@@ -3696,19 +3696,23 @@ void evaluateEnemyStacks()
 	
 }
 
-void evaluateBaseDefense()
+void evaluateDefendLocations()
 {
-	debug("evaluateBaseDefense - %s\n", MFactions[aiFactionId].noun_faction);
-	
+	debug("evaluateDefendLocations - %s\n", MFactions[aiFactionId].noun_faction);
+
+	Profiling::start("evaluateDefendLocation", "populateAIData");
+
+	// clear container
+	aiData.defendLocations.clear();
+
 	// bases
 
 	for (int baseId : aiData.baseIds)
 	{
 		MAP *tile = getBaseMapTile(baseId);
 		BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
-		CombatData &combatData = baseInfo.combatData;
 
-		evaluateDefense(tile, combatData, baseInfo.gain);
+		aiData.defendLocations.emplace_back(tile, baseInfo.gain);
 
 	}
 	
@@ -3719,426 +3723,233 @@ void evaluateBaseDefense()
 		MAP const *tile = bunkerInfoEntry.first;
 		BunkerInfo &bunkerInfo = bunkerInfoEntry.second;
 
-		CombatData &combatData = bunkerInfo.combatData;
-
-		evaluateDefense(tile, combatData, 0.0);
+		aiData.defendLocations.emplace_back(tile, bunkerInfo.gain);
 
 	}
-	
-}
 
-void evaluateDefense(MAP const *tile, CombatData &combatData, double targetGain)
-{
-	Profiling::start("evaluateBaseDefense", "populateAIData");
-	
-	std::array<FactionInfo, MaxPlayerNum> &factionInfos = aiData.factionInfos;
-	std::vector<int> &unfriendlyFactionIds = aiData.unfriendlyFactionIds;
+	// evaluate threat
 
-	// initialize combat data
+	Profiling::start("evaluate threat", "evaluateDefendLocation");
 
-	combatData.initialize(tile, false, targetGain);
-	
-	// evaluate base threat
+	robin_hood::unordered_flat_map<MAP const *, robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, double>>> defendLocationAttackerWeights;
 
-	Profiling::start("evaluate base threat", "evaluateBaseDefense");
-	
-	TileInfo &tileInfo = aiData.getTileInfo(tile);
-	BASE *base = getBase(tileInfo.baseId);
-
-	debug
-	(
-		"\t%s %-25s"
-		"\n"
-		, getLocationString(tile)
-		, base == nullptr ? "--- bunker ---" : base->name
-	);
-	
-	// calculate foe strength
-	
-	Profiling::start("calculate foe strength", "evaluate base threat");
-	
-	debug("\t\tbase foeMilitaryStrength\n");
-	
-	std::array<robin_hood::unordered_flat_map<int, double>, MaxPlayerNum> foeVehicleWeights;
-	std::array<robin_hood::unordered_flat_map<int, double>, MaxPlayerNum> foeUnitWeights;
-	
-	for (int foeFactionId : unfriendlyFactionIds)
+	for (int vehicleId = 0; vehicleId < *VehCount; ++vehicleId)
 	{
-		for (int vehicleId : factionInfos.at(foeFactionId).combatVehicleIds)
+		VEH &vehicle = Vehs[vehicleId];
+		MAP *vehicleTile = getVehicleMapTile(vehicleId);
+
+		// unfriendly
+		if (isFriendly(aiFactionId, vehicle.faction_id))
+			continue;
+
+		// combat
+		if (!isCombatVehicle(vehicleId))
+			continue;
+
+		// ignore infantry defensive vehicle at base
+		if (isInfantryDefensiveVehicle(vehicleId) && map_base(vehicleTile))
+			continue;
+
+		// threat coefficient
+		double threatCoefficient = aiData.factionInfos[vehicle.faction_id].threatCoefficient;
+
+		// morale coefficient
+		double moraleCoefficient = getVehicleMoraleMultiplier(vehicleId);
+
+		// health coefficient
+		double healthCoefficient = getVehicleRelativeHealth(vehicleId);
+
+		// find approach time coefficients to all defend locations
+
+		robin_hood::unordered_flat_map<MAP const *, double> defendLocationApproachTimes;
+		double minApproachTime = INF;
+
+		for (DefendData &defendData : aiData.defendLocations)
 		{
-			VEH &vehicle = Vehs[vehicleId];
-			MAP *vehicleTile = getVehicleMapTile(vehicleId);
-			UNIT &unit = Units[vehicle.unit_id];
-			CChassis &chassis = Chassis[unit.chassis_id];
-			int triad = chassis.triad;
-
-			// combat
-
-			if (!isCombatVehicle(vehicleId))
-				continue;
-
-			// ignore infantry defensive vehicle at base
-
-			if (isInfantryDefensiveVehicle(vehicleId) && map_base(vehicleTile))
-				continue;
-
-			// reachable
-
-			switch (triad)
-			{
-			case TRIAD_AIR:
-
-				// same enemy air combat cluster for air vehicle
-
-				if (!isSameEnemyAirCluster(vehicleId, tile))
-					continue;
-
-				break;
-
-			case TRIAD_SEA:
-
-				if (tileInfo.ocean)
-				{
-					// same enemy sea combat cluster for sea vehicle
-
-					if (!isSameEnemySeaCombatCluster(vehicleId, tile))
-						continue;
-
-				}
-				else
-				{
-					// sea vehicle cannot attack land base
-					continue;
-				}
-
-				break;
-
-			case TRIAD_LAND:
-
-				if (tileInfo.ocean)
-				{
-					if (vehicle_has_ability(vehicleId, ABL_AMPHIBIOUS))
-					{
-						// same land combat cluster for amphibious land vehicle
-
-						if (!isSameEnemyLandCombatCluster(vehicleId, tile))
-							continue;
-
-					}
-					else
-					{
-						// non-amphibious land vehicle cannot attack sea base
-						continue;
-					}
-				}
-				else
-				{
-					// same land combat cluster for land vehicle
-
-					if (!isSameEnemyLandCombatCluster(vehicleId, tile))
-						continue;
-
-				}
-
-			}
-
-			// threat coefficient
-
-			double threatCoefficient = aiData.factionInfos[vehicle.faction_id].threatCoefficient;
-
-			// approach time coefficient
-
-			double approachTime = getVehicleApproachTime(vehicleId, tile);
+			double approachTime = getVehicleApproachTime(vehicleId, defendData.tile);
 			if (approachTime == INF)
 				continue;
 
-			double approachTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, approachTime);
+			defendLocationApproachTimes[defendData.tile] = approachTime;
+			minApproachTime = std::min(minApproachTime, approachTime);
 
-			// weight
+		}
 
-			double weight = threatCoefficient * approachTimeCoefficient;
+		// reduce approach time coefficient further for distanter locations
 
-			// store value
+		robin_hood::unordered_flat_map<MAP const *, double> defendLocationApproachTimeCoefficients;
 
-			foeVehicleWeights.at(vehicle.faction_id)[vehicleId] = weight;
-			foeUnitWeights.at(vehicle.faction_id)[vehicle.unit_id] += weight;
+		for (auto const &defendLocationApproachTime : defendLocationApproachTimes)
+		{
+			double approachTimeCoefficient =
+				// time decay coefficient
+				getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, defendLocationApproachTime.second)
+				*
+				// reduce approach time coefficient further for distanter locations
+				sqrt(minApproachTime / defendLocationApproachTime.second)
+			;
+			defendLocationApproachTimeCoefficients[defendLocationApproachTime.first] = approachTimeCoefficient;
 
-			debug
-			(
-				"\t\t\t(%3d,%3d) %-32s"
-				" weight=%5.2f"
-				" approachTime=%7.2f approachTimeCoefficient=%5.2f"
-				" threatCoefficient=%5.2f"
-				"\n"
-				, vehicle.x, vehicle.y, unit.name
-				, weight
-				, approachTime, approachTimeCoefficient
-				, threatCoefficient
-			);
+		}
+
+		// collect defend location attackers
+
+		for (auto &defendLocation : aiData.defendLocations)
+		{
+			if (!defendLocationApproachTimeCoefficients.contains(defendLocation.tile))
+				continue;
+
+			double approachTimeCoefficient = defendLocationApproachTimeCoefficients.at(defendLocation.tile);
+			double weight = approachTimeCoefficient * threatCoefficient * moraleCoefficient * healthCoefficient;
+			defendLocationAttackerWeights[defendLocation.tile][vehicle.faction_id][vehicle.unit_id] += weight;
 
 		}
 
 	}
-	
-	Profiling::stop("calculate foe strength");
-	
-//		if (DEBUG)
-//		{
-//			for (int foeFactionId : foeFactionIds)
-//			{
-//				for (int foeUnitId : foeCombatUnitIds.at(foeFactionId))
-//				{
-//					double weight = foeUnitWeightTable.get(foeFactionId, foeUnitId);
-//					
-//					if (weight == 0.0)
-//						continue;
-//					
-//					debug
-//					(
-//						"\t\t\t%-24s %-32s weight=%5.2f\n",
-//						MFactions[foeFactionId].noun_faction,
-//						Units[foeUnitId].name,
-//						weight
-//					)
-//					;
-//					
-//				}
-//				
-//			}
-//			
-//		}
-	
-	// --------------------------------------------------
-	// calculate potential alien strength
-	// --------------------------------------------------
-	
-	debug("\t\tfoe MilitaryStrength, potential alien\n");
-	
+
+	// populate defend location attackers
+
+	for (auto &defendLocation : aiData.defendLocations)
 	{
+		if (!defendLocationAttackerWeights.contains(defendLocation.tile))
+			continue;
+
+		for (auto const &attackerWeightEntry : defendLocationAttackerWeights.at(defendLocation.tile))
+		{
+			int factionId = attackerWeightEntry.first;
+			robin_hood::unordered_flat_map<int, double> attackerFactionWeights = attackerWeightEntry.second;
+
+			for (auto const &attackerFactionWeightEntry : attackerFactionWeights)
+			{
+				int unitId = attackerFactionWeightEntry.first;
+				double weight = attackerFactionWeightEntry.second;
+
+				defendLocation.addAttackerUnit(factionId, unitId, weight);
+
+			}
+
+		}
+
+	}
+
+	// calculate potential alien strength due to random appearance and eco-damage
+
+	for (auto &defendLocation : aiData.defendLocations)
+	{
+		TileInfo &tileInfo = aiData.getTileInfo(defendLocation.tile);
+
+		// base
+		if (!tileInfo.base)
+			continue;
+
+		BASE &base = Bases[tileInfo.baseId];
+
 		int alienUnitId = tileInfo.ocean ? BSC_ISLE_OF_THE_DEEP : BSC_MIND_WORMS;
-		
+
 		// strength modifier
-		
+
 		double moraleMultiplier = getAlienMoraleMultiplier();
 		double gameTurnCoefficient = getAlienTurnOffenseModifier();
-		
+
 		// set basic numbers to occasional vehicle
-		
+
 		double alienCount = 1.0;
-		
+
 		// add more numbers based on eco-damage and number of fungal pops
-		
-		if (base != nullptr && tileInfo.land)
+
+		if (tileInfo.land)
 		{
-			alienCount += ((static_cast<double>(aiFaction->clean_minerals_modifier) / 3.0) * (static_cast<double>(base->eco_damage) / 20.0));
+			alienCount += ((static_cast<double>(aiFaction->clean_minerals_modifier) / 3.0) * (static_cast<double>(base.eco_damage) / 20.0));
 		}
-		
+
 		double weight = moraleMultiplier * gameTurnCoefficient * alienCount;
 
 		// reduce alien weight based on accepted risk of population reduction
-		
-		if (base != nullptr)
+		// full threat when alienCount >= base.pop_size and then reduced down to 0.5
+
+		if (alienCount < static_cast<double>(base.pop_size))
 		{
-			if (alienCount < static_cast<double>(base->pop_size))
-			{
-				weight *= alienCount / static_cast<double>(base->pop_size);
-			}
+			weight *= 0.5 * (1.0 + alienCount / static_cast<double>(base.pop_size));
 		}
-		else
-		{
-			// bunker does not care much about aliens
-			weight *= 0.5;
-		}
-		
+
 		// do not add potential weight more than actual one
-		
-		foeUnitWeights.at(0)[alienUnitId] += weight;
-		
-		debug
-		(
-			"\t\t\t%-32s weight=%5.2f, moraleMultiplier=%5.2f, gameTurnCoefficient=%5.2f, alienCount=%5.2f\n",
-			Units[alienUnitId].name,
-			weight, moraleMultiplier, gameTurnCoefficient, alienCount
-		);
-		
-	}
-	
-	// --------------------------------------------------
-	// calculate potential alien strength - end
-	// --------------------------------------------------
-	
-	// summarize foe unit weights by faction
-	
-	Profiling::start("summarize foe unit weights by faction", "evaluate base threat");
-	
-	std::array<double, MaxPlayerNum> foeFactionWeights = {};
-	
-	for (int foeFactionId : unfriendlyFactionIds)
-	{
-		robin_hood::unordered_flat_map<int, double> &foeFactionUnitWeights = foeUnitWeights.at(foeFactionId);
-		
-		for (int foeUnitId : factionInfos.at(foeFactionId).combatUnitIds)
+
+		double existingAlienWeight = 0.0;
+
+		for (DefendDataAttacker const &attacker : defendLocation.attackers)
 		{
-			// exclude fungal tower
-			
-			if (foeFactionId == 0 && foeUnitId == BSC_FUNGAL_TOWER)
+			// alien
+			if (attacker.factionId != 0)
 				continue;
-			
-			// not present in threat
-			
-			if (foeFactionUnitWeights.find(foeUnitId) == foeFactionUnitWeights.end())
+
+			// same realm
+			if ((tileInfo.ocean && attacker.triad == TRIAD_LAND) || (tileInfo.land && attacker.triad == TRIAD_SEA))
 				continue;
-			
-			// accumulate weight
-			
-			double weight = foeFactionUnitWeights.at(foeUnitId);
-			foeFactionWeights.at(foeFactionId) += weight;
-			
+
+			existingAlienWeight += attacker.health;
+
 		}
-		
-	}
-	
-	// leave only strongest neutral faction
 
-	int strongestNeutralFactionId = -1;
-	double strongestNeutralFactionWeight = 0.0;
-	
-	for (int foeFactionId : unfriendlyFactionIds)
-	{
-		// neutral
-
-		if (!isNeutral(aiFactionId, foeFactionId))
-			continue;
-		
-		// update strongest faction
-
-		double foeFactionWeight = foeFactionWeights.at(foeFactionId);
-
-		if (foeFactionWeight > strongestNeutralFactionWeight)
+		if (weight > existingAlienWeight)
 		{
-			strongestNeutralFactionId = foeFactionId;
-			strongestNeutralFactionWeight = foeFactionWeight;
+			weight = weight - existingAlienWeight;
+			defendLocation.addAttackerUnit(0, alienUnitId, weight);
 		}
 
 	}
 
-	for (int foeFactionId : unfriendlyFactionIds)
+	// reduce not hostile threats to max one
+
+	for (auto &defendLocation : aiData.defendLocations)
 	{
-		// neutral
+		// compute not hostile threats
 
-		if (!isNeutral(aiFactionId, foeFactionId))
-			continue;
+		robin_hood::unordered_flat_map<int, double> notHostileFactionThreats;
 
-		// exclude strongest
-
-		if (foeFactionId == strongestNeutralFactionId)
-			continue;
-
-		// clear this faction unit weights
-
-		foeVehicleWeights.at(foeFactionId).clear();
-		foeUnitWeights.at(foeFactionId).clear();
-		foeFactionWeights.at(foeFactionId) = 0.0;
-
-	}
-
-	// do not reduce threat based on enemy slowing down each other because that what mutual impediment does
-
-	// reduce alien weight to be not additive to combined threat because they fight everybody
-
-	double alienThreat = foeFactionWeights.at(0);
-
-	if (alienThreat > 0.0)
-	{
-		double combinedThreat = 0.0;
-
-		for (int foeFactionId : unfriendlyFactionIds)
+		for (DefendDataAttacker const &attacker : defendLocation.attackers)
 		{
-			// not alien
-
-			if (foeFactionId == 0)
+			// not hostile
+			if (isHostile(aiFactionId, attacker.factionId))
 				continue;
 
-			combinedThreat += foeFactionWeights.at(foeFactionId);
+			notHostileFactionThreats[attacker.factionId] += attacker.health;
 
 		}
 
-		double alienCoefficient = combinedThreat <= 0.0 ? 1.0 : alienThreat < combinedThreat ? 0.0 : (alienThreat - combinedThreat) / alienThreat;
+		// select max not hostile threat
+		auto maxNotHostileFactionThreatIterator = std::max_element(notHostileFactionThreats.begin(), notHostileFactionThreats.end(), [](auto const &a, auto const &b) { return a.second < b.second; });
+		int maxNotHostileFactionThreatFactionId = maxNotHostileFactionThreatIterator->first;
 
+		// remove sub max non hostile threats
 
-		robin_hood::unordered_flat_map<int, double> &foeFactionUnitWeights = foeUnitWeights.at(0);
-
-		for (int foeUnitId : factionInfos.at(0).combatUnitIds)
+		for (auto iterator = defendLocation.attackers.begin(); iterator != defendLocation.attackers.end(); )
 		{
-			// exclude fungal tower
+			DefendDataAttacker const &attacker = *iterator;
 
-			if (foeUnitId == BSC_FUNGAL_TOWER)
-				continue;
-
-			// not present in threat
-
-			if (foeFactionUnitWeights.find(foeUnitId) == foeFactionUnitWeights.end())
-				continue;
-
-			// reduce weight
-
-			foeFactionUnitWeights.at(foeUnitId) *= alienCoefficient;
-
-		}
-
-	}
-
-	if constexpr (DEBUG)
-	{
-		debug("\tfoeUnitWeights\n");
-
-		for (int foeFactionId : unfriendlyFactionIds)
-		{
-			for (robin_hood::pair<int, double> &foeUnitWeightEntry : foeUnitWeights.at(foeFactionId))
+			// not hostile
+			if (isHostile(aiFactionId, attacker.factionId))
 			{
-				int foeUnitId = foeUnitWeightEntry.first;
-				double foeUnitWeight = foeUnitWeightEntry.second;
-
-				if (foeUnitWeight == 0.0)
-					continue;
-
-				debug("\t\t[%1d] %-24s [%3d] %-32s %5.2f\n", foeFactionId, MFactions[foeFactionId].noun_faction, foeUnitId, Units[foeUnitId].name, foeUnitWeight);
-
+				++iterator;
+				continue;
 			}
 
-		}
-		
-	}
-	
-	Profiling::stop("summarize foe unit weights by faction");
-	
-	// populate assailants
-	
-	Profiling::start("populate assailants", "evaluate base threat");
-	
-	debug("\tassailants\n");
-	for (int foeFactionId : unfriendlyFactionIds)
-	{
-		for (robin_hood::pair<int, double> &foeVehicleWeightsEntry : foeVehicleWeights.at(foeFactionId))
-		{
-			int foeVehicleId = foeVehicleWeightsEntry.first;
-			double foeVehicleWeight = foeVehicleWeightsEntry.second;
-
-			if (foeVehicleWeight <= 0.0)
+			// not max not hostile
+			if (attacker.factionId == maxNotHostileFactionThreatFactionId)
+			{
+				++iterator;
 				continue;
+			}
 
-			debug("\t\t%-24s %-32s\n", MFactions[foeFactionId].noun_faction, Vehs[foeVehicleId].name());
-			combatData.addAssailant(foeVehicleId, foeVehicleWeight);
+			// erase element — returns next valid iterator
+			iterator = defendLocation.attackers.erase(iterator);
 
 		}
-		
+
 	}
+
+	Profiling::stop("evaluate threat");
 	
-	Profiling::stop("populate assailants");
-	
-	Profiling::stop("evaluate base threat");
-	
-	Profiling::stop("evaluateBaseDefense");
+	Profiling::stop("evaluateDefendLocation");
 	
 }
 

@@ -203,47 +203,47 @@ public:
 	
 };
 
-struct DefenseAttacker
+struct DefendDataAttacker
 {
 	int factionId;
 	int unitId;
+	Triad triad;
+	double health;
 	bool melee;
 	bool artillery;
 	bool bombardAir;
-	double health;
 };
-struct DefenseDefender
+struct DefendDataDefender
 {
 	int vehicleId;
 	int factionId;
 	int unitId;
 	Triad triad;
+	double health;
 	bool artillery;
 	double minBombardmentHealth;
-	double health;
 };
-struct DefenseData
+struct DefendData
 {
-private:
-	MAP const* tile = nullptr;
+	MAP const *tile = nullptr;
 	double targetGain = 0.0;
 
 	bool computed = false;
 	bool sufficient = false;
-	std::vector<DefenseAttacker> attackers;
-	std::vector<DefenseDefender> defenders;
+	std::vector<DefendDataAttacker> attackers;
+	std::vector<DefendDataDefender> defenders;
 	robin_hood::unordered_flat_map<int, double> defenderContributions;
 
-	double getCombatEffect(int attackerFactionId, int attackerUnitId, int defenderVehicleId, EngagementMode engagementMode);
+	DefendData(MAP const* _tile, double _targetGain);
 
-public:
-
-	DefenseData(MAP const* _tile, double _targetGain);
-
+	void addAttackerUnit(int _factionId, int _unitId, double _health);
 	void addDefenderVehicle(int vehicleId);
-
-    bool isSufficient();
+	bool isSufficient();
 	double getVehicleContribution(int vehicleId);
+
+private:
+
+	double getCombatEffect(int attackerFactionId, int attackerUnitId, int defenderVehicleId, EngagementMode engagementMode);
 
 };
 
@@ -781,18 +781,16 @@ struct Data
 	// [pad0] = vehicle
 	std::array<VEH, MaxVehModNum> savedVehicles;
 	
-	// base infos
+	// bases, bunkers, defenseLocations
 	
 	std::array<BaseInfo, MaxBaseNum> baseInfos;
 	void resetBase(int  baseId)
 	{
 		baseInfos.at(baseId).reset();
 	}
-	
-	// bunkers
-	
-	robin_hood::unordered_flat_map<MAP const*, BunkerInfo> bunkerInfos;
-	
+	robin_hood::unordered_flat_map<MAP const *, BunkerInfo> bunkerInfos;
+	std::vector<DefendData> defendLocations;
+
 	// faction infos
 	
 	std::array<FactionInfo, MaxPlayerNum> factionInfos;
