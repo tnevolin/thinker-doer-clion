@@ -10,30 +10,19 @@ This is fan made mod that goes without warranty of any kind! Use it on your own 
 
 # Installation
 
-Take latest release package from here (TheWillToPower-###.zip) and unpack it to temporary directory.
+Take latest release package from here (TheWillToPower-###.zip) and unpack its content to game directory.
 
 https://github.com/tnevolin/thinker-doer/releases
 
-## Core files
+# Optional factions modifications
 
-Copy files from **core** folder to game directory overwriting existing files.
-
-## Factions
+Look for "factions" release in release list.
 
 Optional but recommended faction modifications. These are minimal changes required to match core rule changes.
 
-Copy files from **factions** folder to game directory overriding existing files.
-
-## Multiplayer
-
-Copy files from **multiplayer** folder to game directory overriding existing files. These are multiplayer version of game configuration.
+Download faction release and unpack its content to game directory.
 
 # Run
 
-Run terranx_mod.exe or thinker.exe. They should do the same thing except maybe different resolution.
-
-# Preserving user configuration
-
-Program scans "thinker_user.ini" and load configuration from there overriding default one. This file is NOT in the installation specifically because it SHOULD NOT be overwriten by it.
-You need to create your own and copy desired values from default configuration those you want to modify and preserve across releases.
+Run thinker.exe or terranx_mod.exe. They both do the same thing. Although thinker.exe should be more modern and supporting resolution better.
 

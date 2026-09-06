@@ -1,5 +1,11 @@
 # Version 422
 
+* Separated factions modifications into its own release file: https://github.com/tnevolin/thinker-doer-clion/releases/tag/factions.
+* Simplified release directory structure to match Thinker one. Now extract everything to game directory.
+* Disabled monetary support by default.
+
+# Version 422
+
 * Reactor effect on prototype cost and combat changed.
   * Each subsequent advanced reactor increases prototype cost by 50% and adds 25% combat bonus to weapon/armor.
 * Weapon and armor cost are growing slower than their strength.

@@ -8,3 +8,12 @@ releases/
 *.cscope_file_list
 cmake-build-*/
 .idea/
+.output.txt
+base.obj
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.cbp
+cmake_install.cmake
+CMakeFiles/
