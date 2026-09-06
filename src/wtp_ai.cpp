@@ -3712,7 +3712,7 @@ void evaluateDefendLocations()
 		MAP *tile = getBaseMapTile(baseId);
 		BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
 
-		aiData.defendLocations.emplace_back(tile, baseInfo.gain);
+		aiData.defendLocations.emplace(std::piecewise_construct, std::forward_as_tuple(tile), std::forward_as_tuple(tile, baseInfo.gain));
 
 	}
 	
@@ -3723,7 +3723,7 @@ void evaluateDefendLocations()
 		MAP const *tile = bunkerInfoEntry.first;
 		BunkerInfo &bunkerInfo = bunkerInfoEntry.second;
 
-		aiData.defendLocations.emplace_back(tile, bunkerInfo.gain);
+		aiData.defendLocations.emplace(std::piecewise_construct, std::forward_as_tuple(tile), std::forward_as_tuple(tile, bunkerInfo.gain));
 
 	}
 
@@ -3805,7 +3805,7 @@ void evaluateDefendLocations()
 		robin_hood::unordered_flat_map<MAP const *, double> defendLocationAttractions;
 		double totalAttraction = 0.0;
 
-		for (DefendData &defendData : aiData.defendLocations)
+		for (auto const &[tile, defendData] : aiData.defendLocations)
 		{
 			double approachTime = getVehicleApproachTime(vehicleId, defendData.tile);
 			defendLocationApproachTimes[defendData.tile] = approachTime;
@@ -3852,7 +3852,7 @@ void evaluateDefendLocations()
 
 		robin_hood::unordered_flat_map<MAP const *, double> defendLocationAttractionCoefficients;
 
-		for (DefendData &defendData : aiData.defendLocations)
+		for (auto const &[tile, defendData] : aiData.defendLocations)
 		{
 			defendLocationAttractionCoefficients[defendData.tile] = defendLocationAttractions.contains(defendData.tile) ? defendLocationAttractions.at(defendData.tile) / totalAttraction : 0.0;
 		}
@@ -3860,21 +3860,21 @@ void evaluateDefendLocations()
 		// collect defend location attackers
 
 		debug("\t%s %-24s %-32s\n", getLocationString(getVehicleMapTile(vehicleId)), MFactions[vehicle.faction_id].noun_faction, Units[vehicle.unit_id].name);
-		for (auto &defendLocation : aiData.defendLocations)
+		for (auto const &[tile, defendData] : aiData.defendLocations)
 		{
-			if (!defendLocationApproachTimeCoefficients.contains(defendLocation.tile) || !defendLocationAttractionCoefficients.contains(defendLocation.tile))
+			if (!defendLocationApproachTimes.contains(defendData.tile) || !defendLocationApproachTimeCoefficients.contains(defendData.tile) || !defendLocationAttractionCoefficients.contains(defendData.tile))
 				continue;
 
-			double approachTime = defendLocationApproachTimes.at(defendLocation.tile);
-			double approachTimeCoefficient = defendLocationApproachTimeCoefficients.at(defendLocation.tile);
-			double attractionCoefficient = defendLocationAttractionCoefficients.at(defendLocation.tile);
+			double approachTime = defendLocationApproachTimes.at(defendData.tile);
+			double approachTimeCoefficient = defendLocationApproachTimeCoefficients.at(defendData.tile);
+			double attractionCoefficient = defendLocationAttractionCoefficients.at(defendData.tile);
 			double weight = threatCoefficient * moraleCoefficient * healthCoefficient * approachTimeCoefficient * attractionCoefficient;
-			defendLocationAttackerWeights[defendLocation.tile][vehicle.faction_id][vehicle.unit_id] += weight;
+			defendLocationAttackerWeights[defendData.tile][vehicle.faction_id][vehicle.unit_id] += weight;
 
 			debug
 			(
 				"\t\t%s weight=%5.2f threatCoefficient=%5.2f moraleCoefficient=%5.2f healthCoefficient=%5.2f approachTime=%5.2f approachTimeCoefficient=%5.2f attractionCoefficient=%5.2f\n"
-				, getLocationString(defendLocation.tile), weight, threatCoefficient, moraleCoefficient, healthCoefficient, approachTime, approachTimeCoefficient, attractionCoefficient
+				, getLocationString(defendData.tile), weight, threatCoefficient, moraleCoefficient, healthCoefficient, approachTime, approachTimeCoefficient, attractionCoefficient
 			);
 
 		}
@@ -3883,12 +3883,12 @@ void evaluateDefendLocations()
 
 	// populate defend location attackers
 
-	for (auto &defendLocation : aiData.defendLocations)
+	for (auto &[tile, defendData] : aiData.defendLocations)
 	{
-		if (!defendLocationAttackerWeights.contains(defendLocation.tile))
+		if (!defendLocationAttackerWeights.contains(defendData.tile))
 			continue;
 
-		for (auto const &attackerWeightEntry : defendLocationAttackerWeights.at(defendLocation.tile))
+		for (auto const &attackerWeightEntry : defendLocationAttackerWeights.at(defendData.tile))
 		{
 			int factionId = attackerWeightEntry.first;
 			robin_hood::unordered_flat_map<int, double> attackerFactionWeights = attackerWeightEntry.second;
@@ -3898,7 +3898,7 @@ void evaluateDefendLocations()
 				int unitId = attackerFactionWeightEntry.first;
 				double weight = attackerFactionWeightEntry.second;
 
-				defendLocation.addAttackerUnit(factionId, unitId, weight);
+				defendData.addAttackerUnit(factionId, unitId, weight);
 
 			}
 
@@ -3909,9 +3909,9 @@ void evaluateDefendLocations()
 	// calculate potential alien strength due to random appearance and eco-damage
 
 	debug("potential alien\n");
-	for (auto &defendLocation : aiData.defendLocations)
+	for (auto &[tile, defendData] : aiData.defendLocations)
 	{
-		TileInfo &tileInfo = aiData.getTileInfo(defendLocation.tile);
+		TileInfo &tileInfo = aiData.getTileInfo(defendData.tile);
 
 		// base
 		if (!tileInfo.base)
@@ -3951,7 +3951,7 @@ void evaluateDefendLocations()
 
 		double existingAlienWeight = 0.0;
 
-		for (DefendDataAttacker const &attacker : defendLocation.attackers)
+		for (DefendDataAttacker const &attacker : defendData.attackers)
 		{
 			// alien
 			if (attacker.factionId != 0)
@@ -3967,16 +3967,16 @@ void evaluateDefendLocations()
 
 		if (weight > existingAlienWeight)
 		{
-			debug("\t%s weight=%5.2f\n", getLocationString(defendLocation.tile), weight);
+			debug("\t%s weight=%5.2f\n", getLocationString(defendData.tile), weight);
 			weight = weight - existingAlienWeight;
 
-			if (auto defendAttackerIterator = std::find_if(defendLocation.attackers.begin(), defendLocation.attackers.end(), [&](DefendDataAttacker const &a) { return a.factionId == 0 && a.unitId == alienUnitId; }); defendAttackerIterator != defendLocation.attackers.end())
+			if (auto defendAttackerIterator = std::find_if(defendData.attackers.begin(), defendData.attackers.end(), [&](DefendDataAttacker const &a) { return a.factionId == 0 && a.unitId == alienUnitId; }); defendAttackerIterator != defendData.attackers.end())
 			{
 				defendAttackerIterator->health += weight;
 			}
 			else
 			{
-				defendLocation.addAttackerUnit(0, alienUnitId, weight);
+				defendData.addAttackerUnit(0, alienUnitId, weight);
 			}
 
 		}
@@ -3985,13 +3985,13 @@ void evaluateDefendLocations()
 
 	// reduce not hostile threats to max one
 
-	for (auto &defendLocation : aiData.defendLocations)
+	for (auto &[tile, defendData] : aiData.defendLocations)
 	{
 		// compute not hostile threats
 
 		robin_hood::unordered_flat_map<int, double> notHostileFactionThreats;
 
-		for (DefendDataAttacker const &attacker : defendLocation.attackers)
+		for (DefendDataAttacker const &attacker : defendData.attackers)
 		{
 			// not hostile
 			if (isHostile(aiFactionId, attacker.factionId))
@@ -4007,7 +4007,7 @@ void evaluateDefendLocations()
 
 		// remove sub max non hostile threats
 
-		for (auto iterator = defendLocation.attackers.begin(); iterator != defendLocation.attackers.end(); )
+		for (auto iterator = defendData.attackers.begin(); iterator != defendData.attackers.end(); )
 		{
 			DefendDataAttacker const &attacker = *iterator;
 
@@ -4026,7 +4026,7 @@ void evaluateDefendLocations()
 			}
 
 			// erase element — returns next valid iterator
-			iterator = defendLocation.attackers.erase(iterator);
+			iterator = defendData.attackers.erase(iterator);
 
 		}
 
@@ -4039,11 +4039,11 @@ void evaluateDefendLocations()
 	if constexpr (DEBUG)
 	{
 		debug("defend locations\n");
-		for (DefendData const &defendLocation : aiData.defendLocations)
+		for (auto const &[tile, defendData] : aiData.defendLocations)
 		{
-			debug("\t%s\n", getLocationString(defendLocation.tile));
+			debug("\t%s\n", getLocationString(defendData.tile));
 
-			for (DefendDataAttacker const &attacker : defendLocation.attackers)
+			for (DefendDataAttacker const &attacker : defendData.attackers)
 			{
 				debug("\t\t%-24s %-32s %5.2f\n", MFactions[attacker.factionId].noun_faction, Units[attacker.unitId].name, attacker.health);
 			}

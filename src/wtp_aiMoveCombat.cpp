@@ -112,7 +112,6 @@ void generateRequests()
 	generateDefendBaseRequests();
 	generateDefendBunkerRequests();
 	generateCaptureBaseRequests();
-	generateCaptureBaseRequests();
 	generateAttackStackRequests();
 
 }
@@ -324,7 +323,7 @@ void generatePodRequests()
 
 		// generate request
 
-		combatRequests.emplace_back(CRT_POD, tileInfo.tile);
+		combatRequests.emplace_back(CRT_POP_POD, tileInfo.tile);
 
 	}
 
@@ -379,8 +378,8 @@ void generateAttackStackRequests()
 
 void assignRequests()
 {
-	bool changed = false;
-	do
+	bool changed = true;
+	for (int cycle = 0; cycle < 10000 && changed; cycle++)
 	{
 		changed = false;
 
@@ -392,6 +391,13 @@ void assignRequests()
 
 		for (CombatOrder &combatOrder : combatOrders)
 		{
+			int vehicleId = combatOrder.vehicleId;
+			VEH &vehicle = Vehs[vehicleId];
+			Triad triad = static_cast<Triad>(vehicle.triad());
+			bool artillery = isArtilleryVehicle(vehicleId);
+			int offenseValue = vehicle.offense_value();
+			int defenseValue = vehicle.defense_value();
+
 			// available
 
 			if (combatOrder.combatRequest != nullptr)
@@ -399,53 +405,95 @@ void assignRequests()
 
 			for (CombatRequest &combatRequest : combatRequests)
 			{
+				TileInfo &tileInfo = aiData.getTileInfo(combatRequest.tile);
+
 				// generic or specific to this vehicle
 
-				if (combatRequest.vehicleId != -1 && combatOrder.vehicleId != combatRequest.vehicleId)
+				if (combatRequest.vehicleId != -1 && vehicleId != combatRequest.vehicleId)
 					continue;
 
-//				// compute gain
-//
-//				double gain = 0.0;
-//
-// 				switch (combatRequest.type)
-// 				{
+				// compute gain
+
+				double gain = 0.0;
+
+ 				switch (combatRequest.type)
+ 				{
+ 				case CRT_REPAIR_MONOLITH:
+ 					{
+ 						gain = combatRequest.gain;
+ 					}
+ 					break;
+ 				case CRT_POP_POD:
+ 					{
+ 						gain = combatRequest.gain;
+ 					}
+ 					break;
+ 				case CRT_DEFEND_BASE:
+ 					{
+ 						if (!aiData.defendLocations.contains(combatRequest.tile))
+ 						{
+ 							debug("ERROR: CRT_DEFEND_BASE tile does not point to a defend location; combatRequest.tile = %s", getLocationString(combatRequest.tile));
+ 							continue;
+ 						}
+						DefendData &defendData = aiData.defendLocations.at(combatRequest.tile);
+
+ 						// insufficient
+						if (defendData.isSufficient())
+							continue;
+
+ 						// defender coefficient: reduce efficiency for higher offence ratio (except interceptor)
+
+ 						double defenderOffensePenalty;
+						if (isInterceptorVehicle(combatOrder.vehicleId))
+ 						{
+							// no penalty for interceptor
+ 							defenderOffensePenalty = 1.0;
+ 						}
+ 						else if (artillery)
+ 						{
+ 							// no penalty for artillery
+ 							defenderOffensePenalty = 0.0;
+ 						}
+ 						else if (tileInfo.ocean && triad == TRIAD_LAND)
+ 						{
+ 							// severe penalty for land melee defender in sea base (cannot retaliate)
+ 							defenderOffensePenalty = 1.0;
+ 						}
+ 						else
+ 						{
+ 							// normal penalty for other defenders (can retaliate)
+ 							defenderOffensePenalty = 0.5;
+ 						}
+	 					double defenderCoefficient = 1.0 - defenderOffensePenalty * (static_cast<double>(offenseValue) / static_cast<double>(defenseValue));
+
+ 						// compute effect
+
+ 						defendData.addDefenderVehicle(vehicleId);
+
+ 						// TODO gain = location gain * defender coefficient * (total threat / average threat) * (effect / average effect for this location) *
+ 					}
+ 					break;
 // 				case CRT_REPAIR_MONOLITH:
-// 					{
-// 						gain = combatRequest.gain;
-//
-// 					}
+// 					gain = combatRequest.gain;
 // 					break;
-// 				case CRT_POD:
-// 					{
-// 						gain = combatRequest.gain;
-//
-// 					}
+// 				case CRT_REPAIR_MONOLITH:
+// 					gain = combatRequest.gain;
 // 					break;
-// //				case CRT_REPAIR_MONOLITH:
-// //					gain = combatRequest.gain;
-// //					break;
-// //				case CRT_REPAIR_MONOLITH:
-// //					gain = combatRequest.gain;
-// //					break;
-// //				case CRT_REPAIR_MONOLITH:
-// //					gain = combatRequest.gain;
-// //					break;
-// //				case CRT_REPAIR_MONOLITH:
-// //					gain = combatRequest.gain;
-// //					break;
-// //				case CRT_REPAIR_MONOLITH:
-// //					gain = combatRequest.gain;
-// //					break;
-// //				case CRT_REPAIR_MONOLITH:
-// //					gain = combatRequest.gain;
-// //					break;
-// //				case CRT_REPAIR_MONOLITH:
-// //					gain = combatRequest.gain;
-// //					break;
-// 				default:
-// 					continue;
-// 				}
+// 				case CRT_REPAIR_MONOLITH:
+// 					gain = combatRequest.gain;
+// 					break;
+// 				case CRT_REPAIR_MONOLITH:
+// 					gain = combatRequest.gain;
+// 					break;
+// 				case CRT_REPAIR_MONOLITH:
+// 					gain = combatRequest.gain;
+// 					break;
+// 				case CRT_REPAIR_MONOLITH:
+// 					gain = combatRequest.gain;
+// 					break;
+ 				default:
+ 					continue;
+ 				}
 
 				// update best
 
@@ -466,7 +514,6 @@ void assignRequests()
 		}
 
 	}
-	while (changed);
 
 }
 
@@ -902,6 +949,11 @@ void moveBunkerProtectors()
 
 			// bunker protection should not be yet satisfied
 
+			if (!aiData.bunkerInfos.contains(taskPriority.destination))
+			{
+				debug("ERROR: key does not exist; file=wtp_aiMoveCombat.cpp function=moveCombatBunkerProtectors map=aiData.bunkerInfos key=%p\n", taskPriority.destination);
+				// TODO key does not exist
+			}
 			CombatData &combatData = aiData.bunkerInfos.at(taskPriority.destination).combatData;
 
 			if (combatData.isSufficientProtect())
@@ -925,6 +977,11 @@ void moveBunkerProtectors()
 		
 		// assign to target
 		
+		if (!aiData.bunkerInfos.contains(bestTaskPriority->destination))
+		{
+			debug("ERROR: key does not exist; file=wtp_aiMoveCombat.cpp function=moveCombatBunkerProtectors map=aiData.bunkerInfos key=%p\n", bestTaskPriority->destination);
+			// TODO key does not exist
+		}
 		CombatData &combatData = aiData.bunkerInfos.at(bestTaskPriority->destination).combatData;
 
 		combatData.addProtector(bestTaskPriority->vehicleId);
@@ -1116,6 +1173,11 @@ void moveCombat()
 				
 			case TPR_STACK:
 				{
+					if (!aiData.enemyStacks.contains(taskPriority.attackTarget))
+					{
+						debug("ERROR: key does not exist; file=wtp_aiMoveCombat.cpp function=moveCombatVehicles map=aiData.enemyStacks key=%p\n", taskPriority.attackTarget);
+						// TODO key does not exist
+					}
 					EnemyStackInfo *enemyStack = &(aiData.enemyStacks.at(taskPriority.attackTarget));
 					
 					// skip excluded stack

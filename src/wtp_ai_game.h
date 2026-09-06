@@ -678,8 +678,7 @@ struct ConvoyRequest
 enum CombatRequestType
 {
 	CRT_REPAIR_MONOLITH,	// repair and monolith promotion can collocate
-	CRT_POD,
-//	CRT_POLICE,
+	CRT_POP_POD,
 	CRT_DEFEND_BASE,		// defend base and police can collocate
 	CRT_DEFEND_BUNKER,
 	CRT_CAPTURE_BASE,
@@ -789,7 +788,7 @@ struct Data
 		baseInfos.at(baseId).reset();
 	}
 	robin_hood::unordered_flat_map<MAP const *, BunkerInfo> bunkerInfos;
-	std::vector<DefendData> defendLocations;
+	robin_hood::unordered_flat_map<MAP const *, DefendData> defendLocations;
 
 	// faction infos
 	
