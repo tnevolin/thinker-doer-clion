@@ -468,7 +468,7 @@ void assignRequests()
 
  						// compute effect
 
- 						defendData.addDefenderVehicle(vehicleId);
+ 						double relativeContribution = defendData.getVehicleRelativeContribution(vehicleId);
 
  						// TODO gain = location gain * defender coefficient * (total threat / average threat) * (effect / average effect for this location) *
  					}

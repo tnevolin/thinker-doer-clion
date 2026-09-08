@@ -222,6 +222,12 @@ struct DefendDataDefender
 	double health;
 	bool artillery;
 	double minBombardmentHealth;
+	double contribution = 0.0;
+	double relativeContribution = 0.0;
+	DefendDataDefender(int _vehicleId, int _factionId, int _unitId, Triad _triad, double _health, bool _artillery, double _minBombardmentHealth)
+		: vehicleId(_vehicleId), factionId(_factionId), unitId(_unitId), triad(_triad), health(_health), artillery(_artillery), minBombardmentHealth(_minBombardmentHealth)
+	{
+	}
 };
 struct DefendData
 {
@@ -231,15 +237,14 @@ struct DefendData
 	bool computed = false;
 	bool sufficient = false;
 	std::vector<DefendDataAttacker> attackers;
-	std::vector<DefendDataDefender> defenders;
-	robin_hood::unordered_flat_map<int, double> defenderContributions;
+	robin_hood::unordered_flat_map<int, DefendDataDefender> defenders;
 
 	DefendData(MAP const* _tile, double _targetGain);
 
 	void addAttackerUnit(int _factionId, int _unitId, double _health);
 	void addDefenderVehicle(int vehicleId);
 	bool isSufficient();
-	double getVehicleContribution(int vehicleId);
+	double getVehicleRelativeContribution(int vehicleId);
 
 private:
 

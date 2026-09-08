@@ -18,11 +18,7 @@
 
 #pragma once
 
-#ifdef BUILD_REL
-    #define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v." WTP_VERSION
-#else
-    #define MOD_VERSION "Thinker Mod develop build"
-#endif
+#define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v." WTP_VERSION
 
 #ifdef BUILD_DEBUG
     #define MOD_DATE __DATE__ " " __TIME__

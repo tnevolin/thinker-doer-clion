@@ -1414,7 +1414,7 @@ void DefendData::addDefenderVehicle(int vehicleId)
 	double minBombardmentHealth = 1.0 - maxBombardmentDamage;
 	double health = getVehicleRelativeHealth(vehicleId);
 
-	defenders.push_back({vehicleId, vehicle.faction_id, vehicle.unit_id, triad, health, artillery, minBombardmentHealth});
+	defenders.emplace(std::piecewise_construct, std::forward_as_tuple(vehicleId), std::forward_as_tuple(vehicleId, vehicle.faction_id, vehicle.unit_id, triad, health, artillery, minBombardmentHealth));
 
 }
 
@@ -1428,7 +1428,7 @@ bool DefendData::isSufficient()
 	this->computed = true;
 
 	// reset defender contributions
-	this->defenderContributions.clear();
+	std::for_each(this->defenders.begin(), this->defenders.end(), [](auto &entry) { entry.second.contribution = 0.0; entry.second.relativeContribution = 0.0; });
 
 	// no attackers = defense is sufficient
 	if (this->attackers.empty())
@@ -1446,7 +1446,7 @@ bool DefendData::isSufficient()
 	// seelect defender artillery vehicles
 
 	robin_hood::unordered_flat_set<int> defenderArtilleryVehicleIds;
-	for (auto &defender : this->defenders)
+	for (auto &[vehicleId, defender] : this->defenders)
 	{
 		if (isArtilleryUnit(defender.vehicleId))
 			defenderArtilleryVehicleIds.insert(defender.vehicleId);
@@ -1629,7 +1629,7 @@ bool DefendData::isSufficient()
     			bestAttacker->health -= attackerDamage;
     			bestAttackerBestDefender->health -= defenderDamage;
 
-    			this->defenderContributions[bestAttackerBestDefender->vehicleId] += attackerDamage;
+    			bestAttackerBestDefender->contribution += attackerDamage;
 
     		}
     		else
@@ -1640,7 +1640,7 @@ bool DefendData::isSufficient()
     			bestAttacker->health -= attackerDamage;
     			bestAttackerBestDefender->health -= defenderDamage;
 
-    			this->defenderContributions[bestAttackerBestDefender->vehicleId] += attackerDamage;
+    			bestAttackerBestDefender->contribution += attackerDamage;
 
     		}
 
@@ -1655,7 +1655,7 @@ bool DefendData::isSufficient()
     	{
     		// apply bombardment damages
 
-    		for (auto &defender : defenders)
+    		for (auto &[vehicleId, defender] : this->defenders)
     		{
     			if (bestAttackerBombardmentDamages.contains(defender.vehicleId))
     			{
@@ -1668,10 +1668,18 @@ bool DefendData::isSufficient()
 
     }
 
+	// normalize defender contributions
+
+	double totalContribution = std::accumulate(this->defenders.begin(), this->defenders.end(), 0.0, [](double accumulator, auto const &entry) { return accumulator + entry.second.contribution; });
+	if (totalContribution > 0.0)
+	{
+		std::for_each(this->defenders.begin(), this->defenders.end(), [totalContribution](auto &entry) { entry.second.relativeContribution = entry.second.contribution / totalContribution; });
+	}
+
 	// check alive units
 
 	bool attackerAlive = std::any_of(attackers.begin(), attackers.end(), [&](DefendDataAttacker const &e) { return e.health > 0.0; });
-	bool defenderAlive = std::any_of(defenders.begin(), defenders.end(), [&](DefendDataDefender const &e) { return e.health > 0.0; });
+	bool defenderAlive = std::any_of(defenders.begin(), defenders.end(), [&](auto const &entry) { return entry.second.health > 0.0; });
 
 	if (!attackerAlive)
 		return this->sufficient = true;
@@ -1684,14 +1692,29 @@ bool DefendData::isSufficient()
 
 }
 
-double DefendData::getVehicleContribution(int vehicleId)
+double DefendData::getVehicleRelativeContribution(int vehicleId)
 {
+	bool temporary = !defenders.contains(vehicleId);
+
+	if (temporary)
+	{
+		this->addDefenderVehicle(vehicleId);
+	}
+	DefendDataDefender &defender = this->defenders.at(vehicleId);
+
 	if (!this->computed)
 	{
 		isSufficient();
 	}
 
-	return this->defenderContributions.contains(vehicleId) ? this->defenderContributions.at(vehicleId) : 0.0;
+	double relativeContribution = defender.relativeContribution;
+
+	if (temporary)
+	{
+		this->defenders.erase(vehicleId);
+	}
+
+	return relativeContribution;
 
 }
 

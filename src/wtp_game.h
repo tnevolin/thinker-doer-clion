@@ -30,6 +30,14 @@ FacilityId constexpr DEFENSIVE_FACILITIES[] = {FAC_PERIMETER_DEFENSE, FAC_NAVAL_
 
 extern double const INF;
 
+// map get value or default
+template<typename Map>
+typename Map::mapped_type getOrDefault(Map const &map, typename Map::key_type const &key, typename Map::mapped_type const &defaultValue)
+{
+	auto iterator = map.find(key);
+	return iterator != map.end() ? iterator->second : defaultValue;
+}
+
 struct Profile
 {
 	std::string name;
