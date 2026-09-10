@@ -102,17 +102,18 @@ void generateRequests()
 {
 	combatRequests.clear();
 
-	// specific unit requests
-
-	generateRepairMonolithRequests();
-
-	// generic unit requests
-
-	generatePodRequests();
-	generateDefendBaseRequests();
-	generateDefendBunkerRequests();
-	generateCaptureBaseRequests();
-	generateAttackStackRequests();
+	// TODO temporarily commented out will uncomment and verify one by one
+//	// specific unit requests
+//
+//	generateRepairMonolithRequests();
+//
+//	// generic unit requests
+//
+//	generatePodRequests();
+//	generateDefendBaseRequests();
+//	generateDefendBunkerRequests();
+//	generateCaptureBaseRequests();
+//	generateAttackStackRequests();
 
 }
 
