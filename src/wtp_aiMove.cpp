@@ -316,7 +316,7 @@ int enemyMoveVehicle(int vehicleId)
 	
 	if (vehicle->order == ORDER_MOVE_TO && vehicleId == lastEnemyMoveVehicleId && vehicle->x == lastEnemyMoveVehicleX && vehicle->y == lastEnemyMoveVehicleY)
 	{
-		return enemy_move(vehicleId);
+		return mod_enemy_move(vehicleId);
 	}
 	
 	// set last values
@@ -336,7 +336,7 @@ int enemyMoveVehicle(int vehicleId)
 	
 	// unhandled cases fall to default
 	
-	return enemy_move(vehicleId);
+	return mod_enemy_move(vehicleId);
 	
 }
 
