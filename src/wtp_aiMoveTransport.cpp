@@ -7,6 +7,94 @@
 #include "wtp_aiRoute.h"
 #include "wtp_aiMove.h"
 
+/*
+Assigns a healing task to a damaged, empty transport.
+Caller guarantees the transport is empty and damaged.
+
+At base, any damage at all is worth holding to heal - it's free, no travel cost.
+In the field, only bother relocating if damage exceeds what field healing can already
+fix on its own: field healing caps at 8 HP, only base/bunker or Nano Factory reach 10.
+*/
+bool healEmptyTransport(int vehicleId)
+{
+	VEH *vehicle = getVehicle(vehicleId);
+	MAP *vehicleTile = getVehicleMapTile(vehicleId);
+
+	// at base
+
+	if (map_has_item(vehicleTile, BIT_BASE_IN_TILE))
+	{
+		// exclude under alien artillery bombardment
+
+		if (isWithinAlienArtilleryRange(vehicleId))
+			return false;
+
+		// heal
+
+		setTask(Task(vehicleId, TT_HOLD));
+
+		return true;
+
+	}
+
+	// in the field
+
+	// exclude irrepairable
+
+	if (vehicle->damage_taken <= (isFactionHasProject(aiFactionId, FAC_NANO_FACTORY) ? 0 : 2 * vehicle->reactor_type()))
+		return false;
+
+	// find nearest monolith
+
+	MAP *nearestMonolith = getNearestMonolith(vehicle->x, vehicle->y, vehicle->triad());
+
+	if (nearestMonolith != nullptr && map_range(vehicle->x, vehicle->y, getX(nearestMonolith), getY(nearestMonolith)) <= 10)
+	{
+		setTask(Task(vehicleId, TT_MOVE, nearestMonolith));
+		return true;
+	}
+
+	// find nearest base
+
+	MAP *nearestBase = getNearestFriendlyBase(vehicleId);
+
+	if (nearestBase != nullptr && map_range(vehicle->x, vehicle->y, getX(nearestBase), getY(nearestBase)) <= 10)
+	{
+		setTask(Task(vehicleId, TT_HOLD, nearestBase));
+		return true;
+	}
+
+	// find nearest not warzone tile
+
+	MAP *healingTile = nullptr;
+
+	for (MAP *tile : getRangeTiles(vehicleTile, 8, true))
+	{
+		TileInfo &tileInfo = aiData.getTileInfo(tile);
+
+		// exclude warzone
+
+		if (tileInfo.hostileDangerZone)
+			continue;
+
+		// select healingTile
+
+		healingTile = tile;
+		break;
+
+	}
+
+	if (healingTile == nullptr)
+	{
+		healingTile = vehicleTile;
+	}
+
+	// heal
+
+	return transitVehicle(Task(vehicleId, TT_HOLD, healingTile));
+
+}
+
 void moveTranportStrategy()
 {
 	Profiling::start("moveTranportStrategy", "moveStrategy");
@@ -24,8 +112,9 @@ void moveTranportStrategy()
 			VEH *vehicle = getVehicle(vehicleId);
 
 			// exclude empty damaged transport - let it heal instead of sending it out on a new assignment
+			// only if a healing task was actually assigned; otherwise fall through to normal duty
 
-			if (vehicle->damage_taken > 0 && getTransportUsedCapacity(vehicleId) == 0)
+			if (vehicle->damage_taken > 0 && getTransportUsedCapacity(vehicleId) == 0 && healEmptyTransport(vehicleId))
 				continue;
 
 			moveSeaTransportStrategy(vehicleId);

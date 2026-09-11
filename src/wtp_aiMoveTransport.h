@@ -18,6 +18,7 @@ struct DeliveryLocation
 };
 
 void moveTranportStrategy();
+bool healEmptyTransport(int vehicleId);
 void moveSeaTransportStrategy(int vehicleId);
 void moveAvailableSeaTransportStrategy(int vehicleId);
 void moveLoadedSeaTransportStrategy(int vehicleId, int passengerId);

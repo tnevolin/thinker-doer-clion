@@ -29,8 +29,6 @@ struct VehicleDestination
 void moveStrategy();
 void fixUndesiredTransportDropoff();
 void fixUndesiredTransportPickup();
-void moveAllStrategy();
-void healStrategy();
 int enemyMoveVehicle(int vehicleId);
 bool transitVehicle(Task  task);
 bool transitLandVehicle(Task  task);
