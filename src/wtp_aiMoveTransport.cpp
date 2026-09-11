@@ -1,4 +1,4 @@
-#include "wtp_aiMoveTransport.h"
+	#include "wtp_aiMoveTransport.h"
 
 #include <float.h>
 #include <map>
@@ -21,13 +21,20 @@ void moveTranportStrategy()
 		
 		for (int vehicleId : seaClusterSeaTransportVehicleIds)
 		{
+			VEH *vehicle = getVehicle(vehicleId);
+
+			// exclude empty damaged transport - let it heal instead of sending it out on a new assignment
+
+			if (vehicle->damage_taken > 0 && getTransportUsedCapacity(vehicleId) == 0)
+				continue;
+
 			moveSeaTransportStrategy(vehicleId);
-			
+
 			if (!hasTask(vehicleId))
 			{
 				moveAvailableSeaTransportStrategy(vehicleId);
 			}
-			
+
 		}
 		
 	}
