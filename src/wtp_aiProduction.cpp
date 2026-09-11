@@ -427,6 +427,132 @@ void suggestBaseProductions()
 	
 }
 
+/*
+Checks whether WTP's production evaluators actually cover this unit type.
+
+Non-combat roles (colony/former/crawler) are identified by their module weapon, not
+by being unarmed, so they are listed explicitly in MANAGED_UNIT_TYPES.
+
+Combat-classified units (isCombatUnit: nonzero weapon offense value) are managed by
+default, with two carve-outs for weapon types no evaluator actually prices:
+- superweapons (planet buster and the other single-strike payloads) - UNMANAGED_COMBAT_WEAPON_TYPES
+- probes are only evaluated in their defensive (infantry chassis) role so far;
+  offensive probes (any other chassis) are not managed yet
+*/
+bool isManagedUnit(int unitId)
+{
+	// colony / former / crawler - identified by their module weapon
+
+	static const robin_hood::unordered_flat_set<int> MANAGED_UNIT_TYPES
+	{
+		WPN_COLONY_MODULE,
+		WPN_TERRAFORMING_UNIT,
+		WPN_TROOP_TRANSPORT,
+	}
+	;
+
+	if (MANAGED_UNIT_TYPES.count(Units[unitId].weapon_id) != 0)
+		return true;
+
+	// probe - only the defensive (infantry) role is evaluated so far
+
+	if (isProbeUnit(unitId) && isInfantryUnit(unitId))
+		return true;
+
+	// superweapon payloads - not yet evaluated
+	// (weapon types isCombatUnit() classifies as combat, but that no evaluator prices)
+
+	static const robin_hood::unordered_flat_set<int> UNMANAGED_COMBAT_WEAPON_TYPES
+	{
+		WPN_PLANET_BUSTER,
+		WPN_CONVENTIONAL_PAYLOAD,
+		WPN_TECTONIC_PAYLOAD,
+		WPN_FUNGAL_PAYLOAD,
+	}
+	;
+
+	if (UNMANAGED_COMBAT_WEAPON_TYPES.count(Units[unitId].weapon_id) != 0)
+		return false;
+
+	// remaining armed combat units
+
+	return isCombatUnit(unitId);
+
+}
+
+/*
+Checks whether WTP's production evaluators cover this production item, unit or facility.
+*/
+bool isManaged(int item)
+{
+	if (item >= 0)
+	{
+		return isManagedUnit(item);
+	}
+	else if (-item < FAC_STOCKPILE_ENERGY)
+	{
+		static const robin_hood::unordered_flat_set<int> MANAGED_FACILITIES
+		{
+			FAC_HEADQUARTERS,
+			FAC_CHILDREN_CRECHE,
+			FAC_RECYCLING_TANKS,
+			FAC_PERIMETER_DEFENSE,
+			FAC_TACHYON_FIELD,
+			FAC_RECREATION_COMMONS,
+			FAC_ENERGY_BANK,
+			FAC_NETWORK_NODE,
+			FAC_BIOLOGY_LAB,
+			FAC_SKUNKWORKS,
+			FAC_HOLOGRAM_THEATRE,
+			FAC_PARADISE_GARDEN,
+			FAC_TREE_FARM,
+			FAC_HYBRID_FOREST,
+			FAC_FUSION_LAB,
+			FAC_QUANTUM_LAB,
+			FAC_RESEARCH_HOSPITAL,
+			FAC_NANOHOSPITAL,
+			FAC_ROBOTIC_ASSEMBLY_PLANT,
+			FAC_NANOREPLICATOR,
+			FAC_QUANTUM_CONVERTER,
+			FAC_GENEJACK_FACTORY,
+			FAC_PUNISHMENT_SPHERE,
+			FAC_HAB_COMPLEX,
+			FAC_HABITATION_DOME,
+			FAC_PRESSURE_DOME,
+			FAC_COMMAND_CENTER,
+			FAC_NAVAL_YARD,
+			FAC_AEROSPACE_COMPLEX,
+			FAC_BIOENHANCEMENT_CENTER,
+			FAC_CENTAURI_PRESERVE,
+			FAC_TEMPLE_OF_PLANET,
+	//		FAC_PSI_GATE,
+	//		FAC_COVERT_OPS_CENTER,
+	//		FAC_BROOD_PIT,
+			FAC_AQUAFARM,
+			FAC_SUBSEA_TRUNKLINE,
+			FAC_THERMOCLINE_TRANSDUCER,
+	//		FAC_FLECHETTE_DEFENSE_SYS,
+	//		FAC_SUBSPACE_GENERATOR,
+	//		FAC_GEOSYNC_SURVEY_POD,
+	//		FAC_SKY_HYDRO_LAB,
+	//		FAC_NESSUS_MINING_STATION,
+	//		FAC_ORBITAL_POWER_TRANS,
+	//		FAC_ORBITAL_DEFENSE_POD,
+			FAC_STOCKPILE_ENERGY,
+		}
+		;
+
+		return MANAGED_FACILITIES.count(-item) != 0;
+	}
+	else
+	{
+		// project or other special item - not managed
+
+		return false;
+	}
+
+}
+
 void applyBaseProductions()
 {
 	Profiling::start("applyBaseProductions", "productionStrategy");
@@ -440,97 +566,53 @@ void applyBaseProductions()
 		
 		debug("applyBaseProduction - %s\n", base->name);
 		
-		// current production choice
-		
+		// pre-WTP production choice
+		// whatever was already queued for the base during the upkeep phase - vanilla's or
+		// Thinker's own choice, depending on which is enabled for this faction
+
 		int currentChoice = base->queue_items[0];
 		int choice = currentChoice;
-		
+
 		debug("(%s)\n", prod_name(choice));
-		
-		// calculate vanilla priority
-		
-		double vanillaPriority = 0.0;
-		
-		// unit
-		if (choice >= 0)
+
+		// determine whether WTP manages this category of choice
+		// managed: WTP's own priority list decides, among WTP's own alternatives only
+		// not managed: defer unconditionally to the pre-WTP choice - no comparison, since WTP's
+		// economical priorities and vanilla's/Thinker's internal scoring are not on a comparable scale
+
+		bool managed = isManaged(choice);
+
+		if (managed)
 		{
-			// only not managed unit types
-			
-			if (!isCombatUnit(choice) && MANAGED_UNIT_TYPES.count(Units[choice].weapon_id) == 0)
+			if constexpr (DEBUG)
 			{
-				vanillaPriority = conf.ai_production_vanilla_priority_unit * getUnitPriorityCoefficient(baseId, choice);
+				std::vector<robin_hood::pair<int, double>> sortedItemPriorities(productionDemand.itemPriorities.begin(), productionDemand.itemPriorities.end());
+				std::sort(sortedItemPriorities.begin(), sortedItemPriorities.end(), [](const robin_hood::pair<int, double>& a, const robin_hood::pair<int, double>& b) { return a.second > b.second; });
+
+				for (const auto& itemPriority : sortedItemPriorities)
+				{
+					debug("\t%5.2f %-24s\n", itemPriority.second, prod_name(itemPriority.first));
+				}
+
 			}
-			
-		}
-		// facility
-		else if (choice < 0 && -choice < FAC_STOCKPILE_ENERGY)
-		{
-			// only not managed facilities
-			
-			if (MANAGED_FACILITIES.count(-choice) == 0)
-			{
-				vanillaPriority = conf.ai_production_vanilla_priority_facility;
-			}
-			
-		}
-//		// project
-//		else if (choice < 0 && -choice >= SP_ID_First && -choice <= SP_ID_Last)
-//		{
-//			// leave vanilla project be
-//			
-//			vanillaPriority = conf.ai_production_vanilla_priority_project;
-//			
-//		}
-		
-		// drop priority for impossible colony
-		
-		if (choice >= 0 && isColonyUnit(choice) && !canBaseProduceColony(baseId))
-		{
-			vanillaPriority = 0.0;
-		}
-		
-		// WTP
 
-    	if constexpr (DEBUG)
-    	{
-    		std::vector<robin_hood::pair<int, double>> sortedItemPriorities(productionDemand.itemPriorities.begin(), productionDemand.itemPriorities.end());
-    		std::sort(sortedItemPriorities.begin(), sortedItemPriorities.end(), [](const robin_hood::pair<int, double>& a, const robin_hood::pair<int, double>& b) { return a.second > b.second; });
+			choice = productionDemand.item;
 
-    		for (const auto& itemPriority : sortedItemPriorities)
-    		{
-    			debug("\t%5.2f %-24s\n", itemPriority.second, prod_name(itemPriority.first));
-    		}
+			debug("=> %-25s (WTP) priority=%5.2f\n", prod_name(choice), productionDemand.priority);
 
-    	}
-		
-		int wtpChoice = productionDemand.item;
-		double wtpPriority = productionDemand.priority;
-		
-//		debug
-//		(
-//			"production selection\n"
-//			"\t%-10s(%5.2f) %s\n"
-//			"\t%-10s(%5.2f) %s\n"
-//			, "vanilla" , vanillaPriority, prod_name(choice)
-//			, "wtp", wtpPriority, prod_name(wtpChoice)
-//		);
-		
-		// select production based on priority
-		
-		if (wtpPriority >= vanillaPriority)
-		{
-			choice = wtpChoice;
 		}
-		
-		debug("=> %-25s vanillaPriority=%5.2f wtpPriority=%5.2f\n", prod_name(choice), vanillaPriority, wtpPriority);
-		
+		else
+		{
+			debug("=> %-25s (pre-WTP, unmanaged)\n", prod_name(choice));
+		}
+
 		// set base production if changed
-		
+
 		if (choice != currentChoice)
 		{
 			base_prod_change(baseId, choice);
 		}
-		
+
 		debug("\n");
 		
 	}
