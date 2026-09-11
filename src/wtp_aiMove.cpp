@@ -184,6 +184,12 @@ void healStrategy()
 		if (isFormerVehicle(vehicleId))
 			continue;
 
+		// exclude crawler/supply
+		// heals passively while working; not worth diverting from its task, cheap to replace if lost
+
+		if (isSupplyVehicle(vehicleId))
+			continue;
+
 		// exclude loaded transport
 
 		if (isTransportVehicle(vehicleId) && getTransportUsedCapacity(vehicleId) > 0)
@@ -192,6 +198,12 @@ void healStrategy()
 		// exclude combat
 
 		if (isCombatVehicle(vehicleId))
+			continue;
+
+		// exclude probe
+		// unmanaged for now; falls through to Thinker, which already handles probe healing/retreat
+
+		if (isProbeVehicle(vehicleId))
 			continue;
 
 		// at base
