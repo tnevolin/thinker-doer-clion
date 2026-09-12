@@ -133,7 +133,7 @@ void __cdecl modified_enemy_units_check(int factionId)
 		
 		try
 		{
-			strategy(true);
+			strategy();
 		}
 		catch(const std::exception &e)
 		{
@@ -183,16 +183,13 @@ void __cdecl modified_enemy_units_check(int factionId)
 	
 }
 
-void strategy(bool computer)
+void strategy()
 {
 	Profiling::start("strategy", "");
 	
 	// design units
 	
-	if (computer)
-	{
-		designUnits();
-	}
+	designUnits();
 	
 	// populate data
 	
@@ -204,10 +201,7 @@ void strategy(bool computer)
 	
 	// compute production demands
 	
-	if (computer)
-	{
-		productionStrategy();
-	}
+	productionStrategy();
 	
 	// execute tasks
 	
@@ -229,11 +223,6 @@ void executeTasks()
 		int vehicleId = task.getVehicleId();
 		VEH *vehicle = getVehicle(vehicleId);
 		
-		// skip not fully automated human player units
-		
-		if (aiFactionId == *CurrentPlayerFaction && !(conf.manage_player_units && ((vehicle->state & VSTATE_ON_ALERT) != 0) && vehicle->movement_turns == 0))
-			continue;
-
 		// do not execute combat tasks immediatelly
 
 		if (task.type == TT_MELEE_ATTACK || task.type == TT_LONG_RANGE_FIRE)
@@ -5345,6 +5334,7 @@ bool isWithinAlienArtilleryRange(int vehicleId)
 
 /*
 Checks if faction is enabled to use WTP algorithms.
+Aliens and human player factions are excluded.
 */
 bool isWtpEnabledFaction(int factionId)
 {

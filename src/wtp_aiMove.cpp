@@ -656,9 +656,9 @@ int __cdecl wtp_mod_ai_enemy_move(const int vehicleId)
 	
 	// choose AI logic
 	
-	if (isWtpEnabledFaction(vehicle->faction_id) || (aiFactionId == *CurrentPlayerFaction && conf.manage_player_units && ((vehicle->state & VSTATE_ON_ALERT) != 0) && vehicle->movement_turns == 0))
+	if (isWtpEnabledFaction(vehicle->faction_id))
 	{
-		// run WTP AI code for AI eanbled factions or human player managed units
+		// run WTP AI code for AI enabled factions
 		
 		Profiling::start("| enemyMoveVehicle");
 		returnValue = enemyMoveVehicle(vehicleId);
