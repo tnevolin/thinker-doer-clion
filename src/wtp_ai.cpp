@@ -85,7 +85,7 @@ void __cdecl wtp_mod_enemy_turn(int factionId)
 		
 		try
 		{
-			strategy(true);
+			strategy();
 		}
 		catch(std::exception &e)
 		{
@@ -139,16 +139,13 @@ void __cdecl wtp_mod_enemy_turn(int factionId)
 	
 }
 
-void strategy(bool computer)
+void strategy()
 {
 	Profiling::start("strategy", "");
 	
 	// design units
 	
-	if (computer)
-	{
-		designUnits();
-	}
+	designUnits();
 	
 	// populate data
 	
@@ -160,10 +157,7 @@ void strategy(bool computer)
 	
 	// compute production demands
 	
-	if (computer)
-	{
-		productionStrategy();
-	}
+	productionStrategy();
 	
 	if constexpr (DEBUG)
 	{
@@ -498,11 +492,11 @@ void populateTileInfos()
 			TileInfo &rangeTileInfo = aiData.getTileInfo(rangeTile);
 			tileInfo.range2NoCenterTileInfos.push_back(&rangeTileInfo);
 		}
-		
+
 	}
 
 	Profiling::stop("range tiles");
-	
+
 	// tile transits
 
 	Profiling::start("tile transits", "populateTileInfos");
@@ -1103,17 +1097,17 @@ void populatePlayerBaseRanges()
 	{
 		MAP *baseTile = getBaseMapTile(baseId);
 		TileInfo &baseTileInfo = aiData.getTileInfo(baseTile);
-		
+
 		baseTileInfo.baseRanges.at(TRIAD_AIR) = 0;
 //		baseTileInfo.baseDistances.at(TRIAD_AIR) = 0.0;
 		openNodes.push_back(baseTile);
-		
+
 	}
-	
+
 	while (openNodes.size() > 0)
 	{
 		baseRange++;
-		
+
 		for (MAP *tile : openNodes)
 		{
 			TileInfo &tileInfo = aiData.getTileInfo(tile);
@@ -1269,7 +1263,7 @@ void populateFactionInfos()
 	for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
 	{
 		FactionInfo &factionInfo = aiData.factionInfos[factionId];
-		
+
 		factionInfo.baseIds.clear();
 		factionInfo.seaClusterFormerCounts.clear();
 		factionInfo.landTransportedClusterFormerCounts.clear();
@@ -4709,17 +4703,17 @@ void vehicleKill(int vehicleId)
 	if (isHostile(aiFactionId, vehicle.faction_id))
 	{
 		// update location enemy stack
-		
+
 		if (aiData.hasEnemyStack(vehicleTile))
 		{
 			EnemyStackInfo &enemyStackInfo = aiData.getEnemyStackInfo(vehicleTile);
-			
+
 			// remove vehicle from stack
-			
+
 			enemyStackInfo.vehiclePad0s.erase(std::remove(enemyStackInfo.vehiclePad0s.begin(), enemyStackInfo.vehiclePad0s.end(), vehiclePad0), enemyStackInfo.vehiclePad0s.end());
-			
+
 			// remove stack if no more vehicles
-			
+
 			if (enemyStackInfo.vehiclePad0s.empty())
 			{
 				aiData.enemyStacks.erase(vehicleTile);

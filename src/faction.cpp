@@ -1154,7 +1154,8 @@ int faction_id, int UNUSED(toggle), int is_quick_calc) {
 	// adjust accumulated resources for human faction
 	if (is_human(faction_id))
 	{
-		if (mineral_cost_factor_new != mineral_cost_factor_old)
+		// protect against division by zero
+		if (mineral_cost_factor_new != mineral_cost_factor_old && mineral_cost_factor_old > 0)
 		{
 			for (int baseId = 0; baseId < *BaseCount; baseId++)
 			{

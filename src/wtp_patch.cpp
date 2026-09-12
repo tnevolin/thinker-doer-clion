@@ -2971,15 +2971,6 @@ void patch_disable_popb()
 	
 }
 
-void patch_console_human_turn()
-{
-	write_call(0x00527661, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_human_turn)));
-	write_call(0x0052826E, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_human_turn)));
-	write_call(0x005282C9, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_human_turn)));
-	write_call(0x0052A765, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_Console_human_turn)));
-	
-}
-
 void patch_enemy_diplomacy()
 {
 	write_call(0x005272E4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_enemy_diplomacy)));
@@ -3635,8 +3626,7 @@ void patch_setup_wtp(Config* cf)
 	}
 	
 	patch_disable_popb();
-	
-	patch_console_human_turn();
+
 	
 	patch_enemy_diplomacy();
 	
