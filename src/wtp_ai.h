@@ -168,7 +168,7 @@ struct Threat
 void setPlayerFactionReferences(int factionId);
 void aiFactionUpkeep(const int factionId);
 void __cdecl modified_enemy_units_check(int factionId);
-void strategy(bool computer);
+void strategy();
 void executeTasks();
 
 void populateAIData();

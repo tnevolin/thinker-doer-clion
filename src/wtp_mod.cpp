@@ -3750,28 +3750,6 @@ int __cdecl wpt_mod_Base_hurry_cost_factor_mineral_cost(int itemCost, int /*a1*/
 	return getHurryMineralCost(mod_cost_factor((*CurrentBase)->faction_id, RSC_MINERAL, -1) * itemCost);
 }
 
-int __thiscall wtp_mod_Console_human_turn(Console *This)
-{
-	// control human player automated units with AI algorithms
-	
-	if (conf.manage_player_units)
-	{
-		// set AI faction id for global reference
-		
-		setPlayerFactionReferences(*CurrentPlayerFaction);
-		
-		// generate automation strategy
-		
-		strategy(false);
-		
-	}
-	
-	// continue with normail play
-	
-	return Console_human_turn(This);
-	
-}
-
 /*
 Disables the call from action_terraform.
 */

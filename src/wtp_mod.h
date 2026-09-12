@@ -255,7 +255,6 @@ int __thiscall wtp_mod_BaseWin_pop_click_popup_start(Win* This, const char* file
 int __cdecl wtp_mod_base_police_pending();
 int getHurryMineralCost(int mineralCost);
 int __cdecl wpt_mod_Base_hurry_cost_factor_mineral_cost(int itemCost, int a1, int a2);
-int __thiscall wtp_mod_Console_human_turn(Console *This);
 int __cdecl wtp_mod_action_terraform_cause_friction(int a1, int a2, int a3);
 int __cdecl wtp_mod_action_terraform_set_treaty(int a1, int a2, int a3, int a4);
 int __cdecl wtp_mod_enemy_diplomacy(int factionId);
