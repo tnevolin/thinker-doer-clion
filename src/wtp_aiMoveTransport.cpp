@@ -104,11 +104,11 @@ void moveTranportStrategy()
 	// portion of a sea cluster's transport fleet allowed to sit idle (task-less, falling
 	// through to Thinker/vanilla dispatch) before the surplus starts getting disbanded
 
-	static const double IDLE_TRANSPORT_RATIO = 0.5;
+	static constexpr double IDLE_TRANSPORT_RATIO = 0.5;
 
 	// iterate sea transports
 
-	for (robin_hood::pair<int, std::vector<int>> seaTransportVehicleIdEntry : aiData.seaTransportVehicleIds)
+	for (robin_hood::pair<int, std::vector<int>> const &seaTransportVehicleIdEntry : aiData.seaTransportVehicleIds)
 	{
 		std::vector<int> seaClusterSeaTransportVehicleIds = seaTransportVehicleIdEntry.second;
 
@@ -116,6 +116,7 @@ void moveTranportStrategy()
 
 		for (int vehicleId : seaClusterSeaTransportVehicleIds)
 		{
+			// ReSharper disable once CppTooWideScopeInitStatement
 			VEH *vehicle = getVehicle(vehicleId);
 
 			// exclude empty damaged transport - let it heal instead of sending it out on a new assignment
@@ -142,7 +143,10 @@ void moveTranportStrategy()
 		// to protect the fleet from sudden fluctuations (e.g. many transports going idle
 		// together right after a war ends)
 
-		if (int allowedIdleCount = static_cast<int>(ceil(IDLE_TRANSPORT_RATIO * static_cast<double>(seaClusterSeaTransportVehicleIds.size()))); static_cast<int>(idleVehicleIds.size()) > allowedIdleCount)
+		// ReSharper disable once CppTooWideScopeInitStatement
+		int allowedIdleCount = static_cast<int>(ceil(IDLE_TRANSPORT_RATIO * static_cast<double>(seaClusterSeaTransportVehicleIds.size())));
+
+		if (static_cast<int>(idleVehicleIds.size()) > allowedIdleCount)
 		{
 			setTask(Task(idleVehicleIds.front(), TT_KILL));
 		}

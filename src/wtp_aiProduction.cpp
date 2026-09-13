@@ -443,7 +443,7 @@ bool isManagedUnit(int unitId)
 {
 	// colony / former / crawler - identified by their module weapon
 
-	static const robin_hood::unordered_flat_set<int> MANAGED_UNIT_TYPES
+	static robin_hood::unordered_flat_set<int> const MANAGED_UNIT_TYPES
 	{
 		WPN_COLONY_MODULE,
 		WPN_TERRAFORMING_UNIT,
@@ -462,7 +462,7 @@ bool isManagedUnit(int unitId)
 	// superweapon payloads - not yet evaluated
 	// (weapon types isCombatUnit() classifies as combat, but that no evaluator prices)
 
-	static const robin_hood::unordered_flat_set<int> UNMANAGED_COMBAT_WEAPON_TYPES
+	static robin_hood::unordered_flat_set<int> const UNMANAGED_COMBAT_WEAPON_TYPES
 	{
 		WPN_PLANET_BUSTER,
 		WPN_CONVENTIONAL_PAYLOAD,
@@ -491,7 +491,7 @@ bool isManaged(int item)
 	}
 	else if (-item < FAC_STOCKPILE_ENERGY)
 	{
-		static const robin_hood::unordered_flat_set<int> MANAGED_FACILITIES
+		static robin_hood::unordered_flat_set<int> const MANAGED_FACILITIES
 		{
 			FAC_HEADQUARTERS,
 			FAC_CHILDREN_CRECHE,
