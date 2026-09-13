@@ -101,18 +101,11 @@ void moveTranportStrategy()
 	
 	debug("moveTranportStrategy - %s\n", getMFaction(aiFactionId)->noun_faction);
 
-	// portion of a sea cluster's transport fleet allowed to sit idle (task-less, falling
-	// through to Thinker/vanilla dispatch) before the surplus starts getting disbanded
-
-	static constexpr double IDLE_TRANSPORT_RATIO = 0.5;
-
 	// iterate sea transports
 
 	for (robin_hood::pair<int, std::vector<int>> const &seaTransportVehicleIdEntry : aiData.seaTransportVehicleIds)
 	{
 		std::vector<int> seaClusterSeaTransportVehicleIds = seaTransportVehicleIdEntry.second;
-
-		std::vector<int> idleVehicleIds;
 
 		for (int vehicleId : seaClusterSeaTransportVehicleIds)
 		{
@@ -132,23 +125,6 @@ void moveTranportStrategy()
 				moveAvailableSeaTransportStrategy(vehicleId);
 			}
 
-			if (!hasTask(vehicleId))
-			{
-				idleVehicleIds.push_back(vehicleId);
-			}
-
-		}
-
-		// disband one surplus idle transport this turn - not the whole surplus at once -
-		// to protect the fleet from sudden fluctuations (e.g. many transports going idle
-		// together right after a war ends)
-
-		// ReSharper disable once CppTooWideScopeInitStatement
-		int allowedIdleCount = static_cast<int>(ceil(IDLE_TRANSPORT_RATIO * static_cast<double>(seaClusterSeaTransportVehicleIds.size())));
-
-		if (static_cast<int>(idleVehicleIds.size()) > allowedIdleCount)
-		{
-			setTask(Task(idleVehicleIds.front(), TT_KILL));
 		}
 
 	}

@@ -1016,6 +1016,7 @@ robin_hood::unordered_flat_map<int, double> getMeleeAttackLocations(int vehicleI
 robin_hood::unordered_flat_set<int> getArtilleryAttackLocations(int vehicleId);
 void disbandOrversupportedVehicles(int factionId);
 void disbandUnneededVehicles();
+void disbandExcessEmptyTransports();
 bool isUnitCanCaptureBase(int unitId, MAP *baseTile);
 int getCombatUnitTrueCost(int unitId);
 int getCombatVehicleTrueCost(int vehicleId);

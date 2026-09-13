@@ -3478,6 +3478,77 @@ void disbandUnneededVehicles()
 
 }
 
+/*
+Disbands surplus empty transports beyond the preserved empty ratio, one per sea cluster per
+turn rather than the whole surplus at once, to avoid reacting to a single turn's fluctuation.
+
+"Empty" here means physically carrying nothing right now - not lacking a WTP task. A transport
+without a WTP task may still be actively used by Thinker for naval invasion troop pickup, and
+whether WTP happens to have a task queued for it fluctuates with WTP's own scheduling as well
+as game state, not with whether the hull is actually doing something useful.
+*/
+void disbandExcessEmptyTransports()
+{
+	debug("disbandExcessEmptyTransports - %s\n", MFactions[aiFactionId].noun_faction);
+
+	// portion of a sea cluster's transport fleet expected to be empty at any time. A transport
+	// spends roughly as long travelling to its pickup point as it does delivering cargo, so
+	// having half the fleet empty is normal, healthy cycling, not waste. A little more is kept
+	// on top of that as a buffer against sudden demand fluctuations.
+
+	static constexpr double PRESERVED_EMPTY_TRANSPORT_RATIO = 0.6;
+
+	robin_hood::unordered_flat_map<int, std::vector<int>> seaClusterTransportVehicleIds;
+	robin_hood::unordered_flat_map<int, std::vector<int>> seaClusterEmptyTransportVehicleIds;
+
+	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
+	{
+		VEH *vehicle = getVehicle(vehicleId);
+		MAP *vehicleTile = getVehicleMapTile(vehicleId);
+
+		if (vehicleTile == nullptr)
+			continue;
+
+		// ours
+
+		if (vehicle->faction_id != aiFactionId)
+			continue;
+
+		// transport
+
+		if (!isTransportVehicle(vehicleId))
+			continue;
+
+		int seaCluster = getSeaCluster(vehicleTile);
+
+		seaClusterTransportVehicleIds[seaCluster].push_back(vehicleId);
+
+		// physically empty
+
+		if (getTransportUsedCapacity(vehicleId) == 0)
+		{
+			seaClusterEmptyTransportVehicleIds[seaCluster].push_back(vehicleId);
+		}
+
+	}
+
+	for (robin_hood::pair<int, std::vector<int>> const &seaClusterTransportVehicleIdEntry : seaClusterTransportVehicleIds)
+	{
+		int seaCluster = seaClusterTransportVehicleIdEntry.first;
+		std::vector<int> const &transportVehicleIds = seaClusterTransportVehicleIdEntry.second;
+		std::vector<int> const &emptyTransportVehicleIds = seaClusterEmptyTransportVehicleIds[seaCluster];
+
+		int preservedEmptyCount = static_cast<int>(ceil(PRESERVED_EMPTY_TRANSPORT_RATIO * static_cast<double>(transportVehicleIds.size())));
+
+		if (static_cast<int>(emptyTransportVehicleIds.size()) > preservedEmptyCount)
+		{
+			mod_veh_kill(emptyTransportVehicleIds.front());
+		}
+
+	}
+
+}
+
 /**
 Checks if unit can capture given base in general.
 */

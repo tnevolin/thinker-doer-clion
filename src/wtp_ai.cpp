@@ -70,13 +70,21 @@ void __cdecl wtp_mod_enemy_turn(int factionId)
 	if (isWtpEnabledFaction(factionId))
 	{
 		// assign vehicles to transports
-		
+
 		assignVehiclesToTransports();
-		
+
 		// vanilla fix for transpoft pickup
-		
+
 		fixUndesiredTransportPickup();
-		
+
+		// disband surplus empty transports before production/movement planning runs, so both
+		// see the already-culled fleet rather than pruning it after the fact. Runs after the
+		// two calls above since they can correct a passenger being physically aboard a
+		// transport without yet being formally marked as such, which would otherwise make
+		// getTransportUsedCapacity() misreport the transport as empty.
+
+		disbandExcessEmptyTransports();
+
 		// balance vehicle support
 		
 		balanceVehicleSupport();
