@@ -841,23 +841,51 @@ LRESULT WINAPI ModWinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         InvalidateRect(hwnd, NULL, false);
 
     } else if (debug_cmd && wParam == 'z' && alt_key_down()) {
-        int x = MapWin->iTileX, y = MapWin->iTileY;
-        int base_id;
-        if ((base_id = base_at(x, y)) >= 0) {
-            print_base(base_id);
-        }
-        print_map(x, y);
-        for (int k = 0; k < *VehCount; k++) {
-            VEH* veh = &Vehs[k];
-            if (veh->x == x && veh->y == y) {
-                Vehs[k].state |= VSTATE_UNK_40000;
-                Vehs[k].state &= ~VSTATE_UNK_2000;
-                print_veh(k);
-            }
-        }
-        flushlog();
+	    int x = MapWin->iTileX, y = MapWin->iTileY;
+    	int base_id;
+    	if ((base_id = base_at(x, y)) >= 0) {
+    		print_base(base_id);
+    	}
+    	print_map(x, y);
+    	for (int k = 0; k < *VehCount; k++) {
+    		VEH* veh = &Vehs[k];
+    		if (veh->x == x && veh->y == y) {
+    			Vehs[k].state |= VSTATE_UNK_40000;
+    			Vehs[k].state &= ~VSTATE_UNK_2000;
+    			print_veh(k);
+    		}
+    	}
+    	flushlog();
 
-    } else {
+    }
+
+    // [WTP]
+    // Ctrl-H automatic hurry
+
+    else if (Win_is_visible(BaseWin) && msg == WM_KEYDOWN && wParam == 'H' && ctrl_key_down())
+    {
+        int baseId = *CurrentBaseID;
+        BASE *base = *CurrentBase;
+        int itemId = base->queue_items[0];
+        int mineralCost = mineral_cost(baseId, itemId);
+        int hurryMineralCost = getHurryMineralCost(mineralCost);
+        int hurryMinerals = std::max(0, hurryMineralCost - (base->minerals_accumulated + base->mineral_surplus));
+
+        if (hurryMinerals > 0) {
+	        Faction *faction = &Factions[base->faction_id];
+        	int hurryCost = hurry_cost(baseId, itemId, hurryMinerals);
+        	int factionAvaialbleCredits = faction->energy_credits - faction->hurry_cost_total;
+
+        	if (hurryCost <= factionAvaialbleCredits)
+        	{
+        		base->minerals_accumulated = hurryMineralCost;
+        		faction->energy_credits -= hurryCost;
+        		BaseWin_on_redraw(BaseWin);
+        	}
+
+        }
+
+	} else {
         return WinProc(hwnd, msg, wParam, lParam);
     }
     return 0;
