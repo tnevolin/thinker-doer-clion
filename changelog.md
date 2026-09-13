@@ -1,4 +1,9 @@
-# Version 422
+# Version 424
+
+* [bug] Fixed incorrect psi combat odds display.
+* [bug] Fixed incorrect psi combat and in base application of extended base defensive facility bonus.
+
+# Version 423
 
 * Separated factions modifications into its own release file: https://github.com/tnevolin/thinker-doer-clion/releases/tag/factions.
 * Simplified release directory structure to match Thinker one. Now extract everything to game directory.

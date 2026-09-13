@@ -336,11 +336,11 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 	int attackerOffenseValue = getUnitOffenseValue(attackerVehicle.unit_id);
 	int defenderDefenseValue = getUnitDefenseValue(defenderVehicle.unit_id);
 	
-	// determine psi combat
+	// psi combat
 	
 	bool psiCombat = attackerOffenseValue < 0 || defenderDefenseValue < 0;
 	
-	// get combat map tile
+	// combat map tile
 	
 	MAP *attackerMapTile = getVehicleMapTile(attackerVehicleId);
 	MAP *defenderMapTile = getVehicleMapTile(defenderVehicleId);
@@ -704,22 +704,31 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
     // ----------------------------------------------------------------------------------------------------
     // defense facilities extend their effect 2 tiles outside of the base
     // ----------------------------------------------------------------------------------------------------
-	
-	constexpr char const *triadFacilityFieldLabels[3] = {"PD - field", "NY - field", "AC - field", };
-	constexpr char const *tachyonFieldFieldLabel = "TF - field";
-	
+
 	// blink displacer ignores defensive facilities
-	if (!has_abil(attackerVehicle.unit_id, ABL_BLINK_DISPLACER))
+	if
+	(
+		// not psi combat
+		!psiCombat
+		&&
+		// defender is not in base
+		!(defenderMapTile && defenderMapTile->is_base())
+		&&
+		// attacker has no blink displacer
+		!has_abil(attackerVehicle.unit_id, ABL_BLINK_DISPLACER)
+	)
 	{
 		int facilityFieldBonus = 0;
 		char const *facilityFieldLabel = nullptr;
 		if (isFriendlyBaseInRangeHasFacility(defenderVehicle.faction_id, defenderVehicle.x, defenderVehicle.y, 2, TRIAD_DEFENSIVE_FACILITIES[attackerTriad]))
 		{
+			constexpr char const *triadFacilityFieldLabels[3] = {"Base PD", "Base NY", "Base AC",};
 			facilityFieldBonus += conf.facility_field_defense_bonus[attackerTriad];
 			facilityFieldLabel = triadFacilityFieldLabels[attackerTriad];
 		}
 		if (isFriendlyBaseInRangeHasFacility(defenderVehicle.faction_id, defenderVehicle.x, defenderVehicle.y, 2, FAC_TACHYON_FIELD))
 		{
+			constexpr char const *tachyonFieldFieldLabel = "Base TF";
 			facilityFieldBonus += conf.facility_field_defense_bonus[3];
 			facilityFieldLabel = tachyonFieldFieldLabel;
 		}

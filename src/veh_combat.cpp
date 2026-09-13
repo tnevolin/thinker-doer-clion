@@ -1774,8 +1774,11 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
             snprintf(StrBuffer, StrBufLen, "%d.%d", defense_out >> 8, (10 * (defense_out & 0xFF)) >> 8);
             parse_says(3, StrBuffer, -1, -1);
 
-            int off_value = offense_out * veh_atk->cur_hitpoints();
-            int def_value = defense_out * veh_def->cur_hitpoints();
+        	// [WTP] ignore reactor if psi combat or configured
+        	bool ignore_reactor = psi_combat || conf.ignore_reactor_power;
+            int off_value = offense_out * veh_atk->cur_hitpoints(ignore_reactor);
+            int def_value = defense_out * veh_def->cur_hitpoints(ignore_reactor);
+        	//
             int divisor = std::__gcd(off_value, def_value);
             off_value /= divisor;
             def_value /= divisor;
@@ -1785,7 +1788,9 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
                     def_value /= value;
                 }
             }
-            combat_odds_fix(veh_atk, veh_def, &off_value, &def_value);
+        	// [WTP] already fixec above
+            // combat_odds_fix(veh_atk, veh_def, &off_value, &def_value);
+        	//
             BattleWin_stop_timer(BattleWin);
             parse_num(0, off_value);
             parse_num(1, def_value);
