@@ -441,7 +441,9 @@ default, with two carve-outs for weapon types no evaluator actually prices:
 */
 bool isManagedUnit(int unitId)
 {
-	// colony / former / crawler - identified by their module weapon
+	// colony / former / transport ship - identified by their module weapon
+	// (WPN_TROOP_TRANSPORT is the sea/land transport cargo-capacity module,
+	// not to be confused with WPN_SUPPLY_TRANSPORT, the crawler's convoy module)
 
 	static robin_hood::unordered_flat_set<int> const MANAGED_UNIT_TYPES
 	{
