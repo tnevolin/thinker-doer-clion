@@ -189,7 +189,7 @@ Enabled by `alternative_support=1` option.
 * Support cost is always 1.
 * Free unit count range is extended from 0-4 (vanilla) to 0-8.
 
-| rating | free units | cost |
+| rating | free units | support cost |
 | ----: | ----: | ----: |
 | -4 | 0 | 1 |
 | -3 | 1 | 1 |
@@ -198,7 +198,7 @@ Enabled by `alternative_support=1` option.
 |  0 | 4 | 1 |
 |  1 | 5 | 1 |
 |  2 | 6 | 1 |
-|  3 | 8 or to base size | 1 |
+|  3 | 8 | 1 |
 
 #### Monetary support
 
@@ -206,17 +206,18 @@ Enabled by `monetary_support=1` option.
 
 * New base always gets free minerals.
 * Support is paid in credits, not minerals.
+* 1 mineral = `flat_hurry_cost_multiplier_facility` credits if `flat_hurry_cost=1`. Otherwise, 2.
 
 | rating | free units | support cost |
 | ----: | ----: | ----: |
-| -4 | 0 | 4 |
-| -3 | 0 | 3 |
-| -2 | 0 | 2 |
-| -1 | 1 | 2 |
-|  0 | 2 | 2 |
-|  1 | 3 | 2 |
-|  2 | 4 | 2 |
-|  3 | 6 | 2 |
+| -4 | 0 | 3 |
+| -3 | 1 | 3 |
+| -2 | 2 | 3 |
+| -1 | 3 | 3 |
+|  0 | 4 | 3 |
+|  1 | 5 | 3 |
+|  2 | 6 | 3 |
+|  3 | 8 | 3 |
 
 ### POLICE
 
