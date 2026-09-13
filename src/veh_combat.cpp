@@ -574,7 +574,7 @@ int __cdecl mod_get_basic_defense(int veh_id_def, int veh_id_atk, int psi_combat
         }
 		}
 		//
-		
+
         if (veh_id_atk >= 0 && !Vehs[veh_id_atk].faction_id) {
 			// [WTP]
 			// no bonus against aliens
@@ -832,7 +832,7 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
         DF_Sensor = 4,
         DF_GSP = 8,
     };
-    
+
     // [WTP]
     // modified asserts to allow fake vehicles
     /*
@@ -842,7 +842,7 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
     assert((veh_id_atk >= 0 && veh_id_atk < *VehCount) || (veh_id_atk >= conf.max_veh_num && veh_id_atk < conf.max_veh_num + 2));
     assert((veh_id_def >= 0 && veh_id_def < *VehCount) || (veh_id_def >= conf.max_veh_num && veh_id_def < conf.max_veh_num + 2));
     //
-    
+
     VehBattleModCount[0] = 0;
     VehBattleModCount[1] = 0;
     VehBattleState[0] = 0;
@@ -1043,7 +1043,7 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
                 defense *= 4;
             } else {
                 int terrain_def = terrain_defense(veh_def, veh_atk);
-                
+
                 // [WTP]
                 // do not assert for fake vehicles
                 if (sq_def != nullptr)
@@ -1051,7 +1051,7 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
                 assert(terrain_def == (veh_def->triad() == TRIAD_AIR ? 2 :
                     defense_value(faction_id_def, veh_def->x, veh_def->y, veh_id_def, veh_id_atk)));
 				}
-				
+
 				// [WTP]
 				// bunker ignores terrain if configured
 				if (conf.bunker_ignores_terrain && sq_def && sq_def->is_bunker())
@@ -1103,7 +1103,7 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
                         add_bat(1, Rules->combat_mobile_def_in_rough, base_id_def < 0
                             ? label_get(548) : label_get(612));
                     }
-                    
+
                     // [WTP]
                     // on map only
                     if (sq_atk && sq_def)
@@ -1132,7 +1132,7 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
                     }
 					}
 					//
-					
+
                 }
                 defense *= terrain_def;
                 if (!plain_terrain) {
@@ -1224,7 +1224,7 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
                 }
             }
             if (faction_id_def) {
-				
+
 				// [WTP]
 				// compute sensor if on map only
 				if (sq_def)
@@ -1269,10 +1269,10 @@ void __cdecl mod_battle_compute(int veh_id_atk, int veh_id_def, int* offense_out
                 if (def_state & DF_GSP) {
                     defense = defense * (Rules->combat_defend_sensor + 100) / 100;
                     add_bat(1, Rules->combat_defend_sensor, label_get(1123)); // GSP
-                }                
+                }
 				}
 				// [WTP]
-				
+
             }
             if (veh_id_atk >= 0 && psi_combat & 1
             && Rules->combat_bonus_trance_vs_psi
@@ -1759,7 +1759,7 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
         }
     }
     */
-    
+
     if (*CurrentTurn < conf.native_weak_until_turn) {
         if (!faction_id_atk) {
             offense_out /= 3;
@@ -1816,26 +1816,23 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
             snprintf(StrBuffer, StrBufLen, "%d.%d", defense_out >> 8, (10 * (defense_out & 0xFF)) >> 8);
             parse_says(3, StrBuffer, -1, -1);
 
-            int off_value = offense_out * veh_atk->cur_hitpoints();
-            int def_value = defense_out * veh_def->cur_hitpoints();
+        	// [WTP] ignore reactor if psi combat or configured
+        	bool ignore_reactor = psi_combat || conf.ignore_reactor_power;
+            int off_value = offense_out * veh_atk->cur_hitpoints(ignore_reactor);
+            int def_value = defense_out * veh_def->cur_hitpoints(ignore_reactor);
+        	//
             int divisor = std::__gcd(off_value, def_value);
             off_value /= divisor;
             def_value /= divisor;
-            
-            // [WTP]
-            // more precise algorithm
-            /*
-            for (int value : {10000, 5000, 1000, 500, 100, 50}) {
+            for (int value : {10000, 5000, 1000, 500, 100, 50, 10}) {
                 while (off_value >= 2*value && def_value >= 2*value) {
                     off_value /= value;
                     def_value /= value;
                 }
             }
-            */
-            simplifyFraction(&off_value, &def_value, 50);
-            //
-            
-            combat_odds_fix(veh_atk, veh_def, &off_value, &def_value);
+        	// [WTP] already fixes above
+            // combat_odds_fix(veh_atk, veh_def, &off_value, &def_value);
+        	//
             BattleWin_stop_timer(BattleWin);
             parse_num(0, off_value);
             parse_num(1, def_value);
@@ -2687,15 +2684,15 @@ Simplifies fraction to reduce numerator and denominator to be not more than max 
 void simplifyFraction(int *p, int *q, int maxVal)
 {
 	double r = *p / *q;
-	
+
 	// Initialize continued fraction
 	int p0 = 1;
 	int q0 = 0;
 	int p1 = (int) floor(r);
 	int q1 = 1;
-	
+
 	r = r - floor(r);
-	
+
 	while (r != 0.0)
 	{
 		r = 1 / r;
@@ -2703,19 +2700,19 @@ void simplifyFraction(int *p, int *q, int maxVal)
 		r -= n;
 		int p2 = (int) n * p1 + p0;
 		int q2 = (int) n * q1 + q0;
-		
+
 		if (p2 > maxVal || q2 > maxVal)
 			break;
-		
+
 		p0 = p1;
 		q0 = q1;
 		p1 = p2;
 		q1 = q2;
-		
+
 	}
-	
+
 	*p = p1;
 	*q = q1;
-	
+
 }
 

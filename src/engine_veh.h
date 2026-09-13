@@ -687,6 +687,18 @@ struct VEH {
         order = ORDER_NONE;
         state &= ~(VSTATE_UNK_2000000|VSTATE_UNK_1000000|VSTATE_EXPLORE|VSTATE_ON_ALERT);
     }
+	// [WTP]
+	// current hitpoints with ignore reactor flag
+	int cur_hitpoints(bool ignore_reactor)
+	{
+    	int hp = cur_hitpoints();
+    	if (ignore_reactor)
+    	{
+    		int reactor_power = reactor_type();
+    		hp = (hp + reactor_power - 1) / reactor_power;
+    	}
+    	return std::max(0, hp);
+    }
 };
 
 #pragma pack(pop)
