@@ -62,28 +62,28 @@ void moveCombatStrategy()
 {
 	Profiling::start("moveCombatStrategy", "moveStrategy");
 
-	// populate orders
-
-	popualteOrders();
-
-	// generate requests
-
-	generateRequests();
-
-	// assign requests
-
-	assignRequests();
-	
-	// compute strategy
-	
-//	moveCombat();
-
-//	immediateAttack();
-
-//	moveBaseProtectors();
-//	generatePoliceRequests();
-//	moveBunkerProtectors();
-//	coordinateAttack();
+//	// populate orders
+//
+//	popualteOrders();
+//
+//	// generate requests
+//
+//	generateRequests();
+//
+//	// assign requests
+//
+//	assignRequests();
+//
+//	// compute strategy
+//
+////	moveCombat();
+//
+////	immediateAttack();
+//
+////	moveBaseProtectors();
+////	generatePoliceRequests();
+////	moveBunkerProtectors();
+////	coordinateAttack();
 	
 	Profiling::stop("moveCombatStrategy");
 	
@@ -952,7 +952,7 @@ void moveBunkerProtectors()
 
 			if (!aiData.bunkerInfos.contains(taskPriority.destination))
 			{
-				debug("ERROR: key does not exist; file=wtp_aiMoveCombat.cpp function=moveCombatBunkerProtectors map=aiData.bunkerInfos key=%p\n", taskPriority.destination);
+				debug("ERROR: key does not exist; file=wtp_aiMoveCombat.cpp function=moveCombatBunkerProtectors map=aiData.bunkerInfos key=%p\n", static_cast<void *>(taskPriority.destination));
 				// TODO key does not exist
 			}
 			CombatData &combatData = aiData.bunkerInfos.at(taskPriority.destination).combatData;
@@ -980,7 +980,7 @@ void moveBunkerProtectors()
 		
 		if (!aiData.bunkerInfos.contains(bestTaskPriority->destination))
 		{
-			debug("ERROR: key does not exist; file=wtp_aiMoveCombat.cpp function=moveCombatBunkerProtectors map=aiData.bunkerInfos key=%p\n", bestTaskPriority->destination);
+			debug("ERROR: key does not exist; file=wtp_aiMoveCombat.cpp function=moveCombatBunkerProtectors map=aiData.bunkerInfos key=%p\n", static_cast<void *>(bestTaskPriority->destination));
 			// TODO key does not exist
 		}
 		CombatData &combatData = aiData.bunkerInfos.at(bestTaskPriority->destination).combatData;
@@ -1176,7 +1176,7 @@ void moveCombat()
 				{
 					if (!aiData.enemyStacks.contains(taskPriority.attackTarget))
 					{
-						debug("ERROR: key does not exist; file=wtp_aiMoveCombat.cpp function=moveCombatVehicles map=aiData.enemyStacks key=%p\n", taskPriority.attackTarget);
+						debug("ERROR: key does not exist; file=wtp_aiMoveCombat.cpp function=moveCombatVehicles map=aiData.enemyStacks key=%p\n", static_cast<void *>(taskPriority.attackTarget));
 						// TODO key does not exist
 					}
 					EnemyStackInfo *enemyStack = &(aiData.enemyStacks.at(taskPriority.attackTarget));

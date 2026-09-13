@@ -6,7 +6,7 @@
 
 void aiFactionUpkeep( int factionId);
 void __cdecl wtp_mod_enemy_turn(int factionId);
-void strategy(bool computer);
+void strategy();
 
 void populateAIData();
 void populateGlobalVariables();

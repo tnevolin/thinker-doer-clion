@@ -237,12 +237,14 @@ struct DefendData
 	bool computed = false;
 	bool sufficient = false;
 	std::vector<DefendDataAttacker> attackers;
-	robin_hood::unordered_flat_map<int, DefendDataDefender> defenders;
+	std::vector<DefendDataDefender> defenders;
+	robin_hood::unordered_flat_set<int> defenderVehicleIds;
 
 	DefendData(MAP const* _tile, double _targetGain);
 
 	void addAttackerUnit(int _factionId, int _unitId, double _health);
 	void addDefenderVehicle(int vehicleId);
+	bool isDefenderVehicleExist(int vehicleId);
 	bool isSufficient();
 	double getVehicleRelativeContribution(int vehicleId);
 

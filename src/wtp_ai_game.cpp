@@ -1406,16 +1406,25 @@ void DefendData::addAttackerUnit(int _factionId, int _unitId, double _health)
 
 void DefendData::addDefenderVehicle(int vehicleId)
 {
+	if (this->isDefenderVehicleExist(vehicleId))
+		return;
+
 	VEH &vehicle = Vehs[vehicleId];
 
-	Triad triad = static_cast<Triad>(vehicle.triad());
+	auto triad = static_cast<Triad>(vehicle.triad());
 	bool artillery = isArtilleryVehicle(vehicleId);
 	double maxBombardmentDamage = getMaxBombardmentDamage(triad, this->tile);
 	double minBombardmentHealth = 1.0 - maxBombardmentDamage;
 	double health = getVehicleRelativeHealth(vehicleId);
 
-	defenders.emplace(std::piecewise_construct, std::forward_as_tuple(vehicleId), std::forward_as_tuple(vehicleId, vehicle.faction_id, vehicle.unit_id, triad, health, artillery, minBombardmentHealth));
+	defenders.emplace_back(vehicleId, vehicle.faction_id, vehicle.unit_id, triad, health, artillery, minBombardmentHealth);
+	defenderVehicleIds.insert(vehicleId);
 
+}
+
+bool DefendData::isDefenderVehicleExist(int vehicleId)
+{
+	return defenderVehicleIds.contains(vehicleId);
 }
 
 bool DefendData::isSufficient()
@@ -1428,7 +1437,7 @@ bool DefendData::isSufficient()
 	this->computed = true;
 
 	// reset defender contributions
-	std::for_each(this->defenders.begin(), this->defenders.end(), [](auto &entry) { entry.second.contribution = 0.0; entry.second.relativeContribution = 0.0; });
+	std::for_each(this->defenders.begin(), this->defenders.end(), [](auto &defender) { defender.contribution = 0.0; defender.relativeContribution = 0.0; });
 
 	// no attackers = defense is sufficient
 	if (this->attackers.empty())
@@ -1446,7 +1455,7 @@ bool DefendData::isSufficient()
 	// seelect defender artillery vehicles
 
 	robin_hood::unordered_flat_set<int> defenderArtilleryVehicleIds;
-	for (auto &[vehicleId, defender] : this->defenders)
+	for (auto &defender : this->defenders)
 	{
 		if (isArtilleryUnit(defender.vehicleId))
 			defenderArtilleryVehicleIds.insert(defender.vehicleId);
@@ -1655,7 +1664,7 @@ bool DefendData::isSufficient()
     	{
     		// apply bombardment damages
 
-    		for (auto &[vehicleId, defender] : this->defenders)
+    		for (auto &defender : this->defenders)
     		{
     			if (bestAttackerBombardmentDamages.contains(defender.vehicleId))
     			{
@@ -1668,18 +1677,19 @@ bool DefendData::isSufficient()
 
     }
 
+	// TODO think if I want to normalize it or keep as number of destroyed enemies
 	// normalize defender contributions
 
-	double totalContribution = std::accumulate(this->defenders.begin(), this->defenders.end(), 0.0, [](double accumulator, auto const &entry) { return accumulator + entry.second.contribution; });
+	double totalContribution = std::accumulate(this->defenders.begin(), this->defenders.end(), 0.0, [](double accumulator, auto const &defender) { return accumulator + defender.contribution; });
 	if (totalContribution > 0.0)
 	{
-		std::for_each(this->defenders.begin(), this->defenders.end(), [totalContribution](auto &entry) { entry.second.relativeContribution = entry.second.contribution / totalContribution; });
+		std::for_each(this->defenders.begin(), this->defenders.end(), [totalContribution](auto &defender) { defender.relativeContribution = defender.contribution / totalContribution; });
 	}
 
 	// check alive units
 
-	bool attackerAlive = std::any_of(attackers.begin(), attackers.end(), [&](DefendDataAttacker const &e) { return e.health > 0.0; });
-	bool defenderAlive = std::any_of(defenders.begin(), defenders.end(), [&](auto const &entry) { return entry.second.health > 0.0; });
+	bool attackerAlive = std::any_of(attackers.begin(), attackers.end(), [&](auto const &attacker) { return attacker.health > 0.0; });
+	bool defenderAlive = std::any_of(defenders.begin(), defenders.end(), [&](auto const &defender) { return defender.health > 0.0; });
 
 	if (!attackerAlive)
 		return this->sufficient = true;
@@ -1694,13 +1704,13 @@ bool DefendData::isSufficient()
 
 double DefendData::getVehicleRelativeContribution(int vehicleId)
 {
-	bool temporary = !defenders.contains(vehicleId);
+	bool temporary = !defenderVehicleIds.contains(vehicleId);
 
 	if (temporary)
 	{
 		this->addDefenderVehicle(vehicleId);
 	}
-	DefendDataDefender &defender = this->defenders.at(vehicleId);
+	DefendDataDefender &defender = this->defenders.back();
 
 	if (!this->computed)
 	{
@@ -1711,7 +1721,7 @@ double DefendData::getVehicleRelativeContribution(int vehicleId)
 
 	if (temporary)
 	{
-		this->defenders.erase(vehicleId);
+		this->defenders.pop_back();
 	}
 
 	return relativeContribution;

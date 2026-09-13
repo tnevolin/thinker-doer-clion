@@ -1,3 +1,7 @@
+# Version 423
+
+* Human player automated units are controlled by Thinker AI algorithms.
+
 # Version 422
 
 * Separated factions modifications into its own release file: https://github.com/tnevolin/thinker-doer-clion/releases/tag/factions.

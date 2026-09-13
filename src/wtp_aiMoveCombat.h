@@ -1,6 +1,6 @@
 #pragma once
 
-#include <float.h>
+#include <cfloat>
 
 #include "main.h"
 #include "engine.h"
