@@ -15,6 +15,7 @@
 #include "wtp_aiMoveFormer.h"
 #include "wtp_aiHurry.h"
 #include "wtp_aiMoveColony.h"
+#include "move.h"
 
 // global statistics
 
@@ -111,6 +112,7 @@ void productionStrategy()
 	
 	populateFactionProductionData();
 	evaluateGlobalColonyDemand();
+	evaluateNavalInvasionTransportDemand();
 	evaluateGlobalSeaTransportDemand();
 	
 	// set production
@@ -292,10 +294,75 @@ void evaluateGlobalColonyDemand()
 	
 }
 
+/*
+Estimates Thinker's naval invasion troop-lift demand and folds it into the same sea transport
+request counters WTP's own colony/former/crawler transit requests use, so
+evaluateGlobalSeaTransportDemand() naturally builds more transports when an invasion needs
+them, without a second, parallel demand-tracking mechanism.
+
+Deliberately approximate: this is a ballpark headcount, not a precise schedule. It counts the
+faction's own land combat/probe vehicles Thinker's own invasion_unit() considers part of the
+invasion - the same population combat_move's landing_unit flag marches to the staging point -
+rather than only those that have already physically arrived there, so the demand signal has
+lead time instead of lagging behind troop movement by the several turns marching takes.
+
+Colony pods are deliberately excluded: WPN_COLONY_MODULE is in MANAGED_UNIT_TYPES, so colony
+pod movement is WTP's own moveColonyStrategy, not Thinker's colony_move - their transport
+needs already flow through the existing transit request mechanism.
+
+Runs after this turn's movement in the previous turn (production for turn N follows movement
+for turn N-1), so Thinker's invasion plan and troop positioning are already settled, not
+still being computed, by the time this reads them.
+*/
+void evaluateNavalInvasionTransportDemand()
+{
+	Profiling::start("evaluateNavalInvasionTransportDemand", "productionStrategy");
+
+	AIPlans &p = plans[aiFactionId];
+
+	// no active invasion plan
+
+	if (p.naval_start_x < 0)
+	{
+		Profiling::stop("evaluateNavalInvasionTransportDemand");
+		return;
+	}
+
+	MAP *navalStartTile = getMapTile(p.naval_start_x, p.naval_start_y);
+
+	if (navalStartTile == nullptr)
+	{
+		Profiling::stop("evaluateNavalInvasionTransportDemand");
+		return;
+	}
+
+	int seaCluster = getSeaCluster(navalStartTile);
+
+	for (int vehicleId : aiData.vehicleIds)
+	{
+		VEH *vehicle = getVehicle(vehicleId);
+
+		if (vehicle->triad() != TRIAD_LAND)
+			continue;
+
+		if (!isCombatVehicle(vehicleId) && !isProbeVehicle(vehicleId))
+			continue;
+
+		if (!invasion_unit(vehicleId))
+			continue;
+
+		aiData.addSeaTransportRequest(seaCluster);
+
+	}
+
+	Profiling::stop("evaluateNavalInvasionTransportDemand");
+
+}
+
 void evaluateGlobalSeaTransportDemand()
 {
 	Profiling::start("evaluateGlobalSeaTransportDemand", "productionStrategy");
-	
+
 	debug("evaluateGlobalSeaTransportDemand - %s\n", getMFaction(aiFactionId)->noun_faction);
 	
 	// reset demands
