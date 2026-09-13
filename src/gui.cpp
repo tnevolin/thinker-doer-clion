@@ -857,34 +857,6 @@ LRESULT WINAPI ModWinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     	}
     	flushlog();
 
-    }
-
-    // [WTP]
-    // Ctrl-H automatic hurry
-
-    else if (Win_is_visible(BaseWin) && msg == WM_KEYDOWN && wParam == 'H' && ctrl_key_down())
-    {
-        int baseId = *CurrentBaseID;
-        BASE *base = *CurrentBase;
-        int itemId = base->queue_items[0];
-        int mineralCost = mineral_cost(baseId, itemId);
-        int hurryMineralCost = getHurryMineralCost(mineralCost);
-        int hurryMinerals = std::max(0, hurryMineralCost - (base->minerals_accumulated + base->mineral_surplus));
-
-        if (hurryMinerals > 0) {
-	        Faction *faction = &Factions[base->faction_id];
-        	int hurryCost = hurry_cost(baseId, itemId, hurryMinerals);
-        	int factionAvaialbleCredits = faction->energy_credits - faction->hurry_cost_total;
-
-        	if (hurryCost <= factionAvaialbleCredits)
-        	{
-        		base->minerals_accumulated = hurryMineralCost;
-        		faction->energy_credits -= hurryCost;
-        		BaseWin_on_redraw(BaseWin);
-        	}
-
-        }
-
 	} else {
         return WinProc(hwnd, msg, wParam, lParam);
     }
