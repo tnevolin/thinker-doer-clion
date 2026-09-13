@@ -332,6 +332,7 @@ struct Config {
     int debug_verbose = DEBUG; // internal variable
     
 	//  [WTP]
+    bool collect_statistics = false;
     bool alternative_weapon_icon_selection_algorithm = false;
     // implemented in Thinker?
     bool alternative_prototype_cost_formula = false;

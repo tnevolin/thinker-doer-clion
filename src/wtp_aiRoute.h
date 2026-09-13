@@ -6,8 +6,8 @@
 #include "engine.h"
 #include "wtp_ai_game.h"
 
-int const MIN_LANDMARK_DISTANCE = 20;
-double const A_DISTANCE_TRESHOLD = 10.0;
+constexpr int MIN_LANDMARK_DISTANCE = 20;
+constexpr double A_DISTANCE_TRESHOLD = 10.0;
 
 const double RANGED_AIR_TRAVEL_TIME_COEFFICIENT = 1.5;
 const double SEA_TRANSPORT_WAIT_TIME_COEFFICIENT = 4.0;

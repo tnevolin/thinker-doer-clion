@@ -1641,65 +1641,65 @@ void populateLandLandmarks(int factionId)
 	robin_hood::unordered_flat_set<size_t> endNodes;
 	
 	// collect initialTiles
-	
+
 	std::map<int, int> initialTiles;
-	
+
 	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
 		int landCluster = landCombatClusters.at(tileIndex);
-		
+
 		if (landCluster == -1)
 			continue;
-		
+
 		if (initialTiles.find(landCluster) != initialTiles.end())
 			continue;
-		
+
 		initialTiles.emplace(landCluster, tileIndex);
-		
+
 	}
-	
+
 	// iterate basic movementTypes
-	
+
 	for (size_t movementTypeIndex = 0; movementTypeIndex < BASIC_LAND_MOVEMENT_TYPE_COUNT; movementTypeIndex++)
 	{
 		MovementType movementType = BASIC_LAND_MOVEMENT_TYPES.at(movementTypeIndex);
-		
+
 		std::vector<LandLandmark> &landmarks = landLandmarks.at(movementTypeIndex);
 		landmarks.clear();
-		
+
 		// iterate landClusters
-		
+
 		for (std::pair<int const, int> &initialTileEntry : initialTiles)
 		{
 			int landCluster = initialTileEntry.first;
 			int landmarkTileIndex = initialTileEntry.second;
-			
+
 			endNodes.clear();
-			
+
 			// generate landmarks
-			
+
 			while (true)
 			{
 				// create landmark
-				
+
 				landmarks.emplace_back();
 				LandLandmark &landmark = landmarks.back();
-				
+
 				landmark.tileIndex = landmarkTileIndex;
 				landmark.tileInfos.clear();
 				landmark.tileInfos.resize(*MapAreaTiles);
-				
+
 				// populate initial open nodes
-				
+
 				openNodes.clear();
 				newOpenNodes.clear();
-				
+
 				landmark.tileInfos.at(landmarkTileIndex).distance = 0;
 				landmark.tileInfos.at(landmarkTileIndex).travelTime = 0.0;
 				openNodes.insert(landmarkTileIndex);
-				
+
 				int currentDistance = 0;
-				
+
 				// time sensitive code - minimize function call and computations inside
 				while (!openNodes.empty())
 				{
@@ -1707,68 +1707,68 @@ void populateLandLandmarks(int factionId)
 					{
 						TileInfo &currentTileInfo = aiData.tileInfos.at(currentTileIndex);
 						LandLandmarkTileInfo &currentTileLandLandmarkTileInfo = landmark.tileInfos.at(currentTileIndex);
-						
+
 						bool endNode = true;
-						
+
 						for (TileTransit &tileTransit : currentTileInfo.tileTransits)
 						{
 							TileInfo *adjacentTileInfo = tileTransit.tileInfo;
 							int adjacentTileIndex = adjacentTileInfo->index;
-							
+
 							// should be in same land transported cluster
-							
+
 							int adjacentTileLandCluster = landCombatClusters.at(adjacentTileIndex);
 							if (adjacentTileLandCluster != landCluster)
 								continue;
-							
+
 							// land-land
 							if (currentTileInfo.land && adjacentTileInfo->land)
 							{
 								// sensible land movement cost
-								
+
 								int hexCost = tileTransit.averageHexCosts.at(movementType);
 								if (hexCost == -1)
 									continue;
-								
+
 								LandLandmarkTileInfo &adjacentTileLandLandmarkTileInfo = landmark.tileInfos.at(adjacentTileIndex);
-								
+
 								double stepCost = static_cast<double>(hexCost) + impediments.at(adjacentTileIndex);
-								
+
 								// update value
-								
+
 								double oldTravelTime = adjacentTileLandLandmarkTileInfo.travelTime;
-								
+
 								double newLandMovementCost = currentTileLandLandmarkTileInfo.landMovementCost + stepCost;
 								double newTravelTime = currentTileLandLandmarkTileInfo.travelTime + stepCost / 2.0;
-								
+
 								if (newTravelTime < oldTravelTime)
 								{
 									adjacentTileLandLandmarkTileInfo.distance = currentDistance;
 									adjacentTileLandLandmarkTileInfo.landMovementCost = newLandMovementCost;
 									adjacentTileLandLandmarkTileInfo.travelTime = newTravelTime;
 									newOpenNodes.insert(adjacentTileIndex);
-									
+
 									endNode = false;
-									
+
 								}
-								
+
 							}
 							// land-sea
 							else if (currentTileInfo.land && adjacentTileInfo->ocean)
 							{
 								LandLandmarkTileInfo &adjacentTileLandLandmarkTileInfo = landmark.tileInfos.at(adjacentTileIndex);
-								
+
 								double seaTransportWaitTime = seaTransportWaitTimes.at(adjacentTileIndex);
 								double stepCost = static_cast<double>(Rules->move_rate_roads);
-								
+
 								// update value
-								
+
 								double oldTravelTime = adjacentTileLandLandmarkTileInfo.travelTime;
-								
+
 								double newSeaTransportWaitTime = currentTileLandLandmarkTileInfo.seaTransportWaitTime + seaTransportWaitTime;
 								double newLandMovementCost = currentTileLandLandmarkTileInfo.landMovementCost + stepCost;
 								double newTravelTime = currentTileLandLandmarkTileInfo.travelTime + seaTransportWaitTime + stepCost / 2.0;
-								
+
 								if (newTravelTime < oldTravelTime)
 								{
 									adjacentTileLandLandmarkTileInfo.distance = currentDistance;
@@ -1776,164 +1776,164 @@ void populateLandLandmarks(int factionId)
 									adjacentTileLandLandmarkTileInfo.landMovementCost = newLandMovementCost;
 									adjacentTileLandLandmarkTileInfo.travelTime = newTravelTime;
 									newOpenNodes.insert(adjacentTileIndex);
-									
+
 									endNode = false;
-									
+
 								}
-								
+
 							}
 							// sea-sea
 							else if (currentTileInfo.ocean && adjacentTileInfo->ocean)
 							{
 								// sensible sea movement cost
-								
+
 								int hexCost = tileTransit.averageHexCosts.at(MT_SEA);
 								if (hexCost == -1)
 									continue;
-								
+
 								LandLandmarkTileInfo &adjacentTileLandLandmarkTileInfo = landmark.tileInfos.at(adjacentTileIndex);
-								
+
 								double stepCost = static_cast<double>(hexCost) + impediments.at(adjacentTileIndex);
-								
+
 								// update value
-								
+
 								double oldTravelTime = adjacentTileLandLandmarkTileInfo.travelTime;
-								
+
 								double newSeaMovementCost = currentTileLandLandmarkTileInfo.seaMovementCost + stepCost;
 								double newTravelTime = currentTileLandLandmarkTileInfo.travelTime + stepCost / static_cast<double>(Rules->move_rate_roads * factionInfo.bestSeaTransportUnitSpeed);
-								
+
 								if (newTravelTime < oldTravelTime)
 								{
 									adjacentTileLandLandmarkTileInfo.distance = currentDistance;
 									adjacentTileLandLandmarkTileInfo.seaMovementCost = newSeaMovementCost;
 									adjacentTileLandLandmarkTileInfo.travelTime = newTravelTime;
 									newOpenNodes.insert(adjacentTileIndex);
-									
+
 									endNode = false;
-									
+
 								}
-								
+
 							}
 							// sea-land
 							else if (currentTileInfo.ocean && adjacentTileInfo->land)
 							{
 								LandLandmarkTileInfo &adjacentTileLandLandmarkTileInfo = landmark.tileInfos.at(adjacentTileIndex);
-								
+
 								double stepCost = static_cast<double>(Rules->move_rate_roads);
-								
+
 								// update value
-								
+
 								double oldTravelTime = adjacentTileLandLandmarkTileInfo.travelTime;
-								
+
 								double newLandMovementCost = currentTileLandLandmarkTileInfo.landMovementCost + stepCost;
 								double newTravelTime = currentTileLandLandmarkTileInfo.travelTime + stepCost / 2.0;
-								
+
 								if (newTravelTime < oldTravelTime)
 								{
 									adjacentTileLandLandmarkTileInfo.distance = currentDistance;
 									adjacentTileLandLandmarkTileInfo.landMovementCost = newLandMovementCost;
 									adjacentTileLandLandmarkTileInfo.travelTime = newTravelTime;
 									newOpenNodes.insert(adjacentTileIndex);
-									
+
 									endNode = false;
-									
+
 								}
-								
+
 							}
-							
+
 						}
-						
+
 						if (endNode)
 						{
 							endNodes.insert(currentTileIndex);
 						}
-						
+
 					}
-					
+
 					openNodes.clear();
 					openNodes.swap(newOpenNodes);
-					
+
 					currentDistance++;
-					
+
 				}
-				
+
 				// select next landmark
-				
+
 				int fartherstEndNodeTileIndex = -1;
 				int fartherstEndNodeDistance = 0;
-				
+
 				for (int otherEndNodeTileIndex : endNodes)
 				{
 					int nearestLandmarkDistance = INT_MAX;
-					
+
 					for (LandLandmark &otherLandLandmark : landmarks)
 					{
 						size_t otherLandLandmarkTileIndex = otherLandLandmark.tileIndex;
 						int otherLandLandmarkCluster = landCombatClusters.at(otherLandLandmarkTileIndex);
-						
+
 						if (otherLandLandmarkCluster != landCluster)
 							continue;
-						
+
 						int distance = otherLandLandmark.tileInfos.at(otherEndNodeTileIndex).distance;
-						
+
 						if (distance == INT_MAX)
 							continue;
-						
+
 						if (distance < nearestLandmarkDistance)
 						{
 							nearestLandmarkDistance = distance;
 						}
-						
+
 					}
-					
+
 					if (nearestLandmarkDistance > fartherstEndNodeDistance)
 					{
 						fartherstEndNodeTileIndex = otherEndNodeTileIndex;
 						fartherstEndNodeDistance = nearestLandmarkDistance;
 					}
-					
+
 				}
-				
+
 				if (fartherstEndNodeTileIndex == -1 || fartherstEndNodeDistance < minLandmarkDistance)
 				{
 					// exit cycle
 					break;
 				}
-				
+
 				// set new landmark
-				
+
 				landmarkTileIndex = fartherstEndNodeTileIndex;
 				endNodes.erase(landmarkTileIndex);
-				
-			}
-			
-		}
-			
-	}
-	
-	if constexpr (DEBUG)
-	{
-		for (size_t landMovementTypeIndex = 0; landMovementTypeIndex < BASIC_LAND_MOVEMENT_TYPE_COUNT; landMovementTypeIndex++)
-		{
-			MovementType movementType = BASIC_LAND_MOVEMENT_TYPES.at(landMovementTypeIndex);
 
-			debug("\tmovementType=%d\n", movementType);
-
-			std::vector<LandLandmark> &landmarks = landLandmarks.at(landMovementTypeIndex);
-
-			for (LandLandmark &landmark : landmarks)
-			{
-				debug("\t\t%s\n", getLocationString(landmark.tileIndex));
-				for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
-				{
-					debug("\t\t\t%s %3.0f %3.0f %3.0f\n", getLocationString(tileIndex), landmark.tileInfos.at(tileIndex).seaTransportWaitTime, landmark.tileInfos.at(tileIndex).seaMovementCost, landmark.tileInfos.at(tileIndex).landMovementCost);
-				}
 			}
 
 		}
 
 	}
-	
+
+//	if constexpr (DEBUG)
+//	{
+//		for (size_t landMovementTypeIndex = 0; landMovementTypeIndex < BASIC_LAND_MOVEMENT_TYPE_COUNT; landMovementTypeIndex++)
+//		{
+//			MovementType movementType = BASIC_LAND_MOVEMENT_TYPES.at(landMovementTypeIndex);
+//
+//			debug("\tmovementType=%d\n", movementType);
+//
+//			std::vector<LandLandmark> &landmarks = landLandmarks.at(landMovementTypeIndex);
+//
+//			for (LandLandmark &landmark : landmarks)
+//			{
+//				debug("\t\t%s\n", getLocationString(landmark.tileIndex));
+//				for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
+//				{
+//					debug("\t\t\t%s %3.0f %3.0f %3.0f\n", getLocationString(tileIndex), landmark.tileInfos.at(tileIndex).seaTransportWaitTime, landmark.tileInfos.at(tileIndex).seaMovementCost, landmark.tileInfos.at(tileIndex).landMovementCost);
+//				}
+//			}
+//
+//		}
+//
+//	}
+//
 	Profiling::stop("populateLandLandmarks");
 	
 }

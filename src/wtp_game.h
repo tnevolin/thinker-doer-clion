@@ -38,6 +38,27 @@ typename Map::mapped_type getOrDefault(Map const &map, typename Map::key_type co
 	return iterator != map.end() ? iterator->second : defaultValue;
 }
 
+// StaticVector
+template<typename T, size_t N>
+struct StaticVector
+{
+	std::array<T, N> data{};
+	size_t count = 0;
+
+	void clear() { count = 0; }
+	void push_back(const T& v) { data[count++] = v; }
+
+	// returns a reference to the next slot and advances size,
+	// without requiring a fully-formed T to copy in
+	T& push_back_direct() { return data[count++]; }
+
+	[[nodiscard]] size_t size() const { return count; }
+	T& operator[](size_t i) { return data[i]; }
+	T* begin() { return data.data(); }
+	T* end() { return data.data() + count; }
+
+};
+
 struct Profile
 {
 	std::string name;
@@ -565,9 +586,10 @@ struct ResourceYield
 // tile offsets
 // =======================================================
 
-const int RANGE_OFFSET_COUNT[] = {1, 9, 25, 49, 81, 121, 169, 225, 289};
-const int ANGLE_COUNT = RANGE_OFFSET_COUNT[1] - RANGE_OFFSET_COUNT[0];
-const int OFFSETS[289][2] =
+constexpr int RANGE_OFFSET_COUNT[] = {1, 9, 25, 49, 81, 121, 169, 225, 289};
+constexpr int ANGLE_COUNT = 8;
+constexpr int RANGE2_TILE_COUNT = 25;
+constexpr int OFFSETS[289][2] =
 {
 	{  0,  0},
 	{  1, -1},
@@ -969,7 +991,8 @@ Location getDiagonalCoordinates(Location rectangular);
 // =======================================================
 
 std::vector<MapAngle> const getAdjacentMapAngles(MAP *tile);
-std::vector<int> getAdjacentTileIndexes(int tileIndex);
+std::array<int, ANGLE_COUNT> getAdjacentTileIndexes(int tileIndex);
+std::array<int, RANGE2_TILE_COUNT> getRange2TileIndexes(int tileIndex);
 std::vector<MAP *> const getAdjacentTiles(MAP const* tile);
 std::vector<MAP *> getSideTiles(MAP const* tile);
 

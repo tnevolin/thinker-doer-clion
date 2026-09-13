@@ -712,25 +712,96 @@ std::vector<MapAngle> const getAdjacentMapAngles(MAP *tile)
 /**
 Returns valid adjacent tile indexes.
 */
-std::vector<int> getAdjacentTileIndexes(int tileIndex)
+std::array<int, ANGLE_COUNT> getAdjacentTileIndexes(int tileIndex)
 {
-	int x = getX(tileIndex);
-	int y = getY(tileIndex);
+	bool map_flat = map_is_flat();
 
-	std::vector<int> adjacentTileIndexes;
+	int x0 = tileIndex % *MapHalfX * 2 + tileIndex / *MapHalfX % 2;
+	int y0 = tileIndex / *MapHalfX;
+
+	std::array<int, ANGLE_COUNT> adjacentTileIndexes{};
+	adjacentTileIndexes.fill(-1);
 
 	for (int angle = 0; angle < TABLE_next_cell_count; angle++)
 	{
 		int offsetX = TABLE_next_cell_x[angle];
 		int offsetY = TABLE_next_cell_y[angle];
 
-		int nextCellX = wrap(x + offsetX);
-		int nextCellY = y + offsetY;
+		int x = x0 + offsetX;
+		int y = y0 + offsetY;
 
-		if (!isOnMap(nextCellX, nextCellY))
+		if (y < 0 || y >= *MapAreaY)
 			continue;
 
-		adjacentTileIndexes.push_back(getMapTileIndex(nextCellX, nextCellY));
+		if (map_flat)
+		{
+			if (x < 0 || x >= *MapAreaX)
+				continue;
+		}
+		else
+		{
+			if (x < 0)
+			{
+				x += *MapAreaX;
+			}
+			else if (x >= *MapAreaX)
+			{
+				x -= *MapAreaX;
+			}
+		}
+
+		int nextTileIndex = *MapHalfX * y + x / 2;
+		adjacentTileIndexes.at(angle) = nextTileIndex;
+
+	}
+
+	return adjacentTileIndexes;
+
+}
+
+/**
+Returns valid 2 radius range tile indexes.
+*/
+std::array<int, RANGE2_TILE_COUNT> getRange2TileIndexes(int tileIndex)
+{
+	bool map_flat = map_is_flat();
+
+	int x0 = tileIndex % *MapHalfX * 2 + tileIndex / *MapHalfX % 2;
+	int y0 = tileIndex / *MapHalfX;
+
+	std::array<int, RANGE2_TILE_COUNT> adjacentTileIndexes{};
+	adjacentTileIndexes.fill(-1);
+
+	for (int index = 0; index < RANGE_OFFSET_COUNT[2]; index++)
+	{
+		int offsetX = TABLE_square_offset_x[index];
+		int offsetY = TABLE_square_offset_y[index];
+
+		int x = x0 + offsetX;
+		int y = y0 + offsetY;
+
+		if (y < 0 || y >= *MapAreaY)
+			continue;
+
+		if (map_flat)
+		{
+			if (x < 0 || x >= *MapAreaX)
+				continue;
+		}
+		else
+		{
+			if (x < 0)
+			{
+				x += *MapAreaX;
+			}
+			else if (x >= *MapAreaX)
+			{
+				x -= *MapAreaX;
+			}
+		}
+
+		int nextTileIndex = *MapHalfX * y + x / 2;
+		adjacentTileIndexes.at(index) = nextTileIndex;
 
 	}
 

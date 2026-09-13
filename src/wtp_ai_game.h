@@ -262,6 +262,7 @@ struct TileTransit
 	std::array<int, MOVEMENT_TYPE_COUNT> averageHexCosts {};
 	std::array<bool, MaxPlayerNum> zocs {};
 
+	TileTransit() = default;
 	TileTransit(int _angle, TileInfo *_tileInfo);
 
 };
@@ -309,15 +310,15 @@ struct TileInfo
 	std::array<bool, MaxPlayerNum> unfriendlyNeedlejetInFlights;
 	
 	// adjacent tiles
-	std::vector<TileInfo *> adjacentTileInfos;
+	StaticVector<TileInfo*, ANGLE_COUNT> adjacentTileInfos;
 	// range tiles
-	std::vector<TileInfo *> range2CenterTileInfos;
-	std::vector<TileInfo *> range2NoCenterTileInfos;
+	StaticVector<TileInfo*, RANGE2_TILE_COUNT> range2CenterTileInfos;
+	StaticVector<TileInfo*, RANGE2_TILE_COUNT> range2NoCenterTileInfos;
 
 	// blocks
 	std::array<bool, MaxPlayerNum> blocks;
 	// tile transits
-	std::vector<TileTransit> tileTransits;
+	StaticVector<TileTransit, ANGLE_COUNT> tileTransits;
 	
 	// danger zones
 	// artifact or empty base can be captured

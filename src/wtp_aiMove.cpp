@@ -1132,9 +1132,13 @@ void aiEnemyMoveVehicles()
 {
 	debug("aiEnemyMoveVehicles - %s\n", aiMFaction->noun_faction);
 
+	Profiling::start("aiEnemyMoveVehicles", "");
+
 	// move combat vehicles
 
 	aiEnemyMoveCombatVehicles();
+
+	Profiling::stop("aiEnemyMoveVehicles");
 
 }
 

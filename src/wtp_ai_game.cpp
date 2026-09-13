@@ -2736,10 +2736,7 @@ Gets base age.
 */
 int getBaseAge(int baseId)
 {
-	BASE *base = getBase(baseId);
-
-	return (*CurrentTurn) - base->pad_1;
-
+	return *CurrentTurn - Bases[baseId].pad_1;
 }
 
 /*

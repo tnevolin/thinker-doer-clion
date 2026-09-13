@@ -2261,171 +2261,148 @@ void __cdecl modifiedTurnUpkeep()
 	
 	// collect statistics
 	
-	if constexpr (DEBUG)
+	if (conf.collect_statistics)
 	{
-		std::vector<int> computerFactions;
+		int factionBaseCount = 0;
+		int factionPopCount = 0;
+		int factionWorkerCount = 0;
+		int factionMinerals = 0;
+		int factionEcoLab = 0;
+		double factionResearch = 0.0;
+		int factionTechCount = 0;
+		
+		FILE* statistics_faction_log = fopen("statistics_faction.log", "a");
+		FILE* statistics_base_log = fopen("statistics_base.log", "a");
+
 		for (int factionId = 1; factionId < MaxPlayerNum; factionId++)
 		{
-			if (factionId == 0 || is_human(factionId))
-				continue;
-			
-			computerFactions.push_back(factionId);
-			
-		}
-		int factionCount = computerFactions.size();
-		
-		int totalBaseCount = 0;
-		int totalCitizenCount = 0;
-		int totalWorkerCount = 0;
-		double totalMinerals = 0.0;
-		double totalEcoLab = 0.0;
-		double totalResearch = 0.0;
-		int totalTechCount = 0;
-		
-		FILE* statistics_base_log = fopen("statistics_base.txt", "a");
-		for (int baseId = 0; baseId < *BaseCount; baseId++)
-		{
-			BASE *base = getBase(baseId);
-			
-			// computer
-			
-			if (base->faction_id == 0 || is_human(base->faction_id))
-				continue;
-			
-			int foundingTurn = getBaseFoundingTurn(baseId);
-			int age = getBaseAge(baseId);
-			int popSize = base->pop_size;
-			int workerCount = base->pop_size - base->specialist_total;
-			
-			int nutrientCostFactor = mod_cost_factor(base->faction_id, RSC_NUTRIENT, baseId);
-			int nutrientSurplus = base->nutrient_surplus;
-			
-			int mineralIntake = base->mineral_intake;
-			int mineralIntake2 = base->mineral_intake_2;
-			double mineralMultiplier = getBaseMineralMultiplier(baseId);
-			
-			Budget budgetIntake = getBaseBudgetIntake(baseId);
-			Budget budgetIntake2 = getBaseBudgetIntake2(baseId);
-			
-	//		int economyIntake = budgetIntake.economy;
-	//		int economyIntake2 = budgetIntake2.economy;
-	//		double economyMultiplier = getBaseEconomyMultiplier(baseId);
-	//		int psychIntake = budgetIntake.psych;
-	//		int psychIntake2 = budgetIntake2.psych;
-	//		double psychMultiplier = getBasePsychMultiplier(baseId);
-	//		int labsIntake = budgetIntake.labs;
-	//		int labsIntake2 = budgetIntake2.labs;
-	//		double labsMultiplier = getBaseLabsMultiplier(baseId);
-			int ecolabIntake = budgetIntake.economy + budgetIntake.labs;
-			int ecolabIntake2 = budgetIntake2.economy + budgetIntake2.labs;
-			double ecolabMultiplier = ecolabIntake <= 0 ? 1.0 : static_cast<double>(ecolabIntake2) / static_cast<double>(ecolabIntake);
-			
-			// totals
-			
-			totalBaseCount++;
-			totalCitizenCount += popSize;
-			totalWorkerCount += workerCount;
-			totalMinerals += mineralIntake2;
-			totalEcoLab += ecolabIntake2;
-			
-			fprintf
-			(
-				statistics_base_log,
-				"%4X"
-				"\t%d"
-				"\t%d"
-				"\t%-25s"
-				"\t%d"
-				"\t%d"
-				"\t%d"
-				"\t%d"
-				"\t%d"
-				"\t%d"
-				"\t%d"
-				"\t%d"
-				"\t%5.4f"
-				"\t%d"
-				"\t%d"
-				"\t%5.4f"
-				"\n"
-				, *MapRandomSeed
-				, *CurrentTurn
-				, baseId
-				, base->name
-				, foundingTurn
-				, age
-				, popSize
-				, workerCount
-				, nutrientCostFactor
-				, nutrientSurplus
-				, mineralIntake
-				, mineralIntake2
-				, mineralMultiplier
-				, ecolabIntake
-				, ecolabIntake2
-				, ecolabMultiplier
-			);
-			
-		}
-		fclose(statistics_base_log);
-		
-		// faction
-		
-		double averageFactionBaseCount = (factionCount == 0 ? 0.0 : static_cast<double>(totalBaseCount) / static_cast<double>(factionCount));
-		double averageFactionCitizenCount = (factionCount == 0 ? 0.0 : static_cast<double>(totalCitizenCount) / static_cast<double>(factionCount));
-		double averageFactionWorkerCount = (factionCount == 0 ? 0.0 : static_cast<double>(totalWorkerCount) / static_cast<double>(factionCount));
-		double averageFactionMinerals = (factionCount == 0 ? 0.0 : totalMinerals / static_cast<double>(factionCount));
-		double averageFactionEcoLab = (factionCount == 0 ? 0.0 : totalEcoLab / static_cast<double>(factionCount));
-		
-		for (int factionId = 1; factionId < MaxPlayerNum; factionId++)
-		{
-			// computer
-			
-			if (factionId == 0 || is_human(factionId))
-				continue;
-			
+			bool human = is_human(factionId);
+
+			for (int baseId = 0; baseId < *BaseCount; baseId++)
+			{
+				BASE &base = Bases[baseId];
+
+				if (base.faction_id != factionId)
+					continue;
+
+				int foundingTurn = getBaseFoundingTurn(baseId);
+				int age = getBaseAge(baseId);
+				int popSize = static_cast<unsigned char>(base.pop_size);
+				int workerCount = base.pop_size - base.specialist_total;
+
+				int nutrientCostFactor = mod_cost_factor(base.faction_id, RSC_NUTRIENT, baseId);
+				int nutrientSurplus = base.nutrient_surplus;
+
+				int mineralCostFactor = mod_cost_factor(base.faction_id, RSC_MINERAL, -1);
+				int mineralIntake = base.mineral_intake;
+				int mineralIntake2 = base.mineral_intake_2;
+				double mineralMultiplier = getBaseMineralMultiplier(baseId);
+
+				Budget budgetIntake = getBaseBudgetIntake(baseId);
+				Budget budgetIntake2 = getBaseBudgetIntake2(baseId);
+
+				int ecolabIntake = budgetIntake.economy + budgetIntake.labs;
+				int ecolabIntake2 = budgetIntake2.economy + budgetIntake2.labs;
+				double ecolabMultiplier = ecolabIntake <= 0 ? 1.0 : static_cast<double>(ecolabIntake2) / static_cast<double>(ecolabIntake);
+
+				// totals
+
+				factionBaseCount++;
+				factionPopCount += popSize;
+				factionWorkerCount += workerCount;
+				factionMinerals += mineralIntake2;
+				factionEcoLab += ecolabIntake2;
+
+				fprintf
+				(
+					statistics_base_log,
+					"%4X"
+					"\t%3d"
+					"\t%d"
+					"\t%d"
+					"\t%d"
+					"\t%d"
+					"\t%d"
+					"\t%d"
+					"\t%d"
+					"\t%d"
+					"\t%d"
+					"\t%d"
+					"\t%d"
+					"\t%d"
+					"\t%5.4f"
+					"\t%d"
+					"\t%d"
+					"\t%5.4f"
+					"\n"
+					, *MapRandomSeed
+					, *CurrentTurn
+					, base.faction_id
+					, human
+					, baseId
+					, foundingTurn
+					, age
+					, popSize
+					, workerCount
+					, nutrientCostFactor
+					, mineralCostFactor
+					, nutrientSurplus
+					, mineralIntake
+					, mineralIntake2
+					, mineralMultiplier
+					, ecolabIntake
+					, ecolabIntake2
+					, ecolabMultiplier
+				);
+
+			}
+
 			for (int techId = 0; techId <= TECH_BFG9000; techId++)
 			{
 				if (isTechDiscovered(factionId, techId))
 				{
-					totalTechCount++;
+					factionTechCount++;
 				}
 				
 			}
 			
-			totalResearch += getFactionTechPerTurn(factionId);
+			factionResearch = getFactionTechPerTurn(factionId);
 			
+			fprintf
+			(
+				statistics_faction_log,
+				"%4X"
+				"\t%3d"
+				"\t%d"
+				"\t%-24s"
+				"\t%d"
+				"\t%d"
+				"\t%d"
+				"\t%d"
+				"\t%d"
+				"\t%d"
+				"\t%7.2f"
+				"\t%d"
+				"\n"
+				, *MapRandomSeed
+				, *CurrentTurn
+				, factionId
+				, MFactions[factionId].noun_faction
+				, human
+				, factionBaseCount
+				, factionPopCount
+				, factionWorkerCount
+				, factionMinerals
+				, factionEcoLab
+				, factionResearch
+				, factionTechCount
+			);
+
 		}
-		
-		double averageFactionTechCount = (factionCount == 0 ? 0.0 : static_cast<double>(totalTechCount) / static_cast<double>(factionCount));
-		double averageFactionResearch = (factionCount == 0 ? 0.0 : totalResearch / static_cast<double>(factionCount));
-		
-		FILE* statistics_faction_log = fopen("statistics_faction.txt", "a");
-		fprintf
-		(
-			statistics_faction_log,
-			"%4X"
-			"\t%3d"
-			"\t%7.2f"
-			"\t%7.2f"
-			"\t%7.2f"
-			"\t%7.2f"
-			"\t%7.2f"
-			"\t%7.2f"
-			"\t%7.2f"
-			"\n"
-			, *MapRandomSeed
-			, *CurrentTurn
-			, averageFactionBaseCount
-			, averageFactionCitizenCount
-			, averageFactionWorkerCount
-			, averageFactionMinerals
-			, averageFactionEcoLab
-			, averageFactionResearch
-			, averageFactionTechCount
-		);
+
 		fclose(statistics_faction_log);
-		
+		fclose(statistics_base_log);
+
 	}
 	
 	// execute original function

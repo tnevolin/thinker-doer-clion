@@ -372,6 +372,9 @@ int option_handler(void* user, const char* section, const char* name, const char
         }
     }
     // [WTP] configuratoin begin
+    else if (MATCH("collect_statistics")) {
+        cf->collect_statistics = stoi(value) != 0;
+    }
     else if (MATCH("alternative_weapon_icon_selection_algorithm")) {
         cf->alternative_weapon_icon_selection_algorithm = (atoi(value) == 0 ? false : true);
     }

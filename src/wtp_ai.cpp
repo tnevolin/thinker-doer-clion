@@ -152,15 +152,12 @@ void strategy()
 	Profiling::start("strategy", "");
 	
 	// design units
-	
 	designUnits();
-	
+
 	// populate data
-	
 	populateAIData();
-	
+
 	// move strategy
-	
 	moveStrategy();
 	
 	// compute production demands
@@ -310,16 +307,16 @@ void populateTileInfos()
 	{
 		int tileIndex = tile - *MapTiles;
 		TileInfo &tileInfo = aiData.getTileInfo(tile);
-		
+
 		// set tileIndex
-		
+
 		tileInfo.index = tileIndex;
 		tileInfo.x = getX(tileIndex);
 		tileInfo.y = getY(tileIndex);
 		tileInfo.tile = tile;
-		
+
 		// set ocean
-		
+
 		if (is_ocean(tile))
 		{
 			tileInfo.land = false;
@@ -341,8 +338,14 @@ void populateTileInfos()
 		int adjacentTileCount = 0;
 		int adjacentLandTileCount = 0;
 		int adjacentSeaTileCount = 0;
-		for (MAP *adjacentTile : getAdjacentTiles(tile))
+		for (int adjacentTileIndex : getAdjacentTileIndexes(tileIndex))
 		{
+			if (adjacentTileIndex == -1)
+				continue;
+
+			// ReSharper disable once CppTooWideScopeInitStatement
+			MAP *adjacentTile = *MapTiles + adjacentTileIndex;
+
 			if (is_ocean(adjacentTile))
 			{
 				adjacentSeaTileCount++;
@@ -361,7 +364,7 @@ void populateTileInfos()
 		tileInfo.coast = tileInfo.land && tileInfo.adjacentSea;
 		tileInfo.adjacentLandRatio = adjacentTileCount <= 0 ? 0.0 : static_cast<double>(adjacentLandTileCount) / static_cast<double>(adjacentTileCount);
 		tileInfo.adjacentSeaRatio = adjacentTileCount <= 0 ? 0.0 : static_cast<double>(adjacentSeaTileCount) / static_cast<double>(adjacentTileCount);
-		
+
 	}
 	
 	Profiling::stop("tile info");
@@ -467,14 +470,18 @@ void populateTileInfos()
 	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
 		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
-		
+
 		tileInfo.adjacentTileInfos.clear();
 		for (int adjacentTileIndex : getAdjacentTileIndexes(tileIndex))
 		{
+			if (adjacentTileIndex == -1)
+				continue;
+
 			TileInfo &adjacentTileInfo = aiData.tileInfos.at(adjacentTileIndex);
 			tileInfo.adjacentTileInfos.push_back(&adjacentTileInfo);
+
 		}
-		
+
 	}
 	
 	Profiling::stop("adjacent tiles");
@@ -486,19 +493,21 @@ void populateTileInfos()
 	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
 		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
-		
+
 		tileInfo.range2CenterTileInfos.clear();
-		for (MAP *rangeTile : getRangeTiles(tileInfo.tile, 2, true))
-		{
-			TileInfo &rangeTileInfo = aiData.getTileInfo(rangeTile);
-			tileInfo.range2CenterTileInfos.push_back(&rangeTileInfo);
-		}
-		
 		tileInfo.range2NoCenterTileInfos.clear();
-		for (MAP *rangeTile : getRangeTiles(tileInfo.tile, 2, false))
+		for (int range2TileIndex : getRange2TileIndexes(tileIndex))
 		{
-			TileInfo &rangeTileInfo = aiData.getTileInfo(rangeTile);
-			tileInfo.range2NoCenterTileInfos.push_back(&rangeTileInfo);
+			if (range2TileIndex == -1)
+				continue;
+
+			TileInfo &rangeTileInfo = aiData.tileInfos.at(tileIndex);
+			tileInfo.range2CenterTileInfos.push_back(&rangeTileInfo);
+			if (range2TileIndex != tileIndex)
+			{
+				tileInfo.range2NoCenterTileInfos.push_back(&rangeTileInfo);
+			}
+
 		}
 
 	}
@@ -509,19 +518,24 @@ void populateTileInfos()
 
 	Profiling::start("tile transits", "populateTileInfos");
 
-	for (TileInfo &tileInfo : aiData.tileInfos)
+	for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
 	{
+		TileInfo &tileInfo = aiData.tileInfos.at(tileIndex);
+
 		tileInfo.tileTransits.clear();
 
+		std::array<int, ANGLE_COUNT> adjacentTileIndexes = getAdjacentTileIndexes(tileIndex);
 		for (int angle = 0; angle < ANGLE_COUNT; angle++)
 		{
-			MAP *adjacentTile = getTileByAngle(tileInfo.tile, angle);
-			if (adjacentTile == nullptr)
+			int adjacentTileIndex = adjacentTileIndexes.at(angle);
+			if (adjacentTileIndex == -1)
 				continue;
 
-			TileInfo &adjacentTileInfo = aiData.getTileInfo(adjacentTile);
+			TileInfo &adjacentTileInfo = aiData.tileInfos.at(adjacentTileIndex);
 
-			tileInfo.tileTransits.emplace_back(angle, &adjacentTileInfo);
+			TileTransit &tileTransit = tileInfo.tileTransits.push_back_direct();
+			tileTransit.angle = angle;
+			tileTransit.tileInfo = &adjacentTileInfo;
 
 		}
 
@@ -652,42 +666,89 @@ void populateTileInfos()
 
 	for (TileInfo &srcTileInfo : aiData.tileInfos)
 	{
-		int srcX = getX(srcTileInfo.index);
-		int srcY = getY(srcTileInfo.index);
-
 		for (TileTransit &tileTransit : srcTileInfo.tileTransits)
 		{
-			TileInfo &dstTileInfo = *tileTransit.tileInfo;
-
-			int dstX = getX(dstTileInfo.index);
-			int dstY = getY(dstTileInfo.index);
-
 			tileTransit.zocs.fill(false);
+		}
+	}
 
-			for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
+	for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
+	{
+		std::vector<bool> srcZocs;
+		std::vector<bool> dstZocs;
+		srcZocs.resize(*MapAreaTiles, false);
+		dstZocs.resize(*MapAreaTiles, false);
+
+		// unfriendly vehicle exerts ZoC
+		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
+		{
+			VEH &vehicle = Vehs[vehicleId];
+			MAP *vehicleTile = getVehicleMapTile(vehicleId);
+			int vehicleTileIndex = vehicleTile - *MapTiles;
+
+			// unfriendly
+			if (isFriendly(factionId, vehicle.faction_id))
+				continue;
+
+			// not invisible
+			if (Vehs[vehicleId].flags & VFLAG_INVISIBLE)
+				continue;
+
+			// land
+			if (!vehicleTile->is_land())
+				continue;
+
+			// iterate adjacent tiles
+			for (int adjacentTileIndex : getAdjacentTileIndexes(vehicleTileIndex))
 			{
-				// friendly vehicle at destination disables zoc
-
-				bool dstFriendlyVehicle = false;
-				for (int vehicleId : dstTileInfo.vehicleIds)
-				{
-					if (isFriendly(factionId, Vehs[vehicleId].faction_id))
-					{
-						dstFriendlyVehicle = true;
-						break;
-					}
-
-				}
-
-				if (dstFriendlyVehicle)
+				if (adjacentTileIndex == -1)
 					continue;
 
-				// compute zoc
+				TileInfo &adjacentTileInfo = aiData.tileInfos.at(adjacentTileIndex);
 
-				bool srcZoc = mod_zoc_move(srcX, srcY, factionId);
-				bool dstZoc = mod_zoc_move(dstX, dstY, factionId);
+				// not base
+				if (adjacentTileInfo.base)
+					continue;
 
-				tileTransit.zocs.at(factionId) = srcZoc && dstZoc;
+				// land
+				if (!adjacentTileInfo.land)
+					continue;
+
+				// set ZoC
+				srcZocs.at(adjacentTileIndex) = true;
+				dstZocs.at(adjacentTileIndex) = true;
+
+			}
+
+		}
+
+		// friendly vehicle clears dst ZoC
+		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
+		{
+			VEH &vehicle = Vehs[vehicleId];
+			MAP *vehicleTile = getVehicleMapTile(vehicleId);
+			int vehicleTileIndex = vehicleTile - *MapTiles;
+
+			// friendly
+			if (!isFriendly(factionId, vehicle.faction_id))
+				continue;
+
+			// clear dst ZoC
+			dstZocs.at(vehicleTileIndex) = false;
+
+		}
+
+		// set transit ZoC
+		for (TileInfo &srcTileInfo : aiData.tileInfos)
+		{
+			int srcTileIndex = srcTileInfo.index;
+
+			for (TileTransit &tileTransit : srcTileInfo.tileTransits)
+			{
+				TileInfo &dstTileInfo = *tileTransit.tileInfo;
+				int dstTileIndex = dstTileInfo.index;
+
+				tileTransit.zocs.at(factionId) = srcZocs.at(srcTileIndex) && dstZocs.at(dstTileIndex);
 
 			}
 
