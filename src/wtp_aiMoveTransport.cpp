@@ -398,9 +398,9 @@ void moveAvailableSeaTransportStrategy(int vehicleId)
 	if (hasTask(vehicleId))
 		return;
 
-	// no pods - destroy transport
-
-	setTask(Task(vehicleId, TT_KILL));
+	// no WTP work for this transport - leave it task-less rather than disbanding it.
+	// It falls through to Thinker/vanilla dispatch, which may still put it to use
+	// (e.g. fetching land units waiting for a naval invasion pickup).
 
 }
 
