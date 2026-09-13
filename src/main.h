@@ -600,6 +600,7 @@ struct Config {
     double ai_terraforming_bunkerBorderRange;
     double ai_terraforming_landBridgeValue;
     double ai_terraforming_landBridgeRangeScale;
+    double ai_terraforming_landBridgeLogisticsValue;
     double ai_combat_enemy_unit_value_coefficient;
     double ai_combat_unit_value_offense_coefficient;
     double ai_combat_unit_value_defense_coefficient;

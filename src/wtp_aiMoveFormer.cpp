@@ -1337,12 +1337,26 @@ void generateLandBridgeTerraformingRequests()
 {
 	debug("generateLandBridgeTerraformingRequests\n");
 
+	// landmass Thinker is already committed to invading, if any
+	// a bridge into it converts an already-fought-for beachhead into a permanent link, so it is not subject to the opportunistic gap discount below
+
+	int navalEndLandCluster = -1;
+	if (plans[aiFactionId].naval_end_x >= 0)
+	{
+		MAP *navalEndTile = getMapTile(plans[aiFactionId].naval_end_x, plans[aiFactionId].naval_end_y);
+		if (navalEndTile != nullptr)
+		{
+			navalEndLandCluster = getLandCluster(navalEndTile);
+		}
+	}
+
 	robin_hood::unordered_flat_map<int, MapIntValue> bridgeRequests;
 
 	for (MAP *tile : raiseableCoasts)
 	{
 		int bridgeLandCluster = -1;
 		int bridgeRange = -1;
+		MAP *bridgeRangeTile = nullptr;
 
 		for (MAP *rangeTile : getRangeTiles(tile, 6, false))
 		{
@@ -1363,11 +1377,21 @@ void generateLandBridgeTerraformingRequests()
 
 			bridgeLandCluster = rangeTileLandCluster;
 			bridgeRange = getRange(tile, rangeTile);
+			bridgeRangeTile = rangeTile;
 			break;
 
 		}
 
 		if (bridgeLandCluster == -1)
+			continue;
+
+		// foreign territory is only valued here when it is the landmass we are already committed to invading
+		// otherwise this is left to the (future) bridge-vs-invasion valuation rather than treated as routine
+
+		bool ownOrUnclaimed = (bridgeRangeTile->owner == aiFactionId || bridgeRangeTile->owner == -1);
+		bool committedInvasionTarget = (bridgeLandCluster == navalEndLandCluster);
+
+		if (!ownOrUnclaimed && !committedInvasionTarget)
 			continue;
 
 		if (bridgeRequests.count(bridgeLandCluster) == 0)
@@ -1386,26 +1410,41 @@ void generateLandBridgeTerraformingRequests()
 
 	for (robin_hood::pair<int, MapIntValue> &bridgeRequestEntry : bridgeRequests)
 	{
+		int bridgeLandCluster = bridgeRequestEntry.first;
 		MapIntValue bridgeRequest = bridgeRequestEntry.second;
 
 		// score
 
-		double gain =
-			conf.ai_terraforming_landBridgeValue
-			* getExponentialCoefficient(conf.ai_terraforming_landBridgeRangeScale, bridgeRequest.value - 2)
-		;
+		double gain;
+		if (bridgeLandCluster == navalEndLandCluster)
+		{
+			// already committed to invading this landmass - the gap width no longer matters, build it
+			gain = conf.ai_terraforming_landBridgeValue;
+		}
+		else
+		{
+			// own disconnected territory or unclaimed land - moderate logistics/colonization value
+			gain =
+				conf.ai_terraforming_landBridgeLogisticsValue
+				* getExponentialCoefficient(conf.ai_terraforming_landBridgeRangeScale, bridgeRequest.value - 2)
+			;
+		}
 
 		debug
 		(
 			"\t%s"
 			" gain=%5.2f"
+			" committedInvasionTarget=%d"
 			" conf.ai_terraforming_landBridgeValue=%5.2f"
+			" conf.ai_terraforming_landBridgeLogisticsValue=%5.2f"
 			" conf.ai_terraforming_landBridgeRangeScale=%5.2f"
 			" bridgeRequest.value=%d"
 			"\n"
 			, getLocationString(bridgeRequest.tile)
 			, gain
+			, (bridgeLandCluster == navalEndLandCluster)
 			, conf.ai_terraforming_landBridgeValue
+			, conf.ai_terraforming_landBridgeLogisticsValue
 			, conf.ai_terraforming_landBridgeRangeScale
 			, bridgeRequest.value
 		);

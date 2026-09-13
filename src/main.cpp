@@ -1467,6 +1467,10 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_terraforming_landBridgeRangeScale = atof(value);
     }
+    else if (MATCH("ai_terraforming_landBridgeLogisticsValue"))
+    {
+        cf->ai_terraforming_landBridgeLogisticsValue = atof(value);
+    }
     else if (MATCH("ai_combat_enemy_unit_value_coefficient"))
     {
         cf->ai_combat_enemy_unit_value_coefficient = atof(value);
