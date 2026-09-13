@@ -1782,7 +1782,7 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
             int divisor = std::__gcd(off_value, def_value);
             off_value /= divisor;
             def_value /= divisor;
-            for (int value : {10000, 5000, 1000, 500, 100, 50}) {
+            for (int value : {10000, 5000, 1000, 500, 100, 50, 10}) {
                 while (off_value >= 2*value && def_value >= 2*value) {
                     off_value /= value;
                     def_value /= value;
