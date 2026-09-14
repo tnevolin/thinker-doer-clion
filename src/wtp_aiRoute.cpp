@@ -2759,18 +2759,13 @@ double getGravshipTravelTime(int speed, MAP *org, MAP *dst, bool includeDestinat
 	
 }
 
-double getRangedAirTravelTime(int factionId, int chassisId, int speed, MAP *org, MAP *dst, bool includeDestination)
+double getRangedAirTravelTime(int UNUSED(factionId), int chassisId, int speed, MAP *org, MAP *dst, bool includeDestination)
 {
 	assert(chassisId == CHS_NEEDLEJET || chassisId == CHS_COPTER || chassisId == CHS_MISSILE);
 	assert(speed > 0);
 	
-	std::vector<int> const &airClusters = factionMovementInfos.at(factionId).airClusters.at(chassisId).at(speed);
-	
-	// air clusters
-	
-	int orgAirCluster = airClusters.at(org - *MapTiles);
-	int dstAirCluster = airClusters.at(dst - *MapTiles);
-	if (orgAirCluster == -1 || dstAirCluster == -1 || dstAirCluster != orgAirCluster)
+	// same air cluster
+	if (!isSameAirCluster(chassisId, speed, org, dst))
 		return INF;
 	
 	// approach time
