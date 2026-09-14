@@ -2844,10 +2844,10 @@ double getGravshipTravelTime(int vechicleSpeed, MAP const* org, MAP const* dst)
 	int range = getRange(org, dst);
 
 	return static_cast<double>(range) / static_cast<double>(vechicleSpeed);
-	
+
 }
 
-double getRangedAirTravelTime(int factionId, int chassisId, int unitSpeed, MAP const* org, MAP const* dst)
+double getRangedAirTravelTime(int UNUSED(factionId), int chassisId, int unitSpeed, MAP const* org, MAP const* dst)
 {
 	assert(chassisId == CHS_NEEDLEJET || chassisId == CHS_COPTER || chassisId == CHS_MISSILE);
 	assert(unitSpeed > 0);
@@ -2923,7 +2923,7 @@ double getSeaLApproachTime(int factionId, MovementType movementType, int unitSpe
 	}
 
 	double maxLandmarkTravelTime = maxLandmarkMovementCost / static_cast<double>(Rules->move_rate_roads * unitSpeed);
-	
+
 	Profiling::stop("- getSeaLApproachTime");
 	return maxLandmarkTravelTime;
 	
@@ -3156,7 +3156,7 @@ double getATravelTime(MovementType movementType, int  vehicleSpeed, MAP const* o
 		Profiling::stop("- getATravelTime");
 		return 0.0;
 	}
-	
+
 	// org cluster
 	
 	int orgCluster = -1;
@@ -3665,7 +3665,7 @@ MovementType getVehicleMovementType(int vehicleId)
 int getAirCluster(int  chassisId, int  unitSpeed, MAP const* tile)
 {
 	assert(isOnMap(tile));
-	
+
 	int tileIndex = tile - *MapTiles;
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, std::vector<int>>> const &airClusters = factionMovementInfos.at(aiFactionId).airClusters;
 
