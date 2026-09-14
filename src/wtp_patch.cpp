@@ -3314,6 +3314,11 @@ void patch_monetary_support()
 
 }
 
+void patch_industry_accumulated_minerals_scaling()
+{
+	write_call(0x004AF0F6, reinterpret_cast<int32_t>(wtp_scale_accumulated_minerals));
+}
+
 
 // =======================================================
 // main patch option selection
@@ -3663,6 +3668,9 @@ void patch_setup_wtp(Config* cf)
 	{
 		patch_monetary_support();
 	}
+
+	// INDUSTRY rating accumulated minerals scaling
+	patch_industry_accumulated_minerals_scaling();
 
 }
 
