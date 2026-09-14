@@ -1,6 +1,7 @@
 #pragma once
 #pragma pack(push, 1)
 
+
 enum BaseState {
     BSTATE_UNK_1 = 0x1,
     BSTATE_DRONE_RIOTS_ACTIVE = 0x2,
@@ -88,9 +89,6 @@ enum BaseGovernor {
     GOV_UNK_40000000 = 0x40000000, // used on lowest difficulty
     GOV_ACTIVE = 0x80000000,
 };
-
-#define GOV_ALLOW_COMBAT \
-    (GOV_MAY_PROD_LAND_COMBAT | GOV_MAY_PROD_NAVAL_COMBAT | GOV_MAY_PROD_AIR_COMBAT)
 
 const uint32_t BaseGovOptions[][2] = {
     {0x1, GOV_ACTIVE},

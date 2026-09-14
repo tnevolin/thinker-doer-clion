@@ -73,7 +73,7 @@ struct MAP {
         return val3 & TILE_ROCKY && alt_level() >= ALT_SHORE_LINE;
     }
     bool is_rolling() {
-        return val3 & TILE_ROLLING && alt_level() >= ALT_SHORE_LINE;
+        return val3 & TILE_ROLLING;
     }
     bool is_arid() {
         return !(climate & (TILE_MOIST | TILE_RAINY));

@@ -1,8 +1,7 @@
 
 #include "game.h"
 
-#include <iostream>
-
+#include "wtp_game.h"
 #include "wtp_mod.h"
 
 static uint32_t custom_game_rules = 0;

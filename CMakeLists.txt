@@ -19,7 +19,6 @@ project(thinker)
 # Mod version — update this for each release
 set(WTP_VERSION "424")
 
-#set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

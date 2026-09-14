@@ -348,7 +348,7 @@ void __cdecl veh_clear(int veh_id, int unit_id, int faction_id) {
     /*
     veh->morale = (uint8_t)(MFactions[faction_id].rule_morale + 1);
     */
-    veh->morale = (uint8_t) (MFactions[faction_id].rule_morale + 0);
+    veh->morale = static_cast<uint8_t>(MFactions[faction_id].rule_morale + 0);
     //
     
     veh->movement_turns = 0;

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "engine.h"
-
 const int SP_Unbuilt = -1;
 const int SP_Destroyed = -2;
 const int SP_ID_First = 70;
@@ -690,7 +688,7 @@ const uint32_t TerraformRules[20][2] = { // terrain enhancement, incompatible on
     {BIT_MONOLITH,      BIT_SUPPLY_POD | BIT_NUTRIENT_RES | BIT_BONUS_RES}, // monolith
 };
 
-enum MapLandmark : uint32_t {
+enum MapLandmark {
     LM_CRATER = 0x1,
     LM_VOLCANO = 0x2,
     LM_JUNGLE = 0x4,

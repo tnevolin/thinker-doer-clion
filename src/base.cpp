@@ -1,6 +1,5 @@
 
 #include "base.h"
-
 #include "wtp_base.h"
 #include "wtp_mod.h"
 
@@ -2354,7 +2353,6 @@ int prod_turns(int base_id, int item_id) {
     BASE* b = &Bases[base_id];
     assert(base_id >= 0 && base_id < *BaseCount);
     if (item_id >= 0) {
-    	// size_t len = strlen(Units[item_id].name);
         assert(strlen(Units[item_id].name) > 0);
     } else {
         assert(item_id >= -SP_ID_Last);
@@ -2796,7 +2794,7 @@ Determine if the faction can build a specific facility or Secret Project in the 
 Checks are included to prevent SMACX specific facilities from being built in SMAC mode.
 */
 int __cdecl mod_facility_avail(FacilityId item_id, int faction_id, int base_id, int queue_count) {
-    // initial checksg
+    // initial checks
     if (!item_id || (item_id == FAC_SKUNKWORKS && *DiffLevel <= DIFF_SPECIALIST)
     || (item_id >= SP_ID_First && *GameRules & RULES_SCN_NO_BUILDING_SP)) {
         return false; // Skunkworks removed if there are no prototype costs
