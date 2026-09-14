@@ -1042,11 +1042,6 @@ int faction_id, int UNUSED(toggle), int is_quick_calc) {
     MFaction* m = &MFactions[faction_id];
     memset(effect, 0, sizeof(CSocialEffect));
 
-	// [WTP]
-	// save mineral cost factors for accumulated resources adjustment below
-	int mineral_cost_factor_old = mod_cost_factor(faction_id, RSC_MINERAL, -1);
-	//
-
 	for (int cat = 0; cat < MaxSocialCatNum; cat++) {
         int model = *(&category->politics + cat);
         assert(model >= 0 && model < MaxSocialModelNum);
@@ -1146,32 +1141,6 @@ int faction_id, int UNUSED(toggle), int is_quick_calc) {
             }
         }
     }
-
-	// [WTP]
-	// new mineral cost factor for accumulated resources adjustment below
-	int mineral_cost_factor_new = mod_cost_factor(faction_id, RSC_MINERAL, -1);
-	debug("social_calc: factionId=%d, mineral_cost_factor: %+2d -> %+2d\n", faction_id, mineral_cost_factor_old, mineral_cost_factor_new);
-	// adjust accumulated resources for human faction
-	if (is_human(faction_id))
-	{
-		// protect against division by zero
-		if (mineral_cost_factor_new != mineral_cost_factor_old && mineral_cost_factor_old > 0)
-		{
-			for (int baseId = 0; baseId < *BaseCount; baseId++)
-			{
-				BASE* base = &Bases[baseId];
-
-				if (base->faction_id != faction_id)
-					continue;
-
-				base->minerals_accumulated = (base->minerals_accumulated * mineral_cost_factor_new + (mineral_cost_factor_old - 1) / 2) / mineral_cost_factor_old;
-
-			}
-
-		}
-
-	}
-	//
 
 }
 

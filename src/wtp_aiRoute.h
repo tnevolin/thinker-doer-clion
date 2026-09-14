@@ -293,7 +293,7 @@ MovementType getVehicleMovementType(int vehicleId);
 int getAirCluster(int chassisId, int unitSpeed, MAP const* tile);
 int getUnitAirCluster(int unitId, MAP const *tile);
 int getVehicleAirCluster(int vehicleId);
-bool isSameAirCluster(int chassisId, int speed, MAP const* tile1, MAP const* tile2);
+bool isSameAirCluster(int chassisId, int unitSpeed, MAP const* tile1, MAP const* tile2);
 bool isVehicleSameAirCluster(int vehicleId, MAP const *dst);
 bool isMeleeAttackableFromAirCluster(int chassisId, int speed, MAP const* org, MAP const* target);
 bool isVehicleMeleeAttackableFromAirCluster(int vehicleId, MAP const *target);

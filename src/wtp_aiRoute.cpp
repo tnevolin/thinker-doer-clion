@@ -2852,21 +2852,16 @@ double getRangedAirTravelTime(int factionId, int chassisId, int unitSpeed, MAP c
 	assert(chassisId == CHS_NEEDLEJET || chassisId == CHS_COPTER || chassisId == CHS_MISSILE);
 	assert(unitSpeed > 0);
 	
-	std::vector<int> &airClusters = factionMovementInfos.at(factionId).airClusters.at(chassisId).at(unitSpeed);
-	
-	// air clusters
-	
-	int orgAirCluster = airClusters.at(org - *MapTiles);
-	int dstAirCluster = airClusters.at(dst - *MapTiles);
-	if (orgAirCluster == -1 || dstAirCluster == -1 || dstAirCluster != orgAirCluster)
+	// same air cluster
+	if (!isSameAirCluster(chassisId, unitSpeed, org, dst))
 		return INF;
 	
 	// approach time
-	
 	int range = getRange(org, dst);
+	double approachTime = RANGED_AIR_TRAVEL_TIME_COEFFICIENT * static_cast<double>(range) / static_cast<double>(unitSpeed);
 
-	return RANGED_AIR_TRAVEL_TIME_COEFFICIENT * static_cast<double>(range) / static_cast<double>(unitSpeed);
-	
+	return approachTime;
+
 }
 
 double getSeaLApproachTime(int factionId, MovementType movementType, int unitSpeed, MAP const* org, MAP const* dst)
@@ -3694,13 +3689,13 @@ int getVehicleAirCluster(int vehicleId)
 	return getAirCluster(getVehicle(vehicleId)->chassis_type(), getVehicleSpeed(vehicleId), getVehicleMapTile(vehicleId));
 }
 
-bool isSameAirCluster(int chassisId, int speed, MAP const* tile1, MAP const* tile2)
+bool isSameAirCluster(int chassisId, int unitSpeed, MAP const* tile1, MAP const* tile2)
 {
 	assert(isOnMap(tile1));
 	assert(isOnMap(tile2));
 	
-	int tile1AirCluster = getAirCluster(chassisId, speed, tile1);
-	int tile2AirCluster = getAirCluster(chassisId, speed, tile2);
+	int tile1AirCluster = getAirCluster(chassisId, unitSpeed, tile1);
+	int tile2AirCluster = getAirCluster(chassisId, unitSpeed, tile2);
 	
 	return tile1AirCluster != -1 && tile2AirCluster != -1 && tile1AirCluster == tile2AirCluster;
 	

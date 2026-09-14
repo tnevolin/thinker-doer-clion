@@ -4385,3 +4385,36 @@ int __thiscall wtp_Datalinks_effect_popup_start(Win* This, const char* filename,
 
 }
 
+/*
+ * Scales accumuated minerals with INDUSTRY rating change.
+*/
+void __cdecl wtp_scale_accumulated_minerals(CSocialCategory *category, CSocialEffect *effect, int faction_id, int toggle, int is_quick_calc)
+{
+	int mineral_cost_factor_old = mod_cost_factor(faction_id, RSC_MINERAL, -1);
+
+	social_calc(category, effect, faction_id, toggle, is_quick_calc);
+
+	int mineral_cost_factor_new = mod_cost_factor(faction_id, RSC_MINERAL, -1);
+
+	// applies to human faction
+	// when mineral cost factor changes
+	// protect against division by zero
+	if (is_human(faction_id) && mineral_cost_factor_new != mineral_cost_factor_old && mineral_cost_factor_old > 0)
+	{
+		debug("social_calc: factionId=%d, mineral_cost_factor: %+2d -> %+2d\n", faction_id, mineral_cost_factor_old, mineral_cost_factor_new);
+
+		for (int baseId = 0; baseId < *BaseCount; baseId++)
+		{
+			BASE* base = &Bases[baseId];
+
+			if (base->faction_id != faction_id)
+				continue;
+
+			base->minerals_accumulated = (base->minerals_accumulated * mineral_cost_factor_new + (mineral_cost_factor_old - 1) / 2) / mineral_cost_factor_old;
+
+		}
+
+	}
+
+}
+
