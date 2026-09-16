@@ -4,9 +4,11 @@
 #include <cmath>
 #include <cstdio>
 #include <ctime>
+#include <limits>
 #include <vector>
 #include <regex>
 #include "main.h"
+#include "gui.h"
 #include "tech.h"
 #include "wtp_terranx.h"
 #include "wtp_game.h"
@@ -243,7 +245,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 						if (isBaseHasFacility(attackerBaseId, FAC_PERIMETER_DEFENSE))
 						{
 							label = *(*tx_labels + LABEL_OFFSET_PERIMETER);
-							multiplier += conf.facility_defense_bonus[0];
+							multiplier += conf.facility_defense_value[TRIAD_LAND];
 						}
 						break;
 
@@ -251,7 +253,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 						if (isBaseHasFacility(attackerBaseId, FAC_NAVAL_YARD))
 						{
 							label = LABEL_NAVAL_YARD;
-							multiplier += conf.facility_defense_bonus[1];
+							multiplier += conf.facility_defense_value[TRIAD_SEA];
 						}
 						break;
 
@@ -259,7 +261,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 						if (isBaseHasFacility(attackerBaseId, FAC_AEROSPACE_COMPLEX))
 						{
 							label = LABEL_AEROSPACE_COMPLEX;
-							multiplier += conf.facility_defense_bonus[2];
+							multiplier += conf.facility_defense_value[TRIAD_AIR];
 						}
 						break;
 
@@ -268,7 +270,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 					if (isBaseHasFacility(attackerBaseId, FAC_TACHYON_FIELD))
 					{
 						label = *(*tx_labels + LABEL_OFFSET_TACHYON);
-						multiplier += conf.facility_defense_bonus[3];
+						multiplier += conf.facility_defense_value[3];
 					}
 
 					if (label == nullptr)
@@ -313,7 +315,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 						if (isBaseHasFacility(defenderBaseId, FAC_PERIMETER_DEFENSE))
 						{
 							label = *(*tx_labels + LABEL_OFFSET_PERIMETER);
-							multiplier += conf.facility_defense_bonus[0];
+							multiplier += conf.facility_defense_value[TRIAD_LAND];
 						}
 						break;
 
@@ -321,7 +323,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 						if (isBaseHasFacility(defenderBaseId, FAC_NAVAL_YARD))
 						{
 							label = LABEL_NAVAL_YARD;
-							multiplier += conf.facility_defense_bonus[1];
+							multiplier += conf.facility_defense_value[TRIAD_SEA];
 						}
 						break;
 
@@ -329,7 +331,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 						if (isBaseHasFacility(defenderBaseId, FAC_AEROSPACE_COMPLEX))
 						{
 							label = LABEL_AEROSPACE_COMPLEX;
-							multiplier += conf.facility_defense_bonus[2];
+							multiplier += conf.facility_defense_value[TRIAD_AIR];
 						}
 						break;
 
@@ -338,7 +340,7 @@ __cdecl void wtp_mod_battle_compute(int attackerVehicleId, int defenderVehicleId
 					if (isBaseHasFacility(defenderBaseId, FAC_TACHYON_FIELD))
 					{
 						label = *(*tx_labels + LABEL_OFFSET_TACHYON);
-						multiplier += conf.facility_defense_bonus[3];
+						multiplier += conf.facility_defense_value[3];
 					}
 
 					if (label == nullptr)
@@ -968,35 +970,6 @@ int wtp_tech_cost(int fac, int tech)
 	}
 	
     return std::max(2, static_cast<int>(cost));
-	
-}
-
-__cdecl int sayBase(int buffer, int baseId)
-{
-	// execute original code
-	
-	int returnValue = say_base(buffer, baseId);
-	
-	// get base
-	
-	BASE *base = &(Bases[baseId]);
-	
-	// get base population limit
-	
-	int populationLimit = getBasePopulationLimit(baseId);
-	
-	// generate symbol
-	
-	char symbol[10] = "   <P>";
-	
-	if (populationLimit != -1 && base->pop_size >= populationLimit)
-	{
-		strcat((char *)buffer, symbol);
-	}
-	
-	// return original value
-	
-	return returnValue;
 	
 }
 
@@ -1782,7 +1755,7 @@ __cdecl void modifiedFactionUpkeep( int factionId)
 	
 	// execute original function
 	
-	mod_faction_upkeep(factionId);
+	faction_upkeep(factionId);
 	
 	Profiling::resume("modifiedFactionUpkeep");
 	
@@ -2407,14 +2380,14 @@ void __cdecl modifiedTurnUpkeep()
 	
 	// execute original function
 	
-	mod_turn_upkeep();
+	turn_upkeep();
 	
 }
 
 /*
 Exclude sensor from destruction menu.
 */
-int __thiscall wtp_mod_Console_destroy(Console *This, int vehicleId)
+void __thiscall wtp_mod_Console_destroy(Console *This, int vehicleId)
 {
 	MAP *tile = getVehicleMapTile(vehicleId);
 	bool sensor = map_has_item(tile, BIT_SENSOR);
@@ -2430,7 +2403,7 @@ int __thiscall wtp_mod_Console_destroy(Console *This, int vehicleId)
 		
 	}
 	
-	int returnValue = Console_destroy(This, vehicleId);
+	Console_destroy(This, vehicleId);
 	
 	if (conf.sensor_indestructible)
 	{
@@ -2443,14 +2416,12 @@ int __thiscall wtp_mod_Console_destroy(Console *This, int vehicleId)
 		
 	}
 	
-	return returnValue;
-	
 }
 
 /*
 Exclude sensor from destruction action.
 */
-int __cdecl wtp_mod_action_destroy(int vehicleId, int terrainBit, int x, int y)
+void __cdecl wtp_mod_action_destroy(int vehicleId, int terrainBit, int x, int y)
 {
 	MAP *tile = isOnMap(x, y) ? getMapTile(x, y) : getVehicleMapTile(vehicleId);
 	bool sensor = map_has_item(tile, BIT_SENSOR);
@@ -2466,7 +2437,7 @@ int __cdecl wtp_mod_action_destroy(int vehicleId, int terrainBit, int x, int y)
 		
 	}
 	
-	int returnValue = action_destroy(vehicleId, terrainBit, x, y);
+	action_destroy(vehicleId, terrainBit, x, y);
 	
 	if (conf.sensor_indestructible)
 	{
@@ -2478,8 +2449,6 @@ int __cdecl wtp_mod_action_destroy(int vehicleId, int terrainBit, int x, int y)
 		}
 		
 	}
-	
-	return returnValue;
 	
 }
 
@@ -2574,7 +2543,7 @@ int __cdecl modified_pact_withdraw(int factionId, int pactFactionId)
 		
 		BASE *closestBase = &(Bases[closestBaseId]);
 		
-		int territoryOwner = mod_whose_territory(factionId, vehicle->x, vehicle->y, 0, 0);
+		int territoryOwner = whose_territory(factionId, vehicle->x, vehicle->y, 0, 0);
 		
 		if (!(closestBase->faction_id == pactFactionId || territoryOwner == pactFactionId))
 			continue;
@@ -3117,18 +3086,18 @@ void removeWrongVehiclesFromBases()
 /*
 Intercepts kill.
 */
-int __cdecl modified_kill(int vehicleId)
+void __cdecl modified_kill(int vehicleId)
 {
 	VEH *vehicle = getVehicle(vehicleId);
 	
 	// do not allow computer kill AI vehicle
 	
 	if (isWtpEnabledFaction(vehicle->faction_id))
-		return 0;
+		return;
 	
 	// execute original code
 	
-	return kill(vehicleId);
+	kill(vehicleId);
 	
 }
 
@@ -3317,22 +3286,6 @@ void __cdecl displayPartialHurryCostToCompleteNextTurnInformation(int input_stri
 //	
 }
 
-/*
-Reverts Thinker modification.
-*/
-int __thiscall wtp_BaseWin_popup_start(Win* This,  char* filename,  char* label, int a4, int a5, int a6, int a7)
-{
-	return Popup_start(This, filename, label, a4, a5, a6, a7);
-}
-
-/*
-Reverts Thinker modification.
-*/
-int __cdecl wtp_BaseWin_ask_number( char* label, int value, int a3)
-{
-    return pop_ask_number(ScriptFile, label, value, a3);
-}
-
 int __cdecl wtp_mod_quick_zoc(int /*a0*/, int /*a1*/, int /*a2*/, int /*a3*/, int /*a4*/, int /*a5*/, int /*a6*/)
 {
 	return 0;
@@ -3367,7 +3320,8 @@ int __thiscall wtp_mod_zoc_path(Path */*This*/, int /*a0*/, int /*a1*/, int /*a2
 BaseWin psych row.
 Does no draw specialists.
 */
-int __thiscall wtp_mod_BaseWin_psych_row(Win* This, int horizontal_pos, int vertical_pos, int a4, int a5, int talents, int drones, int sdrones)
+void __thiscall wtp_mod_BaseWin_psych_row(BaseWindow *This, int horizontal_pos, int vertical_pos, int a4, int a5,
+										  int talents, int drones, int sdrones)
 {
 	BASE *base = *CurrentBase;
 	
@@ -3380,12 +3334,10 @@ int __thiscall wtp_mod_BaseWin_psych_row(Win* This, int horizontal_pos, int vert
 	
 	// execute function
 	
-	int returnValue = BaseWin_psych_row(This, horizontal_pos, vertical_pos, a4, a5, talents, drones, sdrones);
+	BaseWin_psych_row(This, horizontal_pos, vertical_pos, a4, a5, talents, drones, sdrones);
 	
 	// restore specialist count
 	base->specialist_total = specialist_total;
-	
-	return returnValue;
 	
 }
 
@@ -3393,7 +3345,7 @@ int __thiscall wtp_mod_BaseWin_psych_row(Win* This, int horizontal_pos, int vert
 BaseWin pop click.
 Displays popup for base size >= min_base_size_specialists.
 */
-int __thiscall wtp_mod_BaseWin_pop_click_popup_start(Win* This,  char* filename,  char* label, int a4, int a5, int a6, int a7)
+int __thiscall wtp_mod_BaseWin_pop_click_popup_start(Popup *This,  char const *filename,  char const *label, int a4, char *a5, int a6, GraphicWin *a7)
 {
 	BASE *base = *CurrentBase;
 	
@@ -3485,12 +3437,12 @@ int __cdecl wtp_mod_action_terraform_set_treaty(int /*a1*/, int /*a2*/, int /*a3
 /*
 Patches enemy diplomacy.
 */
-int __cdecl wtp_mod_enemy_diplomacy(int factionId)
+void __cdecl wtp_mod_enemy_diplomacy(int factionId)
 {
 	MFaction *mFaction = getMFaction(factionId);
 	Faction *faction = getFaction(factionId);
 	
-	int returnValue = enemy_diplomacy(factionId);
+	enemy_diplomacy(factionId);
 	
 	// adjust aggressiveness effect on diplomacy relation
 	
@@ -3612,8 +3564,6 @@ int __cdecl wtp_mod_enemy_diplomacy(int factionId)
 		}
 		
 	}
-	
-	return returnValue;
 	
 }
 
@@ -3747,11 +3697,11 @@ int __cdecl wtp_mod_steal_energy(int baseId)
 /*
 Intercepts diplomacy_caption -> say_fac_special to display the mood.
 */
-int __cdecl wtp_mod_diplomacy_caption_say_fac_special(int dst, int src, int factionId)
+void __cdecl wtp_mod_diplomacy_caption_say_fac_special(char *dst, char *src, int factionId)
 {
 	// execute original
 	
-	int returnValue = say_fac_special(dst, src, factionId);
+	say_fac_special(dst, src, factionId);
 	
 	// append numeric mood if configured
 	
@@ -3759,10 +3709,8 @@ int __cdecl wtp_mod_diplomacy_caption_say_fac_special(int dst, int src, int fact
 	{
 		char numericFriction[10];
 		sprintf(numericFriction, " <%d>", *DiploFriction);
-		strcat((char *)dst, numericFriction);
+		strcat(dst, numericFriction);
 	}
-	
-	return returnValue;
 	
 }
 
@@ -3823,9 +3771,9 @@ int __cdecl wtp_mod_action_terraform(int vehicleId, int action, int execute)
 	
 }
 
-int __thiscall wtp_mod_Console_go_to(Console* This, int a1, int a2, int a3)
+void __thiscall wtp_mod_Console_go_to(Console *This, int a1, int a2, int a3)
 {
-	int returnValue = Console_go_to(This, a1, a2, a3);
+	Console_go_to(This, a1, a2, a3);
 	
 	// reset Psi Gate use flag in all bases
 	
@@ -3834,15 +3782,13 @@ int __thiscall wtp_mod_Console_go_to(Console* This, int a1, int a2, int a3)
 		Bases[baseId].state_flags &= ~(BSTATE_PSI_GATE_USED);
 	}
 	
-	return returnValue;
-	
 }
 
-int __cdecl wtp_mod_tech_achieved(int factionId, int techId, int targetFactionId, int steal)
+void __cdecl wtp_mod_tech_achieved(int factionId, int techId, int targetFactionId, int steal)
 {
 	// execute original code
 	
-	int value = tech_achieved(factionId, techId, targetFactionId, steal);
+	tech_achieved(factionId, techId, targetFactionId, steal);
 	
 	// select technology if not set
 	
@@ -3851,14 +3797,12 @@ int __cdecl wtp_mod_tech_achieved(int factionId, int techId, int targetFactionId
 		mod_tech_selection(factionId);
 	}
 	
-	return value;
-	
 }
 
 /*
 Does not initialize disabled popup.
 */
-int __cdecl mod_popb(char  *label, int flags, int sound_id, char  *pcx_filename, int a5)
+int __cdecl mod_popb(char const *label, int flags, int sound_id, char const *pcx_filename, Sprite *a5)
 {
 	if ((*GameWarnings & flags) == 0)
 	{
@@ -3889,32 +3833,44 @@ int __cdecl wtp_mod_alien_veh_init(int unitId, int factionId, int x, int y)
 /*
 Adjusts energy allocation to maximize an effect.
 */
-void wtp_mod_social_ai(int factionId)
+void wtp_mod_allocate_energy(int factionId)
 {
-	// not applicable cases
-	
-	if (is_human(factionId) || !is_alive(factionId))
-	{
-		return;
-	}
-	if (!isWtpEnabledFaction(factionId) || !conf.social_ai)
-	{
-		return;
-	}
-	
-	// method starts
-	
-	Profiling::start("- wtp_mod_social_ai");
-	
-	debug("wtp_mod_social_ai - %s\n", MFactions[factionId].noun_faction);
-	
 	Faction &faction = Factions[factionId];
-	
-	// evaluate best psych allocation
-	
+
+	// remember allocation prior to this turn's upkeep, before anything below changes it
+
 	int oldPsychAllocation = faction.SE_alloc_psych;
 	int oldLabsAllocation = faction.SE_alloc_labs;
-	
+
+	// always consult Thinker's own allocation heuristic first: this also covers
+	// the human-player UI nudge and factions with WTP AI disabled, which apply
+	// this result as-is and return right below
+
+	allocate_energy(factionId);
+	int thinkerPsychAllocation = faction.SE_alloc_psych;
+	int thinkerLabsAllocation = faction.SE_alloc_labs;
+
+	// WTP-specific refinement only applies beyond this point
+
+	if (is_human(factionId) || !is_alive(factionId))
+		return;
+	if (!isWtpEnabledFaction(factionId) || !conf.social_ai)
+		return;
+
+	// method continues
+
+	Profiling::start("- wtp_mod_allocate_energy");
+
+	debug("wtp_mod_allocate_energy - %s\n", MFactions[factionId].noun_faction);
+
+	// Penalty factor to deviate from Thinker proposal.
+	// ReSharper disable once CppTooWideScope
+	constexpr double thinkerTrustPsych = 0.00;
+	// ReSharper disable once CppTooWideScope
+	constexpr double thinkerTrustLabs = 0.25;
+
+	// evaluate best psych allocation
+
 	debug
 	(
 		"\told allocation={%d,%d,%d}"
@@ -3923,10 +3879,19 @@ void wtp_mod_social_ai(int factionId)
 		, oldPsychAllocation
 		, oldLabsAllocation
 	);
-	
+
+	debug
+	(
+		"\tthinker proposed allocation={%d,%d,%d}"
+		"\n"
+		, 10 - thinkerPsychAllocation - thinkerLabsAllocation
+		, thinkerPsychAllocation
+		, thinkerLabsAllocation
+	);
+
 	int newPsychAllocation = oldPsychAllocation;
 	int newLabsAllocation = oldLabsAllocation;
-	double bestScore = 0.0;
+	double bestScore = -std::numeric_limits<double>::infinity();
 	
 	for (int psychAllocationChange = -1; psychAllocationChange <= +1; psychAllocationChange++)
 	{
@@ -4007,7 +3972,20 @@ void wtp_mod_social_ai(int factionId)
 			;
 			
 			double score = getResourceScore(static_cast<double>(totalNutrient), static_cast<double>(totalMineral), static_cast<double>(totalEconomy) + totalLabsWorth);
-			
+
+			// lean toward Thinker's own proposal proportionally to how much each slider
+			// is trusted; this never overrides the net income sanity check above, only
+			// rescales the score of candidates that already passed it
+
+			int psychDeviation = std::abs(psychAllocation - thinkerPsychAllocation);
+			int labsDeviation = std::abs(labsAllocation - thinkerLabsAllocation);
+			double thinkerDeviationCoefficient =
+				1.0
+				- thinkerTrustPsych * psychDeviation
+				- thinkerTrustLabs * labsDeviation
+			;
+			score *= thinkerDeviationCoefficient;
+
 			debug
 			(
 				"\tallocation={%d,%d,%d}"
@@ -4020,6 +3998,9 @@ void wtp_mod_social_ai(int factionId)
 				" totalBudget=%3d"
 				" totalDoctorCount=%3d"
 				" *net_income=%3d"
+				" psychDeviation=%3d"
+				" labsDeviation=%3d"
+				" thinkerDeviationCoefficient=%5.2f"
 				" score=%5.2f"
 				"\n"
 				, 10 - psychAllocation - labsAllocation
@@ -4034,6 +4015,9 @@ void wtp_mod_social_ai(int factionId)
 				, totalBudget
 				, totalDoctorCount
 				, *net_income
+				, psychDeviation
+				, labsDeviation
+				, thinkerDeviationCoefficient
 				, score
 			);
 			
@@ -4075,14 +4059,14 @@ void wtp_mod_social_ai(int factionId)
 		, newLabsAllocation
 	);
 	
-	Profiling::stop("- wtp_mod_social_ai");
+	Profiling::stop("- wtp_mod_allocate_energy");
 	
 }
 
 /*
 Destroys terrain improvements on lost territory.
 */
-int __cdecl wtp_mod_capture_base(int base_id, int faction, int is_probe)
+void __cdecl wtp_mod_capture_base(int base_id, int faction, int is_probe)
 {
 	BASE &base = Bases[base_id];
 	int oldBaseFactionId = base.faction_id;
@@ -4122,7 +4106,7 @@ int __cdecl wtp_mod_capture_base(int base_id, int faction, int is_probe)
 	}
 	// execute original code
 	
-	int returnValue = mod_capture_base(base_id, faction, is_probe);
+	mod_capture_base(base_id, faction, is_probe);
 	
 	if (conf.scorched_earth && oldMapOwners != nullptr)
 	{
@@ -4158,10 +4142,6 @@ int __cdecl wtp_mod_capture_base(int base_id, int faction, int is_probe)
 		}
 		
 	}
-	
-	// return value
-	
-	return returnValue;
 	
 }
 
@@ -4212,15 +4192,13 @@ int __cdecl wtp_mod_has_abil_air_superiority_attack_needlejet(int unit_id, VehAb
 /*
 Intercepts veh_kill to update pad_0 mapping.
 */
-int __cdecl wtp_mod_veh_kill(int vehicleId)
+void __cdecl wtp_mod_veh_kill(int vehicleId)
 {
 	vehicleKill(vehicleId);
 
-	int returnValue = veh_kill(vehicleId);
+	veh_kill(vehicleId);
 
 	populateVehiclePad0Map();
-
-	return returnValue;
 
 }
 
@@ -4230,9 +4208,9 @@ int __thiscall StringList__sort_nop(int */*This*/, int /*sortType*/)
 }
 
 /*
-Intercepts Buffer_wrap2 to adjust summary vertical position.
+Intercepts Buffer_wrap_3 to adjust summary vertical position.
 */
-int __thiscall wtp_mod_BattleWin_battle_report_Buffer_wrap2(Buffer* This, LPCSTR lpString, int x, int y, int a5)
+int __thiscall wtp_mod_BattleWin_battle_report_Buffer_wrap_3(Buffer* This, char *lpString, int x, int y, int a5)
 {
 	// set fixed vertical position or use existing one if is already lower
 	
@@ -4244,7 +4222,7 @@ int __thiscall wtp_mod_BattleWin_battle_report_Buffer_wrap2(Buffer* This, LPCSTR
 	
 	// call original function
 	
-	return Buffer_wrap2(This, lpString, x, y, a5);
+	return Buffer_wrap_3(This, lpString, x, y, a5);
 	
 }
 
@@ -4369,9 +4347,203 @@ int __cdecl wtp_mod_monetary_support_cost()
 }
 
 /*
+Rearranges and relabels base psych breakdown rows.
+
+Fully owns both BaseWin::draw_psych call sites that feed a label through this function (see
+patch_base_psych_label in wtp_patch.cpp, which installs both write_call hooks itself rather than
+relying on/coexisting with whatever Thinker's own patch.cpp does at those addresses) - the write
+call is only installed when conf.base_psych && conf.base_psych_improved, so unlike stock
+BaseWin_draw_psych_strcat (now in basewin.cpp) this does not need a stock-equivalent fallback
+branch here; when the feature is off, this hook is not installed at all and stock/Thinker's own
+handling of those addresses is left untouched.
+*/
+void __cdecl wtp_mod_BaseWin_draw_psych_strcat(char *buffer, char *source)
+{
+	BASE &base = **CurrentBase;
+
+	robin_hood::unordered_flat_map<char *, int> labelIndexes = {{label_get(322), 322}, {label_get(323), 324}, {label_get(324), 325}, {label_get(325), 327}, {label_get(326), 327}, {label_get(327), 323}, {label_get(970), 970}, {label_get(971), 971}, };
+	robin_hood::unordered_flat_map<char *, int> rowIndexes = {{label_get(322), 0}, {label_get(323), 1}, {label_get(324), 2}, {label_get(325), 3}, {label_get(326), 3}, {label_get(327), 4}, {label_get(970), 0}, {label_get(971), 0}, };
+
+	if (labelIndexes.find(source) != labelIndexes.end() && rowIndexes.find(source) != rowIndexes.end())
+	{
+		int labelIndex = labelIndexes.at(source);
+		int rowIndex = rowIndexes.at(source);
+
+		if (labelIndex == 325 && base.SE_police(true) <= -2)
+		{
+			labelIndex += 1;
+		}
+
+		char *label = label_get(labelIndex);
+		int previousPsychBalance = rowIndex == 0 ? 0 : BasePsychTalents[rowIndex - 1] - BasePsychNDrones[rowIndex - 1] - BasePsychSDrones[rowIndex - 1];
+		int psychBalance = BasePsychTalents[rowIndex] - BasePsychNDrones[rowIndex] - BasePsychSDrones[rowIndex];
+		int psychBalanceChange = psychBalance - previousPsychBalance;
+
+		switch (conf.base_psych_screen_show_numbers)
+		{
+		case 1:
+			snprintf
+			(
+				buffer, StrBufLen, "%c%2d  %s"
+				, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
+				, label
+			);
+			break;
+		case 2:
+			snprintf
+			(
+				buffer, StrBufLen, "+%2d-%2d-%2d=%c%2d  %s"
+				, BasePsychTalents[rowIndex]
+				, BasePsychNDrones[rowIndex]
+				, BasePsychSDrones[rowIndex]
+				, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
+				, label
+			);
+			break;
+		case 3:
+			if (rowIndex == 0)
+			{
+				snprintf
+				(
+					buffer, StrBufLen, "    %c%2d %s"
+					, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
+					, label
+				);
+			}
+			else
+			{
+				snprintf
+				(
+					buffer, StrBufLen, "%c%2d %c%2d %s"
+					, psychBalanceChange == 0 ? ' ' : psychBalanceChange > 0 ? '+' : '-', std::abs(psychBalanceChange)
+					, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
+					, label
+				);
+			}
+			break;
+		case 4:
+			if (rowIndex == 0)
+			{
+				snprintf
+				(
+					buffer, StrBufLen, "    %s"
+					, label
+				);
+			}
+			else
+			{
+				snprintf
+				(
+					buffer, StrBufLen, "%c%2d %s"
+					, psychBalanceChange == 0 ? ' ' : psychBalanceChange > 0 ? '+' : '-', std::abs(psychBalanceChange)
+					, label
+				);
+			}
+			break;
+		default: ;
+			strncat(buffer, label, StrBufLen);
+		}
+
+	}
+	else
+	{
+		if (base.nerve_staple_turns_left > 0 || has_fac_built(FAC_PUNISHMENT_SPHERE, *CurrentBaseID))
+		{
+			// replace label #1 with [Stapled Base] if stapled or Punishment Sphere
+
+			strncat(buffer, label_get(971), StrBufLen); // Stapled Base
+
+		}
+		else
+		{
+			// default value
+
+			strncat(buffer, source, StrBufLen);
+
+		}
+
+	}
+
+}
+
+/*
+ * Writes psych label left justified when numeric psych balance is shown, centered otherwise.
+*/
+int __thiscall wtp_mod_Base_draw_psych_Buffer_write_cent_l(Buffer* This, char* lpString, int x, int y, int w, int max_len)
+{
+	return conf.base_psych_screen_show_numbers ? Buffer_write_l_3(This, lpString, x, y, max_len) : Buffer_write_cent_l_5(This, lpString, x, y, w, max_len);
+}
+
+/*
+ * Uses WTP configurable font for the psych label display.
+*/
+int __thiscall wtp_mod_Base_draw_psych_Font_init(Font* This, char* /*a2*/, int /*a3*/, int /*a4*/)
+{
+	return Font_init(This, conf.base_psych_screen_font_name, conf.base_psych_screen_font_size, conf.base_psych_screen_font_style);
+}
+
+/*
+Intercepts BaseWin::draw_energy's call to Buffer_set_text_color to draw WTP's own energy/psych
+info lines first, then falls through to the real Buffer_set_text_color at the end (this is why
+the original stock call is being intercepted in the first place).
+
+Differences from stock (now living in basewin.cpp's BaseWin_draw_energy_set_text_color):
+- the pop breakdown line (talents/workers/drones/specialists) is replaced entirely: shown only as
+  an energy-to-psych allocation indicator when base->pad_7 != 0, blank otherwise - WTP shows the
+  population breakdown elsewhere, so this line is repurposed rather than kept.
+- the "Population Boom" marker is dropped - already shown in the nutrient box.
+- when there is no nerve staple, an extra branch shows the current psych effect (and, if
+  base->pad_8 is ever wired up, its allocated/unallocated split) when
+  conf.base_psych && conf.base_psych_improved.
+*/
+void __thiscall wtp_mod_BaseWin_draw_energy_set_text_color(Buffer* This, int a2, int a3, int a4, int a5)
+{
+	BASE* base = &Bases[*CurrentBaseID];
+	char buf[StrBufLen] = {};
+
+	if (conf.render_base_info && *CurrentBaseID >= 0)
+	{
+		if (base->pad_7 != 0)
+		{
+			Buffer_set_text_color(This, ColorEnergyLight, a3, a4, a5);
+			snprintf(buf, StrBufLen, label_psych_energy_allocation, base->pad_7);
+			Buffer_write_right_l_5(This, buf, 690, 423 - 42, LineBufLen);
+		}
+		Buffer_write_right_l_5(This, buf, 690, 423 - 42, LineBufLen);
+
+		if (base->nerve_staple_turns_left > 0)
+		{
+			snprintf(buf, StrBufLen, label_nerve_staple, base->nerve_staple_turns_left);
+			Buffer_set_text_color(This, ColorEnergy, a3, a4, a5);
+			Buffer_write_right_l_5(This, buf, 690, 423, LineBufLen);
+		}
+		else if (conf.base_psych && conf.base_psych_improved)
+		{
+			int psych_effect = max(0, base->psych_total / conf.base_psych_cost);
+
+			if (base->pad_8 != 0 && false)
+			{
+				int psych_effect_allocated = max(0, base->pad_8 / conf.base_psych_cost);
+				snprintf(buf, StrBufLen, label_psych_effect_allocated, psych_effect_allocated, psych_effect);
+			}
+			else
+			{
+				snprintf(buf, StrBufLen, label_psych_effect, psych_effect);
+			}
+
+			Buffer_set_text_color(This, ColorPsychAlloc, a3, a4, a5);
+			Buffer_write_right_l_5(This, buf, 690, 423, LineBufLen);
+		}
+	}
+
+	Buffer_set_text_color(This, a2, a3, a4, a5);
+
+}
+
+/*
  * Modifies society effect datalink article.
 */
-int __thiscall wtp_Datalinks_effect_popup_start(Win* This, const char* filename, const char* label, int a4, int a5, int a6, int a7)
+int __thiscall wtp_Datalinks_effect_popup_start(Popup* This, const char* filename, const char* label, int a4, char* a5, int a6, GraphicWin* a7)
 {
 	if (strcmp(label, "HELPEFFECT2") == 0)
 	{

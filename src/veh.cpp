@@ -5,19 +5,20 @@
 
 int __cdecl can_arty(int unit_id, bool allow_sea_arty) {
     assert(unit_id >= 0 && unit_id < MaxProtoNum);
-    UNIT* u = &Units[unit_id];
     if (unit_id < 0 || unit_id >= MaxProtoNum) {
         return false;
     }
+    UNIT* u = &Units[unit_id];
     if ((u->offense_value() <= 0 // PSI + non-combat
     || u->defense_value() < 0) // PSI
     && unit_id != BSC_SPORE_LAUNCHER) { // Spore Launcher exception
         return false;
     }
-    if (u->triad() == TRIAD_SEA) {
+    int triad = u->triad();
+    if (triad == TRIAD_SEA) {
         return allow_sea_arty;
     }
-    if (u->triad() == TRIAD_AIR) {
+    if (triad == TRIAD_AIR) {
         return false;
     }
     return has_abil(unit_id, ABL_ARTILLERY); // TRIAD_LAND
@@ -65,7 +66,7 @@ int __cdecl arty_range(int unit_id) {
         if (*MultiplayerActive) {
             return Rules->artillery_max_rng;
         }
-        return min(8, Rules->artillery_max_rng
+        return min(MaxTableRange, Rules->artillery_max_rng
             + (conf.long_range_artillery > 0 && u->triad() == TRIAD_SEA
             && u->offense_value() > 0 && u->ability_flags & ABL_ARTILLERY
             ? conf.long_range_artillery : 0));
@@ -118,6 +119,11 @@ bool has_ability(int faction_id, VehAbl abl, VehChassis chs, VehWeapon wpn) {
     return has_tech(Ability[abl].preq_tech, faction_id);
 }
 
+bool is_native_unit(int unit_id) {
+    assert(unit_id >= 0 && unit_id < MaxProtoNum);
+    return unit_id >= 0 && unit_id < MaxProtoFactionNum && Units[unit_id].offense_value() < 0;
+}
+
 /*
 Fractional healing at monoliths is not implemented and for this reason
 Battle Ogres may be excluded from healing/promoting at monoliths.
@@ -136,23 +142,17 @@ bool can_monolith(int unit_id) {
     return conf.repair_battle_ogre >= 10 || !is_battle_ogre(unit_id);
 }
 
-int __cdecl veh_who(int x, int y) {
-    MAP* sq = mapsq(x, y);
-    return (sq ? sq->veh_who() : -1);
-}
-
 int __cdecl veh_at(int x, int y) {
     MAP* sq = mapsq(x, y);
     if (sq && !sq->veh_in_tile()) {
         return -1;
     }
-    for (int veh_id = 0; veh_id < *VehCount; veh_id++) {
-        if (Vehs[veh_id].x == x && Vehs[veh_id].y == y) {
-            return veh_top(veh_id);
+    for (int i = 0; i < *VehCount; i++) {
+        if (Vehs[i].x == x && Vehs[i].y == y) {
+            return veh_top(i);
         }
     }
     if (!sq) {
-        debug("VehLocError %d %d\n", x, y);
         return -1;
     }
     if (!*VehBitError) {
@@ -168,6 +168,11 @@ int __cdecl veh_at(int x, int y) {
     return -1;
 }
 
+int __cdecl veh_who(int x, int y) {
+    MAP* sq = mapsq(x, y);
+    return (sq ? sq->veh_who() : -1);
+}
+
 int __cdecl veh_top(int veh_id) {
     if (veh_id < 0) {
         return -1;
@@ -177,6 +182,73 @@ int __cdecl veh_top(int veh_id) {
         top_veh_id = Vehs[top_veh_id].prev_veh_id_stack;
     }
     return top_veh_id;
+}
+
+void __cdecl stack_put(int veh_id, int x, int y) {
+    int next_veh_id = veh_top(veh_id);
+    int veh_id_loop;
+    if (next_veh_id >= 0) {
+        do {
+            veh_id_loop = Vehs[next_veh_id].next_veh_id_stack;
+            veh_put(next_veh_id, x, y);
+            next_veh_id = veh_id_loop;
+        } while (veh_id_loop >= 0);
+    }
+}
+
+/*
+Sort the veh stack with the transports moved to the top.
+*/
+void __cdecl stack_sort(int veh_id) {
+    int x = Vehs[veh_id].x;
+    int y = Vehs[veh_id].y;
+    int next_veh_id = veh_top(veh_id);
+    int veh_id_put = -1;
+    int veh_id_loop;
+    if (veh_id >= 0 && next_veh_id >= 0) {
+        do {
+            veh_id_loop = Vehs[next_veh_id].next_veh_id_stack;
+            if (veh_cargo(next_veh_id) || has_abil(Vehs[next_veh_id].unit_id, ABL_CARRIER)) {
+                veh_id_put = next_veh_id;
+                veh_put(next_veh_id, -3, -3);
+            }
+            next_veh_id = veh_id_loop;
+        } while (veh_id_loop >= 0);
+        stack_put(veh_id_put, x, y);
+    }
+}
+
+/*
+Sort the veh stack with colony pods at the top followed by combat/offensive units.
+*/
+void __cdecl stack_sort_2(int veh_id) {
+    int x = Vehs[veh_id].x;
+    int y = Vehs[veh_id].y;
+    int next_veh_id = veh_top(veh_id);
+    int veh_id_put = -1;
+    int veh_id_loop;
+    if (next_veh_id >= 0) {
+        do {
+            veh_id_loop = Vehs[next_veh_id].next_veh_id_stack;
+            if (Units[Vehs[next_veh_id].unit_id].plan == PLAN_COLONY) { // Colony Pod
+                veh_id_put = next_veh_id;
+                veh_put(next_veh_id, -3, -3);
+            }
+            next_veh_id = veh_id_loop;
+        } while (veh_id_loop >= 0);
+    }
+    next_veh_id = veh_at(x, y);
+    if (next_veh_id >= 0) {
+        do {
+            veh_id_loop = Vehs[next_veh_id].next_veh_id_stack;
+            if (Units[Vehs[next_veh_id].unit_id].plan <= PLAN_COMBAT) {
+                veh_id_put = next_veh_id;
+                veh_put(next_veh_id, -3, -3);
+            }
+            next_veh_id = veh_id_loop;
+        } while (veh_id_loop >= 0);
+    }
+    stack_put(veh_id_put, x, y);
 }
 
 int __cdecl stack_fix(int veh_id) {
@@ -193,22 +265,132 @@ int __cdecl stack_fix(int veh_id) {
     return veh_top(veh_id);
 }
 
-void __cdecl stack_sort(int veh_id) {
-    int x = Vehs[veh_id].x;
-    int y = Vehs[veh_id].y;
-    int next_veh_id = veh_top(veh_id);
-    int veh_id_put = -1;
-    int veh_id_loop;
-    if (veh_id >= 0 && next_veh_id >= 0) {
-        do {
-            veh_id_loop = Vehs[next_veh_id].next_veh_id_stack; // removed redundant < 0 check
-            if (veh_cargo(next_veh_id) || has_abil(Vehs[next_veh_id].unit_id, ABL_CARRIER)) {
-                veh_id_put = next_veh_id;
-                veh_put(next_veh_id, -3, -3);
+int __cdecl stack_veh(int veh_id, int flag) {
+    if (veh_id < 0) {
+        return flag != 0 ? veh_id : 0;
+    }
+    VEH* const veh = &Vehs[veh_id];
+    const int faction_id = veh->faction_id;
+    if (!veh_cargo(veh_id) && !has_abil(veh->unit_id, ABL_CARRIER)) {
+        if (!flag) {
+            return 0;
+        }
+        return veh_drop(veh_lift(veh_id), -2, -2);
+    }
+    if (*MultiplayerActive) {
+        stack_fix(veh_id);
+    }
+    MAP* const veh_sq = mapsq(veh->x, veh->y);
+    if (flag) {
+        if (flag > 1) {
+            if (veh_sq && veh_sq->base_who() >= 0) {
+                return veh_drop(veh_lift(veh_id), -2, -2);
             }
-            next_veh_id = veh_id_loop;
-        } while (veh_id_loop >= 0);
-        stack_put(veh_id_put, x, y);
+        }
+        stack_sort(veh_id);
+    } else {
+        for (int i = veh_top(veh_id); i >= 0; i = Vehs[i].next_veh_id_stack) {
+            Vehs[i].state &= ~VSTATE_IN_TRANSPORT;
+        }
+    }
+    bool at_open_sea = veh_sq && is_ocean(veh_sq) && veh_sq->base_who() < 0;
+    bool is_air = veh->triad() == TRIAD_AIR;
+    int cargo_val = veh_cargo(veh_id);
+    int carrier_val = has_abil(veh->unit_id, ABL_CARRIER) ? max(1, cargo_val) : 0;
+    if (!faction_id) {
+        cargo_val = 99;
+    }
+    auto do_load = [&](int cur_id) {
+        if (flag || !(Vehs[cur_id].state & VSTATE_IN_TRANSPORT)) {
+            sleep(cur_id);
+            Vehs[cur_id].waypoint_x[0] = veh_id;
+            if (flag) {
+                veh_drop(veh_lift(cur_id), -2, -2);
+                Vehs[cur_id].state &= ~VSTATE_UNK_10000;
+            } else {
+                Vehs[cur_id].state |= VSTATE_IN_TRANSPORT;
+            }
+            if (carrier_val > 0) {
+                --carrier_val;
+            }
+            if (cargo_val > 0) {
+                --cargo_val;
+            }
+        }
+    };
+    int max_iter = (flag <= 1) ? 2 : 1;
+    for (int iter = 0; iter < max_iter; ++iter) {
+        int cur = (flag ? veh_id : veh_top(veh_id));
+        int next = cur;
+        while (next >= 0) {
+            if (!cargo_val && !carrier_val) {
+                break;
+            }
+            cur = next;
+            next = Vehs[next].next_veh_id_stack;
+            if (Vehs[cur].faction_id != faction_id) {
+                continue;
+            }
+            if (!(cargo_val && Vehs[cur].triad() == TRIAD_LAND && !veh_cargo(cur))
+            && !(carrier_val && Vehs[cur].triad() == TRIAD_AIR && !has_abil(Vehs[cur].unit_id, ABL_CARRIER))) {
+                continue;
+            }
+            if (!iter) {
+                if (Vehs[cur].order == ORDER_SENTRY_BOARD && Vehs[cur].waypoint_x[0] == veh_id) {
+                    do_load(cur);
+                }
+                continue;
+            }
+            if (is_air && veh_sq->base_who() < 0 && !(veh_sq->items & BIT_AIRBASE)) {
+                continue;
+            }
+            if (!is_human(Vehs[cur].faction_id) || (veh->state & VSTATE_ON_ALERT && Vehs[cur].state & VSTATE_ON_ALERT)) {
+                int base_plan = Factions[Vehs[cur].faction_id].region_base_plan[region_at(Vehs[cur].x, Vehs[cur].y)];
+                if (Vehs[cur].state & VSTATE_UNK_40000) {
+                    if ((Vehs[cur].state & VSTATE_UNK_20000) && base_plan == PLAN_NAVAL_TRANSPORT) {
+                        do_load(cur);
+                    }
+                    continue;
+                }
+                if (Vehs[cur].order != ORDER_HOLD) {
+                    int cur_plan = Vehs[cur].plan();
+                    if (cur_plan != PLAN_ARTIFACT && cur_plan != PLAN_TERRAFORM) {
+                        if (at_open_sea || !on_map(Vehs[cur].x, Vehs[cur].y)
+                        || cur_plan >= PLAN_COLONY || base_plan != PLAN_DEFENSE) {
+                            do_load(cur);
+                        }
+                        continue;
+                    }
+                }
+            } else if (Vehs[cur].order == ORDER_SENTRY_BOARD) {
+                if (Vehs[cur].waypoint_x[0] < 0) {
+                    do_load(cur);
+                }
+                continue;
+            }
+            if (at_open_sea) {
+                do_load(cur);
+            }
+        }
+    }
+    if (flag) {
+        return veh_drop(veh_lift(veh_id), -2, -2);
+    }
+    return (veh_cargo(veh_id) == 0) ? carrier_val : cargo_val;
+}
+
+void __cdecl stack_kill(int veh_id) {
+    if (veh_id < 0) {
+        return;
+    }
+    int cur_id = veh_top(veh_id);
+    while (cur_id >= 0) {
+        int next_id = Vehs[cur_id].next_veh_id_stack;
+        veh_kill(cur_id);
+        if (next_id > cur_id) {
+            next_id--;
+        }
+        cur_id = next_id;
     }
 }
 
@@ -346,7 +528,7 @@ void __cdecl veh_clear(int veh_id, int unit_id, int faction_id) {
     // [WTP]
     // default morale = 0
     /*
-    veh->morale = (uint8_t)(MFactions[faction_id].rule_morale + 1);
+    veh->morale = clamp(MFactions[faction_id].rule_morale + 1, 0, MaxMoraleNum-1);
     */
     veh->morale = static_cast<uint8_t>(MFactions[faction_id].rule_morale + 0);
     //
@@ -365,6 +547,369 @@ void __cdecl veh_clear(int veh_id, int unit_id, int faction_id) {
     veh->prev_veh_id_stack = -1;
 }
 
+int __cdecl veh_init(int unit_id, int faction_id, int x, int y) {
+    if (*VehCount >= conf.max_veh_num) {
+        return -1;
+    }
+    int veh_id = (*VehCount)++;
+    VEH* veh = &Vehs[veh_id];
+    Faction* plr = &Factions[faction_id];
+    // log_say("Adding Vehicle (v,who,v2)", veh_id, faction_id, unit_id);
+    debug("veh_init %2d %2d %d %d %d\n", x, y, faction_id, unit_id, veh_id);
+
+    if (Units[unit_id].plan <= PLAN_NAVAL_TRANSPORT) {
+        plr->total_combat_units++;
+    }
+    plr->units_active[unit_id]++;
+    veh_clear(veh_id, unit_id, faction_id);
+
+    int base_id = base_find(x, y);
+    if (Units[unit_id].plan == PLAN_ARTIFACT) {
+        if (*GameState & STATE_SCN_VICT_ALL_ARTIFACTS_OBJ_UNIT) {
+            veh->flags |= VFLAG_IS_OBJECTIVE;
+        }
+    } else if (base_id >= 0 && Bases[base_id].faction_id == faction_id) {
+        veh->home_base_id = base_id;
+        if (*ComputeBaseID == base_id) {
+            *ComputeBaseID = -1;
+        }
+    }
+    veh_drop(veh_id, x, y);
+    spot_all(veh_id, 1);
+
+    if (plr->target_x < 0) {
+        return veh_id;
+    }
+    MAP* sq = mapsq(x, y);
+    if (is_ocean(sq)) {
+        return veh_id;
+    }
+    UNIT* unit = &Units[veh->unit_id];
+    if (unit->plan > PLAN_DEFENSE && unit->plan != PLAN_PROBE) {
+        return veh_id;
+    }
+    int region_id = sq->region;
+    if (region_at(plr->target_x, plr->target_y) != region_id) {
+        return veh_id;
+    }
+    int best_enemy = -1;
+    int best_enemy_bases = 0;
+    for (int i = 1; i < MaxPlayerNum; i++) {
+        if (i != faction_id
+        && (plr->diplo_status[i] & DIPLO_VENDETTA)
+        && plr->region_total_bases[region_id] > best_enemy_bases) {
+            best_enemy_bases = plr->region_total_bases[region_id];
+            best_enemy = i;
+        }
+    }
+    if (best_enemy >= 0) {
+        base_find_3(x, y, best_enemy, region_id, -1, -1);
+        if (vector_dist(x, y, plr->target_x, plr->target_y) > *BaseFindDist) {
+            return veh_id;
+        }
+    }
+    int bases = plr->region_total_bases[region_id];
+    int target = clamp(2 * bases / 3, 3, 8);
+
+    if (plr->region_base_plan[region_id] == 7) {
+        int alt_target = 2 * plr->unk_70 / 0x400000;
+        if (target >= alt_target) {
+            target = alt_target;
+        }
+    }
+    if (plr->unk_71 - bit_count(plr->unk_72) >= target) {
+        return veh_id;
+    }
+    int weap_val = weap_strat(unit->weapon_id, faction_id);
+    int arm_val = arm_strat(unit->armor_id, faction_id);
+
+    if (veh->triad() != TRIAD_LAND || has_abil(veh->unit_id, ABL_DROP_POD)) {
+        return veh_id;
+    }
+    if (unit->plan == PLAN_PROBE) {
+        if (!(plr->unk_72 & 2)) {
+            veh->state |= VSTATE_UNK_40000;
+            plr->unk_71++;
+            plr->unk_72 |= 2;
+        }
+        return veh_id;
+    }
+    if (weap_val >= arm_val) {
+        if (plr->region_base_plan[region_id] != 7) {
+            int cap = clamp(2 * bases / 3, 3, 8);
+            if (!(game_rand() % (cap + 2))) {
+                veh->state |= VSTATE_UNK_20000;
+                return veh_id;
+            }
+        }
+    } else if ((plr->unk_72 & 1) || plr->region_base_plan[region_id] == 7) {
+        return veh_id;
+    }
+    veh->state |= VSTATE_UNK_40000;
+    plr->unk_71++;
+    if (weap_val < arm_val) {
+        plr->unk_72 |= 1;
+    }
+    return veh_id;
+}
+
+int __cdecl veh_init_free(int unit_id, int faction_id, int x, int y) {
+    int veh_id = veh_init(unit_id, faction_id, x, y);
+    if (veh_id >= 0) {
+        Vehs[veh_id].home_base_id = -1;
+        if (thinker_move_upkeep(faction_id)) {
+            // Set these flags to disable any non-Thinker unit automation
+            Vehs[veh_id].state |= VSTATE_UNK_40000;
+            Vehs[veh_id].state &= ~VSTATE_UNK_2000;
+        }
+    }
+    return veh_id;
+}
+
+int __cdecl mod_veh_kill(int veh_id) {
+
+    // [WTP]
+    // intercept veh_kill
+    /*
+    VEH* veh = &Vehs[veh_id];
+    debug("disband %2d %2d %s\n", veh->x, veh->y, veh->name());
+    veh_kill(veh_id);
+    */
+    wtp_mod_veh_kill(veh_id);
+    //
+
+    return VEH_SKIP;
+}
+
+void __cdecl veh_kill(int veh_id) {
+    if (veh_id < 0) {
+        return;
+    }
+    VEH* veh = &Vehs[veh_id];
+    const int x = veh->x;
+    const int y = veh->y;
+    const int unit_id = veh->unit_id;
+    const int faction_id = veh->faction_id;
+    const int home_base_id = veh->home_base_id;
+    // log_say("KILLINGVEHICLE", veh_id, faction_id, unit_id);
+    debug("veh_kill %2d %2d %d %d %d\n", x, y, faction_id, unit_id, veh_id);
+
+    if (*MultiplayerActive) {
+        DeletionList_add_deletion(DeleteList, veh_id);
+    }
+    if (Units[unit_id].plan <= PLAN_NAVAL_TRANSPORT) {
+        --Factions[faction_id].total_combat_units;
+    }
+    --Factions[faction_id].units_active[unit_id];
+    veh_kill_lift(veh_id);
+
+    if (veh_id < *VehCount - 1) {
+        memmove(&Vehs[veh_id], &Vehs[veh_id + 1], (*VehCount - veh_id - 1) * sizeof(VEH));
+    }
+    if (veh_id < conf.max_veh_num) {
+        --(*VehCount);
+    }
+    for (int i = 0; i < *VehCount; i++) {
+        VEH* v = &Vehs[i];
+        if (v->prev_veh_id_stack > veh_id) {
+            --v->prev_veh_id_stack;
+        }
+        if (v->next_veh_id_stack > veh_id) {
+            --v->next_veh_id_stack;
+        }
+        if (v->order == ORDER_SENTRY_BOARD) {
+            if (v->waypoint_x[0] == veh_id) {
+                v->order = ORDER_NONE;
+            } else if (v->waypoint_x[0] > veh_id) {
+                --v->waypoint_x[0];
+            }
+        }
+    }
+    auto update_veh_ref = [&](int32_t* ptr) {
+        if (*ptr == veh_id) { *ptr = -1; }
+        else if (*ptr > veh_id) { --(*ptr); }
+    };
+    update_veh_ref(&MapWin->iUnit);
+    update_veh_ref(&MapWin->field_23BE0);
+    update_veh_ref(dword_8C6B2C); // StatusWin
+    update_veh_ref(dword_8C6B34); // StatusWin
+
+    if (*CurrentVehID && *CurrentVehID >= veh_id) {
+        --(*CurrentVehID);
+    }
+    if (*MultiplayerActive
+    && *dword_93E908
+    && *dword_93E908 != &MapWin->iUnit
+    && *dword_93E908 != &MapWin->field_23BE0
+    && *dword_93E908 != CurrentVehID
+    && **dword_93E908 >= veh_id) {
+        --(**dword_93E908);
+    }
+    BaseWin_check_loc(BaseWin, x, y, 0);
+    BaseWin_check_base(BaseWin, home_base_id);
+}
+
+void __cdecl kill(int veh_id) {
+    VEH* veh = &Vehs[veh_id];
+    const int player_id = *CurrentPlayerFaction;
+    const int x = veh->x;
+    const int y = veh->y;
+    const int unit_id = veh->unit_id;
+    const int faction_id = veh->faction_id;
+    const int home_base_id = veh->home_base_id;
+    const int deep_radar = has_abil(unit_id, ABL_DEEP_RADAR);
+
+    if (!veh_cargo(veh_id)) { // remove redundant reference on Spore Launchers
+        veh_kill(veh_id);
+    } else if (!on_map(x, y)) {
+        if (x == -2) {
+            stack_kill(veh_id);
+            return;
+        }
+        stack_veh(veh_id, 2);
+        stack_kill(veh_id);
+    } else if (!is_ocean(mapsq(x, y))) {
+        veh_kill(veh_id);
+    } else {
+        stack_veh(veh_id, 2);
+        stack_kill(veh_id);
+    }
+    BaseWin_check_base(BaseWin, home_base_id);
+    if (!*VehBattleState && on_map(x, y)) {
+        int alt_id = veh_at(x, y);
+        if (faction_id != player_id
+        || (mod_stack_check(alt_id, 1, faction_id, -1, -1) && !deep_radar)) {
+            draw_tile(x, y, 2);
+        } else {
+            draw_radius(x, y, 2, 2);
+        }
+    }
+}
+
+int battle_kill(int veh_id, int* num_killed, int* num_relics, int* num_credits, int veh_id_atk, int faction_id_atk) {
+    VEH* veh = &Vehs[veh_id];
+    const int faction_id = veh->faction_id;
+    const int unit_id = veh->unit_id;
+    ++Factions[faction_id].units_lost[unit_id];
+
+    if (veh_id_atk >= 0
+    && veh_id_atk != veh_id
+    && Vehs[veh_id_atk].faction_id
+    && on_map(Vehs[veh_id_atk].x, Vehs[veh_id_atk].y)
+    && Units[unit_id].is_artifact()
+    && !Vehs[veh_id_atk].is_missile()) {
+        MAP* sq = mapsq(Vehs[veh_id_atk].x, Vehs[veh_id_atk].y);
+        if (!is_ocean(sq)
+        || mod_stack_check(veh_id_atk, 8, -1, -1, -1) > 0
+        || veh->flags & VFLAG_IS_OBJECTIVE) {
+            int atk_faction_id = Vehs[veh_id_atk].faction_id;
+            veh_lift(veh_id);
+            veh->damage_taken = 0;
+            veh->faction_id = atk_faction_id;
+            veh->order = ORDER_NONE;
+            --Factions[faction_id].units_active[unit_id];
+            ++Factions[atk_faction_id].units_active[unit_id];
+            veh->state &= ~(VSTATE_UNK_2000000|VSTATE_UNK_1000000|VSTATE_EXPLORE|VSTATE_ON_ALERT);
+            veh_drop(veh_id, Vehs[veh_id_atk].x, Vehs[veh_id_atk].y);
+            veh_skip(veh_id);
+            if (num_relics) {
+                ++(*num_relics);
+            }
+            return 0;
+        }
+    }
+    if (veh->flags & VFLAG_IS_OBJECTIVE && faction_id_atk >= 0) {
+        ++Factions[faction_id_atk].unk_101;
+    }
+    if ((veh->state & VSTATE_ASSISTANT_WORM)
+    && veh_id_atk >= 0
+    && Vehs[veh_id_atk].faction_id
+    && !(*GamePreferences & PREF_AV_INTERLUDES_DISABLED)) {
+        VEH* veh_atk = &Vehs[veh_id_atk];
+        int atk_faction_id = veh_atk->faction_id;
+        int base_id = veh_atk->home_base_id;
+        if (base_id < 0) {
+            base_id = base_find_2(veh_atk->x, veh_atk->y, atk_faction_id);
+        }
+        if (base_id >= 0) {
+            Bases[base_id].state_flags |= BSTATE_ASSISTANT_KILLER_HOME;
+            Factions[atk_faction_id].player_flags |= PFLAG_UNK_1000;
+            *PluralDefault = 0;
+            *GenderDefault = MFactions[atk_faction_id].is_leader_female;
+            parse_says(6, MFactions[atk_faction_id].name_leader, -1, -1);
+            *PluralDefault = MFactions[atk_faction_id].is_noun_plural;
+            *GenderDefault = MFactions[atk_faction_id].noun_gender;
+            parse_says(7, MFactions[atk_faction_id].noun_faction, -1, -1);
+            interlude(6, Bases[base_id].name, 1, 0);
+        }
+    }
+    if (!veh->faction_id && Vehs[veh_id_atk].faction_id && num_credits) {
+        *num_credits += battle_kill_credits(veh_id);
+    }
+    if (num_killed) {
+        ++(*num_killed);
+    }
+    veh_kill(veh_id);
+    return 1;
+}
+
+void battle_kill_stack(int veh_id, int* num_killed, int* num_relics, int* num_credits, int veh_id_atk, int faction_id_atk) {
+    if (veh_id < 0) {
+        return;
+    }
+    int cur_id = veh_top(veh_id);
+    int atk_id = veh_id_atk;
+    while (cur_id >= 0) {
+        int next_id = Vehs[cur_id].next_veh_id_stack;
+        if (battle_kill(cur_id, num_killed, num_relics, num_credits, atk_id, faction_id_atk)) {
+            if (atk_id > cur_id) {
+                --atk_id;
+            }
+            if (next_id > cur_id) {
+                --next_id;
+            }
+        }
+        cur_id = next_id;
+    }
+}
+
+/*
+Modify planetpearls income after wiping out any planet-owned units.
+*/
+int __cdecl battle_kill_credits(int veh_id) {
+    if (conf.planetpearls > 1) { // Original value
+        return 10 * (mod_morale_alien(veh_id, 0) + 1);
+    } else if (conf.planetpearls == 1) {
+        return 10 + 5 * mod_morale_alien(veh_id, 0);
+    } else {
+        return 0;
+    }
+}
+
+int __cdecl veh_find(int x, int y, int faction_id, int skip_veh_id) {
+    *VehFindDist = 9999;
+    int best_dist = 9999;
+    int best_id = -1;
+
+    for (int i = 0; i < *VehCount; i++) {
+        if (i == skip_veh_id) {
+            continue;
+        }
+        if (faction_id >= 0 && Vehs[i].faction_id != faction_id) {
+            continue;
+        }
+        int dist = vector_dist(x, y, Vehs[i].x, Vehs[i].y);
+        if (dist <= best_dist) {
+            best_dist = dist;
+            best_id = i;
+        }
+    }
+    if (best_id >= 0) {
+        *VehFindDist = best_dist;
+    }
+    return best_id;
+}
+
 /*
 Renamed from speed_proto. Calculate the road move speed for specified prototype.
 */
@@ -375,10 +920,10 @@ int __cdecl proto_speed(int unit_id) {
     UNIT* u = &Units[unit_id];
     int speed_val = u->speed();
     int triad = u->triad();
-    int weapon_id = Units[unit_id].weapon_id;
+    int weapon_id = u->weapon_id;
 
     if (triad == TRIAD_AIR) {
-        speed_val += Units[unit_id].reactor_id * 2;
+        speed_val += u->reactor_id * 2;
     }
     if (Weapon[weapon_id].mode == WMODE_TRANSPORT) {
         speed_val--;
@@ -387,7 +932,7 @@ int __cdecl proto_speed(int unit_id) {
         speed_val--;
     }
     if (has_abil(unit_id, ABL_ANTIGRAV_STRUTS)) {
-        speed_val += (triad == TRIAD_AIR) ? Units[unit_id].reactor_id * 2 : 1;
+        speed_val += (triad == TRIAD_AIR) ? u->reactor_id * 2 : 1;
     }
     if (triad == TRIAD_AIR) {
         if (has_abil(unit_id, ABL_FUEL_NANOCELLS)) {
@@ -433,7 +978,7 @@ various factors. Parameter skip_morale should be normally set to false and
 seems to be only set to true for certain combat calculations in battle_fight.
 Fix: due to limited size of moves_spent field, speeds over 255 are not allowed.
 */
-int __cdecl veh_speed(int veh_id, bool skip_morale) {
+int __cdecl veh_speed(int veh_id, int skip_morale) {
     VEH* veh = &Vehs[veh_id];
     UNIT* u = &Units[veh->unit_id];
     if (veh->unit_id == BSC_FUNGAL_TOWER) {
@@ -513,7 +1058,7 @@ void __cdecl mod_monolith(int veh_id) {
     if (!veh->offense_value()) {
         if (veh->damage_taken) {
             veh->damage_taken = 0;
-            mod_veh_skip(veh_id);
+            veh_skip(veh_id);
             draw_tile(veh->x, veh->y, 2);
             if (!is_player) {
                 return;
@@ -554,7 +1099,7 @@ void __cdecl mod_monolith(int veh_id) {
             || mod_morale_veh(veh_id, 1, 0) >= 6 || veh->morale >= 6 || !veh->offense_value()) {
                 if (veh->damage_taken) {
                     veh->damage_taken = 0;
-                    mod_veh_skip(veh_id);
+                    veh_skip(veh_id);
                     draw_tile(veh->x, veh->y, 2);
                 }
                 for (int i = 1; i < MaxPlayerNum; i++) {
@@ -567,7 +1112,7 @@ void __cdecl mod_monolith(int veh_id) {
         }
         if (veh->damage_taken) {
             veh->damage_taken = 0;
-            mod_veh_skip(veh_id);
+            veh_skip(veh_id);
             draw_tile(veh->x, veh->y, 2);
             if (veh->state & VSTATE_MONOLITH_UPGRADED || mod_morale_veh(veh_id, 1, 0) >= 6) {
                 if (!is_player) {
@@ -598,7 +1143,7 @@ void __cdecl mod_monolith(int veh_id) {
             }
             veh->state |= VSTATE_MONOLITH_UPGRADED;
             veh->morale = clamp(veh->morale + 1, 0, 6);
-            mod_veh_skip(veh_id);
+            veh_skip(veh_id);
             mod_say_morale2(StrBuffer, veh_id, 0);
             CharLowerA(StrBuffer);
             parse_says(0, StrBuffer, -1, -1);
@@ -651,7 +1196,7 @@ int __cdecl mod_goody_box(int veh_id) {
     }
     f->goody_opened++;
     if (*MultiplayerActive) {
-        game_srand(f->goody_opened + *MapRandomSeed + 36 * f->goody_opened);
+        game_srand(*MapRandomSeed + f->goody_opened * 37);
     }
     if (!(*GameRules & RULES_SCN_NO_TECH_ADVANCES)
     && (conf.early_research_start || *CurrentTurn >= -5 * f->SE_research_pending)) {
@@ -770,7 +1315,7 @@ GOODY_START:
         draw_map(1);
         if (is_player) {
             NetMsg_pop(NetMsg, "GOODYQUAKE", -5000, 0, "quake_sm.pcx");
-            if (!tut_check(2048)) {
+            if (!tut_check(0x800)) {
                 return 0;
             }
             TutWin_tut_map(TutWin, "TERRAFORM", x, y, -1, 0, 0, -1, -1);
@@ -845,9 +1390,9 @@ GOODY_START:
             goto GOODY_START;
         }
         int fc_base_id, item_id;
-        fc_base_id = base_find2(x, y, faction_id);
-        item_id = Bases[fc_base_id].queue_items[0];
-        if (!*MultiplayerActive && fc_base_id >= 0 && item_id > -SP_ID_First) {
+        fc_base_id = base_find_2(x, y, faction_id);
+        if (!*MultiplayerActive && fc_base_id >= 0
+        && (item_id = Bases[fc_base_id].queue_items[0], item_id > -SP_ID_First)) {
             int cost;
             if (item_id < 0) {
                 cost = Facility[-item_id].cost;
@@ -914,7 +1459,7 @@ GOODY_START:
                     if (veh->plan() != PLAN_ARTIFACT) {
                         int spawn_id = veh_init(BSC_ALIEN_ARTIFACT, faction_id, x, y);
                         if (spawn_id >= 0) {
-                            mod_veh_skip(spawn_id);
+                            veh_skip(spawn_id);
                             draw_tile(x, y, 2);
                             if (is_player) {
                                 NetMsg_pop(NetMsg, "GOODYARTIFACT", -5000, 0, "art_dis_sm.pcx");
@@ -940,7 +1485,7 @@ GOODY_START:
         if (*BaseFindDist < 3) {
             goto GOODY_NEXT;
         }
-        if (*MultiplayerActive && faction_id == *dword_9A6510 && !goody_rand(2)) {
+        if (*MultiplayerActive && faction_id == *RankingFactionIDUnk2 && !goody_rand(2)) {
             goto GOODY_NEXT;
         }
         bool val1, val2;
@@ -987,7 +1532,7 @@ GOODY_START:
         alt_unit_id = BSC_UNITY_ROVER;
         if (TechOwners[TECH_Fossil]) {
             if (!goody_rand(3) && !f->units_active[BSC_UNITY_SCOUT_CHOPPER]) {
-                base_find2(x, y, faction_id);
+                base_find_2(x, y, faction_id);
                 if (*BaseFindDist <= 3 * proto_speed(BSC_UNITY_SCOUT_CHOPPER)) {
                     alt_unit_id = BSC_UNITY_SCOUT_CHOPPER;
                 }
@@ -1062,12 +1607,12 @@ GOODY_START:
                 MFaction* m = &MFactions[rnd_id];
                 treaty_on(faction_id, rnd_id, DIPLO_COMMLINK);
                 if (is_player) {
-                    *gender_default = m->is_leader_female;
-                    *plurality_default = 0;
+                    *GenderDefault = m->is_leader_female;
+                    *PluralDefault = 0;
                     parse_says(0, m->title_leader, -1, -1);
                     parse_says(1, m->name_leader, -1, -1);
-                    *gender_default = m->noun_gender;
-                    *plurality_default = m->is_noun_plural;
+                    *GenderDefault = m->noun_gender;
+                    *PluralDefault = m->is_noun_plural;
                     parse_says(2, m->noun_faction, -1, -1);
                     NetMsg_pop(NetMsg, "GOODYCOMM", is_sea ? 5000 : -5000, 0, "supply_sm.pcx");
                 }
@@ -1088,7 +1633,7 @@ GOODY_START:
             int rand_val = goody_rand(MaxTechnologyNum);
             while (true) {
                 int tech_id = (rand_val + iter_val) % MaxTechnologyNum;
-                if (!has_tech(tech_id, faction_id) && mod_tech_avail(tech_id, faction_id)
+                if (!has_tech(tech_id, faction_id) && tech_avail(tech_id, faction_id)
                 && (!tech_is_preq(tech_id, TECH_Brain, 9999) || TechOwners[TECH_Brain])) {
                     int val = 0;
                     for (int iter_id : {Tech[tech_id].preq_tech1, Tech[tech_id].preq_tech2}) {
@@ -1229,7 +1774,7 @@ GOODY_START:
         }
         int find_dist, is_spore_launcher;
         is_spore_launcher = 0;
-        base_find2(x, y, faction_id);
+        base_find_2(x, y, faction_id);
         find_dist = *BaseFindDist;
         base_find(x, y);
         if (*BaseFindDist <= 1) {
@@ -1241,7 +1786,7 @@ GOODY_START:
                 goto GOODY_NEXT;
             }
         }
-        if (*MultiplayerActive && faction_id == *dword_9A6510 && !goody_rand(2)) {
+        if (*MultiplayerActive && faction_id == *RankingFactionIDUnk2 && !goody_rand(2)) {
             goto GOODY_NEXT;
         }
         if (is_sea) {
@@ -1412,20 +1957,55 @@ GOODY_NEXT:
     }
 }
 
-/*
-Calculate the former rate to perform terrain enhancements.
-This is only called from veh_wake but it can be inlined on other functions.
-*/
-int __cdecl contribution(int veh_id, int terraform_id) {
-    int value = has_abil(Vehs[veh_id].unit_id, ABL_SUPER_TERRAFORMER) ? 4 : 2;
-    if (terraform_id == (ORDER_REMOVE_FUNGUS - 4) || terraform_id == (ORDER_PLANT_FUNGUS - 4)) {
-        if (has_project(FAC_XENOEMPATHY_DOME, Vehs[veh_id].faction_id)) {
-            value *= 2; // Doubled
+int __cdecl mod_study_artifact(int veh_id) {
+    VEH* veh = &Vehs[veh_id];
+    int x = veh->x;
+    int y = veh->y;
+    int faction_id = veh->faction_id;
+    int base_id = base_at(x, y);
+    if (base_id >= 0 && project_base(FAC_UNIVERSAL_TRANSLATOR) != base_id) {
+        BASE* base = &Bases[base_id];
+        if (base->state_flags & BSTATE_ARTIFACT_LINKED) {
+            if (!(base->state_flags & BSTATE_ARTIFACT_ALREADY_LINKED)
+            && faction_id == *CurrentPlayerFaction) {
+                parse_says(0, base->name, -1, -1);
+                NetMsg_pop(NetMsg, "ALREADYARTIFACT", -5000, 0, "art_dis_sm.pcx");
+                base->state_flags |= BSTATE_ARTIFACT_ALREADY_LINKED;
+            }
+            return 0;
         }
-    } else if (has_project(FAC_WEATHER_PARADIGM, Vehs[veh_id].faction_id)) {
-        value = (value * 3) / 2; // +50%
     }
-    return value;
+    veh_kill(veh_id);
+    draw_tile(x, y, 2);
+    if (faction_id == *CurrentPlayerFaction) {
+        FX_play(Sounds, 35);
+        popp(ScriptFile, "ARTIFACTTECH", 0, "art_dis_sm.pcx", 0);
+    }
+    if (Factions[faction_id].player_flags & PFLAG_UNK_10) {
+        Factions[faction_id].player_flags |= PFLAG_UNK_4;
+    } else {
+        Factions[faction_id].player_flags |= PFLAG_UNK_10;
+    }
+    if (base_id >= 0) {
+        Bases[base_id].state_flags |= BSTATE_ARTIFACT_LINKED;
+    }
+    int best_tech_id = -1;
+    int best_val = -1;
+    for (int i = 0; i < MaxTechnologyNum; i++) {
+        if (!has_tech(i, faction_id) && tech_avail(i, faction_id)) {
+            // Fix: removed here additional code that was never used
+            // due to conditions in tech_avail already excluding it.
+            int rnd_val = game_randv(8);
+            if (rnd_val > best_val) {
+                best_val = rnd_val;
+                best_tech_id = i;
+            }
+        }
+    }
+    if (best_tech_id >= 0) {
+        tech_achieved(faction_id, best_tech_id, 0, 0);
+    }
+    return 1;
 }
 
 /*
@@ -1440,7 +2020,7 @@ int __cdecl arm_strat(int armor_id, int faction_id) {
     }
     int value = Armor[armor_id].defense_value;
     if (value < 0) {
-        return psi_factor((Rules->psi_combat_ratio_def[TRIAD_LAND]
+        value = psi_factor((Rules->psi_combat_ratio_def[TRIAD_LAND]
             * Factions[faction_id].enemy_best_weapon_value)
             / Rules->psi_combat_ratio_atk[TRIAD_LAND], faction_id, false, false);
     }
@@ -1460,7 +2040,7 @@ int __cdecl weap_strat(int weapon_id, int faction_id) {
     }
     int value = Weapon[weapon_id].offense_value;
     if (value < 0) {
-        return psi_factor((Rules->psi_combat_ratio_atk[TRIAD_LAND]
+        value = psi_factor((Rules->psi_combat_ratio_atk[TRIAD_LAND]
             * Factions[faction_id].enemy_best_armor_value)
             / Rules->psi_combat_ratio_def[TRIAD_LAND], faction_id, true, false);
     }
@@ -1908,7 +2488,7 @@ void __cdecl full_upgrade(int faction_id, int new_unit_id, int old_unit_id) {
             active = true;
         }
     }
-    for (int i = *BaseCount-1; i >= 0; i--) {
+    for (int i = *BaseCount - 1; i >= 0; --i) {
         BASE* base = &Bases[i];
         if (base->faction_id == faction_id) {
             for (int j = 0; j < 10 && j <= base->queue_size; j++) {
@@ -2109,37 +2689,11 @@ int __cdecl mod_stack_check(int veh_id, int type, int cond1, int cond2, int cond
     return value;
 }
 
-int __cdecl mod_veh_init(int unit_id, int faction_id, int x, int y) {
-    int veh_id = veh_init(unit_id, faction_id, x, y);
-    if (veh_id >= 0) {
-        Vehs[veh_id].home_base_id = -1;
-        // Set these flags to disable any non-Thinker unit automation.
-        Vehs[veh_id].state |= VSTATE_UNK_40000;
-        Vehs[veh_id].state &= ~VSTATE_UNK_2000;
-    }
-    return veh_id;
-}
-
-int __cdecl mod_veh_kill(int veh_id) {
-    
-    // [WTP]
-    // intercept veh_kill
-    /*
-    VEH* veh = &Vehs[veh_id];
-    debug("disband %2d %2d %s\n", veh->x, veh->y, veh->name());
-    veh_kill(veh_id);
-    */
-    wtp_mod_veh_kill(veh_id);
-    //
-    
-    return VEH_SKIP;
-}
-
 /*
 Check if the land unit inside an air transport can disembark.
 The transport must be in either a base or an airbase to do so.
 */
-int __cdecl mod_veh_jail(int veh_id) {
+int __cdecl veh_jail(int veh_id) {
     VEH* veh = &Vehs[veh_id];
     MAP* sq = mapsq(veh->x, veh->y);
     if (veh->triad() == TRIAD_LAND && veh->order == ORDER_SENTRY_BOARD
@@ -2155,7 +2709,7 @@ Skip vehicle turn by adjusting spent moves to maximum available moves.
 Formers are a special case since they can build items without moving on the same turn.
 To work around several issues, this version adjusts more fields in addition to moves_spent.
 */
-int __cdecl mod_veh_skip(int veh_id) {
+void __cdecl veh_skip(int veh_id) {
     VEH* veh = &Vehs[veh_id];
     int moves = veh_speed(veh_id, 0);
 
@@ -2178,19 +2732,23 @@ int __cdecl mod_veh_skip(int veh_id) {
         }
     }
     veh->moves_spent = moves;
-    return moves;
+}
+
+int __cdecl mod_veh_skip(int veh_id) {
+    veh_skip(veh_id);
+    return VEH_SKIP;
 }
 
 /*
 Purpose: Initialize/reset the fake veh_id used as a placeholder for various UI elements.
 Return Value: veh_id (not used by active vehs, original value 2048)
 */
-int __cdecl mod_veh_fake(int unit_id, int faction_id) {
+int __cdecl veh_fake(int unit_id, int faction_id) {
     veh_clear(conf.max_veh_num, unit_id, faction_id);
     return conf.max_veh_num;
 }
 
-int __cdecl mod_veh_wake(int veh_id) {
+int __cdecl veh_wake(int veh_id) {
     VEH* veh = &Vehs[veh_id];
     if (veh->order >= ORDER_FARM && veh->order < ORDER_MOVE_TO && !(veh->state & VSTATE_WORKING)) {
         veh->moves_spent = veh_speed(veh_id, 0) - Rules->move_rate_roads;
@@ -2243,10 +2801,6 @@ int __cdecl find_return_base(int veh_id) {
         }
     }
     return base_id;
-}
-
-int __cdecl probe_return_base(int UNUSED(x), int UNUSED(y), int veh_id) {
-    return find_return_base(veh_id);
 }
 
 int __cdecl create_proto(int faction_id, VehChassis chs, VehWeapon wpn, VehArmor arm,
@@ -2362,7 +2916,7 @@ VehWeapon weapon_id, VehArmor armor_id, VehAblFlag abls, VehReactor reactor_id) 
             unit->plan = PLAN_PLANET_BUSTER;
             unit->group_id = 14;
         }
-    } else if (Weapon[weapon_id].mode >= WMODE_TRANSPORT) { // Non-combat
+    } else if (Weapon[weapon_id].mode >= WMODE_TRANSPORT) { // non-combat
         unit->plan = Weapon[weapon_id].mode;
         unit->group_id = Weapon[weapon_id].mode + 32;
     } else if (Chassis[chassis_id].triad == TRIAD_SEA) { // combat sea
@@ -2427,7 +2981,7 @@ VehWeapon weapon_id, VehArmor armor_id, VehAblFlag abls, VehReactor reactor_id) 
     }
 }
 
-void parse_abl_name(char* buf, const char* name, bool reduce) {
+static void parse_abl_name(char* buf, const char* name, bool reduce) {
     const int len = min(strlen(name), (size_t)MaxProtoNameLen);
     // Skip empty abbreviation names (Deep Radar)
     if (!len) {
@@ -2448,7 +3002,7 @@ void parse_abl_name(char* buf, const char* name, bool reduce) {
     }
 }
 
-void parse_wpn_name(char* buf, VehWeapon wpn, bool reduce) {
+static void parse_wpn_name(char* buf, VehWeapon wpn, bool reduce) {
     const char* name = Weapon[wpn].name_short;
     const int len = min(strlen(name), (size_t)MaxProtoNameLen);
     if (reduce) {
@@ -2468,7 +3022,7 @@ void parse_wpn_name(char* buf, VehWeapon wpn, bool reduce) {
     strncat(buf, " ", 2);
 }
 
-void parse_arm_name(char* buf, VehArmor arm, bool reduce) {
+static void parse_arm_name(char* buf, VehArmor arm, bool reduce) {
     const char* name = Armor[arm].name_short;
     if (reduce && strlen(name) >= 8) {
         strncat(buf, name, 4);
@@ -2479,7 +3033,7 @@ void parse_arm_name(char* buf, VehArmor arm, bool reduce) {
     strncat(buf, " ", 2);
 }
 
-void parse_chs_name(char* buf, const char* name1, const char* name2) {
+static void parse_chs_name(char* buf, const char* name1, const char* name2) {
     // Convert Speeder to Rover (short form)
     if (strlen(name1) >= 7 && strlen(name1) > strlen(name2) && strlen(name2)) {
         strncat(buf, name2, MaxProtoNameLen);
@@ -2490,7 +3044,7 @@ void parse_chs_name(char* buf, const char* name1, const char* name2) {
     strncat(buf, " ", 2);
 }
 
-void parse_chs_name(char* buf, const char* name) {
+static void parse_chs_name(char* buf, const char* name) {
     strncat(buf, name, MaxProtoNameLen);
     strncat(buf, " ", 2);
 }
@@ -2528,7 +3082,8 @@ VehChassis chs, VehWeapon wpn, VehArmor arm, VehAblFlag abls, VehReactor rec) {
             }
             return 0;
         }
-        return name_proto(name, unit_id, faction_id, chs, wpn, arm, abls, rec);
+        name_proto(name, unit_id, faction_id, chs, wpn, arm, abls, rec);
+        return 0;
     }
     for (int i = 0; i < 2; i++) {
         buf[0] = '\0';
@@ -2631,42 +3186,6 @@ VehChassis chs, VehWeapon wpn, VehArmor arm, VehAblFlag abls, VehReactor rec) {
     return 0;
 }
 
-// [WTP]
-// more granular support control
-// return true if plan requires support
-/*
-VehPlan support_plan() {
-    return (conf.modify_unit_support == 1 ? PLAN_SUPPLY :
-        (conf.modify_unit_support == 2 ? PLAN_PROBE : PLAN_TERRAFORM));
-}
-*/
-bool support_plan(int vehPlan)
-{
-	bool requireSupport = false;
-	
-	switch (conf.modify_unit_support)
-	{
-	case 1:
-		requireSupport = (vehPlan <= PLAN_SUPPLY);
-		break;
-		
-	case 2:
-		requireSupport = (vehPlan <= PLAN_PROBE);
-		break;
-		
-	case 3:
-		requireSupport = (vehPlan <= PLAN_TERRAFORM || vehPlan == PLAN_PROBE);
-		break;
-		
-	default:
-		requireSupport = (vehPlan <= PLAN_TERRAFORM);
-		
-	}
-	
-	return requireSupport;
-	
-}
-
 VehArmor best_armor(int faction_id, int max_cost) {
     int best_id = ARM_NO_ARMOR;
     for (int i = ARM_NO_ARMOR; i <= ARM_RESONANCE_8_ARMOR; i++) {
@@ -2686,8 +3205,11 @@ VehArmor best_armor(int faction_id, int max_cost) {
 
 VehWeapon best_weapon(int faction_id) {
     int best_id = WPN_HAND_WEAPONS;
-    for (int i = WPN_HAND_WEAPONS; i <= WPN_STRING_DISRUPTOR; i++) {
-        if (has_tech(Weapon[i].preq_tech, faction_id)) {
+    for (int i = 0; i < MaxWeaponNum; i++) {
+        if (has_tech(Weapon[i].preq_tech, faction_id)
+        && Weapon[i].mode <= WMODE_MISSILE
+        && Weapon[i].offense_value < 99
+        && i != WPN_CONVENTIONAL_PAYLOAD) {
             int diff = Weapon[i].offense_value - Weapon[best_id].offense_value;
             if (diff > 0 || (diff == 0 && Weapon[best_id].cost >= Weapon[i].cost)) {
                 best_id = i;
@@ -2709,21 +3231,20 @@ VehReactor best_reactor(int faction_id) {
 int proto_offense(int unit_id) {
     assert(unit_id >= 0 && unit_id < MaxProtoNum);
     UNIT* u = &Units[unit_id];
-    int w = (conf.ignore_reactor_power ? (int)REC_FISSION : u->reactor_id);
-    if (u->is_missile() && !u->is_planet_buster()) {
-        // Conv missiles might have nominally low attack rating
-        int faction_id = unit_id / MaxProtoFactionNum;
-        int max_value = max(1, (int)Weapon[best_weapon(faction_id)].offense_value);
-        return max_value * w;
+    int atk_val = Weapon[u->weapon_id].offense_value;
+    if (u->is_planet_buster()) {
+        return atk_val * u->reactor_id;
     }
-    return Weapon[u->weapon_id].offense_value * w;
+    return (conf.ignore_reactor_power || atk_val < 0 ?
+        atk_val * REC_FISSION : atk_val * u->reactor_id);
 }
 
 int proto_defense(int unit_id) {
     assert(unit_id >= 0 && unit_id < MaxProtoNum);
     UNIT* u = &Units[unit_id];
-    int w = (conf.ignore_reactor_power ? (int)REC_FISSION : u->reactor_id);
-    return Armor[u->armor_id].defense_value * w;
+    int def_val = Armor[u->armor_id].defense_value;
+    return (conf.ignore_reactor_power || def_val < 0 ?
+        def_val * REC_FISSION : def_val * u->reactor_id);
 }
 
 int set_move_to(int veh_id, int x, int y) {
@@ -2808,16 +3329,5 @@ int set_board_to(int veh_id, int trans_veh_id) {
     return VEH_SYNC;
 }
 
-int veh_cargo_loaded(int veh_id) {
-    int num = 0;
-    for (int i = 0; i < *VehCount; i++) {
-        VEH* veh = &Vehs[i];
-        if (veh->order == ORDER_SENTRY_BOARD && veh->waypoint_x[0] == veh_id
-        && veh->x == Vehs[veh_id].x && veh->y == Vehs[veh_id].y) {
-            assert(veh_id != i);
-            num++;
-        }
-    }
-    return num;
-}
+
 

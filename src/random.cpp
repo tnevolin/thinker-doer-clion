@@ -23,6 +23,31 @@ uint32_t pair_hash(uint32_t a, uint32_t b) {
 
 GameRandom map_rand;
 static uint32_t random_seed = 0;
+static uint32_t nx = 0, ny = 0;
+
+static inline uint32_t rotl(const uint32_t x, int k) {
+	return (x << k) | (x >> (32 - k));
+}
+
+uint32_t next_rand() {
+    if (!nx && !ny) {
+        LARGE_INTEGER p = {};
+        QueryPerformanceCounter(&p);
+        nx = p.LowPart;
+        ny = (uint32_t)p.HighPart + rotl(p.LowPart, 16);
+    }
+    uint32_t t = nx ^ (nx << 8) ^ GetTickCount();
+    nx = ny;
+    ny = (ny ^ (ny >> 22)) ^ (t ^ (t >> 9));
+    return rotl(nx + ny, 7) + ny;
+}
+
+void setup_random() {
+    size_t seed = next_rand();
+    random_reseed(seed);
+    map_rand.reseed(seed ^ 0xffff);
+    debug("random_reseed %u\n", seed);
+}
 
 void random_reseed(uint32_t value) {
     random_seed = value;
@@ -67,6 +92,13 @@ int32_t GameRandom::get(int32_t low, int32_t high) {
 int32_t GameRandom::get(int32_t limit) {
     state = 1664525 * state + 1013904223;
     return ((state & 0xffff) * limit) >> 16;
+}
+
+MAP* GameRandom::pick_tile(int dy, int& x, int& y) {
+    y = get(*MapAreaY - 2*dy) + dy;
+    x = get(*MapAreaX);
+    x = ((x ^ y) & 1) ^ x;
+    return mapsq(x, y);
 }
 
 #ifdef BUILD_DEBUG
@@ -191,13 +223,13 @@ static int halfsiphash(const void* in, const size_t inlen, const void* k, uint8_
 
 uint64_t hash64(const void* input, size_t len, uint64_t seed) {
     uint64_t h = 0;
-    halfsiphash((uint8_t*)input, len, &seed, (uint8_t*)&h, 8);
+    halfsiphash((const uint8_t*)input, len, &seed, (uint8_t*)&h, 8);
     return h;
 }
 
 uint32_t hash32(const void* input, size_t len, uint64_t seed) {
     uint32_t h = 0;
-    halfsiphash((uint8_t*)input, len, &seed, (uint8_t*)&h, 4);
+    halfsiphash((const uint8_t*)input, len, &seed, (uint8_t*)&h, 4);
     return h;
 }
 

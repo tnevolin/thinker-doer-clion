@@ -1,23 +1,29 @@
-/*
- * Thinker - AI improvement mod for Sid Meier's Alpha Centauri.
- * https://github.com/induktio/thinker/
- *
- * Thinker is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
- * (at your option) version 3 of the GPL.
- *
- * Thinker is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Thinker.  If not, see <https://www.gnu.org/licenses/>.
- */
+// MIT License
+//
+// Copyright (c) Thinker Mod authors
+// https://github.com/induktio/thinker/
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #pragma once
 
+// [WTP] compressed into one and pulled from CMakeList
 #define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v." WTP_VERSION
 
 #ifdef BUILD_DEBUG
@@ -72,6 +78,7 @@
 #include <algorithm>
 #include <functional>
 #include <unordered_map>
+#include "engine.h"
 
 #define DLL_EXPORT extern "C" __declspec(dllexport)
 #define GameAppName "Alpha Centauri"
@@ -82,84 +89,14 @@
 #ifdef BUILD_DEBUG
 #ifdef assert
 #undef assert
-/*
 #define assert(_Expression) \
 ((!!(_Expression)) \
 || (fprintf(debug_log, "Assertion Failed: %s %s %d\n", #_Expression, __FILE__, __LINE__) \
 && (_assert(#_Expression, __FILE__, __LINE__), 0)))
-*/
-#define assert(_Expression) \
-do { \
-if (!(_Expression)) { \
-fprintf(debug_log, "Assertion Failed: %s %s %d\n", #_Expression, __FILE__, __LINE__); \
-fflush(debug_log); \
-__debugbreak(); \
-} \
-} while(0)
 #endif
 #endif
 
-const bool DEF = true;
-const bool ATT = false;
-
-const int MaxMapDist = 1024;
-const int MaxNaturalNum = 16;
-const int MaxLandmarkNum = 64;
-const int MaxRegionNum = 128;
-const int MaxRegionLandNum = 64;
-const int RegionBounds = 63;
-
-const int MaxDiffNum = 6;
-const int MaxPlayerNum = 8;
-const int MaxGoalsNum = 75;
-const int MaxSitesNum = 25;
-const int MaxBaseNum = 512;
-const int MaxVehNum = 2048;
-const int MaxProtoNum = 512;
-const int MaxProtoFactionNum = 64;
-const int MaxBaseNameLen = 25;
-const int MaxProtoNameLen = 32;
-const int MaxBasePopSize = 127;
-const int MaxBaseSpecNum = 16;
-
-const int MaxTechnologyNum = 89;
-const int MaxChassisNum = 9;
-const int MaxWeaponNum = 26;
-const int MaxArmorNum = 14;
-const int MaxReactorNum = 4;
-const int MaxAbilityNum = 29;
-const int MaxMoraleNum = 7;
-const int MaxDefenseModeNum = 3;
-const int MaxOffenseModeNum = 3;
-const int MaxOrderNum = 30;
-const int MaxPlanNum = 15;
-const int MaxTriadNum = 3;
-
-const int MaxResourceInfoNum = 9;
-const int MaxTimeControlNum = 6;
-const int MaxCompassNum = 8;
-const int MaxResourceNum = 4;
-const int MaxEnergyNum = 3;
-
-const int MaxMandateNum = 4;
-const int MaxFacilityNum = 64; // 0 slot unused
-const int MaxSecretProjectNum = 64;
-const int MaxTerrainNum = 20;
-const int MaxSocialCatNum = 4;
-const int MaxSocialModelNum = 4;
-const int MaxSocialEffectNum = 11;
-const int MaxSpecialistNum = 7;
-const int MaxCitizenNum = 10;
-const int MaxMoodNum = 9;
-const int MaxReputeNum = 8;
-const int MaxMightNum = 7;
-const int MaxBonusNum = 8;
-const int MaxBonusNameNum = 41;
-const int MaxProposalNum = 11;
-
-const int StrBufLen = 256;
-const int LineBufLen = 128;
-const int MaxEnemyRange = 50;
+const int8_t NetVersion = 15; // Network multiplayer
 
 enum VideoMode {
     VM_Native = 0,
@@ -207,22 +144,16 @@ struct Config {
     int auto_minimise = 0;
     int render_base_info = 1;
     int render_high_detail = 1; // unlisted option
+    int editor_free_units = 1; // unlisted option
     int autosave_interval = 1;
     int warn_on_former_replace = 1;
     int manage_player_bases = 0;
     int manage_player_units = 0;
     int render_probe_labels = 1;
     int foreign_treaty_popup = 0;
-    int editor_free_units = 1;
+    int game_event_popup = 0;
     int new_base_names = 1;
     int new_unit_names = 1;
-    int spawn_free_units[9] = {0,0,1,0,0,1,1,0,1};
-    int player_colony_pods = 0;
-    int computer_colony_pods = 0;
-    int player_formers = 0;
-    int computer_formers = 0;
-    int player_satellites[3] = {0,0,0};
-    int computer_satellites[3] = {0,0,0};
     int design_units = 1;
     int factions_enabled = 7;
     int social_ai = 1;
@@ -249,12 +180,18 @@ struct Config {
     int time_warp_techs = 5;
     int time_warp_projects = 1;
     int time_warp_start_turn = 40;
+    int spawn_free_units[9] = {0,0,1,0,0,1,1,0,1};
+    int player_colony_pods = 0;
+    int computer_colony_pods = 0;
+    int player_formers = 0;
+    int computer_formers = 0;
+    int player_satellites[3] = {0,0,0};
+    int computer_satellites[3] = {0,0,0};
     int faction_placement = 1;
     int nutrient_bonus = 0;
     int rare_supply_pods = 0;
     int simple_cost_factor = 0;
     int revised_tech_cost = 1;
-    int tech_cost_factor[MaxDiffNum] = {124,116,108,100,84,76};
     int tech_rate_modifier = 100; // internal variable
     int tech_stagnate_rate = 200;
     int fast_fungus_movement = 0;
@@ -262,11 +199,13 @@ struct Config {
     int road_movement_rate = 1; // internal variable
     int max_movement_rate = 255; // internal variable
     int chopper_attack_rate = 1;
+    int base_event_turns = 10;
     int base_psych = 1;
-    int nerve_staple = 2;
+    int nerve_staple_turns = 10;
     int nerve_staple_mod = -10;
     int delay_drone_riots = 0;
     int activate_skipped_units = 1; // unlisted option
+    int probe_action_fix = 1; // unlisted option
     int counter_espionage = 0;
     int ignore_reactor_power = 0;
     int long_range_artillery = 0;
@@ -276,9 +215,12 @@ struct Config {
     int max_veh_num = MaxVehNum; // internal variable
     int skip_default_balance = 1; // unlisted option
     int early_research_start = 1; // unlisted option
+    int base_capture_fix = 1; // unlisted option
     int facility_capture_fix = 1; // unlisted option
     int territory_border_fix = 1;
     int auto_relocate_hq = 1;
+    int rebuild_secret_projects = 0;
+    int steal_energy_rate = 100;
     int simple_hurry_cost = 1;
     int eco_damage_fix = 1;
     int clean_minerals = 16;
@@ -288,9 +230,6 @@ struct Config {
     int spawn_sealurks = 1;
     int spawn_battle_ogres = 1;
     int planetpearls = 1;
-    int event_perihelion = 1;
-    int event_sunspots = 10;
-    int event_market_crash = 1;
     int altitude_limit = 6; // internal variable
     int tile_output_limit[3] = {2,2,2};
     int soil_improve_value = 0;
@@ -302,16 +241,20 @@ struct Config {
     int native_elite_moves = 0;
     int native_weak_until_turn = -1;
     int native_lifecycle_levels[6] = {40,80,120,160,200,240};
-    int facility_defense_bonus[4] = {100,100,100,100};
-    int neural_amplifier_bonus = 50;
-    int dream_twister_bonus = 50;
-    int fungal_tower_bonus = 50;
-    int planet_defense_bonus = 0;
-    int sensor_defense_ocean = 0;
-    int collateral_damage_value = 3;
+    int cost_factor[MaxDiffNum] = {13,12,11,10,8,7};
+    int tech_cost_factor[MaxDiffNum] = {124,116,108,100,84,76};
     int content_pop_player[MaxDiffNum] = {6,5,4,3,2,1};
     int content_pop_computer[MaxDiffNum] = {3,3,3,3,3,3};
     int unit_support_bonus[MaxDiffNum] = {0,0,0,0,0,0};
+    int facility_talent_value[4] = {1,2,1,1};
+    int facility_defense_value[4] = {100,100,100,100};
+    int dream_twister_bonus = 50;
+    int neural_amplifier_bonus = 50;
+    int fungal_tower_bonus = 50;
+    int planet_defense_bonus = 0;
+    int sensor_defense_ocean = 0;
+    int intercept_max_range = 2;
+    int collateral_damage_value = 3;
     int repair_minimal = 1;
     int repair_fungus = 2;
     int repair_friendly = 1;
@@ -325,18 +268,21 @@ struct Config {
     LMConfig landmarks;
     int minimal_popups = 0; // unlisted option
     int diplo_patience = 0; // internal variable
-    int skip_random_factions = 0; // internal variable
+    uint32_t skip_random_events = 0; // internal variable
+    uint32_t skip_random_factions = 0; // internal variable
+    uint64_t skip_gov_facility = 0; // internal variable
     int faction_file_count = 14; // internal variable
     int reduced_mode = 0; // internal variable
     int debug_mode = DEBUG; // internal variable
     int debug_verbose = DEBUG; // internal variable
     
 	//  [WTP]
+	bool unit_support_supply = false;
+	bool unit_support_probe = false;
     bool collect_statistics = false;
     bool alternative_weapon_icon_selection_algorithm = false;
     // implemented in Thinker?
     bool alternative_prototype_cost_formula = false;
-    int reactor_cost_factors[4];
     int reactor_cost_factor;
     int reactor_combat_bonus;
     bool hurry_minimal_minerals = false;
@@ -648,7 +594,7 @@ struct AIPlans {
     int main_region_x = -1;
     int main_region_y = -1;
     int main_sea_region = -1;
-    int target_land_region = 0;
+    int target_land_region = -1;
     int prioritize_naval = 0;
     int naval_scout_x = -1;
     int naval_scout_y = -1;
@@ -660,7 +606,6 @@ struct AIPlans {
     int naval_end_y = -1;
     int naval_beach_x = -1;
     int naval_beach_y = -1;
-    int defend_weights = 0;
     int land_combat_units = 0;
     int sea_combat_units = 0;
     int air_combat_units = 0;
@@ -691,25 +636,30 @@ struct AIPlans {
     int enemy_sat = 0;
     int mil_strength = 0;
     int defense_modifier = 0;
+    int max_offense_value = 0;
+    int max_defense_value = 0;
     float enemy_base_range = 0;
     float enemy_mil_factor = 0;
     int enemy_bases = 0;
     int captured_bases = 0;
 };
 
-#include "engine.h"
 #include "config.h"
 #include "strings.h"
-#include "faction.h"
+#include "savegame.h"
 #include "random.h"
 #include "patch.h"
-#include "base.h"
-#include "build.h"
 #include "game.h"
+#include "gameturn.h"
+#include "faction.h"
+#include "base.h"
+#include "basewin.h"
+#include "build.h"
 #include "gui.h"
 #include "gui_dialog.h"
 #include "veh.h"
 #include "veh_turn.h"
+#include "veh_action.h"
 #include "veh_combat.h"
 #include "net.h"
 #include "map.h"
@@ -723,18 +673,24 @@ struct AIPlans {
 #include "test.h"
 #include "debug.h"
 
+const bool DEF = true;
+const bool ATT = false;
+
 extern FILE* debug_log;
 extern Config conf;
 extern AIPlans plans[MaxPlayerNum];
 extern set_str_t movedlabels;
 extern map_str_t musiclabels;
+extern std::string startup_load_path;
+extern std::vector<std::pair<std::string,std::string>> faction_pool;
+extern std::vector<std::pair<size_t,size_t>> faction_pair;
 
 DLL_EXPORT DWORD ThinkerModule();
 bool FileExists(const char* path);
 void exit_fail(int32_t addr);
 void exit_fail();
 int opt_handle_error(const char* section, const char* name);
-int opt_list_parse(int32_t* dst, char* src, int num, int min_val);
+int opt_list_parse(int32_t* dst, char* src, int num, int min_val, int max_val);
 
 
 

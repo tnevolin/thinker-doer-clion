@@ -409,13 +409,6 @@ void patch_alternative_prototype_cost_formula()
 	
 }
 
-void patch_hurry_popup()
-{
-    write_call(0x41916B, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_BaseWin_popup_start)));
-    write_call(0x4195A6, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_BaseWin_ask_number)));
-	
-}
-
 /*
 Hurries minimal mineral amount to complete production on next turn.
 */
@@ -1009,15 +1002,6 @@ void patch_default_morale_very_green()
         default_morale_very_green_2_bytes_length
     )
     ;
-
-}
-
-/*
-Displays additional base population info in F4 screen.
-*/
-void patch_display_base_population_info()
-{
-    write_call(0x0049DCB1, static_cast<int>(reinterpret_cast<uintptr_t>(sayBase)));
 
 }
 
@@ -3291,7 +3275,7 @@ void patch_datalinks()
 
 void patch_battle_report()
 {
-    write_call(0x00422A66, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_BattleWin_battle_report_Buffer_wrap2))); // BattleWin::battle_report
+    write_call(0x00422A66, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_BattleWin_battle_report_Buffer_wrap_3))); // BattleWin::battle_report
     
 }
 
@@ -3303,8 +3287,24 @@ void patch_support_energy_credits()
 
 void patch_base_psych_label()
 {
-    write_call(0x00408B9A, reinterpret_cast<int>(wtp_mod_Base_draw_psych_Font_init2)); // Base_draw_psych
-    write_call(0x00408E07, reinterpret_cast<int>(wtp_mod_Base_draw_psych_Buffer_write_cent_l)); // Base_draw_psych
+	// BaseWin::draw_psych routes every psych-row label through these two call sites before
+	// display; own both here regardless of what Thinker's own patch.cpp does at these addresses
+	// (patch_setup_wtp runs last, so this always takes effect) - see wtp_mod_BaseWin_draw_psych_strcat
+	write_call(0x00408D94, reinterpret_cast<int>(wtp_mod_BaseWin_draw_psych_strcat)); // BaseWin::draw_psych - police/pacifism label (325/326)
+	write_call(0x00408DBD, reinterpret_cast<int>(wtp_mod_BaseWin_draw_psych_strcat)); // BaseWin::draw_psych - plain label
+	write_call(0x00408B9A, reinterpret_cast<int>(wtp_mod_Base_draw_psych_Font_init)); // BaseWin::draw_psych - Font::init2
+	write_call(0x00408E07, reinterpret_cast<int>(wtp_mod_Base_draw_psych_Buffer_write_cent_l)); // BaseWin::draw_psych - Buffer::write_cent_l
+
+}
+
+void patch_base_energy_label()
+{
+	// unconditional - unlike patch_base_psych_label, this replaces the pop breakdown line and
+	// drops the pop-boom marker regardless of conf.base_psych/base_psych_improved; only the
+	// nerve-staple-else psych-effect branch inside wtp_mod_BaseWin_draw_energy_set_text_color is
+	// itself gated on that config. Owned here regardless of what Thinker's own patch.cpp does at
+	// this address (patch_setup_wtp runs last, so this always takes effect).
+	write_call(0x004129E5, reinterpret_cast<int>(wtp_mod_BaseWin_draw_energy_set_text_color)); // BaseWin::draw_energy - Buffer::set_text_color
 
 }
 
@@ -3378,10 +3378,6 @@ void patch_setup_wtp(Config* cf)
 		patch_alternative_prototype_cost_formula();
 	}
 	
-	// hurry popup
-	
-	patch_hurry_popup();
-	
 	// hurry minimal minerals
 	
 	if (cf->hurry_minimal_minerals)
@@ -3435,10 +3431,6 @@ void patch_setup_wtp(Config* cf)
 	{
 		patch_default_morale_very_green();
 	}
-	
-	// base population info
-	
-	patch_display_base_population_info();
 	
 	// base init
 	
@@ -3687,6 +3679,8 @@ void patch_setup_wtp(Config* cf)
 	{
 		patch_base_psych_label();
 	}
+
+	patch_base_energy_label();
 
 	if (conf.monetary_support)
 	{

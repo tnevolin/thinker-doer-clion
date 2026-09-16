@@ -1449,20 +1449,11 @@ bool isLandmarkBonus(MAP const *tile)
 }
 
 /*
-Reads vehicle order string.
-*/
-const char *readOrder(int id) {
-	g_strTEMP[0] = '\x0';
-	say_orders2(id);
-	return g_strTEMP;
-}
-
-/*
 Checks base has facility.
 */
 bool isBaseHasFacility(int base_id, int facility_id)
 {
-	return has_facility((FacilityId)facility_id, base_id);
+	return has_facility(static_cast<FacilityId>(facility_id), base_id);
 }
 
 /*
@@ -2389,17 +2380,19 @@ double getBaseDefenseMultiplier(int baseId, AttackTriad attackTriad)
 
 	switch (attackTriad)
 	{
-	case 4:
+	case ATTACK_TRIAD_PROBE:
 		defenseBonus = conf.probe_combat_uses_bonuses ? Rules->combat_bonus_intrinsic_base_def : 0;
 		break;
-	case 3:
+	case ATTACK_TRIAD_PSI:
 		defenseBonus = Rules->combat_bonus_intrinsic_base_def;
 		break;
-	case 2:
-	case 1:
-	case 0:
+	case ATTACK_TRIAD_AIR:
+	case ATTACK_TRIAD_SEA:
+	case ATTACK_TRIAD_LAND:
 		{
+			// ReSharper disable once CppTooWideScopeInitStatement
 			bool firstLevelDefense = has_facility(TRIAD_DEFENSIVE_FACILITIES[attackTriad], baseId);
+			// ReSharper disable once CppTooWideScopeInitStatement
 			bool secondLevelDefense = has_facility(FAC_TACHYON_FIELD, baseId);
 
 			if (!firstLevelDefense && !secondLevelDefense)
@@ -2410,11 +2403,11 @@ double getBaseDefenseMultiplier(int baseId, AttackTriad attackTriad)
 			{
 				if (firstLevelDefense)
 				{
-					defenseBonus += conf.facility_defense_bonus[attackTriad];
+					defenseBonus += conf.facility_defense_value[attackTriad];
 				}
 				if (secondLevelDefense)
 				{
-					defenseBonus += conf.facility_defense_bonus[3];
+					defenseBonus += conf.facility_defense_value[3];
 				}
 
 			}
@@ -5710,7 +5703,7 @@ bool isAircraftInFlightVehicle(int vehicleId)
 
 void longRangeFire(int vehicleId, int offsetIndex)
 {
-	battle_fight_1(vehicleId, offsetIndex, 1, 1, 0);
+	battle_fight(vehicleId, offsetIndex, 1, 1, nullptr);
 }
 void longRangeFire(int vehicleId, MAP *attackLocation)
 {
@@ -5723,6 +5716,7 @@ void longRangeFire(int vehicleId, MAP *attackLocation)
 
 	// check range
 
+	// ReSharper disable once CppTooWideScopeInitStatement
 	int range = map_range(vehicle->x, vehicle->y, x, y);
 
 	if (range > Rules->artillery_max_rng)
@@ -6607,6 +6601,10 @@ int getBaseMineralMultiplierNumerator(int baseId)
 	{
 		multiplierNumerator += 2;
 	}
+	if (has_project(FAC_BULK_MATTER_TRANSMITTER, getBase(baseId)->faction_id))
+	{
+		multiplierNumerator += 2;
+	}
 
 	return multiplierNumerator;
 
@@ -6722,7 +6720,8 @@ int getBasePsychMultiplierNumerator(int baseId)
 {
 	int multiplierNumerator = 4;
 
-	if (isBaseHasFacility(baseId, FAC_HOLOGRAM_THEATRE))
+	if (isBaseHasFacility(baseId, FAC_HOLOGRAM_THEATRE)
+	|| (has_project(FAC_VIRTUAL_WORLD, getBase(baseId)->faction_id) && isBaseHasFacility(baseId, FAC_NETWORK_NODE)))
 	{
 		multiplierNumerator += 2;
 	}
@@ -7361,7 +7360,7 @@ bool isBaseDefenderVehicle(int vehicleId)
 
 bool isUnitRequiresSupport(int unitId)
 {
-	return support_plan(Units[unitId].plan) && !isUnitHasAbility(unitId, ABL_CLEAN_REACTOR);
+	return is_support_plan(static_cast<VehPlan>(Units[unitId].plan)) && !isUnitHasAbility(unitId, ABL_CLEAN_REACTOR);
 }
 
 bool isVehicleRequiresSupport(int vehicleId)
@@ -8412,5 +8411,35 @@ int getSupportCost(int factionId)
 
 	return supportCost;
 
+}
+
+/*
+Distance from the given tile to its faction's headquarters, capped at MAX_HQ_DISTANCE.
+Returns 0 if the base at these coordinates is itself the headquarters, and MAX_HQ_DISTANCE if
+there is no base at these coordinates or its faction has no headquarters.
+*/
+int getTileHQDistance(int const factionId, int const x, int const y, int const MAX_HQ_DISTANCE)
+{
+	int hqBaseId = find_hq(factionId);
+
+	int hqDistance;
+	if (hqBaseId == -1)
+	{
+		hqDistance = MAX_HQ_DISTANCE;
+	}
+	else
+	{
+		BASE &hqBase = Bases[hqBaseId];
+		hqDistance = std::min(MAX_HQ_DISTANCE, vector_dist(hqBase.x, hqBase.y, x, y));
+	}
+
+	return hqDistance;
+
+}
+
+int getBaseHQDistance(int baseId, int const MAX_HQ_DISTANCE)
+{
+	BASE &base = Bases[baseId];
+	return getTileHQDistance(base.faction_id, base.x, base.y, MAX_HQ_DISTANCE);
 }
 

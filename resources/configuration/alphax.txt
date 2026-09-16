@@ -1,4 +1,9 @@
 ;
+; **************************************************************
+; *  SMACX Thinker Mod / Default tech tree for the expansion   *
+; *  https://github.com/induktio/thinker                       *
+; **************************************************************
+;
 ; Sid Meier's ALPHA CENTAURI
 ;
 ; Alpha Centauri User-Configurable Rules
@@ -24,10 +29,10 @@
 #RULES
 3,       ; Movement rate along roads
 2,       ; Nutrient intake requirement for citizens
-1,1      ; Numerator & Denominator for artillery fire damage
+1,1      ; Numerator & Denominator for artillery fire damage ; [WTP] no 50% artillery bombardment bonus
 2,       ; Max artillery range (larger will break multiplayer)
 8,       ; Max airdrop range w/o orbital insertion
-20,      ; Nutrient cost multiplier
+20,      ; Nutrient cost multiplier ; [WTP] different harvest-growth model
 10,      ; Minerals cost multiplier
 100,     ; Technology discovery rate as a percentage of standard
 1,       ; Limits mineral increase for mine without road in square
@@ -52,7 +57,7 @@
 0,       ; Combat % -> Infantry vs. Base
 50,      ; Combat penalty % -> attack after airdrop
 50,      ; Combat % -> Fanatic attack bonus
-0,       ; Combat % -> Land based guns vs. ship artillery bonus
+50,      ; Combat % -> Land based guns vs. ship artillery bonus
 0,       ; Combat % -> Artillery bonus per level of altitude
 50,      ; Combat % -> Trance bonus defending vs. psi
 50,      ; Combat % -> Empath Song bonus attacking vs. psi
@@ -79,7 +84,7 @@ None,    ; Technology to allow 3 nutrients in a square
 None,    ; Technology to allow 3 minerals in a square
 None,    ; Technology to allow 3 energy in a square
 AGrav,   ; Technology to allow orbital insertion w/o Space Elevator
-Disable, ; Technology for +1 mining platform bonus (vanilla = EcoEng2)
+Disable, ; Technology for +1 mining platform bonus (vanilla = EcoEng2) ; [WTP] This bonus is given by GeneJack Factory.
 AdapEco, ; Technology for economic victory
 1,       ; If non-zero, probe teams can steal technologies
 1,       ; If non-zero, humans can always contact each other in net games
@@ -114,7 +119,7 @@ Mine,             None,    Mining Platform,  None,     8,  Construct $STR0, M, M
 Solar Collector,  None,    Tidal Harness,    None,     4,  Construct $STR0, S, S
 Forest,           None,    ...,              Disable,  8,  Plant $STR0,     F, Shift+F
 Road,             None,    Road,             Disable,  1,  Build $STR0,     R, R
-Mag Tube,         Magnets, Mag Tube,         Disable,  4,  Build $STR0,     R, R
+Mag Tube,         Magnets, Mag Tube,         Disable,  6,  Build $STR0,     R, R
 Bunker,           None,    Bunker,           Disable,  5,  Construct $STR0, K, K
 Airbase,          DocAir,  Airbase,          Disable, 10,  Construct $STR0, ., .
 Sensor Array,     None,    Sensor Buoy,      None,     4,  Construct $STR0, O, O
@@ -149,8 +154,8 @@ Base Square,      2, 1, 1, 0,
 Bonus Square,     2, 2, 2, 0, * Mineral +1 if mine present
 Forest Square,    1, 2, 1, 0,
 Recycling Tanks,  0, 0, 0, 0,
-Improved Land,    2, *, *, 0, "*" columns are ignored entirely
-Improved Sea,     3, 1, 3, 0, * Mineral +1 with Advanced Ecological Engineering
+Improved Land,    2, *, *, 0, "*" columns are ignored entirely ; [WTP] different harvest-growth model
+Improved Sea,     3, 1, 3, 0, * Mineral +1 with Advanced Ecological Engineering ; [WTP] bonus is granted by Genejack Factory
 Monolith,         2, 2, 2, 0,
 Borehole Square,  0, 2, 6, 0,
 
@@ -423,7 +428,7 @@ Troop Transport,      Transport,      0, 7, 4, -1, DocFlex,
 Supply Transport,     Supply,         0,10,12, -1, IndAuto,
 Probe Team,           Probe Team,     0,11, 4, -1, InfNet,
 Alien Artifact,       Artifact,       0,12,36, -1, Disable,
-Conventional Payload, Conventional,  10, 0,12, -1, Orbital,
+Conventional Payload, Conventional,  12, 0,12, -1, Orbital,
 Tectonic Payload,     Tectonic,       0,13,24, -1, NewMiss,
 Fungal Payload,       Fungal,         0,14,24, -1, NewMiss,
 
@@ -1251,7 +1256,6 @@ Melt Polar Caps,                   EcoEng2, Global Warming; Sea Levels Rise
 Repeal U.N. Charter,               MilAlg,  Atrocity Prohibitions Lifted
 Reinstate U.N. Charter,            MilAlg,  Atrocity Prohibitions Return
 ...,                               Disable, ...
-
 
 
 #NATURAL

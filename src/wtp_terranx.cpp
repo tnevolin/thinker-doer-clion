@@ -237,7 +237,7 @@ fp_4int base_prod_choice = (fp_4int)0x004F81A0;
 fp_2void base_prod_change = (fp_2void)0x004E5A60;
 
 // energy compute
-fp_2void energy_compute = (fp_2void)0x00445130;
+//fp_2void energy_compute = (fp_2void)0x00445130;
 
 // check if unit can use long range fire
 fp_2int tx_can_arty = (fp_2int)0x005C0DB0;
@@ -246,8 +246,4 @@ fp_2int tx_can_arty = (fp_2int)0x005C0DB0;
 fp_5void clip = (fp_5void)0x0055A150;
 
 fp_5int mineral_yield = (fp_5int)0x4E7310;
-tc_2int font_width = (tc_2int)0x619280;
-tc_4int buffer_box = (tc_4int)0x5E3203;
-tc_3int buffer_fill3 = (tc_3int)0x5DFCD0;
-tc_5int buffer_write_l = (tc_5int)0x5DCEA0;
 

@@ -4,58 +4,58 @@
 
 void parse_gen_name(int faction_id, size_t title_value, size_t name_value)
 {
-    *plurality_default = 0;
-    *gender_default = MFactions[faction_id].is_leader_female;
+    *PluralDefault = 0;
+    *GenderDefault = MFactions[faction_id].is_leader_female;
     parse_says(title_value, MFactions[faction_id].title_leader, -1, -1);
     parse_says(name_value, MFactions[faction_id].name_leader, -1, -1);
 }
 
 void parse_noun_name(int faction_id, size_t title_value, size_t name_value)
 {
-    *plurality_default = 0;
-    *gender_default = MFactions[faction_id].noun_gender;
+    *PluralDefault = 0;
+    *GenderDefault = MFactions[faction_id].noun_gender;
     parse_says(title_value, MFactions[faction_id].title_leader, -1, -1);
     parse_says(name_value, MFactions[faction_id].name_leader, -1, -1);
 }
 
-int __cdecl X_pop2(const char* label, int a2)
+int __cdecl X_pop(const char* label, fp_none fn)
 {
     if (!conf.warn_on_former_replace && !strcmp(label, "MIMIMI")) {
         return 1;
     }
-    return X_pop(ScriptFile, label, -1, 0, 0, a2);
+    return X_pop_9(ScriptFile, label, -1, 0, 0, fn);
 }
 
-int __cdecl X_pop3(const char* filename, const char* label, int a3)
+int __cdecl X_pop_2(const char* filename, const char* label, fp_none fn)
 {
-    return X_pop(filename, label, -1, 0, 0, a3);
+    return X_pop_9(filename, label, -1, 0, 0, fn);
 }
 
-int __cdecl X_pop7(const char* label, int a2, int a3)
+int __cdecl X_pop_6(const char* label, int a2, fp_none fn)
 {
-    return X_pop(ScriptFile, label, -1, 0, a2, a3);
+    return X_pop_9(ScriptFile, label, -1, 0, a2, fn);
 }
 
-int __cdecl X_pops3(const char* label, Sprite* a2, int a3)
+int __cdecl X_pops(const char* label, Sprite* a2, fp_none fn)
 {
-    return X_pops(ScriptFile, label, -1, 0, 0, (int)a2, 1, 1, a3);
+    return X_pops_18(ScriptFile, label, -1, 0, 0, a2, 1, 1, fn);
 }
 
-int __cdecl X_pops4(const char* label, int a2, Sprite* a3, int a4)
+int __cdecl X_pops_11(const char* label, int a2, Sprite* a3, fp_none fn)
 {
-    return X_pops(ScriptFile, label, -1, 0, a2, (int)a3, 1, 1, a4);
+    return X_pops_18(ScriptFile, label, -1, 0, a2, a3, 1, 1, fn);
 }
 
 int __cdecl X_dialog(const char* label, int faction2)
 {
-    return X_pops(ScriptFile, label, -1, 0, PopDialogUnk100000,
-        (int)FactionPortraits[faction2], 1, 1, (int)sub_5398E0);
+    return X_pops_18(ScriptFile, label, -1, 0, PopDialogUnk100000,
+        FactionPortraits[faction2], 1, 1, pop_wait);
 }
 
 int __cdecl X_dialog(const char* filename, const char* label, int faction2)
 {
-    return X_pops(filename, label, -1, 0, PopDialogUnk100000,
-        (int)FactionPortraits[faction2], 1, 1, (int)sub_5398E0);
+    return X_pops_18(filename, label, -1, 0, PopDialogUnk100000,
+        FactionPortraits[faction2], 1, 1, pop_wait);
 }
 
 /*
@@ -67,17 +67,6 @@ int __cdecl DiploPop_spying(int faction_id)
     return has_treaty(MapWin->cOwner, faction_id, DIPLO_PACT|DIPLO_HAVE_INFILTRATOR)
         || has_project(FAC_EMPATH_GUILD, MapWin->cOwner)
         || (MapWin->cOwner == *GovernorFaction && !is_alien(faction_id));
-}
-
-/*
-Skip social engineering choices dialog SOCIETY while diplomacy is active.
-*/
-int __cdecl tech_achieved_pop3(const char* filename, const char* label, int a3)
-{
-    if (*DiploWinState) {
-        return 0;
-    }
-    return X_pop3(filename, label, a3);
 }
 
 /*
@@ -98,7 +87,8 @@ int __cdecl mod_threaten(int faction1, int faction2)
     Faction& f_plr = Factions[faction1];
     Faction& f_cmp = Factions[faction2];
 
-    if (!*MultiplayerActive && has_pact(faction2, faction1)
+    if (!*MultiplayerActive && !diplo_value_93FA70
+    && has_pact(faction2, faction1)
     && !has_treaty(faction2, faction1, DIPLO_HAVE_SURRENDERED)
     && (*diplo_current_proposal_id == DiploProposalTechTrade
     || *diplo_current_proposal_id == DiploProposalNeedEnergy)) {
@@ -114,16 +104,18 @@ int __cdecl mod_threaten(int faction1, int faction2)
         if (score > random(64)) {
             f_cmp.diplo_patience[faction1] = 4 - (friction + 3) / 8;
             cause_friction(faction2, faction1, 2);
-            *gender_default = m_plr.noun_gender;
-            *plurality_default = 0;
+            *GenderDefault = m_plr.noun_gender;
+            *PluralDefault = 0;
             parse_says(0, m_plr.title_leader, -1, -1);
             parse_says(1, m_plr.name_leader, -1, -1);
             parse_says(2, (const char*)get_pact(faction1), -1, -1);
             X_dialog("ENDPACT", faction2);
-            return pact_ends(faction1, faction2);
+            pact_ends(faction1, faction2);
+            return 0;
         }
     }
-    return threaten(faction1, faction2);
+    threaten(faction1, faction2);
+    return 0;
 }
 
 int base_trade_value(int base_id, int faction1, int faction2)
@@ -168,11 +160,11 @@ int base_trade_value(int base_id, int faction1, int faction2)
         }
     }
     for (const auto& m : iterate_tiles(base->x, base->y, 0, 21)) {
-        if (mod_base_find3(m.x, m.y, -1, m.sq->region, -1, -1) == base_id) {
+        if (base_find_3(m.x, m.y, -1, m.sq->region, -1, -1) == base_id) {
             if (m.sq->landmarks & ~(LM_DUNES|LM_SARGASSO|LM_UNITY)) {
                 value += (m.sq->landmarks & LM_JUNGLE ? 20 : 15);
             }
-            if (mod_bonus_at(m.x, m.y) > 0) {
+            if (bonus_at(m.x, m.y) > 0) {
                 value += 20;
             }
             if (m.sq->items & (BIT_MONOLITH|BIT_CONDENSER|BIT_THERMAL_BORE)) {

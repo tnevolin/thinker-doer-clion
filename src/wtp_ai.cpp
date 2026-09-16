@@ -1666,7 +1666,7 @@ void populateFactionInfos()
 				if (!(has_tech(techId, factionId) && !has_tech(techId, otherFactionId)))
 					continue;
 
-				int techCost = tech_cost(techId, factionId);
+				int techCost = tech_alt_cost(techId, factionId);
 
 				if (techCost < cheapestStoleableTechCost)
 				{

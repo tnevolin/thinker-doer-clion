@@ -30,6 +30,9 @@ FacilityId constexpr DEFENSIVE_FACILITIES[] = {FAC_PERIMETER_DEFENSE, FAC_NAVAL_
 
 extern double const INF;
 
+constexpr size_t TRIAD_COUNT = TRIAD_AIR + 1;
+constexpr std::array<Triad, TRIAD_COUNT> TRIADS = {TRIAD_LAND, TRIAD_SEA, TRIAD_AIR};
+
 // map get value or default
 template<typename Map>
 typename Map::mapped_type getOrDefault(Map const &map, typename Map::key_type const &key, typename Map::mapped_type const &defaultValue)
@@ -1041,7 +1044,6 @@ BASE *vehicle_home_base(VEH *vehicle);
 MAP *base_square(BASE *base);
 bool unit_has_ability(int id, int ability);
 bool vehicle_has_ability(int vehicleId, int ability);
-const char *readOrder(int id);
 bool isBaseHasFacility(int base_id, int facility_id);
 void setBaseFacility(int base_id, int facility_id, bool add);
 bool has_facility_tech(int faction_id, int facility_id);
@@ -1486,4 +1488,6 @@ bool isValidFactionId(int factionId);
 bool isValidUnitId(int unitId);
 bool isValidVehicleId(int vehicleId);
 void applyTerraforming(MAP *tile, FormerItem action);
+int getTileHQDistance(int factionId, int x, int y, int MAX_HQ_DISTANCE);
+int getBaseHQDistance(int baseId, int MAX_HQ_DISTANCE);
 

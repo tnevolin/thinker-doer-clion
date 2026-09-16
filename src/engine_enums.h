@@ -1,5 +1,77 @@
 #pragma once
 
+const int MaxNaturalNum = 16;
+const int MaxLandmarkNum = 64;
+const int MaxRegionNum = 128;
+const int MaxRegionLandNum = 64;
+const int RegionBounds = 63;
+
+const int MaxDiffNum = 6;
+const int MaxPlayerNum = 8;
+const int MaxGoalsNum = 75;
+const int MaxSitesNum = 25;
+const int MaxBaseNum = 512;
+const int MaxVehNum = 2048;
+const int MaxProtoNum = 512;
+const int MaxProtoFactionNum = 64;
+const int MaxBaseNameLen = 25;
+const int MaxProtoNameLen = 32;
+const int MaxBasePopSize = 127;
+const int MaxBaseSpecNum = 16;
+
+const int MaxTechnologyNum = 89;
+const int MaxChassisNum = 9;
+const int MaxWeaponNum = 26;
+const int MaxArmorNum = 14;
+const int MaxReactorNum = 4;
+const int MaxAbilityNum = 29;
+const int MaxMoraleNum = 7;
+const int MaxDefenseModeNum = 3;
+const int MaxOffenseModeNum = 3;
+const int MaxOrderNum = 30;
+const int MaxPlanNum = 15;
+const int MaxTriadNum = 3;
+
+const int MaxResourceInfoNum = 9;
+const int MaxTimeControlNum = 6;
+const int MaxCompassNum = 8;
+const int MaxResourceNum = 4;
+const int MaxEnergyNum = 3;
+
+const int MaxMandateNum = 4;
+const int MaxFacilityNum = 64; // 0 slot unused
+const int MaxSecretProjectNum = 64;
+const int MaxTerrainNum = 20;
+const int MaxSocialCatNum = 4;
+const int MaxSocialModelNum = 4;
+const int MaxSocialEffectNum = 11;
+const int MaxSpecialistNum = 7;
+const int MaxCitizenNum = 10;
+const int MaxMoodNum = 9;
+const int MaxReputeNum = 8;
+const int MaxMightNum = 7;
+const int MaxBonusNum = 8;
+const int MaxBonusNameNum = 41;
+const int MaxProposalNum = 11;
+
+const int GrowthPopBoom = 6;
+const int ConvoyBaseValue = 1;
+const int PulseArmorValue = 25;
+const int ResonanceArmorValue = 25;
+const int ResonanceWeaponValue = 25;
+const int AerospaceDefenseRange = 2;
+const int FlechetteDefenseValue = 50;
+const int FlechetteDefenseRange = 2;
+const int MissileDefendChance = 50;
+const int OrbitalAttackChance = 50;
+const int PlanetaryDatalinksCount = 3;
+const int PlanetaryTransitPopSize = 3;
+const int UniversalTranslatorTechs = 2;
+
+const int StrBufLen = 256;
+const int LineBufLen = 128;
+const int MaxEnemyRange = 50;
+
 const int SP_Unbuilt = -1;
 const int SP_Destroyed = -2;
 const int SP_ID_First = 70;
@@ -336,6 +408,8 @@ enum GameMoreRules {
     MRULES_NO_SOCIAL_ENGINEERING = 0x8,
     MRULES_UNK_10 = 0x10, // multiplayer simultaneous moves related
     MRULES_UNK_20 = 0x20, // save_daemon / load_daemon
+    MRULES_UNK_40 = 0x40, // control_turn
+    MRULES_UNK_80 = 0x80,
 };
 
 enum GameWarnings {
@@ -599,6 +673,7 @@ enum PlayerFlags {
     PFLAG_GENETIC_PLAGUE_INTRO = 0x400, // +1 to defense against after 1st time faction experiences
     PFLAG_UNK_1000 = 0x1000, // setup_player
     PFLAG_UNK_2000 = 0x2000, // turn_upkeep
+    PFLAG_UNK_4000 = 0x4000,
     PFLAG_BEEN_ELECTED_GOVERNOR = 0x8000, // used to determine whether #GOVERNOR has been displayed
     PFLAG_UNK_10000 = 0x10000,
     PFLAG_UNK_20000 = 0x20000, // compute_score
@@ -628,7 +703,7 @@ enum PlayerFlagsExtended {
     PFLAG_EXT_STRAT_LOTS_ARTILLERY = 0x40,
 };
 
-enum MapItem : uint32_t {
+enum MapItem {
     BIT_BASE_IN_TILE = 0x1,
     BIT_VEH_IN_TILE = 0x2,
     BIT_ROAD = 0x4,
@@ -666,26 +741,34 @@ enum MapItem : uint32_t {
 };
 
 const uint32_t TerraformRules[20][2] = { // terrain enhancement, incompatible on same tile
-    {BIT_FARM,          BIT_FOREST}, // farm
-    {BIT_SOIL_ENRICHER, BIT_FOREST}, // soil enricher
-    {BIT_MINE,          BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE | BIT_SENSOR}, // mine
-    {BIT_SOLAR,         BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE | BIT_SENSOR}, // solar collector / tidal harness
-    {BIT_FOREST,        BIT_MINE | BIT_FUNGUS | BIT_SOLAR | BIT_FARM | BIT_SOIL_ENRICHER | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE}, // forest
-    {BIT_ROAD,          0}, // road
-    {BIT_MAGTUBE,       0}, // magtube
-    {BIT_BUNKER,        BIT_AIRBASE}, // bunker
-    {BIT_AIRBASE,       BIT_BUNKER}, // airbase
-    {BIT_SENSOR,        BIT_MINE | BIT_SOLAR | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE}, // sensor
-    {0,                                        BIT_FUNGUS}, // fungus remove
-    {BIT_FUNGUS,        BIT_MINE | BIT_SOLAR | BIT_FARM | BIT_SOIL_ENRICHER | BIT_FOREST}, // fungus plant
-    {BIT_CONDENSER,     BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE | BIT_SENSOR}, // condenser
-    {BIT_ECH_MIRROR,    BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE | BIT_SENSOR}, // echelon mirror
-    {BIT_THERMAL_BORE,  BIT_MINE | BIT_SOLAR | BIT_FARM | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE | BIT_SENSOR}, // thermal borehole
-    {0,                                        0}, // aquifer
-    {0,                                        0}, // raise land
-    {0,                                        0}, // lower land
-    {0,                                        0}, // level terrain
-    {BIT_MONOLITH,      BIT_SUPPLY_POD | BIT_NUTRIENT_RES | BIT_BONUS_RES}, // monolith
+    BIT_FARM,          BIT_FOREST, // farm
+    BIT_SOIL_ENRICHER, BIT_FOREST, // soil enricher
+    BIT_MINE,          BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR
+                       | BIT_THERMAL_BORE | BIT_SENSOR, // mine
+    BIT_SOLAR,         BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR
+                       | BIT_THERMAL_BORE | BIT_SENSOR, // solar collector / tidal harness
+    BIT_FOREST,        BIT_MINE | BIT_FUNGUS | BIT_SOLAR | BIT_FARM | BIT_SOIL_ENRICHER
+                       | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR | BIT_THERMAL_BORE, // forest
+    BIT_ROAD,          0, // road
+    BIT_MAGTUBE,       0, // magtube
+    BIT_BUNKER,        BIT_AIRBASE, // bunker
+    BIT_AIRBASE,       BIT_BUNKER, // airbase
+    BIT_SENSOR,        BIT_MINE | BIT_SOLAR | BIT_CONDENSER | BIT_ECH_MIRROR
+                       | BIT_THERMAL_BORE, // sensor
+    0,                 BIT_FUNGUS, // fungus remove
+    BIT_FUNGUS,        BIT_MINE | BIT_SOLAR | BIT_FARM | BIT_SOIL_ENRICHER
+                       | BIT_FOREST, // fungus plant
+    BIT_CONDENSER,     BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR
+                       | BIT_THERMAL_BORE | BIT_SENSOR, // condenser
+    BIT_ECH_MIRROR,    BIT_MINE | BIT_SOLAR | BIT_FOREST | BIT_CONDENSER | BIT_ECH_MIRROR
+                       | BIT_THERMAL_BORE | BIT_SENSOR, // echelon mirror
+    BIT_THERMAL_BORE,  BIT_MINE | BIT_SOLAR | BIT_FARM | BIT_FOREST | BIT_CONDENSER
+                       | BIT_ECH_MIRROR | BIT_THERMAL_BORE | BIT_SENSOR, // thermal borehole
+    0,                 0, // aquifer
+    0,                 0, // raise land
+    0,                 0, // lower land
+    0,                 0, // level terrain
+    BIT_MONOLITH,      BIT_SUPPLY_POD | BIT_NUTRIENT_RES | BIT_BONUS_RES, // monolith
 };
 
 enum MapLandmark {
@@ -706,6 +789,7 @@ enum MapLandmark {
     LM_UNITY = 0x4000,
     LM_FOSSIL = 0x8000,
     LM_UNK_400000 = 0x400000, // set_dirty()
+    LM_UNK_800000 = 0x800000,
     LM_DISABLE = 0x80000000, // most landmark effects skipped
 };
 
@@ -830,6 +914,28 @@ enum CouncilProposal {
     PROP_REINSTATE_UN_CHARTER = 9,
 };
 
+enum VictoryType {
+    VIC_NONE = 0,
+    VIC_TRANSCEND_PLR = 1,
+    VIC_TRANSCEND_UNK = 2,
+    VIC_TRANSCEND_LOSS = 3,
+    VIC_UNIFY_SOLO = 4,
+    VIC_UNIFY_COOP = 5,
+    VIC_DIPLOMATIC_SOLO = 6,
+    VIC_LOST_CAPTURE = 7,
+    VIC_TIME_LIMIT = 8,
+    VIC_SUDDEN_DEATH = 9,
+    VIC_DIPLOMATIC_COOP = 10,
+    VIC_DIPLOMATIC_LOSS = 11,
+    VIC_ECONOMIC_SOLO = 12,
+    VIC_ECONOMIC_COOP = 13,
+    VIC_ECONOMIC_LOSS = 14,
+    VIC_LOST_REMOVE = 15,
+    VIC_ALIEN_SOLO = 16,
+    VIC_ALIEN_COOP = 17,
+    VIC_ALIEN_LOSS = 18,
+};
+
 enum MapwinState {
     MAPWIN_DRAW_TRANSLUCENT = 0x1, // render translucent sprites, farm/forest/kelp excl. fungus
     MAPWIN_UNK_2 = 0x2,
@@ -857,5 +963,32 @@ enum MapwinState {
     MAPWIN_UNK_20000000 = 0x20000000,
     MAPWIN_UNK_40000000 = 0x40000000,
     MAPWIN_DRAW_SOLID_BORDERS = 0x80000000, // faction borders solid color terrain view
+};
+
+enum TextLabel {
+    TL_MissionYear = 0,
+    TL_OK = 101,
+    TL_Cancel = 102,
+    TL_Novice = 113,
+    TL_Expert = 114,
+    TL_Name = 174,
+    TL_Formal = 175,
+    TL_Noun = 176,
+    TL_Adjective = 177,
+    TL_Alien = 244,
+    TL_Aliens = 245,
+    TL_Governor = 457,
+    TL_Title = 483,
+    TL_Description = 484,
+    TL_Gender = 485,
+    TL_Explore = 521,
+    TL_Discover = 522,
+    TL_Build = 523,
+    TL_Conquer = 524,
+    TL_Male = 738,
+    TL_Female = 739,
+    TL_CustomSize = 1089,
+    TL_Horizontal = 1090,
+    TL_Vertical = 1091,
 };
 

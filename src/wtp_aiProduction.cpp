@@ -1471,8 +1471,8 @@ void evaluateMilitaryFacilities()
 	// how much each defense structure level increases defense
 	double defenseStructureMultipliers[2] =
 	{
-		(1.0 + static_cast<double>(conf.facility_defense_bonus[0]) / 2.0) / getPercentageBonusMultiplier(Rules->combat_bonus_intrinsic_base_def),
-		(1.0 + static_cast<double>(conf.facility_defense_bonus[3]) / 2.0) / (1.0 + static_cast<double>(conf.facility_defense_bonus[0]) / 2.0),
+		(1.0 + static_cast<double>(conf.facility_defense_value[0]) / 2.0) / getPercentageBonusMultiplier(Rules->combat_bonus_intrinsic_base_def),
+		(1.0 + static_cast<double>(conf.facility_defense_value[3]) / 2.0) / (1.0 + static_cast<double>(conf.facility_defense_value[0]) / 2.0),
 	};
 	
 	// how often land/ocean base experiences each triad attack

@@ -3,24 +3,7 @@
 #include "patchdata.h"
 #include "patchveh.h"
 #include "wtp_patch.h"
-#include <mutex>
 
-static const char* ac_genwarning_sm_pcx = "genwarning_sm.pcx";
-
-static std::mutex FileLock;
-
-/*
-Replace existing file locking on fwrite and similar statically linked library functions
-since MSVC documentation mentions these functions must lock the calling thread (also thread-safe).
-Previously this used file specific locks that apparently caused crashes on newer Windows versions.
-*/
-void __cdecl mod_lock_file(void*) {
-    FileLock.lock();
-}
-
-void __cdecl mod_unlock_file(void*) {
-    FileLock.unlock();
-}
 
 int __cdecl BaseWin_random_seed() {
     return *CurrentBaseID ^ *MapRandomSeed;
@@ -32,18 +15,10 @@ int __cdecl ProdPicker_calculate_itoa(int UNUSED(value), char* buf, int UNUSED(b
 }
 
 int __thiscall NetWin_random_get(void*, int low, int high) {
-    return random_get(low, high); // Multiplayer random factions
-}
-
-int __cdecl zero_value() {
-    return 0;
-}
-
-int __cdecl config_game_rand() {
-    int val = 0; // Singleplayer random factions
+    int val = 0; // Multiplayer random factions
     for (int i = 0; i < 1000; i++) {
-        val = random(conf.faction_file_count);
-        if ((1 << val) & ~conf.skip_random_factions) {
+        val = random_get(low, high);
+        if (!((1 << val) & conf.skip_random_factions)) {
             break;
         }
     }
@@ -51,7 +26,7 @@ int __cdecl config_game_rand() {
 }
 
 int __cdecl skip_action_destroy(int id) {
-    mod_veh_skip(id);
+    veh_skip(id);
     *VehAttackFlags = 0;
     return 0;
 }
@@ -59,20 +34,24 @@ int __cdecl skip_action_destroy(int id) {
 /*
 Change FORESTGROWS / KELPGROWS / PRODUCE popups into delayed notification items on the message log.
 */
-int __cdecl alien_fauna_pop2(const char* label, const char* imagefile, int UNUSED(a3)) {
+int __cdecl alien_fauna_pop2(const char* label, const char* imagefile, int a3) {
+    if (conf.game_event_popup) {
+        return POP2(label, imagefile, a3);
+    }
     return NetMsg_pop(NetMsg, label, 5000, 0, imagefile);
 }
 
-int __cdecl base_production_popp(const char* textfile, const char* label, int a3, const char* imagefile, int a5) {
+int __cdecl base_production_popp(const char* textfile, const char* label, int a3, const char* imagefile, fp_none fn) {
     int item_id = (*CurrentBase ? (*CurrentBase)->item() : 0);
-    if (item_id == -FAC_SKY_HYDRO_LAB
+    if (!conf.game_event_popup
+    && (item_id == -FAC_SKY_HYDRO_LAB
     || item_id == -FAC_ORBITAL_POWER_TRANS
     || item_id == -FAC_NESSUS_MINING_STATION
     || item_id == -FAC_ORBITAL_DEFENSE_POD
-    || item_id == -FAC_GEOSYNC_SURVEY_POD) {
+    || item_id == -FAC_GEOSYNC_SURVEY_POD)) {
         return NetMsg_pop(NetMsg, label, 5000, 0, imagefile);
     }
-    return popp(textfile, label, a3, imagefile, a5);
+    return popp(textfile, label, a3, imagefile, fn);
 }
 
 int __cdecl MapWin_gen_terrain_nearby_fungus(int x, int y) {
@@ -91,19 +70,19 @@ int __cdecl MapWin_gen_terrain_nearby_fungus(int x, int y) {
 /*
 Fix possible crash when say_orders is called without CurrentBase pointer being set.
 */
-int mod_say_orders(char* buf, int veh_id) {
+void mod_say_orders(char* buf, int veh_id) {
     VEH* veh = &Vehs[veh_id];
     if (!*CurrentBase) {
         if (veh->home_base_id >= 0) {
             set_base(veh->home_base_id);
         } else {
-            int base_id = mod_base_find3(veh->x, veh->y, veh->faction_id, -1, -1, -1);
+            int base_id = base_find_3(veh->x, veh->y, veh->faction_id, -1, -1, -1);
             if (base_id >= 0) {
                 set_base(base_id);
             }
         }
     }
-    return say_orders((int)buf, veh_id);
+    return say_orders(buf, veh_id);
 }
 
 /*
@@ -130,10 +109,9 @@ Patch the game engine to use significantly less CPU time by modifying the idle l
 */
 BOOL WINAPI ModPeekMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
 {
-    int* top_menu_handle = (int*)0x945824;
-    int* peek_msg_status = (int*)0x9B7B9C;
+    int* const PeekMsgStatus = (int*)0x9B7B9C;
     static bool wait_next = false;
-    int wait_time = (wait_next && (*top_menu_handle != 0 || *peek_msg_status == 0) ? 8 : 0);
+    int wait_time = (wait_next && (*TopMenuWin != 0 || *PeekMsgStatus == 0) ? 4 : 0);
     int wait_result = MsgWaitForMultipleObjectsEx(0, 0, wait_time, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
 
     if (wait_result == WAIT_TIMEOUT) {
@@ -302,9 +280,7 @@ static void init_video_config(Config* cf) {
         cf->window_height = max(600, cf->window_height);
     }
     
-    // [WTP]
-    // keep proposed resolution
-    if (!valid_resolution(cf) && false) {
+    if (!valid_resolution(cf)) {
         DEVMODE dm = {};
         dm.dmSize = sizeof(dm);
         int w_width = 800;
@@ -325,19 +301,21 @@ static void init_video_config(Config* cf) {
         cf->window_width = w_width;
         cf->window_height = w_height;
     }
-    
     const char* DefaultPaths[] = {
         "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
         "C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe",
     };
     char buf_path[4096] = {};
     char buf_args[4096] = {};
+    char buf_extn[256] = {};
     GetPrivateProfileStringA(GameAppName, "MoviePlayerPath", "<DEFAULT>", buf_path, 4096, GameIniFile);
     GetPrivateProfileStringA(GameAppName, "MoviePlayerArgs",
         "--fullscreen --video-on-top --play-and-exit --no-repeat --swscale-mode=2", buf_args, 4096, GameIniFile);
+    GetPrivateProfileStringA(GameAppName, "MovieExtension", "", buf_extn, 256, GameIniFile);
 
     char* path = strtrim(&buf_path[0]);
     char* args = strtrim(&buf_args[0]);
+    char* extn = strtrim(&buf_extn[0]);
     if (!strlen(path)) {
         cf->video_player = 1;
     } else {
@@ -348,8 +326,8 @@ static void init_video_config(Config* cf) {
                     cf->video_player = 2;
                     video_player_path = std::string(cur_path);
                     video_player_args = std::string(args);
-                    prefs_put2("MoviePlayerPath", cur_path);
-                    prefs_put2("MoviePlayerArgs", args);
+                    prefs_put("MoviePlayerPath", cur_path);
+                    prefs_put("MoviePlayerArgs", args);
                     found = true;
                     break;
                 }
@@ -358,8 +336,8 @@ static void init_video_config(Config* cf) {
             cf->video_player = 2;
             video_player_path = std::string(path);
             video_player_args = std::string(args);
-            prefs_put2("MoviePlayerPath", path);
-            prefs_put2("MoviePlayerArgs", args);
+            prefs_put("MoviePlayerPath", path);
+            prefs_put("MoviePlayerArgs", args);
             found = true;
         }
         if (!found) {
@@ -370,14 +348,16 @@ static void init_video_config(Config* cf) {
                 MOD_VERSION, MB_YESNO | MB_ICONWARNING);
             if (value == IDYES) {
                 cf->video_player = 1;
-                prefs_put2("MoviePlayerPath", "");
-                prefs_put2("MoviePlayerArgs", "");
+                prefs_put("MoviePlayerPath", "");
+                prefs_put("MoviePlayerArgs", "");
             } else {
                 cf->video_player = 0;
-                prefs_put2("MoviePlayerPath", "<DEFAULT>");
-                prefs_put2("MoviePlayerArgs", args);
+                prefs_put("MoviePlayerPath", "<DEFAULT>");
+                prefs_put("MoviePlayerArgs", args);
             }
         }
+        video_player_extn = extn;
+        prefs_put("MovieExtension", extn);
     }
     if (!FileExists("modmenu.txt")) {
         MessageBoxA(0, "Error while opening modmenu.txt. Game might not work as intended.",
@@ -453,10 +433,36 @@ bool patch_setup(Config* cf) {
     write_offset(0x64A3C0, (void*)mod_except_handler3);
     write_offset(0x64D947, (void*)mod_except_handler3);
 
+    write_jump(0x421670, (int)has_fac);
+    write_jump(0x4243D0, (int)clear_council_notify);
+    write_jump(0x4243F0, (int)clear_council_notify_2);
     write_jump(0x4688E0, (int)MapWin_gen_overlays);
-    write_jump(0x4E3EF0, (int)mod_whose_territory);
-    write_jump(0x4E4020, (int)mod_best_specialist);
-    write_jump(0x4E4350, (int)mod_base_mark);
+    write_jump(0x4A0260, (int)sat_attack);
+    write_jump(0x4C9420, (int)terraform_cost);
+    write_jump(0x4C96E0, (int)action_build);
+    write_jump(0x4C9A50, (int)contribution);
+    write_jump(0x4C9B00, (int)action_terraform);
+    write_jump(0x4CA7F0, (int)action_staple);
+    write_jump(0x4CAA50, (int)action_destroy);
+    write_jump(0x4CB310, (int)action_go_to);
+    write_jump(0x4CB580, (int)action_road_to);
+    write_jump(0x4CBAA0, (int)action_home);
+    write_jump(0x4CC360, (int)action_airdrop);
+    write_jump(0x4CD090, (int)action_arty);
+    write_jump(0x4CD2F0, (int)action_destruct);
+    write_jump(0x4CD4E0, (int)action_oblit);
+    write_jump(0x4CD6A0, (int)valid_patrol);
+    write_jump(0x4CDA30, (int)action_patrol);
+    write_jump(0x4CDAF0, (int)shoot_it);
+    write_jump(0x4CE210, (int)action_tectonic);
+    write_jump(0x4CE790, (int)action_fungal);
+    write_jump(0x4CEDE0, (int)action_give);
+    write_jump(0x4CF380, (int)action_gate);
+    write_jump(0x4CF480, (int)action_sat_attack);
+    write_jump(0x4CF740, (int)action);
+    write_jump(0x4E3EF0, (int)whose_territory);
+    write_jump(0x4E4020, (int)best_specialist);
+    write_jump(0x4E4350, (int)base_mark);
     write_jump(0x4E4430, (int)mod_cost_factor);
     write_jump(0x4E4AA0, (int)base_first);
     write_jump(0x4E6400, (int)morale_mod);
@@ -468,6 +474,7 @@ bool patch_setup(Config* cf) {
     write_jump(0x4E9CB0, (int)mod_base_minerals);
     write_jump(0x4EB560, (int)mod_base_energy);
     write_jump(0x4EC3B0, (int)base_compute);
+    write_jump(0x4F06E0, (int)base_queue);
     write_jump(0x4F6510, (int)fac_maint);
     write_jump(0x500320, (int)drop_range);
     write_jump(0x501350, (int)mod_morale_alien);
@@ -477,7 +484,9 @@ bool patch_setup(Config* cf) {
     write_jump(0x50C2E0, (int)act_of_aggression);
     write_jump(0x50C340, (int)steal_tech);
     write_jump(0x50C4B0, (int)steal_energy);
-    write_jump(0x527290, (int)mod_faction_upkeep);
+    write_jump(0x5247B0, (int)generators);
+    write_jump(0x524870, (int)end_of_game);
+    write_jump(0x527290, (int)faction_upkeep);
     write_jump(0x52AD30, (int)council_votes);
     write_jump(0x52AE20, (int)eligible);
     write_jump(0x5391C0, (int)net_treaty_on);
@@ -508,8 +517,10 @@ bool patch_setup(Config* cf) {
     write_jump(0x55BA80, (int)agenda_on);
     write_jump(0x55BB30, (int)set_treaty);
     write_jump(0x55BBA0, (int)set_agenda);
+    write_jump(0x55BC00, (int)spying);
     write_jump(0x55EEE0, (int)atrocity);
     write_jump(0x55F450, (int)major_atrocity);
+    write_jump(0x55F770, (int)break_treaty);
     write_jump(0x579A30, (int)add_goal);
     write_jump(0x579B70, (int)add_site);
     write_jump(0x579E00, (int)clear_goals);
@@ -526,52 +537,76 @@ bool patch_setup(Config* cf) {
     write_jump(0x586F30, (int)read_factions);
     write_jump(0x587240, (int)read_units);
     write_jump(0x5873C0, (int)read_rules);
+    write_jump(0x58F2F0, (int)game_init);
+    write_jump(0x58F430, (int)game_close);
+    write_jump(0x58F450, (int)game_reload);
+    write_jump(0x590E90, (int)map_shutdown);
+    write_jump(0x590ED0, (int)map_init);
     write_jump(0x591040, (int)map_wipe);
     write_jump(0x591290, (int)alt_set);
     write_jump(0x5918F0, (int)alt_set_both);
+    write_jump(0x591D60, (int)bit_set);
+    write_jump(0x591DB0, (int)bit2_set);
     write_jump(0x591E50, (int)synch_bit);
     write_jump(0x592250, (int)say_loc);
     write_jump(0x592550, (int)find_landmark);
     write_jump(0x592600, (int)new_landmark);
     write_jump(0x592650, (int)valid_landmark);
     write_jump(0x5926F0, (int)kill_landmark);
-    write_jump(0x59D980, (int)prefs_get2);
+    write_jump(0x5947C0, (int)order_veh);
+    write_jump(0x59D980, (int)prefs_get);
     write_jump(0x59DA20, (int)default_prefs);
     write_jump(0x59DAA0, (int)default_prefs2);
     write_jump(0x59DB20, (int)default_warn);
     write_jump(0x59DB30, (int)default_rules);
-    write_jump(0x59DB40, (int)prefs_get);
+    write_jump(0x59DB40, (int)prefs_get_2);
     write_jump(0x59DBD0, (int)prefs_fac_load);
     write_jump(0x59DCF0, (int)prefs_load);
-    write_jump(0x59E510, (int)prefs_put2);
-    write_jump(0x59E530, (int)prefs_put);
+    write_jump(0x59E510, (int)prefs_put);
+    write_jump(0x59E530, (int)prefs_put_2);
     write_jump(0x59E5D0, (int)prefs_save);
     write_jump(0x59E980, (int)vulnerable);
     write_jump(0x59EE50, (int)corner_market);
     write_jump(0x59E950, (int)prefs_use);
+    write_jump(0x59F120, (int)probe);
     write_jump(0x5AC060, (int)is_objective);
+    write_jump(0x5ADE80, (int)replay_base);
+    write_jump(0x5B0A30, (int)scenario_setup);
     write_jump(0x5B4210, (int)social_calc);
     write_jump(0x5B44D0, (int)social_upkeep);
     write_jump(0x5B4550, (int)social_upheaval);
     write_jump(0x5B4730, (int)society_avail);
+    write_jump(0x5B8EE0, (int)stack_veh);
+    write_jump(0x5B9510, (int)stack_kill);
     write_jump(0x5B9C40, (int)say_tech);
     write_jump(0x5B9FE0, (int)tech_category);
+    write_jump(0x5BAB40, (int)terrain_avail);
+    write_jump(0x5BAE60, (int)tech_effects);
+    write_jump(0x5BB000, (int)tech_achieved);
+    write_jump(0x5BCB60, (int)tech_is_preq);
+    write_jump(0x5BE530, (int)tech_advance);
+    write_jump(0x5BF010, (int)is_sensor);
     write_jump(0x5BF1F0, (int)has_abil);
-    write_jump(0x5BF310, (int)X_pop2);
+    write_jump(0x5BF310, (int)X_pop);
+    write_jump(0x5C03D0, (int)veh_init);
+    write_jump(0x5C08C0, (int)veh_kill);
+    write_jump(0x5C0B00, (int)kill);
     write_jump(0x5C0DB0, (int)can_arty);
     write_jump(0x5C0E40, (int)mod_morale_veh);
     write_jump(0x5C1540, (int)veh_speed);
-    write_jump(0x5C1C40, (int)mod_veh_jail);
-    write_jump(0x5C1D20, (int)mod_veh_skip);
-    write_jump(0x5C1D50, (int)mod_veh_fake);
-    write_jump(0x5C1D70, (int)mod_veh_wake);
+    write_jump(0x5C1760, (int)veh_cargo);
+    write_jump(0x5C1C40, (int)veh_jail);
+    write_jump(0x5C1D20, (int)veh_skip);
+    write_jump(0x5C1D50, (int)veh_fake);
+    write_jump(0x5C1D70, (int)veh_wake);
     write_jump(0x5C2020, (int)world_alt_set);
     write_jump(0x5C2380, (int)world_raise_alt);
     write_jump(0x5C23E0, (int)world_lower_alt);
-    write_jump(0x626250, (int)log_say2);
-    write_jump(0x6262F0, (int)log_say);
-    write_jump(0x626350, (int)log_say_hex2);
-    write_jump(0x6263F0, (int)log_say_hex);
+    write_jump(0x5C5A30, (int)world_climate);
+    write_jump(0x626250, (int)log_say);
+    write_jump(0x6262F0, (int)log_say_2);
+    write_jump(0x626350, (int)log_say_hex);
+    write_jump(0x6263F0, (int)log_say_hex_2);
     write_jump(0x645460, (int)limit_strcpy);
 
     remove_call(0x415F69); // base_doctors
@@ -581,13 +616,35 @@ bool patch_setup(Config* cf) {
 
     write_call(0x58D84C, (int)mod_load_map_daemon); // map_menu
     write_call(0x5AB891, (int)mod_load_map_daemon); // load_map
+    write_call(0x5ABCE3, (int)mod_save_map_daemon); // save_map
     write_call(0x5AAD7D, (int)mod_load_daemon); // load_game
     write_call(0x5ABEB3, (int)mod_load_daemon); // load_undo
     write_call(0x5ADCD7, (int)mod_load_daemon); // show_replay
-    write_call(0x5A9653, (int)save_daemon_header); // save_daemon
-    write_call(0x5A9BA8, (int)save_daemon_header); // save_map_daemon
-    write_call(0x5A97B3, (int)load_daemon_strcmp); // load_daemon
-    write_call(0x5A9CA0, (int)load_daemon_strcmp); // load_map_daemon
+    write_call(0x5296D7, (int)mod_save_daemon); // net_upkeep
+    write_call(0x52A2BE, (int)mod_save_daemon); // net_end_of_turn
+    write_call(0x5AA4C0, (int)mod_save_daemon); // save_game
+    write_call(0x5ABD97, (int)mod_save_daemon); // auto_save
+    write_call(0x5ABDDC, (int)mod_save_daemon); // auto_save
+    write_call(0x5ABE32, (int)mod_save_daemon); // auto_save
+    write_call(0x5ABFE2, (int)mod_save_daemon); // auto_undo
+    write_call(0x5ADC76, (int)mod_save_daemon); // show_replay
+
+    write_call(0x45FB00, (int)control_game); // WinMain
+    write_call(0x52AC4A, (int)top_menu); // control_game
+    write_call(0x58DBA5, (int)top_menu); // multiplayer_init
+    write_call(0x58E768, (int)map_menu); // top_menu
+    write_call(0x4E12C6, (int)size_of_planet); // Console::editor_clear
+    write_call(0x58D780, (int)size_of_planet); // map_menu
+    write_call(0x58E919, (int)size_of_planet); // top_menu
+    write_call(0x4E0FA9, (int)custom_planet); // Console::editor_climate
+    write_call(0x58D7A3, (int)custom_planet); // map_menu
+    write_call(0x52AC07, (int)setup_game); // control_game
+    write_call(0x58B9C9, (int)setup_game); // config_game
+    write_call(0x58DDFA, (int)setup_game); // multiplayer_init
+    write_call(0x58E846, (int)setup_game); // top_menu
+    write_call(0x58E955, (int)setup_game); // top_menu
+    write_call(0x52768A, (int)turn_upkeep); // control_turn
+    write_call(0x52A4AD, (int)turn_upkeep); // net_control_turn
     write_call(0x4E1061, (int)mod_world_build); // Console::editor_generate
     write_call(0x4E113B, (int)mod_world_build); // Console::editor_fast
     write_call(0x58B9BF, (int)mod_world_build); // config_game
@@ -606,13 +663,12 @@ bool patch_setup(Config* cf) {
     write_call(0x5274F5, (int)mod_eliminate_player); // faction_upkeep
     write_call(0x598685, (int)mod_eliminate_player); // order_veh
     write_call(0x5B41E9, (int)mod_time_warp);  // setup_game
-    write_call(0x52768A, (int)mod_turn_upkeep); // control_turn
-    write_call(0x52A4AD, (int)mod_turn_upkeep); // net_control_turn
     write_call(0x527039, (int)mod_base_upkeep); // production_phase
     write_call(0x4F7A38, (int)mod_base_hurry); // base_upkeep
     write_call(0x528289, (int)mod_enemy_turn); // control_turn
     write_call(0x5295C0, (int)mod_enemy_turn); // net_upkeep
     write_call(0x513F08, (int)mod_enemy_veh); // Console::veh_turn
+    write_call(0x56B65E, (int)mod_alien_move); // enemy_move
     write_call(0x579703, (int)mod_enemy_veh); // enemy_turn
     write_call(0x579362, (int)mod_enemy_move); // enemy_veh
     write_call(0x40F45A, (int)mod_base_draw); // BaseWin::draw_farm
@@ -632,6 +688,13 @@ bool patch_setup(Config* cf) {
     write_call(0x4E2A81, (int)prefs_get_strcpy); // AlphaNet::do_create
     write_call(0x4E2AA3, (int)prefs_get_strcpy); // AlphaNet::do_create
     write_call(0x4E2EA2, (int)prefs_get_strcpy); // AlphaNet::do_join
+    write_call(0x4E3AFC, (int)rebuild_base_bits); // base_at
+    write_call(0x4E3B5F, (int)rebuild_base_bits); // base_at
+    write_call(0x533C7C, (int)rebuild_base_bits); // NetDaemon::synch
+    write_call(0x5A9A39, (int)rebuild_base_bits); // load_daemon
+    write_call(0x533C60, (int)rebuild_vehicle_bits); // NetDaemon::synch
+    write_call(0x5A9A34, (int)rebuild_vehicle_bits); // load_daemon
+    write_call(0x5BFF5F, (int)rebuild_vehicle_bits); // veh_at
     write_call(0x4B72C0, (int)elev_at); // StatusWin::draw_status
     write_call(0x46B719, (int)world_raise_alt); // MapWin::editor
     write_call(0x4CA122, (int)world_raise_alt); // action_terraform
@@ -641,8 +704,13 @@ bool patch_setup(Config* cf) {
     write_call(0x46B705, (int)world_lower_alt); // MapWin::editor
     write_call(0x4CA13A, (int)world_lower_alt); // action_terraform
     write_call(0x500EFD, (int)world_lower_alt); // planet_busting
+    write_call(0x4E0F85, (int)mod_world_polar_caps); // Console::editor_polar
+    write_call(0x5C8861, (int)mod_world_polar_caps); // world_build
+    write_call(0x4E14BA, (int)mod_world_rocky); // Console::editor_rockiness
+    write_call(0x5C8959, (int)mod_world_rocky); // world_build
+    write_call(0x5C888D, (int)mod_world_temperature); // world_build
+    write_call(0x5C8892, (int)mod_world_riverbeds); // world_build
     write_call(0x5C2D05, (int)mod_world_shorelines); // world_erosion
-    write_call(0x5C5A4A, (int)mod_world_shorelines); // world_climate
     write_call(0x5C8866, (int)mod_world_shorelines); // world_build
     write_call(0x5A98C9, (int)mod_world_linearize_contours); // load_daemon
     write_call(0x5C8949, (int)mod_world_linearize_contours); // world_build
@@ -650,6 +718,8 @@ bool patch_setup(Config* cf) {
     write_call(0x5991C8, (int)mod_monolith); // order_veh
     write_call(0x4CCFE0, (int)mod_goody_box); // action_airdrop
     write_call(0x5991E6, (int)mod_goody_box); // order_veh
+    write_call(0x56D03E, (int)mod_study_artifact); // enemy_move
+    write_call(0x599722, (int)mod_study_artifact); // order_veh
     write_call(0x403BD4, (int)mod_amovie_project); // amovie_project2
     write_call(0x4F2B4B, (int)mod_amovie_project); // base_production
     write_call(0x524D06, (int)mod_amovie_project); // end_of_game
@@ -668,8 +738,7 @@ bool patch_setup(Config* cf) {
     write_call(0x445A2F, (int)load_music_strcmpi);
     write_call(0x445AB2, (int)load_music_strcmpi);
     write_call(0x498720, (int)ReportWin_close_handler);
-    write_call(0x408DBD, (int)BaseWin_draw_psych_strcat); // BaseWin_draw_psych
-    write_call(0x408D94, (int)BaseWin_draw_psych_strcat); // BaseWin_draw_psych
+    write_call(0x408DBD, (int)BaseWin_draw_psych_strcat);
     write_call(0x40F8F8, (int)BaseWin_draw_farm_set_font);
     write_call(0x4129E5, (int)BaseWin_draw_energy_set_text_color);
     write_call(0x415AD8, (int)BaseWin_draw_misc_eco_damage);
@@ -698,17 +767,12 @@ bool patch_setup(Config* cf) {
     write_call(0x54F4E2, (int)mod_threaten);
     write_call(0x54F532, (int)mod_threaten);
     write_call(0x54F702, (int)mod_threaten);
-    write_call(0x5A3F7D, (int)probe_veh_health);
-    write_call(0x5A3F98, (int)probe_veh_health);
-    write_call(0x5A4972, (int)probe_mind_control_range);
-    write_call(0x5A4B8C, (int)probe_thought_control);
-    write_call(0x5BBEB0, (int)tech_achieved_pop3);
-    write_call(0x4868B2, (int)mod_tech_avail); // PickTech::pick
-    write_call(0x4DFC41, (int)mod_tech_avail); // Console::editor_tech
-    write_call(0x558246, (int)mod_tech_avail); // communicate
-    write_call(0x57C0CC, (int)mod_tech_avail); // goody_box
-    write_call(0x57D130, (int)mod_tech_avail); // study_artifact
-    write_call(0x5BDC38, (int)mod_tech_avail); // tech_ai
+    write_call(0x4868B2, (int)tech_avail); // PickTech::pick
+    write_call(0x4DFC41, (int)tech_avail); // Console::editor_tech
+    write_call(0x558246, (int)tech_avail); // communicate
+    write_call(0x57C0CC, (int)tech_avail); // goody_box
+    write_call(0x57D130, (int)tech_avail); // study_artifact
+    write_call(0x5BDC38, (int)tech_avail); // tech_ai
     write_call(0x486A1B, (int)mod_tech_val); // PickTech::pick
     write_call(0x53E9B4, (int)mod_tech_val); // tech_analysis
     write_call(0x53EA56, (int)mod_tech_val); // tech_analysis
@@ -771,10 +835,10 @@ bool patch_setup(Config* cf) {
     write_call(0x4C9870, (int)mod_base_init); // action_build
     write_call(0x5AF926, (int)mod_base_init); // time_warp
     write_call(0x5B2BB8, (int)mod_base_init); // setup_player
-    // write_call(0x41CC8F, (int)mod_base_kill); // BaseWin::base_editor
+    write_call(0x41CC8F, (int)mod_base_kill); // BaseWin::base_editor
     write_call(0x4CD629, (int)mod_base_kill); // action_oblit
-    // write_call(0x4D2EC8, (int)mod_base_kill); // Console::disband2
-    // write_call(0x4E07AC, (int)mod_base_kill); // Console::editor_eliminate
+    write_call(0x4D2EC8, (int)mod_base_kill); // Console::disband2
+    write_call(0x4E07AC, (int)mod_base_kill); // Console::editor_eliminate
     write_call(0x4EF319, (int)mod_base_kill); // base_growth
     write_call(0x4F1466, (int)mod_base_kill); // base_production
     write_call(0x500FD7, (int)mod_base_kill); // planet_busting
@@ -783,10 +847,10 @@ bool patch_setup(Config* cf) {
     write_call(0x50CE5B, (int)mod_base_kill); // capture_base
     write_call(0x520E1A, (int)mod_base_kill); // random_events
     write_call(0x521121, (int)mod_base_kill); // random_events
-    // write_call(0x5890E7, (int)mod_base_kill); // alien_start
+    write_call(0x5890E7, (int)mod_base_kill); // alien_start
     write_call(0x5915A6, (int)mod_base_kill); // alt_set
     write_call(0x598673, (int)mod_base_kill); // order_veh
-    // write_call(0x5B0FF1, (int)mod_base_kill); // setup_player
+    write_call(0x5B0FF1, (int)mod_base_kill); // setup_player
     write_call(0x415F35, (int)mod_base_reset); // BaseWin::unk4
     write_call(0x41605A, (int)mod_base_reset); // BaseWin::gov_on
     write_call(0x417F83, (int)mod_base_reset); // BaseWin::production
@@ -807,11 +871,10 @@ bool patch_setup(Config* cf) {
     write_call(0x561607, (int)mod_base_reset); // enemy_strategy
     write_call(0x564850, (int)mod_base_reset); // enemy_strategy
     write_call(0x5B01C7, (int)mod_base_reset); // time_warp
-    write_call(0x4E4C2F, (int)mod_replay_base); // base_init
-    write_call(0x4E5378, (int)mod_replay_base); // base_kill
-    write_call(0x4F579E, (int)mod_replay_base); // drone_riot
-    write_call(0x50CF02, (int)mod_replay_base); // capture_base
-    write_call(0x54D313, (int)mod_replay_base); // give_a_base
+    write_call(0x50C490, (int)mod_bases_reset); // steal_tech
+    write_call(0x50DA9D, (int)mod_bases_reset); // capture_base
+    write_call(0x5634BD, (int)mod_bases_reset); // enemy_strategy
+    write_call(0x5BE62C, (int)mod_bases_reset); // tech_advance
     write_call(0x41B8BF, (int)mod_facility_avail); // BaseWin::base_editor_fac
     write_call(0x41CC07, (int)mod_facility_avail); // BaseWin::base_editor
     write_call(0x49357A, (int)mod_facility_avail); // ProdPicker::calculate
@@ -831,6 +894,9 @@ bool patch_setup(Config* cf) {
     write_call(0x49366B, (int)mod_base_making); // ProdPicker::calculate
     write_call(0x4E5B06, (int)mod_base_making); // base_change
     write_call(0x4E5B1B, (int)mod_base_making); // base_change
+    write_call(0x4E61B1, (int)mod_base_change); // base_reset
+    write_call(0x4E61D7, (int)mod_base_change); // base_reset
+    write_call(0x4E62BB, (int)mod_base_change); // base_reset
     write_call(0x52B0E1, (int)mod_wants_to_attack); // wants_prop
     write_call(0x52B0F4, (int)mod_wants_to_attack); // wants_prop
     write_call(0x52B21A, (int)mod_wants_to_attack); // wants_prop
@@ -858,8 +924,10 @@ bool patch_setup(Config* cf) {
     write_call(0x4B6C44, (int)mod_crop_yield); // StatusWin::draw_status
     write_call(0x4BCEEB, (int)mod_crop_yield); // TutWin::tour
     write_call(0x4E7DE4, (int)mod_crop_yield); // resource_yield
-	write_call(0x4E7F04, (int)mod_crop_yield); // farm_yield [WTP]
-	write_call(0x4E8034, (int)mod_crop_yield); // farm_unyield [WTP]
+    // [WTP]
+    write_call(0x4E7F04, (int)mod_crop_yield); // farm_yield
+    write_call(0x4E8034, (int)mod_crop_yield); // farm_unyield
+    //
     write_call(0x4E888C, (int)mod_crop_yield); // base_yield
     write_call(0x4E96F4, (int)mod_crop_yield); // base_support
     write_call(0x4ED7F1, (int)mod_crop_yield); // base_terraform
@@ -868,8 +936,10 @@ bool patch_setup(Config* cf) {
     write_call(0x4B6EF9, (int)mod_mine_yield); // StatusWin::draw_status
     write_call(0x4B6F84, (int)mod_mine_yield); // StatusWin::draw_status
     write_call(0x4E7E00, (int)mod_mine_yield); // resource_yield
-	write_call(0x4E7F14, (int)mod_mine_yield); // farm_yield [WTP]
-	write_call(0x4E8044, (int)mod_mine_yield); // farm_unyield [WTP]
+    // [WTP]
+    write_call(0x4E7F14, (int)mod_mine_yield); // farm_yield
+    write_call(0x4E8044, (int)mod_mine_yield); // farm_unyield
+    //
     write_call(0x4E88AC, (int)mod_mine_yield); // base_yield
     write_call(0x4E970A, (int)mod_mine_yield); // base_support
     write_call(0x4B7028, (int)mod_energy_yield); // StatusWin::draw_status
@@ -879,25 +949,25 @@ bool patch_setup(Config* cf) {
     write_call(0x4E88CA, (int)mod_energy_yield); // base_yield
     write_call(0x4E971F, (int)mod_energy_yield); // base_support
     write_call(0x56C856, (int)mod_energy_yield); // enemy_move
-    write_call(0x46DB16, (int)mod_base_find3); // MapWin::click
-    write_call(0x4C94B8, (int)mod_base_find3); // terraform_cost
-    write_call(0x4CB104, (int)mod_base_find3); // action_destroy
-    write_call(0x4CB1F4, (int)mod_base_find3); // action_destroy
-    write_call(0x4CCC56, (int)mod_base_find3); // action_airdrop
-    write_call(0x4E3F8C, (int)mod_base_find3); // whose_territory
-    write_call(0x5224A0, (int)mod_base_find3); // alien_fauna
-    write_call(0x52293A, (int)mod_base_find3); // alien_fauna
-    write_call(0x523ED7, (int)mod_base_find3); // reset_territory
-    write_call(0x52417F, (int)mod_base_find3); // reset_territory
-    write_call(0x54AEA1, (int)mod_base_find3); // suggest_plan
-    write_call(0x54AF20, (int)mod_base_find3); // suggest_plan
-    write_call(0x563745, (int)mod_base_find3); // enemy_strategy
-    write_call(0x56B8F1, (int)mod_base_find3); // enemy_move
-    write_call(0x56B924, (int)mod_base_find3); // enemy_move
-    write_call(0x56E460, (int)mod_base_find3); // enemy_move
-    write_call(0x570C4B, (int)mod_base_find3); // enemy_move
-    write_call(0x5B19B3, (int)mod_base_find3); // setup_player
-    write_call(0x5C0609, (int)mod_base_find3); // veh_init
+    write_call(0x46DB16, (int)base_find_3); // MapWin::click
+    write_call(0x4C94B8, (int)base_find_3); // terraform_cost
+    write_call(0x4CB104, (int)base_find_3); // action_destroy
+    write_call(0x4CB1F4, (int)base_find_3); // action_destroy
+    write_call(0x4CCC56, (int)base_find_3); // action_airdrop
+    write_call(0x4E3F8C, (int)base_find_3); // whose_territory
+    write_call(0x5224A0, (int)base_find_3); // alien_fauna
+    write_call(0x52293A, (int)base_find_3); // alien_fauna
+    write_call(0x523ED7, (int)base_find_3); // reset_territory
+    write_call(0x52417F, (int)base_find_3); // reset_territory
+    write_call(0x54AEA1, (int)base_find_3); // suggest_plan
+    write_call(0x54AF20, (int)base_find_3); // suggest_plan
+    write_call(0x563745, (int)base_find_3); // enemy_strategy
+    write_call(0x56B8F1, (int)base_find_3); // enemy_move
+    write_call(0x56B924, (int)base_find_3); // enemy_move
+    write_call(0x56E460, (int)base_find_3); // enemy_move
+    write_call(0x570C4B, (int)base_find_3); // enemy_move
+    write_call(0x5B19B3, (int)base_find_3); // setup_player
+    write_call(0x5C0609, (int)base_find_3); // veh_init
     write_call(0x467711, (int)mod_hex_cost); // MapWin::dest_line
     write_call(0x572518, (int)mod_hex_cost); // enemy_move
     write_call(0x5772D7, (int)mod_hex_cost); // enemy_move
@@ -1071,28 +1141,6 @@ bool patch_setup(Config* cf) {
     write_call(0x62794B, (int)mod_BasePop_start); // pop_ask
     write_call(0x627C90, (int)mod_BasePop_start); // pop_ask_number
 
-    // Replace standard library file locking
-    write_call(0x6455AE, (int)mod_lock_file); // _fclose
-    write_call(0x646046, (int)mod_lock_file); // _fwrite
-    write_call(0x64617F, (int)mod_lock_file); // _fread
-    write_call(0x64685C, (int)mod_lock_file); // _fgetc
-    write_call(0x64688D, (int)mod_lock_file); // _fputc
-    write_call(0x647283, (int)mod_lock_file); // _fgets
-    write_call(0x6472D6, (int)mod_lock_file); // _rewind
-    write_call(0x647337, (int)mod_lock_file); // _fseek
-    write_call(0x64781D, (int)mod_lock_file); // _fprintf
-    write_call(0x647927, (int)mod_lock_file); // _ftell
-    write_call(0x6455BC, (int)mod_unlock_file); // _fclose
-    write_call(0x646061, (int)mod_unlock_file); // _fwrite
-    write_call(0x64619A, (int)mod_unlock_file); // _fread
-    write_call(0x64687B, (int)mod_unlock_file); // _fgetc
-    write_call(0x6468B6, (int)mod_unlock_file); // _fputc
-    write_call(0x6472BF, (int)mod_unlock_file); // _fgets
-    write_call(0x647325, (int)mod_unlock_file); // _rewind
-    write_call(0x64734F, (int)mod_unlock_file); // _fseek
-    write_call(0x647843, (int)mod_unlock_file); // _fprintf
-    write_call(0x647935, (int)mod_unlock_file); // _ftell
-
     if (!cf->reduced_mode) {
         write_call(0x62D3EC, (int)mod_Win_init_class);
     }
@@ -1108,18 +1156,11 @@ bool patch_setup(Config* cf) {
         write_call(0x48B91F, (int)mod_calc_dim);
         write_call(0x48BA15, (int)mod_calc_dim);
     }
-    if (cf->skip_random_factions) {
-        memset((void*)0x58B63C, 0x90, 10); // config_game
-        write_call(0x58B526, (int)zero_value); // config_game
-        write_call(0x58B539, (int)zero_value); // config_game
-        write_call(0x58B632, (int)config_game_rand); // config_game
-        write_call(0x587066, (int)config_game_rand); // read_factions
-    }
     if (cf->autosave_interval > 0) {
         write_jump(0x5ABD20, (int)mod_auto_save);
     }
     if (cf->editor_free_units) {
-        write_call(0x4DF19B, (int)mod_veh_init); // Console_editor_veh
+        write_call(0x4DF19B, (int)veh_init_free); // Console_editor_veh
     }
     if (cf->altitude_limit > ALT_THREE_ABOVE_SEA) {
         write_word(0x4D4479, 192, 224); // Console_terraform
@@ -1141,34 +1182,12 @@ bool patch_setup(Config* cf) {
     write_byte(0x4E3222, 9, NetVersion); // AlphaNet::setup
     write_byte(0x52AA5C, 9, NetVersion); // control_game
     write_byte(0x627C8B, 9, 11); // pop_ask_number maximum length
-    /*
-    Allow custom map sizes up to 512x512. Warning dialog will be displayed if size exceeds 256x256.
-    */
-    write_word(0x58D3A2, 256, 512); // size_of_planet
-    write_word(0x58D3A9, 256, 512); // size_of_planet
-    write_word(0x58D3BB, 256, 512); // size_of_planet
-    write_word(0x58D3C2, 256, 512); // size_of_planet
-    write_word(0x58D3CF, 128, 256); // size_of_planet
-    write_word(0x58D3D7, 128, 256); // size_of_planet
 
     /*
     Hide unnecessary region_base_plan display next to base names in debug mode.
     */
     remove_call(0x468175);
     remove_call(0x468186);
-
-    /*
-    Hide "<other faction> have altered the rainfall patterns" messages from status display.
-    This also removes excessive friction and treaty penalties when another faction alters
-    rainfall patterns during terraforming.
-    */
-    {
-        const byte old_bytes[] = {0x75,0x07};
-        const byte new_bytes[] = {0x75,0x16};
-        write_bytes(0x4CA44E, old_bytes, new_bytes, sizeof(new_bytes)); // action_terraform
-        remove_call(0x4CA3DD); // set_treaty
-        remove_call(0x4CA3EB); // cause_friction
-    }
 
     /*
     Remove old code for selecting secret projects in time_warp.
@@ -1338,32 +1357,8 @@ bool patch_setup(Config* cf) {
         write_call(0x49DEA5, (int)ReportWin_draw_ops_strcat);
     }
     if (cf->render_probe_labels) {
-        memset((void*)0x559590, 0x90, 2);
-        memset((void*)0x5599DE, 0x90, 6);
-    }
-
-    /*
-    Find nearest base for returned probes in order_veh and probe functions.
-    */
-    {
-        const byte old_order_veh[] = {
-            0xBA,0x46,0xD0,0x97,0x00,0x33,0xC9,0x8A,0x4A,0xFE,
-            0x3B,0x4D,0xE4,0x75,0x0B,0x0F,0xBE,0x0A,0x3B,0xCF,
-            0x7E,0x04,0x8B,0xF9,0x8B,0xF0,0x40,0x81,0xC2,0x34,
-            0x01,0x00,0x00,0x3B,0xC3,0x7C,0xE0
-        };
-        const byte new_order_veh[] = {
-            0x8B,0x7D,0xE0,0x57,0xE8,0x00,0x00,0x00,0x00,0x8B,
-            0xF0,0x83,0xC4,0x04,0x90,0x90,0x90,0x90,0x90,0x90,
-            0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90,
-            0x90,0x90,0x90,0x90,0x90,0x90,0x90
-        };
-        const byte old_probe[] = {0x53};
-        const byte new_probe[] = {0x50};
-        write_bytes(0x597021, old_order_veh, new_order_veh, sizeof(new_order_veh));
-        write_call(0x597025, (int)find_return_base);
-        write_bytes(0x5A430F, old_probe, new_probe, sizeof(new_probe));
-        write_call(0x5A432C, (int)probe_return_base);
+        memset((void*)0x559590, 0x90, 2); // veh_draw
+        memset((void*)0x5599DE, 0x90, 6); // veh_draw
     }
 
     /*
@@ -1373,15 +1368,7 @@ bool patch_setup(Config* cf) {
     {
         const byte old_bytes[] = {0x3B,0xC8,0x0F,0x8C,0x65,0x01,0x00,0x00};
         const byte new_bytes[] = {0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90};
-        write_bytes(0x5259CE, old_bytes, new_bytes, sizeof(new_bytes));
-    }
-
-    /*
-    Fix diplomacy dialog appearing multiple times when both human and alien factions are
-    involved in a base capture by removing the event that spawns additional colony pods.
-    */
-    {
-        long_jump(0x50D67A);
+        write_bytes(0x5259CE, old_bytes, new_bytes, sizeof(new_bytes)); // turn_upkeep
     }
 
     /*
@@ -1392,7 +1379,7 @@ bool patch_setup(Config* cf) {
     {
         const byte old_bytes[] = {0x74,0x51};
         const byte new_bytes[] = {0x90,0x90};
-        write_bytes(0x5BC386, old_bytes, new_bytes, sizeof(new_bytes));
+        write_bytes(0x5BC386, old_bytes, new_bytes, sizeof(new_bytes)); // tech_achieved
     }
 
     /*
@@ -1401,7 +1388,7 @@ bool patch_setup(Config* cf) {
     making the AI usually demand a credit payment for any techs.
     */
     {
-        long_jump(0x5414AA);
+        long_jump(0x5414AA); // tech_trade
     }
 
     /*
@@ -1472,10 +1459,6 @@ bool patch_setup(Config* cf) {
         write_offset(0x403BA8, MovlistFile);
         write_offset(0x4BEF8D, MovlistFile);
         write_offset(0x52AB68, OpeningFile);
-        // Enable custom faction selection during the game setup / config_game
-        memset((void*)0x58A5E1, 0x90, 6);
-        memset((void*)0x58B76F, 0x90, 2);
-        memset((void*)0x58B9F3, 0x90, 2);
     }
     if (cf->counter_espionage) {
         // Check for probe renew flag when choosing the menu entries
@@ -1499,14 +1482,6 @@ bool patch_setup(Config* cf) {
     if (!cf->alien_guaranteed_techs) {
         short_jump(0x5B29F8); // setup_player
     }
-    if (cf->alien_early_start) { // config_game > alien_start
-        const byte old_bytes[] = {0x75,0x1A};
-        const byte new_bytes[] = {0x90,0x90};
-        write_bytes(0x589081, old_bytes, new_bytes, sizeof(new_bytes));
-    }
-    if (cf->cult_early_start) { // config_game > alien_start
-        long_jump(0x589097);
-    }
     if (cf->alien_early_start || cf->cult_early_start) { // crash_landing
         // Use default starting year instead of advancing by 5 turns
         const byte old_bytes[] = {0xC7,0x05,0xD4,0x64,0x9A,0x00,0x05,0x00,0x00,0x00};
@@ -1527,10 +1502,7 @@ bool patch_setup(Config* cf) {
         write_call(0x5082AF, (int)battle_fight_parse_num);
         write_call(0x5082B7, (int)battle_fight_parse_num);
     }
-    if (cf->long_range_artillery > 0) {
-        write_call(0x46D42F, (int)mod_action_arty); // MapWin::right_menu
-        write_call(0x46E1FF, (int)mod_action_arty); // MapWin::click
-
+    /* if (cf->long_range_artillery > 0) */ {
         const byte old_cursor[] = {0x8B,0x0D,0x44,0x97,0x94,0x00,0x51};
         const byte new_cursor[] = {0x57,0x90,0x90,0x90,0x90,0x90,0x90};
         write_bytes(0x4D927F, old_cursor, new_cursor, sizeof(new_cursor));
@@ -1551,14 +1523,14 @@ bool patch_setup(Config* cf) {
         write_call(0x46CA21, (int)MapWin_right_menu_arty);
     }
     if (cf->facility_capture_fix) {
-        remove_call(0x50D06A);
-        remove_call(0x50D074);
+        remove_call(0x50D06A); // capture_base
+        remove_call(0x50D074); // capture_base
     }
     if (cf->auto_relocate_hq) {
         long_jump(0x50C99D); // Disable #ESCAPED event
     }
     if (cf->simple_hurry_cost) {
-        short_jump(0x41900D);
+        short_jump(0x41900D); // BaseWin_hurry
     }
     if (cf->eco_damage_fix) {
         const byte old_bytes[] = {0x84,0x05,0xE8,0x64,0x9A,0x00,0x74,0x24};
@@ -1567,11 +1539,14 @@ bool patch_setup(Config* cf) {
         const byte old_bytes_2[] = {0x85,0xC0,0x74,0x07};
         write_bytes(0x4F2AC6, old_bytes_2, NULL, sizeof(old_bytes_2));
     }
+    if (cf->rebuild_secret_projects) {
+        write_word(0x4E571F, SP_Destroyed, SP_Unbuilt); // base_kill
+    }
     if (!cf->spawn_fungal_towers) {
         // Spawn nothing in this case.
         remove_call(0x4F7143);
-        remove_call(0x5C363F);
         remove_call(0x57BBC9);
+        remove_call(0x5C363F);
     }
     if (!cf->spawn_spore_launchers) {
         // Patch the game to spawn Mind Worms instead.
@@ -1591,38 +1566,8 @@ bool patch_setup(Config* cf) {
     if (!cf->spawn_battle_ogres) {
         short_jump(0x57BC90);
     }
-    if (!cf->event_perihelion) {
-        short_jump(0x51F481);
-    }
-    if (cf->event_sunspots > 0) {
-        const byte old_bytes[] = {0x83,0xC0,0x0A,0x6A,0x14};
-        const byte new_bytes[] = {0x83,0xC0,
-            (byte)cf->event_sunspots,0x6A,(byte)(cf->event_sunspots)};
-        write_call(0x52064C, (int)zero_value);
-        write_bytes(0x520651, old_bytes, new_bytes, sizeof(new_bytes));
-    } else if (!cf->event_sunspots) { // Remove event
-        long_jump(0x520615);
-    }
-    if (cf->event_market_crash > 0) { // Reduce reserves only by 1/2 instead of 3/4
-        const byte old_bytes[] = {0x99,0x83,0xE2,0x03,0x03,0xC2,0xC1,0xF8,0x02};
-        const byte new_bytes[] = {0xD1,0xF8,0x90,0x90,0x90,0x90,0x90,0x90,0x90};
-        write_bytes(0x520725, old_bytes, new_bytes, sizeof(new_bytes));
-        write_offset(0x520751, ac_genwarning_sm_pcx);
-        write_offset(0x520786, ac_genwarning_sm_pcx);
-    } else if (!cf->event_market_crash) { // Remove event
-        const byte old_bytes[] = {0x75,0x0C,0x81,0xFE,0xD0};
-        const byte new_bytes[] = {0xE9,0x02,0x1A,0x00,0x00};
-        write_bytes(0x52070F, old_bytes, new_bytes, sizeof(new_bytes));
-    }
-    if (cf->native_weak_until_turn >= 0) {
-        const byte old_bytes[] = {0x83, 0x3D, 0xD4, 0x64, 0x9A, 0x00, 0x0F};
-        const byte new_bytes[] = {0x83, 0x3D, 0xD4, 0x64, 0x9A, 0x00,
-            (byte)cf->native_weak_until_turn};
-        write_bytes(0x507C22, old_bytes, new_bytes, sizeof(new_bytes));
-    }
     if (cf->rare_supply_pods) {
         short_jump(0x592085); // bonus_at
-        short_jump(0x5920E9); // bonus_at
         short_jump(0x5921C8); // goody_at
     }
 
@@ -1684,6 +1629,14 @@ bool patch_setup(Config* cf) {
         const byte new_bytes[] = {0x90};
         write_bytes(0x4E7604, old_bytes, new_bytes, sizeof(new_bytes));
     }
+    if (cf->alien_early_start) { // config_game > alien_start
+        const byte old_bytes[] = {0x75,0x1A};
+        const byte new_bytes[] = {0x90,0x90};
+        write_bytes(0x589081, old_bytes, new_bytes, sizeof(new_bytes));
+    }
+    if (cf->cult_early_start) { // config_game > alien_start
+        long_jump(0x589097);
+    }
     if (cf->faction_placement) {
         const byte asm_find_start[] = {
             0x8D,0x45,0xF8,0x50,0x8D,0x45,0xFC,0x50,0x8B,0x45,
@@ -1695,6 +1648,35 @@ bool patch_setup(Config* cf) {
         memset((void*)0x5B2257, 0x90, 11);
         memcpy((void*)0x5B220F, asm_find_start, sizeof(asm_find_start));
         write_call(0x5B221B, (int)find_start);
+    }
+    if (!cf->event_perihelion) {
+        short_jump(0x51F481);
+    }
+    if (cf->event_sunspots > 0) {
+        const byte old_bytes[] = {0x83,0xC0,0x0A,0x6A,0x14};
+        const byte new_bytes[] = {0x83,0xC0,
+            (byte)cf->event_sunspots,0x6A,(byte)(cf->event_sunspots)};
+        write_call(0x52064C, (int)zero_value);
+        write_bytes(0x520651, old_bytes, new_bytes, sizeof(new_bytes));
+    } else if (!cf->event_sunspots) { // Remove event
+        long_jump(0x520615);
+    }
+    if (cf->event_market_crash > 0) { // Reduce reserves only by 1/2 instead of 3/4
+        const byte old_bytes[] = {0x99,0x83,0xE2,0x03,0x03,0xC2,0xC1,0xF8,0x02};
+        const byte new_bytes[] = {0xD1,0xF8,0x90,0x90,0x90,0x90,0x90,0x90,0x90};
+        write_bytes(0x520725, old_bytes, new_bytes, sizeof(new_bytes));
+        write_offset(0x520751, ac_genwarning_sm_pcx);
+        write_offset(0x520786, ac_genwarning_sm_pcx);
+    } else if (!cf->event_market_crash) { // Remove event
+        const byte old_bytes[] = {0x75,0x0C,0x81,0xFE,0xD0};
+        const byte new_bytes[] = {0xE9,0x02,0x1A,0x00,0x00};
+        write_bytes(0x52070F, old_bytes, new_bytes, sizeof(new_bytes));
+    }
+    if (cf->native_weak_until_turn >= 0) {
+        const byte old_bytes[] = {0x83, 0x3D, 0xD4, 0x64, 0x9A, 0x00, 0x0F};
+        const byte new_bytes[] = {0x83, 0x3D, 0xD4, 0x64, 0x9A, 0x00,
+            (byte)cf->native_weak_until_turn};
+        write_bytes(0x507C22, old_bytes, new_bytes, sizeof(new_bytes));
     }
     if (cf->collateral_damage_value != 3) {
         const byte old_bytes[] = {0xB2,0x03};

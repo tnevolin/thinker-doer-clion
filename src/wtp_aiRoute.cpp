@@ -639,7 +639,7 @@ void populateAirClusters(int factionId)
 	for (int unitId : aiData.factionInfos.at(factionId).availableUnitIds)
 	{
 		UNIT &unit = Units[unitId];
-		int chassisId = static_cast<uint8_t>(unit.chassis_id);
+		int chassisId = unit.chassis_id;
 		int triad = unit.triad();
 		int speed = getUnitSpeed(factionId, unitId);
 

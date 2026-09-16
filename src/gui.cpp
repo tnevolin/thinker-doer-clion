@@ -1,8 +1,6 @@
-
 #include "gui.h"
-#include "wtp_mod.h"
 
-const int32_t MainWinHandle = (int32_t)(&MapWin->oMainWin.oWinBase.field_4); // 0x939444
+const int32_t MainWinHandle = (int32_t)(&MapWin->oMainWin.field_4); // 0x939444
 
 char label_pop_size[StrBufLen] = "Pop: %d / %d / %d / %d";
 char label_pop_boom[StrBufLen] = "Population Boom";
@@ -22,9 +20,7 @@ char label_psych_energy_allocation[StrBufLen] = "to psych: %2d";
 
 std::string video_player_path = "";
 std::string video_player_args = "";
-
-static int hurry_minimal_cost = 0;
-static int base_zoom_factor = -14;
+std::string video_player_extn = "";
 
 struct ConsoleState {
     const int ScrollMin = 1;
@@ -42,8 +38,7 @@ struct ConsoleState {
 
 /*
 The following lists contain definitions copied directly from PRACX (e.g. functions with _F suffix).
-These are mostly provided for reference and using them should be avoided because the names should be
-converted to the actual names reversed from the SMACX binary (add F prefix for function prototypes).
+These are mostly provided for reference and using them should be avoided instead of engine.h definitions.
 */
 
 typedef int(__stdcall *START_F)(HINSTANCE, HINSTANCE, LPSTR, int);
@@ -169,7 +164,7 @@ int __thiscall Win_is_visible(Win* This) {
 }
 
 /*
-Returns true only when the world map is visible and has focus
+Returns GW_World only when the world map is visible and has focus
 and other large modal windows are not blocking it.
 Other modal windows with the exception of BaseWin are already
 covered by checking Win_get_key_window condition.
@@ -186,11 +181,6 @@ static GameWinState current_window() {
     return GW_None;
 }
 
-static void base_resource_zoom(bool zoom_in) {
-    base_zoom_factor = clamp(base_zoom_factor + (zoom_in ? 2 : -2), -14, 0);
-    GraphicWin_redraw(BaseWin);
-}
-
 void mouse_over_tile(POINT* p) {
     static POINT ptLastTile = {0, 0};
     POINT ptTile;
@@ -204,7 +194,7 @@ void mouse_over_tile(POINT* p) {
 
         pInfoWin->iTileX = ptTile.x;
         pInfoWin->iTileY = ptTile.y;
-        StatusWin_on_redraw((Win*)pInfoWin);
+        StatusWin_on_redraw(StatusWin);
         memcpy(&ptLastTile, &ptTile, sizeof(POINT));
     }
 }
@@ -260,11 +250,8 @@ bool do_scroll(double x, double y) {
             fScrolled = true;
             CState.ScrollOffsetX = 0;
         }
-        if (x > 0 &&
-                (!map_is_flat() ||
-                 MapWin->iMapTileLeft +
-                 MapWin->iMapTilesEvenX +
-                 MapWin->iMapTilesOddX <= mx)) {
+        if (x > 0 && (!map_is_flat()
+        || MapWin->iMapTileLeft + MapWin->iMapTilesEvenX + MapWin->iMapTilesOddX <= mx)) {
             i = (int)CState.ScrollOffsetX;
             CState.ScrollOffsetX -= x;
             fScrolled = fScrolled || (i != (int)CState.ScrollOffsetX);
@@ -297,8 +284,7 @@ bool do_scroll(double x, double y) {
         }
         d = (MapWin->iTileY - iMinTileY) * MapWin->iPixelsPerHalfTileY - (int)CState.ScrollOffsetY;
         if (y < 0 && d > 0 ) {
-            if (y < -d)
-                y = -d;
+            if (y < -d) { y = -d; }
             i = (int)CState.ScrollOffsetY;
             CState.ScrollOffsetY -= y;
             fScrolled = fScrolled || (i != (int)CState.ScrollOffsetY);
@@ -309,8 +295,7 @@ bool do_scroll(double x, double y) {
         }
         d = (iMaxTileY - MapWin->iTileY + 1) * MapWin->iPixelsPerHalfTileY + (int)CState.ScrollOffsetY;
         if (y > 0 && d > 0) {
-            if (y > d)
-                y = d;
+            if (y > d) { y = d; }
             i = (int)CState.ScrollOffsetY;
             CState.ScrollOffsetY -= y;
             fScrolled = fScrolled || (i != (int)CState.ScrollOffsetY);
@@ -346,7 +331,7 @@ void check_scroll() {
     int iScrollArea = conf.scroll_area * CState.ScreenSize.x / 1024;
 
     if (CState.RightButtonDown && GetAsyncKeyState(VK_RBUTTON) < 0) {
-        if (labs((long)hypot((double)(p.x-CState.ScrollDragPos.x), (double)(p.y-CState.ScrollDragPos.y))) > 2.5) {
+        if (hypot((double)(p.x-CState.ScrollDragPos.x), (double)(p.y-CState.ScrollDragPos.y)) > 2.5) {
             CState.ScrollDragging = true;
             SetCursor(LoadCursor(0, IDC_HAND));
         }
@@ -501,9 +486,6 @@ int __thiscall mod_calc_dim(Console* This) {
     int iOldZoom;
     int dx, dy;
     bool fx, fy;
-//    int w = ((GraphicWin*)((int)This + This->vtbl[1]))->oCanvas.stBitMapInfo.bmiHeader.biWidth;
-//    int h = -((GraphicWin*)((int)This + This->vtbl[1]))->oCanvas.stBitMapInfo.bmiHeader.biHeight;
-
     if (This == MapWin) {
         iOldZoom = This->iLastZoomFactor;
         ptNewTile.x = This->iTileX;
@@ -546,7 +528,7 @@ int __cdecl mod_blink_timer() {
             return TutWin_draw_arrow(TutWin);
         }
         PlanWin_blink(PlanWin);
-        StringBox_clip_ids(StringBox, 150);
+        StringBox_clip_ids(&MainInfc->stringBox, 150);
 
         if ((!MapWin->field_23BE8 && (!*MultiplayerActive || !(*GameState & STATE_UNK_2))) || *ControlTurnA) {
             MapWin->field_23BFC = 0;
@@ -635,7 +617,7 @@ LRESULT WINAPI ModWinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 }
             }
         } else if (state == GW_Base && conf.render_high_detail) {
-            base_resource_zoom(zoom_in);
+            BaseWin_support_zoom(zoom_in);
         } else {
             int key;
             if (state == GW_Design) {
@@ -653,7 +635,7 @@ LRESULT WINAPI ModWinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     } else if (msg == WM_KEYDOWN && (wParam == VK_UP || wParam == VK_DOWN)
     && conf.render_high_detail && ctrl_key_down() && current_window() == GW_Base) {
-        base_resource_zoom(wParam == VK_UP);
+        BaseWin_support_zoom(wParam == VK_UP);
 
     } else if (msg == WM_KEYDOWN && (wParam == VK_LEFT || wParam == VK_RIGHT)
     && ctrl_key_down() && current_window() == GW_Base) {
@@ -724,7 +706,7 @@ LRESULT WINAPI ModWinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     } else if (msg == WM_CHAR && wParam == 'o' && alt_key_down() && is_editor) {
         uint32_t seed = ThinkerVars->map_random_value;
-        int value = pop_ask_number("modmenu", "MAPGEN", seed, 0);
+        int value = pop_ask_number_4("modmenu", "MAPGEN", seed, 0);
         if (!value) { // OK button pressed
             console_world_generate(ParseNumTable[0]);
         }
@@ -777,7 +759,7 @@ LRESULT WINAPI ModWinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     } else if (debug_cmd && wParam == 'p' && alt_key_down()) {
         parse_says(0, "diplomatic patience", -1, -1);
-        int value = pop_ask_number("modmenu", "ASKNUMBER", conf.diplo_patience, 0);
+        int value = pop_ask_number_4("modmenu", "ASKNUMBER", conf.diplo_patience, 0);
         if (!value) { // OK button pressed
             conf.diplo_patience = max(0, ParseNumTable[0]);
         }
@@ -787,7 +769,7 @@ LRESULT WINAPI ModWinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         uint32_t prev_state = MapWin->iWhatToDrawFlags;
         MapWin->iWhatToDrawFlags |= MAPWIN_DRAW_GOALS;
         refresh_overlay(code_at);
-        int value = pop_ask_number("modmenu", "MAPGEN", sq->code_at(), 0);
+        int value = pop_ask_number_4("modmenu", "MAPGEN", sq->code_at(), 0);
         if (!value) { // OK button pressed
             code_set(MapWin->iTileX, MapWin->iTileY, ParseNumTable[0]);
         }
@@ -833,31 +815,31 @@ LRESULT WINAPI ModWinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         MapWin->iWhatToDrawFlags |= MAPWIN_DRAW_GOALS;
         static int px = 0, py = 0;
         int x = MapWin->iTileX, y = MapWin->iTileY;
-        int unit = is_ocean(mapsq(x, y)) ? BSC_UNITY_FOIL : BSC_UNITY_ROVER;
-        path_distance(px, py, x, y, unit, 1);
+        int unit_id = is_ocean(mapsq(x, y)) ? BSC_UNITY_FOIL : BSC_UNITY_ROVER;
+        show_path_cost(px, py, x, y, unit_id, MapWin->cOwner);
         px=x;
         py=y;
         MapWin_draw_map(MapWin, 0);
         InvalidateRect(hwnd, NULL, false);
 
     } else if (debug_cmd && wParam == 'z' && alt_key_down()) {
-	    int x = MapWin->iTileX, y = MapWin->iTileY;
-    	int base_id;
-    	if ((base_id = base_at(x, y)) >= 0) {
-    		print_base(base_id);
-    	}
-    	print_map(x, y);
-    	for (int k = 0; k < *VehCount; k++) {
-    		VEH* veh = &Vehs[k];
-    		if (veh->x == x && veh->y == y) {
-    			Vehs[k].state |= VSTATE_UNK_40000;
-    			Vehs[k].state &= ~VSTATE_UNK_2000;
-    			print_veh(k);
-    		}
-    	}
-    	flushlog();
+        int x = MapWin->iTileX, y = MapWin->iTileY;
+        int base_id;
+        if ((base_id = base_at(x, y)) >= 0) {
+            print_base(base_id);
+        }
+        print_map(x, y);
+        for (int k = 0; k < *VehCount; k++) {
+            VEH* veh = &Vehs[k];
+            if (veh->x == x && veh->y == y) {
+                Vehs[k].state |= VSTATE_UNK_40000;
+                Vehs[k].state &= ~VSTATE_UNK_2000;
+                print_veh(k);
+            }
+        }
+        flushlog();
 
-	} else {
+    } else {
         return WinProc(hwnd, msg, wParam, lParam);
     }
     return 0;
@@ -876,14 +858,26 @@ void __cdecl mod_amovie_project(const char* name)
         return;
     } else if (conf.video_player == 1) {
         conf.playing_movie = true;
-        amovie_project(name);
+        amovie_project_2(name);
     } else if (conf.video_player == 2) {
         conf.playing_movie = true;
         PROCESS_INFORMATION pi = {};
         STARTUPINFO si = {};
+        std::string base_path = ".\\movies\\" + std::string(name);
+        std::string movie_path = base_path + ".wve";
+        if (!video_player_extn.empty()) {
+            std::string custom_extn = video_player_extn;
+            if (custom_extn[0] != '.') custom_extn = "." + custom_extn;
+            std::string custom_path = base_path + custom_extn;
+            if (FileExists(custom_path.c_str())) {
+                movie_path = custom_path;
+            }
+        }
         std::string cmd = "\"" + video_player_path + "\" " + video_player_args
-            + " .\\movies\\" + std::string(name) + ".wve";
-        if (CreateProcessA(NULL, (char*)cmd.c_str(),
+            + " " + movie_path;
+        std::vector<char> cmd_buf(cmd.begin(), cmd.end());
+        cmd_buf.push_back('\0');
+        if (CreateProcessA(NULL, cmd_buf.data(),
         NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
             WaitForSingleObject(pi.hProcess, INFINITE);
             CloseHandle(pi.hProcess);
@@ -946,7 +940,7 @@ void set_windowed(bool windowed)
             conf.video_mode = VM_Custom;
             set_video_mode(0);
             SetWindowLong(*phWnd, GWL_STYLE, AC_WS_FULLSCREEN);
-            SetWindowPos(*phWnd, HWND_TOPMOST, 0, 0, conf.window_height, conf.window_width,
+            SetWindowPos(*phWnd, HWND_TOPMOST, 0, 0, conf.window_width, conf.window_height,
                          SWP_SHOWWINDOW | SWP_NOSIZE | SWP_NOMOVE | SWP_FRAMECHANGED);
             ShowWindow(*phWnd, SW_RESTORE);
         }
@@ -964,7 +958,7 @@ void __thiscall MapWin_gen_overlays(Console* This, int x, int y)
     {
         MapWin_tile_to_pixel(This, x, y, &rt.left, &rt.top);
         rt.right = rt.left + This->iPixelsPerTileX;
-        rt.bottom = rt.top + This->iPixelsPerHalfTileX;
+        rt.bottom = rt.top + This->iPixelsPerHalfTileY;
 
         char buf[20] = {};
         bool found = false;
@@ -1023,18 +1017,18 @@ void __thiscall MapWin_gen_overlays(Console* This, int x, int y)
                             buf[1] = (goal.type < Thinker_Goal_ID_First ? '*' : 'g');
                             break;
                     }
-                    _itoa(goal.priority, &buf[2], 10);
+                    snprintf(&buf[2], sizeof(buf) - 2, "%d", goal.priority);
                 }
             }
         }
         if (!found && value != 0) {
             color = (value >= 0 ? ColorWhite : ColorYellow);
-            _itoa(value, buf, 10);
+            snprintf(buf, sizeof(buf), "%d", value);
         }
         if (found || value) {
             Buffer_set_text_color(Canvas, color, 0, 1, 1);
             Buffer_set_font(Canvas, &This->oFont2, 0, 0, 0);
-            Buffer_write_cent_l3(Canvas, buf, &rt, 20);
+            Buffer_write_cent_l_7(Canvas, buf, &rt, 20);
         }
     }
 }
@@ -1047,7 +1041,7 @@ void __cdecl mod_turn_timer()
     */
     static uint32_t iter = 0;
     static uint32_t prev_time = 0;
-    turn_timer();
+    turn_timer(0);
     if (++iter & 1) {
         return;
     }
@@ -1146,7 +1140,7 @@ int show_mod_config()
         | (conf.auto_minimise ? AutoMinimise : 0);
 
     // Return value is equal to choices bitfield if OK pressed, -1 otherwise.
-    int value = X_pop("modmenu", "OPTIONS", -1, 0, PopDialogCheckbox|PopDialogBtnCancel, 0);
+    int value = X_pop_9("modmenu", "OPTIONS", -1, 0, PopDialogCheckbox|PopDialogBtnCancel, 0);
     if (value < 0) {
         return 0;
     }
@@ -1257,11 +1251,11 @@ int __thiscall SetupWin_buffer_draw(Buffer* src, Buffer* dst, int a3, int a4, in
             int y = conf.window_height * p[1] / 768;
             int w = conf.window_width  * p[2] / 1024;
             int h = conf.window_height * p[3] / 768;
-            Buffer_copy2(src, dst, p[0], p[1], p[2], p[3], x, y, w, h);
+            Buffer_copy_3(src, dst, p[0], p[1], p[2], p[3], x, y, w, h);
         }
         return 0;
     } else {
-        return Buffer_draw(src, dst, a3, a4, a5, a6, a7);
+        return Buffer_draw_2(src, dst, a3, a4, a5, a6, a7);
     }
 }
 
@@ -1270,28 +1264,28 @@ int xSrc, int ySrc, int xDst, int yDst, int wSrc, int hSrc)
 {
     if (conf.window_width >= 1024) {
         int wDst = conf.window_width * wSrc / 1024;
-        return Buffer_copy2(src, dst, xSrc, ySrc, wSrc, hSrc,
+        return Buffer_copy_3(src, dst, xSrc, ySrc, wSrc, hSrc,
             conf.window_width - wDst, yDst, wDst, conf.window_height);
     } else {
-        return Buffer_copy(src, dst, xSrc, ySrc, xDst, yDst, wSrc, hSrc);
+        return Buffer_copy_4(src, dst, xSrc, ySrc, xDst, yDst, wSrc, hSrc);
     }
 }
 
-int __thiscall SetupWin_soft_update3(Win* This, int a2, int a3, int a4, int a5)
+int __thiscall SetupWin_soft_update3(GraphicWin* This, int a2, int a3, int a4, int a5)
 {
     // Update whole screen instead of partial regions
-    return GraphicWin_soft_update2(This);
+    return GraphicWin_soft_update_2(This);
 }
 
-int __thiscall window_scale_load_pcx(Buffer* This, char* filename, int a3, int a4, int a5)
+int __thiscall window_scale_load_pcx(Buffer* This, char* filename, Palette* a3, int a4, int a5)
 {
     int value;
     if (conf.window_width >= 1024) {
         Buffer image;
-        Buffer_Buffer(&image);
+        Buffer_ctor(&image);
         value = Buffer_load_pcx(&image, filename, a3, a4, a5);
         Buffer_resize(This, conf.window_width, conf.window_height);
-        Buffer_copy2(&image, This, 0, 0, image.stRect->right, image.stRect->bottom,
+        Buffer_copy_3(&image, This, 0, 0, image.stRect->right, image.stRect->bottom,
             0, 0, conf.window_width, conf.window_height);
         Buffer_dtor(&image);
     } else {
@@ -1303,13 +1297,13 @@ int __thiscall window_scale_load_pcx(Buffer* This, char* filename, int a3, int a
             MOD_VERSION, " / ", MOD_DATE, (conf.smac_only ? " / SMAC" : ""));
         Buffer_set_text_color(This, ColorProdName, 0, 1, 1);
         Buffer_set_font(This, &MapWin->oFont1, 0, 0, 0);
-        Buffer_write_l(This, buf, 20, conf.window_height-32, 100);
+        Buffer_write_l_3(This, buf, 20, conf.window_height-32, 100);
     }
     return value;
 }
 
 int __thiscall Credits_GraphicWin_init(
-Win* This, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9, int a10)
+GraphicWin* This, int a2, int a3, int a4, int a5, char* a6, int a7, Win* a8, Menu* a9, BorderSizing* a10)
 {
     if (conf.window_width >= 1024) {
         return GraphicWin_init(This,
@@ -1323,534 +1317,33 @@ Win* This, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9, int a
     }
 }
 
-int __thiscall BaseWin_hurry_popup_start(
-Win* This, const char* filename, const char* label, int a4, int a5, int a6, int a7)
-{
-    BASE* base = *CurrentBase;
-    Faction* f = &Factions[base->faction_id];
-    int item_cost = mineral_cost(*CurrentBaseID, base->queue_items[0]);
-    int minerals = item_cost - base->minerals_accumulated - max(0, base->mineral_surplus);
-    int credits = max(0, f->energy_credits - f->hurry_cost_total);
-    int cost = hurry_cost(*CurrentBaseID, base->queue_items[0], minerals);
-    hurry_minimal_cost = min(credits, cost);
-    if (item_cost <= base->minerals_accumulated) {
-        ParseNumTable[0] = 0;
-    }
-    ParseNumTable[1] = cost;
-    ParseNumTable[2] = credits;
-    return Popup_start(This, "modmenu", "HURRY", a4, a5, a6, a7);
-}
-
 #pragma GCC diagnostic pop
-
-int __cdecl BaseWin_hurry_ask_number(const char* label, int value, int a3)
-{
-    ParseNumTable[0] = value;
-    return pop_ask_number(ScriptFile, label, hurry_minimal_cost, a3);
-}
-
-/*
-Fix issue where hurry production flag will not be set after
-completely hurrying the current production "Spend $NUM0 energy credits."
-*/
-int __thiscall BaseWin_hurry_unlock_base(AlphaNet* This, int base_id)
-{
-    if (base_id >= 0) {
-        Bases[base_id].state_flags |= BSTATE_HURRY_PRODUCTION;
-    }
-    return NetDaemon_unlock_base(This, base_id);
-}
-
-int __thiscall BaseWin_gov_options(BaseWindow* This, int flag)
-{
-    int base_id = *CurrentBaseID;
-    if (base_id < 0 || base_id != This->oRender.base_id) {
-        assert(0);
-        return 1;
-    }
-    BASE* base = &Bases[base_id];
-    int worked_tiles = base->worked_tiles;
-    set_base(base_id);
-    base_compute(base_id);
-    if (*MultiplayerActive && !*ControlTurnC
-    && worked_tiles != base->worked_tiles
-    && !NetDaemon_lock_base(NetState, *CurrentBaseID, 0, -1, -1)) {
-        NetDaemon_unlock_base(NetState, *CurrentBaseID);
-    }
-    if (base->faction_id != MapWin->cOwner && !(*GameState & STATE_OMNISCIENT_VIEW)) {
-        return 1;
-    }
-    *DialogChoices = 0;
-    for (auto& p : BaseGovOptions) {
-        if (base->governor_flags & p[1]) {
-            *DialogChoices |= p[0];
-        }
-    }
-    parse_says(0, base->name, -1, -1);
-    if (NetDaemon_lock_base(NetState, base_id, 0, -1, -1)) {
-        return 1;
-    }
-    if (X_pop("modmenu", "GOVOPTIONS", -1, 0, 65, 0) >= 0) {
-        base->governor_flags &= (GOV_PRIORITY_CONQUER|GOV_PRIORITY_BUILD|GOV_PRIORITY_DISCOVER|GOV_PRIORITY_EXPLORE);
-        for (auto& p : BaseGovOptions) {
-            if (*DialogChoices & p[0]) {
-                base->governor_flags |= p[1];
-            }
-        }
-        Factions[base->faction_id].base_governor_adv = base->governor_flags;
-        if (!flag) {
-            if (base->governor_flags & GOV_ACTIVE) {
-                if (base->governor_flags & GOV_MANAGE_PRODUCTION) {
-                    base->state_flags &= ~BSTATE_UNK_80000000;
-                    base->queue_size = 0;
-                    mod_base_reset(base_id, 1);
-                }
-                if (base->governor_flags & GOV_MANAGE_CITIZENS) {
-                    base->worked_tiles = 0;
-                    base->specialist_total = 0;
-                    base->specialist_adjust = 0;
-                    base_compute(1);
-                    // base_doctors() removed as obsolete
-                }
-            }
-            if (!(base->governor_flags & GOV_ACTIVE) || !(base->governor_flags & GOV_MANAGE_PRODUCTION)) {
-                draw_radius(base->x, base->y, 2, 2);
-            }
-        }
-        NetDaemon_unlock_base(NetState, base_id);
-        GraphicWin_redraw(BaseWin);
-        GraphicWin_redraw(MainWin);
-        return 0;
-    } else {
-        NetDaemon_unlock_base(NetState, base_id);
-        return 1;
-    }
-}
-
-void __thiscall BaseWin_draw_support(BaseWindow* This)
-{
-    RECT& rc = This->oRender.rResWindow;
-    Buffer_set_clip(&This->oCanvas, &rc);
-    GraphicWin_fill2((Win*)This, &rc, 0);
-
-    MapWin_init((Console*)&This->oRender, 2, 0);
-    This->oRender.iZoomFactor = base_zoom_factor;
-    This->oRender.iWhatToDrawFlags = MAPWIN_SUPPORT_VIEW|MAPWIN_DRAW_BONUS_RES|\
-        MAPWIN_DRAW_RIVERS|MAPWIN_DRAW_IMPROVEMENTS|MAPWIN_DRAW_TRANSLUCENT;
-
-    This->oRender.iTileX = (*CurrentBase)->x;
-    This->oRender.iTileY = (*CurrentBase)->y;
-    GraphicWin_redraw((Win*)&This->oRender.oBufWin);
-
-    Buffer_copy(&This->oRender.oBufWin.oCanvas, &This->oCanvas,
-        0, 0, rc.left + 11, rc.top + 31, rc.right, rc.bottom);
-    GraphicWin_soft_update((Win*)This, &rc);
-    Buffer_set_clip(&This->oCanvas, &This->oCanvas.stRect[0]);
-}
-
-void __thiscall BaseWin_draw_misc_eco_damage(Buffer* This, char* buf, int x, int y, int len)
-{
-    BASE* base = *CurrentBase;
-    Faction* f = &Factions[base->faction_id];
-    if (!conf.render_base_info || !strlen(label_eco_damage)) {
-        Buffer_write_l(This, buf, x, y, len);
-    } else {
-        int clean_mins = conf.clean_minerals + f->clean_minerals_modifier
-            + clamp(f->satellites_mineral, 0, (int)base->pop_size);
-        int damage = terraform_eco_damage(*CurrentBaseID);
-        int mins = base->mineral_intake_2 + damage/8;
-        int pct;
-        if (base->eco_damage > 0) {
-            pct = 100 + base->eco_damage;
-        } else {
-            pct = (clean_mins > 0 ? 100 * clamp(mins, 0, clean_mins) / clean_mins : 0);
-        }
-        snprintf(buf, StrBufLen, label_eco_damage, pct);
-        Buffer_write_l(This, buf, x, y, strlen(buf));
-    }
-}
-
-void __thiscall BaseWin_draw_farm_set_font(Buffer* This, Font* font, int a3, int a4, int a5)
-{
-    char buf[StrBufLen] = {};
-    // Base resource window coordinates including button row
-    RECT* rc = &BaseWin->oRender.rResWindow;
-    int x1 = rc->left;
-    int y1 = rc->top;
-    int x2 = rc->right;
-    int y2 = rc->bottom;
-    int N = 0;
-    int M = 0;
-    int E = 0;
-    int SE = 0;
-    Buffer_set_font(This, font, a3, a4, a5);
-
-    if (*CurrentBaseID < 0 || x1 < 0 || y1 < 0 || x2 < 0 || y2 < 0) {
-        assert(0);
-    } else if (conf.render_base_info) {
-        if (satellite_bonus(*CurrentBaseID, &N, &M, &E)) {
-            snprintf(buf, StrBufLen, label_sat_nutrient, N);
-            Buffer_set_text_color(This, ColorNutrient, 0, 1, 1);
-            Buffer_write_l(This, buf, x1 + 5, y2 - 36 - 28, LineBufLen);
-
-            snprintf(buf, StrBufLen, label_sat_mineral, M);
-            Buffer_set_text_color(This, ColorMineral, 0, 1, 1);
-            Buffer_write_l(This, buf, x1 + 5, y2 - 36 - 14, LineBufLen);
-
-            snprintf(buf, StrBufLen, label_sat_energy, E);
-            Buffer_set_text_color(This, ColorEnergy, 0, 1, 1);
-            Buffer_write_l(This, buf, x1 + 5, y2 - 36     , LineBufLen);
-        }
-        if ((SE = stockpile_energy_active(*CurrentBaseID)) > 0) {
-            snprintf(buf, StrBufLen, label_stockpile_energy, SE);
-            Buffer_set_text_color(This, ColorEnergy, 0, 1, 1);
-            Buffer_write_right_l2(This, buf, x2 - 5, y2 - 36, LineBufLen);
-        }
-    }
-}
-
-void __cdecl BaseWin_draw_psych_strcat(char* buffer, char* source)
-{
-    BASE &base = **CurrentBase;
-
-	// [WTP]
-	// base psych simplified rearranged labels
-
-	robin_hood::unordered_flat_map<char *, int> labelIndexes = {{label_get(322), 322}, {label_get(323), 324}, {label_get(324), 325}, {label_get(325), 327}, {label_get(326), 327}, {label_get(327), 323}, {label_get(970), 970}, {label_get(971), 971}, };
-	robin_hood::unordered_flat_map<char *, int> rowIndexes = {{label_get(322), 0}, {label_get(323), 1}, {label_get(324), 2}, {label_get(325), 3}, {label_get(326), 3}, {label_get(327), 4}, {label_get(970), 0}, {label_get(971), 0}, };
-
-	if (conf.base_psych && conf.base_psych_improved)
-	{
-		if (labelIndexes.find(source) != labelIndexes.end() && rowIndexes.find(source) != rowIndexes.end())
-		{
-			int labelIndex = labelIndexes.at(source);
-			int rowIndex = rowIndexes.at(source);
-
-			if (labelIndex == 325 && base.SE_police(true) <= -2)
-			{
-				labelIndex += 1;
-			}
-
-			char *label = label_get(labelIndex);
-			int previousPsychBalance = rowIndex == 0 ? 0 : BasePsychTalents[rowIndex - 1] - BasePsychNDrones[rowIndex - 1] - BasePsychSDrones[rowIndex - 1];
-			int psychBalance = BasePsychTalents[rowIndex] - BasePsychNDrones[rowIndex] - BasePsychSDrones[rowIndex];
-			int psychBalanceChange = psychBalance - previousPsychBalance;
-
-			switch (conf.base_psych_screen_show_numbers)
-			{
-			case 1:
-				snprintf
-				(
-					buffer, StrBufLen, "%c%2d  %s"
-					, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
-					, label
-				);
-				break;
-			case 2:
-				snprintf
-				(
-					buffer, StrBufLen, "+%2d-%2d-%2d=%c%2d  %s"
-					, BasePsychTalents[rowIndex]
-					, BasePsychNDrones[rowIndex]
-					, BasePsychSDrones[rowIndex]
-					, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
-					, label
-				);
-				break;
-			case 3:
-				if (rowIndex == 0)
-				{
-					snprintf
-					(
-						buffer, StrBufLen, "    %c%2d %s"
-						, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
-						, label
-					);
-				}
-				else
-				{
-					snprintf
-					(
-						buffer, StrBufLen, "%c%2d %c%2d %s"
-						, psychBalanceChange == 0 ? ' ' : psychBalanceChange > 0 ? '+' : '-', std::abs(psychBalanceChange)
-						, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
-						, label
-					);
-				}
-				break;
-			case 4:
-				if (rowIndex == 0)
-				{
-					snprintf
-					(
-						buffer, StrBufLen, "    %s"
-						, label
-					);
-				}
-				else
-				{
-					snprintf
-					(
-						buffer, StrBufLen, "%c%2d %s"
-						, psychBalanceChange == 0 ? ' ' : psychBalanceChange > 0 ? '+' : '-', std::abs(psychBalanceChange)
-						, label
-					);
-				}
-				break;
-			default: ;
-				strncat(buffer, label, StrBufLen);
-			}
-
-		}
-		else
-		{
-			if (base.nerve_staple_turns_left > 0 || has_fac_built(FAC_PUNISHMENT_SPHERE, *CurrentBaseID))
-			{
-				// replace label #1 with [Stapled Base] if stapled or Punishment Sphere
-				
-				strncat(buffer, label_get(971), StrBufLen); // Stapled Base
-				
-			}
-			else
-			{
-				// default value
-				
-				strncat(buffer, source, StrBufLen);
-				
-			}
-			
-		}
-		
-	}
-	else
-	{
-    if (conf.render_base_info && *CurrentBaseID >= 0) {
-        if (base.nerve_staple_turns_left > 0
-        || has_fac_built(FAC_PUNISHMENT_SPHERE, *CurrentBaseID)) {
-            if (!strcmp(source, label_get(971))) { // Stapled Base
-                strncat(buffer, label_get(322), StrBufLen); // Unmodified
-                return;
-            }
-            if (!strcmp(source, label_get(327))) { // Secret Projects
-                strncat(buffer, label_get(971), StrBufLen); // Stapled Base
-                return;
-            }
-        }
-        int turns = base.assimilation_turns_left;
-        if (turns > 0 && !strcmp(source, label_get(970))) { // Captured Base
-            snprintf(buffer, StrBufLen, label_captured_base, turns);
-            return;
-        }
-    }
-    strncat(buffer, source, StrBufLen);
-	}
-	// [WTP]
-	
-}
-
-/*
- * Writes psych label left justified.
- */
-int __thiscall wtp_mod_Base_draw_psych_Buffer_write_cent_l(Buffer* This, LPCSTR lpString, int x, int y, int w, int max_len)
-{
-	return conf.base_psych_screen_show_numbers ? Buffer_write_l(This, lpString, x, y, max_len) : Buffer_write_cent_l(This, lpString, x, y, w, max_len);
-}
-
-/*
- * Writes psych label left justified.
- */
-int __thiscall wtp_mod_Base_draw_psych_Font_init2(Font* This, char* /*a2*/, int /*a3*/, int /*a4*/)
-{
-	return Font_init2(This, conf.base_psych_screen_font_name, conf.base_psych_screen_font_size, conf.base_psych_screen_font_style);
-}
-
-void __thiscall BaseWin_draw_energy_set_text_color(Buffer* This, int a2, int a3, int a4, int a5)
-{
-    BASE* base = &Bases[*CurrentBaseID];
-    char buf[StrBufLen] = {};
-    if (conf.render_base_info && *CurrentBaseID >= 0) {
-		
-		// [WTP]
-		// energy to psych allocation indication instead
-		
-		/*
-        int workers = base->pop_size - base->talent_total - base->drone_total - base->specialist_total;
-        int color;
-
-        if (base_maybe_riot(*CurrentBaseID)) {
-            color = ColorRed;
-        } else if (base->golden_age()) {
-            color = ColorEnergy;
-        } else {
-            color = ColorIntakeSurplus;
-        }
-        Buffer_set_text_color(This, color, a3, a4, a5);
-        snprintf(buf, StrBufLen, label_pop_size,
-            base->talent_total, workers, base->drone_total, base->specialist_total);
-        if (DEBUG) {
-            strncat(buf, conf.base_psych ? " / B" : " / A", 32);
-        }
-        Buffer_write_right_l2(This, buf, 690, 423 - 42, LineBufLen);
-		*/
-		if (base->pad_7 != 0)
-		{
-			Buffer_set_text_color(This, ColorEnergyLight, a3, a4, a5);
-			snprintf(buf, StrBufLen, label_psych_energy_allocation, base->pad_7);
-			Buffer_write_right_l2(This, buf, 690, 423 - 42, LineBufLen);
-		}
-		Buffer_write_right_l2(This, buf, 690, 423 - 42, LineBufLen);
-		//
-		
- 		// [WTP]
- 		// population boom marker is already displayed in the nutrient box
-		
-		/*
-        if (base_pop_boom(*CurrentBaseID) && base_unused_space(*CurrentBaseID) > 0) {
-            Buffer_set_text_color(This, ColorNutrient, a3, a4, a5);
-            snprintf(buf, StrBufLen, "%s", label_pop_boom);
-            Buffer_write_right_l2(This, buf, 690, 423 - 21, LineBufLen);
-        }
-		*/
-		
-        if (base->nerve_staple_turns_left > 0) {
-            snprintf(buf, StrBufLen, label_nerve_staple, base->nerve_staple_turns_left);
-            Buffer_set_text_color(This, ColorEnergy, a3, a4, a5);
-            Buffer_write_right_l2(This, buf, 690, 423, LineBufLen);
-        }
-		
-		// [WTP]
-		// display psych effect if no nerve staple
-		
-		else if (conf.base_psych && conf.base_psych_improved)
-		{
-			int psych_effect = max(0, base->psych_total / conf.base_psych_cost);
-			
-			if (base->pad_8 != 0 && false)
-			{
-				int psych_effect_allocated = max(0, base->pad_8 / conf.base_psych_cost);
-				snprintf(buf, StrBufLen, label_psych_effect_allocated, psych_effect_allocated, psych_effect);
-			}
-			else
-			{
-				snprintf(buf, StrBufLen, label_psych_effect, psych_effect);
-			}
-			
-			Buffer_set_text_color(This, ColorPsychAlloc, a3, a4, a5);
-			Buffer_write_right_l2(This, buf, 690, 423, LineBufLen);
-			
-		}
-		
-    }
-    Buffer_set_text_color(This, a2, a3, a4, a5);
-}
-
-void __cdecl mod_base_draw(Buffer* buffer, int base_id, int x, int y, int zoom, int opts)
-{
-    int color = -1;
-    int width = 1;
-    BASE* base = &Bases[base_id];
-    base_draw(buffer, base_id, x, y, zoom, opts);
-
-    if (conf.render_base_info && zoom >= -8) {
-        if (has_fac_built(FAC_HEADQUARTERS, base_id)) {
-            color = ColorWhite;
-            width = 2;
-        }
-        if (has_fac_built(FAC_GEOSYNC_SURVEY_POD, base_id)
-        || has_fac_built(FAC_FLECHETTE_DEFENSE_SYS, base_id)) {
-            color = ColorCyan;
-        }
-        if (base->faction_id == MapWin->cOwner && base->golden_age()) {
-            color = ColorEnergy;
-        }
-        if (base->faction_id == MapWin->cOwner && base_maybe_riot(base_id)) {
-            color = ColorRed;
-        }
-        if (color < 0) {
-            return;
-        }
-        // Game engine uses this way to determine the population label width
-        int w = Font_width(*MapLabelFont, (base->pop_size >= 10 ? "88" : "8")) + 5;
-        int h = (*MapLabelFont)->iHeight + 4;
-
-        for (int i = 1; i <= width; i++) {
-            RECT rr = {x-i, y-i, x+w+i, y+h+i};
-            Buffer_box(buffer, &rr, color, color);
-        }
-    }
-}
-
-int __cdecl BaseWin_staple_popp(
-const char* filename, const char* label, int a3, const char* imagefile, int a5)
-{
-    BASE* base = *CurrentBase;
-    if (base && base->assimilation_turns_left
-    && base->faction_id_former != MapWin->cOwner && is_alive(base->faction_id_former)) {
-        return popp("modmenu", "NERVESTAPLE2", a3, imagefile, a5);
-    }
-    return popp(filename, label, a3, imagefile, a5);
-}
-
-/*
-Refresh base window workers properly after nerve staple is done.
-*/
-void __cdecl BaseWin_action_staple(int base_id)
-{
-    if (can_staple(base_id)) {
-        set_base(base_id);
-        action_staple(base_id);
-        base_compute(1);
-        BaseWin_on_redraw(BaseWin);
-    }
-}
-
-/*
-Separate case where nerve stapling is done from another popup.
-*/
-void __cdecl popb_action_staple(int base_id)
-{
-    if (can_staple(base_id)) {
-        action_staple(base_id);
-    }
-}
-
-int __thiscall BaseWin_click_staple(Win* This)
-{
-    // SE_Police value is checked before calling this function
-    int base_id = ((BaseWindow*)This)->oRender.base_id;
-    if (base_id >= 0 && conf.nerve_staple > Bases[base_id].plr_owner()) {
-        return BaseWin_nerve_staple(This);
-    }
-    return 0;
-}
 
 void __cdecl ReportWin_draw_ops_strcat(char* dst, char* UNUSED(src))
 {
     BASE* base = *CurrentBase;
     uint32_t gov = base->governor_flags;
-    char buf[StrBufLen] = {};
+    size_t len = 0;
     dst[0] = '\0';
 
-    if (base->faction_id == MapWin->cOwner) {
-        if (gov & GOV_ACTIVE) {
-            if (gov & GOV_PRIORITY_EXPLORE) {
-                strncat(dst, label_get(521), 32);
-            } else if (gov & GOV_PRIORITY_DISCOVER) {
-                strncat(dst, label_get(522), 32);
-            } else if (gov & GOV_PRIORITY_BUILD) {
-                strncat(dst, label_get(523), 32);
-            } else if (gov & GOV_PRIORITY_CONQUER) {
-                strncat(dst, label_get(524), 32);
-            } else {
-                strncat(dst, label_get(457), 32); // Governor
-            }
-            strncat(dst, " ", 32);
+    if (base->faction_id == MapWin->cOwner && gov & GOV_ACTIVE) {
+        const char* type;
+        if (gov & GOV_PRIORITY_EXPLORE) {
+            type = label_get(TL_Explore);
+        } else if (gov & GOV_PRIORITY_DISCOVER) {
+            type = label_get(TL_Discover);
+        } else if (gov & GOV_PRIORITY_BUILD) {
+            type = label_get(TL_Build);
+        } else if (gov & GOV_PRIORITY_CONQUER) {
+            type = label_get(TL_Conquer);
+        } else {
+            type = label_get(TL_Governor);
         }
+        len += snprintf(dst, StrBufLen, "%s ", type);
     }
-    if (strlen(label_base_surplus)) {
-        snprintf(buf, StrBufLen, label_base_surplus,
+    if (strlen(label_base_surplus) && len < StrBufLen) {
+        snprintf(dst + len, StrBufLen - len, label_base_surplus,
             base->nutrient_surplus, base->mineral_surplus, base->energy_surplus);
-        strncat(dst, buf, StrBufLen);
     }
 }
 
@@ -1872,7 +1365,7 @@ int __thiscall mod_MapWin_focus(Console* This, int x, int y)
     return 0;
 }
 
-int __thiscall mod_MapWin_set_center(Console* This, int x, int y, int flag)
+void __thiscall mod_MapWin_set_center(Console* This, int x, int y, int flag)
 {
     // Make sure the whole screen is refreshed when clicking on map tiles
     if (!in_box(x, y, RenderTileBounds)) {
@@ -1885,10 +1378,10 @@ int __thiscall mod_MapWin_set_center(Console* This, int x, int y, int flag)
 This is called when ReportWin is closing and is used to refresh base labels
 on any bases where workers have been adjusted from the base list window.
 */
-int __thiscall ReportWin_close_handler(void* This)
+void __thiscall ReportWin_close_handler(SubInterface* This)
 {
     SubInterface_release_iface_mode(This);
-    return draw_map(1);
+    draw_map(1);
 }
 
 /*
@@ -1898,10 +1391,10 @@ Original version changed MapWin->cOwner variable for unknown reason which is ski
 void __thiscall Console_editor_fungus(Console* UNUSED(This))
 {
     auto_undo();
-    int v1 = X_pop7("FUNGOSITY", PopDialogBtnCancel, 0);
+    int v1 = X_pop_6("FUNGOSITY", PopDialogBtnCancel, 0);
     if (v1 >= 0) {
         int v2 = 0;
-        if (!v1 || (v2 = X_pop7("FUNGMOTIZE", PopDialogBtnCancel, 0)) > 0) {
+        if (!v1 || (v2 = X_pop_6("FUNGMOTIZE", PopDialogBtnCancel, 0)) > 0) {
             MAP* sq = *MapTiles;
             for (int i = 0; i < *MapAreaTiles; ++i, ++sq) {
                 sq->items &= ~BIT_FUNGUS;
@@ -1931,31 +1424,40 @@ void __cdecl say_loc(char* dest, int x, int y, int a4, int a5, int a6)
 {
     int base_id = -1;
     MAP* sq;
-
     if ((sq = mapsq(x, y)) && sq->is_base()
     && (*GameState & STATE_SCENARIO_EDITOR || sq->is_visible(MapWin->cOwner))) {
         base_id = base_at(x, y);
     }
+    const char* prefix = "";
+    const char* prefix_space = "";
     if (a4 != 0 && base_id < 0) {
-        a6 = 0;
-        base_id = mod_base_find3(x, y, -1, -1, -1, MapWin->cOwner);
+        base_id = base_find_3(x, y, -1, -1, -1, MapWin->cOwner);
         if (base_id >= 0) {
-            strncat(dest, label_get(62), 32); // near
-            strncat(dest, " ", 2);
+            a6 = 0;
+            prefix = label_get(62); // near
+            prefix_space = " ";
         }
     }
+    const char* base_name = "";
+    const char* trail_space = "";
     if (base_id >= 0) {
         if (a6) {
-            strncat(dest, label_get(8), 32); // at
-            strncat(dest, " ", 2);
+            prefix = label_get(8); // at
+            prefix_space = " ";
         }
-        strncat(dest, Bases[base_id].name, MaxBaseNameLen);
+        base_name = Bases[base_id].name;
         if (a5) {
-            strncat(dest, " ", 2);
+            trail_space = " ";
         }
     }
+    size_t prev = strnlen(dest, StrBufLen);
+    size_t len = StrBufLen - prev;
     if (a5 == 1 || (a5 == 2 && base_id < 0)) {
-        snprintf(dest + strlen(dest), 32, "(%d, %d)", x, y);
+        snprintf(dest + prev, len, "%s%s%s%s(%d, %d)",
+            prefix, prefix_space, base_name, trail_space, x, y);
+    } else {
+        snprintf(dest + prev, len, "%s%s%s%s",
+            prefix, prefix_space, base_name, trail_space);
     }
 }
 
@@ -1987,28 +1489,28 @@ void __cdecl reset_netmsg_status()
     netmsg_item1[0] = '\0';
 }
 
-int __thiscall mod_NetMsg_pop(void* This, const char* label, int delay, int a4, const char* a5)
+int __thiscall mod_NetMsg_pop(NetMessage* This, const char* label, int delay, int a4, const char* filename)
 {
     if (!conf.foreign_treaty_popup) {
-        return NetMsg_pop(This, label, delay, a4, a5);
+        return NetMsg_pop(This, label, delay, a4, filename);
     }
     if (!strcmp(label, "GOTMYPROBE")) {
-        return NetMsg_pop(This, label, -1, a4, a5);
+        return NetMsg_pop(This, label, -1, a4, filename);
     }
     if (!strcmp(label, netmsg_label)
     && !strcmp(ParseStrBuffer[0].str, netmsg_item0)
     && !strcmp(ParseStrBuffer[1].str, netmsg_item1)) {
         // Skip additional popup windows
-        return NetMsg_pop(This, label, delay, a4, a5);
+        return NetMsg_pop(This, label, delay, a4, filename);
     }
     strcpy_n(netmsg_label, StrBufLen, label);
     strcpy_n(netmsg_item0, StrBufLen, ParseStrBuffer[0].str);
     strcpy_n(netmsg_item1, StrBufLen, ParseStrBuffer[1].str);
-    return NetMsg_pop(This, label, -1, a4, a5);
+    return NetMsg_pop(This, label, -1, a4, filename);
 }
 
 int __thiscall mod_BasePop_start(
-void* This, const char* filename, const char* label, int a4, int a5, int a6, int a7)
+BasePop* This, const char* filename, const char* label, int a4, char* a5, int a6, GraphicWin* a7)
 {
     if (movedlabels.count(label)) {
         return BasePop_start(This, "modmenu", label, a4, a5, a6, a7);
@@ -2034,44 +1536,6 @@ int __cdecl mod_design_new_veh(int faction_id, int unit_id) {
     return DesignWin_exec(DesignWin, faction_id, unit_id);
 }
 
-int __cdecl mod_action_arty(int veh_id, int x, int y)
-{
-    VEH* veh = &Vehs[veh_id];
-    
-	// [WTP]
-	// disable bombardment if vehicle is land unit at sea and not in a base
-	if (veh->triad() == TRIAD_LAND && is_ocean(mapsq(veh->x, veh->y)) && !mapsq(veh->x, veh->y)->is_base())
-		return 0;
-	
-    if (*MultiplayerActive) {
-        return action_arty(veh_id, x, y);
-    }
-    if (veh->faction_id == *CurrentPlayerFaction) {
-        if (!veh_ready(veh_id)) {
-            return NetMsg_pop(NetMsg, "UNITMOVED", 5000, 0, 0);
-        }
-    }
-    int veh_range = arty_range(veh->unit_id);
-    if (map_range(veh->x, veh->y, x, y) <= veh_range) {
-        int veh_id_tgt = stack_fix(veh_at(x, y));
-        if (veh_id_tgt >= 0) {
-            if (veh->faction_id != Vehs[veh_id_tgt].faction_id
-            && !has_pact(veh->faction_id, Vehs[veh_id_tgt].faction_id)) {
-                int offset = radius_move2(veh->x, veh->y, x, y, TableRange[veh_range]);
-                if (offset >= 0) {
-                    *VehAttackFlags = 3;
-                    return battle_fight_1(veh_id, offset, 1, 1, 0);
-                }
-            }
-        } else {
-            return action_destroy(veh_id, 0, x, y);
-        }
-    } else {
-        return NetMsg_pop(NetMsg, "OUTOFRANGE", 5000, 0, 0);
-    }
-    return 0;
-}
-
 int __cdecl MapWin_right_menu_arty(int veh_id, int x, int y)
 {
     VEH* veh = &Vehs[veh_id];
@@ -2081,7 +1545,7 @@ int __cdecl MapWin_right_menu_arty(int veh_id, int x, int y)
 void __thiscall Console_arty_cursor_on(Console* This, int cursor_type, int veh_id)
 {
     int veh_range = arty_range(Vehs[veh_id].unit_id);
-    Console_cursor_on(This, cursor_type, veh_range);
+    Console_cursor_on_2(This, cursor_type, veh_range);
 }
 
 

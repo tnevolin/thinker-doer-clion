@@ -5,6 +5,8 @@
 const int NearbyTiles[][2] = {{1,-1}, {2,0}, {1,1}, {0,2}, {-1,1}, {-2,0}, {-1,-1}, {0,-2}};
 const int BaseOffsetX[] = { 1, 2, 1, 0, -1, -2, -1,  0, 0}; // Path::find offset
 const int BaseOffsetY[] = {-1, 0, 1, 2,  1,  0, -1, -2, 0}; // Path::find offset
+const int NearOffsetX[] = {1, 1, -1, -1, 0};
+const int NearOffsetY[] = {-1, 1, 1, -1, 0};
 const int MaxTableRange = 8;
 const int TableRange[] = {1, 9, 25, 49, 81, 121, 169, 225, 289};
 
@@ -44,7 +46,7 @@ const int TableOffsetY[] = {
     -7,  -8,  -9, -10, -11, -12, -13, -14, -15,
 };
 
-const int PathLimit = 128;
+const int PathLimit = 160;
 const int QueueSize = 8192;
 const int MaxTileSearchType = 6;
 
@@ -93,13 +95,13 @@ class TileSearch {
     int rx, ry, dist, current, faction_id, y_skip;
     PathNode paths[QueueSize];
     Points oldtiles;
-    void init(int x, int y, int tp);
-    void init(int x, int y, int tp, int skip);
-    void init(const PointList& points, TSType tp, int skip);
+    void init(int x, int y, int ts_type);
+    void init(int x, int y, int ts_type, int ts_skip);
+    void init(const PointList& points, TSType ts_type, int ts_skip);
     void get_route(PointList& pp);
     void adjust_roads(PMTable& tbl, int value);
-    void connect_roads(PMTable& tbl, int x, int y, int pact_id);
-    bool has_zoc(int pact_id);
+    void connect_roads(PMTable& tbl, int x, int y, int plr_id);
+    bool has_zoc(int plr_id);
     PathNode& get_prev();
     PathNode& get_node();
     MAP* get_next();
@@ -109,17 +111,22 @@ int __cdecl mod_zoc_any(int x, int y, int faction_id);
 int __cdecl mod_zoc_veh(int x, int y, int faction_id);
 int __cdecl mod_zoc_sea(int x, int y, int faction_id);
 int __cdecl mod_zoc_move(int x, int y, int faction_id);
+int path_get_next(int x1, int y1, int x2, int y2, int unit_id, int faction_id);
+int show_path_cost(int x1, int y1, int x2, int y2, int unit_id, int faction_id);
+int path_cost(int x1, int y1, int x2, int y2, int unit_id, int faction_id, int max_cost);
+int route_dist(PMTable& tbl, int x1, int y1, int x2, int y2);
+void update_move_path(PMTable& tbl, int veh_id, int tx, int ty);
 std::vector<MapTile> iterate_tiles(int x, int y, size_t start_index, size_t end_index);
 int nearby_items(int x, int y, size_t start_index, size_t end_index, uint32_t item);
-int path_get_next(int x1, int y1, int x2, int y2, int unit_id, int faction_id);
-int path_distance(int x1, int y1, int x2, int y2, int unit_id, int faction_id);
-int path_cost(int x1, int y1, int x2, int y2, int unit_id, int faction_id, int max_cost);
-void update_path(PMTable& tbl, int veh_id, int tx, int ty);
 bool defend_tile(VEH* veh, MAP* sq);
 bool safe_path(TileSearch& ts, int faction_id, bool skip_owner);
 bool has_base_sites(TileSearch& ts, int x, int y, int faction_id, int triad);
-int route_distance(PMTable& tbl, int x1, int y1, int x2, int y2);
+int defender_goal(int x, int y, int faction_id, int triad);
+int defender_count(int x, int y, int veh_skip_id);
+int garrison_count(int x, int y);
+int veh_cargo_loaded(int veh_id);
 int cargo_capacity(int x, int y, int faction_id);
+bool has_transport(int x, int y, int faction_id);
 int move_to_base(int veh_id, bool ally);
 int escape_move(int veh_id);
 int search_escape(TileSearch& ts, int veh_id, int* tx, int* ty);

@@ -6,9 +6,12 @@ enum Triad {
     TRIAD_SEA = 1,
     TRIAD_AIR = 2,
 };
-constexpr size_t TRIAD_COUNT = TRIAD_AIR + 1;
-constexpr std::array<Triad, TRIAD_COUNT> TRIADS = {TRIAD_LAND, TRIAD_SEA, TRIAD_AIR};
 
+enum TriadFlag {
+    TRFLAG_LAND = 1,
+    TRFLAG_SEA = 2,
+    TRFLAG_AIR = 4,
+};
 
 enum VehMorale {
     MORALE_VERY_GREEN = 0,
@@ -141,6 +144,7 @@ enum VehPlan {
     PLAN_TECTONIC_MISSILE = 13,
     PLAN_FUNGAL_MISSILE = 14,
     PLAN_AUTO_CALCULATE = -1,
+    PLAN_PROTOTYPE_DONE = -2,
 };
 
 enum VehAbl {
@@ -279,6 +283,9 @@ enum VehOrder {
     ORDER_ROAD_TO = 27,          // (r)
     ORDER_MAGTUBE_TO = 28,       // (t)
     ORDER_AI_GO_TO = 88,         //  - ; ORDER_GO_TO (0x18) | 0x40 > 0x58 ? only used by AI funcs
+    VehOrderResetFlag = 0x40,
+    VehOrderFormerFirst = ORDER_FARM,
+    VehOrderFormerLast = ORDER_PLACE_MONOLITH,
 };
 
 enum VehOrderAutoType {
@@ -345,7 +352,7 @@ enum VehState {
     VSTATE_UNK_8 = 0x8, // used in repair_phase
     VSTATE_REQUIRES_SUPPORT = 0x10,
     VSTATE_MADE_AIRDROP = 0x20,
-    VSTATE_UNK_40 = 0x40,
+    VSTATE_UNK_40 = 0x40, // action_destroy
     VSTATE_DESIGNATE_DEFENDER = 0x80,
     VSTATE_MONOLITH_UPGRADED = 0x100,
     VSTATE_ON_ALERT = 0x200, // related to ORDERA_ON_ALERT, cleared in veh_wake
@@ -376,11 +383,11 @@ enum VehState {
 struct UNIT {
     char name[32];
     uint32_t ability_flags;
-    int8_t chassis_id;
-    int8_t weapon_id;
-    int8_t armor_id;
-    int8_t reactor_id;
-    int8_t carry_capacity;
+    uint8_t chassis_id;
+    uint8_t weapon_id;
+    uint8_t armor_id;
+    uint8_t reactor_id;
+    uint8_t carry_capacity;
     uint8_t cost;
     int8_t plan;
     int8_t group_id; // some kind of internal prototype category
@@ -415,8 +422,11 @@ struct UNIT {
     int defense_value() {
         return Armor[armor_id].defense_value;
     }
-    int std_offense_value() {
-        return Weapon[weapon_id].offense_value * reactor_id;
+    int is_planet_buster() { // planet_buster function, enabled when non-zero value
+        return plan == PLAN_PLANET_BUSTER ? reactor_id : 0;
+    }
+    int is_missile() {
+        return Chassis[chassis_id].missile;
     }
     bool is_active() {
         return unit_flags & UNIT_ACTIVE;
@@ -442,11 +452,12 @@ struct UNIT {
     bool is_psi_unit() { // only include PSI attack
         return Weapon[weapon_id].offense_value < 0;
     }
-    bool is_garrison_unit() {
-        return triad() == TRIAD_LAND && Weapon[weapon_id].offense_value != 0
-            && (Armor[armor_id].defense_value >= Weapon[weapon_id].offense_value
-            || Armor[armor_id].defense_value < 0
-            || (chassis_id == CHS_INFANTRY && Armor[armor_id].defense_value > 1));
+    bool is_garrison_unit() { // basic defender unit for all bases
+        return (plan <= PLAN_RECON || (plan == PLAN_PROBE && is_armored()))
+            && triad() == TRIAD_LAND;
+    }
+    bool is_police_unit() { // required for applying police effect
+        return plan <= PLAN_RECON && triad() != TRIAD_SEA;
     }
     bool is_colony() {
         return plan == PLAN_COLONY;
@@ -465,12 +476,6 @@ struct UNIT {
     }
     bool is_artifact() {
         return plan == PLAN_ARTIFACT;
-    }
-    bool is_missile() {
-        return Chassis[chassis_id].missile;
-    }
-    bool is_planet_buster() {
-        return plan == PLAN_PLANET_BUSTER;
     }
     
     // [WTP]
@@ -501,7 +506,7 @@ struct VEH {
     uint8_t faction_id;
     uint8_t year_end_lurking;
     uint8_t damage_taken;
-    int8_t order;
+    uint8_t order;
     uint8_t waypoint_count;
     uint8_t patrol_current_point;
     int16_t waypoint_x[4]; // first doubles as transport veh_id if unit is sentry/board
@@ -555,7 +560,7 @@ struct VEH {
         }
         return 10*reactor_type();
     }
-    int cur_hitpoints() { // Replace veh_health function
+    int cur_hitpoints() { // veh_health function
         if (is_artifact()) {
             return !damage_taken;
         }
@@ -586,6 +591,12 @@ struct VEH {
     int defense_value() {
         return Units[unit_id].defense_value();
     }
+    int is_planet_buster() {
+        return Units[unit_id].is_planet_buster();
+    }
+    int is_missile() {
+        return Units[unit_id].is_missile();
+    }
     bool is_pulse_armor() {
         return Units[unit_id].is_pulse_armor();
     }
@@ -603,6 +614,9 @@ struct VEH {
     }
     bool is_garrison_unit() {
         return Units[unit_id].is_garrison_unit();
+    }
+    bool is_police_unit() {
+        return Units[unit_id].is_police_unit();
     }
     // Determine if native unit modifiers apply in this case. Multiple original functions
     // may check separately unit_id == BSC_SPORE_LAUNCHER for native units but this condition
@@ -633,12 +647,6 @@ struct VEH {
     bool is_artifact() {
         return Units[unit_id].is_artifact();
     }
-    bool is_missile() {
-        return Units[unit_id].is_missile();
-    }
-    bool is_planet_buster() {
-        return Units[unit_id].is_planet_buster();
-    }
     bool is_visible(int faction) {
         return visibility & (1 << faction);
     }
@@ -654,8 +662,9 @@ struct VEH {
         return is_human(faction_id);
     }
     bool at_target() {
-        return order == ORDER_NONE || (waypoint_x[0] < 0 && waypoint_y[0] < 0)
-            || (x == waypoint_x[0] && y == waypoint_y[0]);
+        return order == ORDER_NONE || order == ORDER_HOLD
+            || (waypoint_x[0] < 0 && waypoint_y[0] < 0)
+            || (x == waypoint_x[0] && y == waypoint_y[0] && !waypoint_count);
     }
     bool in_transit() {
         return order == ORDER_SENTRY_BOARD && waypoint_x[0] >= 0;
@@ -687,6 +696,18 @@ struct VEH {
         order = ORDER_NONE;
         state &= ~(VSTATE_UNK_2000000|VSTATE_UNK_1000000|VSTATE_EXPLORE|VSTATE_ON_ALERT);
     }
+    int eval_offense() {
+        int value = offense_value();
+        return value >= 0 ? value : std::min(7, std::max(1, morale + 1));
+    }
+    int eval_defense() {
+        int value = defense_value();
+        return value >= 0 ? value : std::min(7, std::max(1, morale + 1));
+    }
+    int eval_garrison() {
+        return (triad() == TRIAD_LAND ? 2 : 1) + is_combat_unit() + is_armored();
+    }
+    
 	// [WTP]
 	// current hitpoints with ignore reactor flag
 	int cur_hitpoints(bool ignore_reactor)
@@ -699,6 +720,7 @@ struct VEH {
     	}
     	return std::max(0, hp);
     }
+    
 };
 
 #pragma pack(pop)

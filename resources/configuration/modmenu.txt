@@ -85,6 +85,20 @@ __Governor may produce psych facilities with side effects.
 __Governor may produce secret projects.
 __Governor may HURRY production.
 
+#TOPMENU
+#xs 420
+#itemlist
+#x -5
+#y -5
+START GAME
+QUICK START
+SCENARIO
+LOAD GAME
+MULTIPLAYER
+CHANGE OPTIONS
+VIEW CREDITS
+EXIT GAME
+
 #HURRY
 #xs 400
 #caption Operations Director
@@ -141,6 +155,11 @@ Our infiltration on {$MSG0} has been discovered! The spies have been lost.
 #xs 440
 #caption Operations Director
 We have discovered and removed {$MSG0} infiltration on our networks!
+
+#BASELIMIT
+#xs 440
+#caption Operations Director
+Unable to build more bases until any old ones are removed.
 
 #GOVHURRY
 #xs 600
@@ -232,6 +251,50 @@ All negative $LINK<MORALE=130004> effects are cancelled for units in
 base square; instead such units receive a +1 MORALE modifier.
 ^
 Reduces base's vulnerability to enemy mind control.
+
+#HELPFAC4
+Increases defense multiplier of base against any land attackers.
+This effectively doubles the defense strength (or triples it
+when combined with a $LINK<Tachyon Field=100005>) if the effect of
+intrinsic base defense bonus is excluded.
+
+#HELPFAC28
+Increases defense multiplier of base against any attacking ships.
+^Repairs damaged naval units quickly. Naval units built here
+receive two $LINK<morale=11> upgrades.
+
+#HELPFAC29
+Increases defense multiplier of base against any attacking aircraft.
+^Repairs damaged air units quickly. Air units built here receive
+two $LINK<morale=11> upgrades. Base must have an Aerospace complex before
+it can produce space-based improvements.
+
+#HELPPROJ7
+All bases will increase to population level 3. One less $LINK<drone=36>
+at all bases of population level 3 and under.
+
+#HELPPROJ8
+All $LINK<Xenofungus=14> squares are treated as $LINK<roads=90005>, and the
+rate at which your $LINK<Formers=30001> $LINK<remove=90010> and/or
+$LINK<plant fungus=90011> is doubled.
+^Any alien lifeforms you breed gain a $LINK<+1 lifecycle=11> bonus.
+Any units stationed in fungus heal faster and completely.
+
+#HELPPROJ10
+Increases the movement rate of all naval units by two, and
+counts as a $LINK<Naval Yard=100028> at every one of your bases.
+
+#HELPPROJ29
+Increases $LINK<MINERALS=42> output at every base by 50%. Cumulative with
+all other facilities of this type.
+
+#HELPPROJ34
++1 $LINK<morale=11> to all $LINK<Probe Teams=30006> built. -25% cost of probe team
+actions. All probe teams are considered to have $LINK<Algorithmic Enhancement=80028>.
+
+#HELPPROJ35
+Free $LINK<Aerospace Complex=100029> in every base. Increases the movement
+rate of all aircraft units by two.
 
 # ; This line must remain at end of file
 

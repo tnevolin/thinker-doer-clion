@@ -36,6 +36,7 @@ add_compile_options(
 	-Wno-shadow
 	-msse2
 	-mfpmath=sse
+	-Wno-pragmas
 )
 
 # C++ specific flags
@@ -52,6 +53,8 @@ endif()
 set(THINKER_SOURCES
     src/base.cpp
     src/base.h
+    src/basewin.cpp
+    src/basewin.h
     src/build.cpp
     src/build.h
     src/config.cpp
@@ -69,6 +72,7 @@ set(THINKER_SOURCES
     src/faction.h
     src/game.cpp
     src/game.h
+    src/gameturn.cpp
     src/goal.cpp
     src/goal.h
     src/gui.cpp
@@ -102,6 +106,7 @@ set(THINKER_SOURCES
     src/probe.h
     src/random.cpp
     src/random.h
+    src/savegame.cpp
     src/strings.cpp
     src/strings.h
     src/tech.cpp
@@ -110,6 +115,7 @@ set(THINKER_SOURCES
     src/test.h
     src/veh.cpp
     src/veh.h
+    src/veh_action.cpp
     src/veh_combat.cpp
     src/veh_combat.h
     src/veh_turn.cpp
@@ -130,6 +136,10 @@ set(THINKER_SOURCES
     src/wtp_aiMoveCombat.h
     src/wtp_aiMoveCrawler.cpp
     src/wtp_aiMoveCrawler.h
+    src/wtp_aiMoveFormer.cpp
+    src/wtp_aiMoveFormer.h
+    src/wtp_aiMoveProbe.cpp
+    src/wtp_aiMoveProbe.h
     src/wtp_aiMoveTransport.cpp
     src/wtp_aiMoveTransport.h
     src/wtp_aiProduction.cpp
@@ -149,10 +159,6 @@ set(THINKER_SOURCES
     src/wtp_terranx.cpp
     src/wtp_terranx.h
     src/wtp_terranx_enum.h
-        src/wtp_aiMoveFormer.cpp
-        src/wtp_aiMoveFormer.h
-        src/wtp_aiMoveProbe.cpp
-        src/wtp_aiMoveProbe.h
 )
 
 add_library(thinker SHARED ${THINKER_SOURCES})

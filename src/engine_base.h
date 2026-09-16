@@ -114,6 +114,23 @@ const uint32_t BaseGovOptions[][2] = {
     {0x100000, GOV_MAY_HURRY_PRODUCTION},
 };
 
+const int32_t BaseSupportCosts[8][2]  = {
+    {2, 0}, // -4, Each unit costs 2 to support; no free minerals for new base.
+    {1, 0}, // -3, Each unit costs 1 to support; no free minerals for new base.
+    {1, 1}, // -2, Support 1 unit free per base; no free minerals for new base.
+    {1, 1}, // -1, Support 1 unit free per base
+    {1, 2}, //  0, Support 2 units free per base
+    {1, 3}, //  1, Support 3 units free per base
+    {1, 4}, //  2, Support 4 units free per base!
+    {1,-4}, //  3, Support 4 units OR up to base size for free!!
+};
+
+enum BaseReplayEvent {
+    REPLAY_INIT = 0,
+    REPLAY_CAPTURE = 1,
+    REPLAY_KILL = 2,
+};
+
 enum BaseRadius {
     BR_NOT_AVAILABLE = 1,
     BR_NOT_VISIBLE = 2,
@@ -201,10 +218,6 @@ struct BASE {
     int8_t pad_7;
     int32_t pad_8;
 
-	int factionId()
-	{
-		return static_cast<unsigned char>(faction_id);
-	}
     int item() {
         return queue_items[0];
     }
@@ -254,7 +267,7 @@ struct BASE {
         }
         return (specialist_types[index/8] >> 4 * (index & 7)) & 0xF;
     }
-    void specialist_modify(int index, int citizen_id) {
+    void set_specialist_type(int index, int citizen_id) {
         if (index < 0 || index >= MaxBaseSpecNum) {
             return;
         }
@@ -292,11 +305,11 @@ struct BASE {
 	If there is already MaxBaseSpecNum specialists, does not modify the specialist_types, but just increments specialist_total.
 	Specialists beyond MaxBaseSpecNum are autocomputed and not stored.
 	*/
-	void specialist_add(int specialist_type)
+	void add_specialist_type(int specialist_type)
 	{
 		if (specialist_total < MaxBaseSpecNum)
 		{
-			specialist_modify(specialist_total, specialist_type);
+			set_specialist_type(specialist_total, specialist_type);
 			specialist_total++;
 		}
 		else
@@ -305,19 +318,17 @@ struct BASE {
 		}
 	}
 	/*
-	Adds specialist of given type to the list.
-	If there is already MaxBaseSpecNum specialists, does not modify the specialist_types, but just increments specialist_total.
-	Specialists beyond MaxBaseSpecNum are autocomputed and not stored.
+	Removes specialist of given type from the list.
 	*/
-	void specialist_remove(int index, int best_specialist_type)
+	void remove_specialist(int index, int best_specialist_type)
 	{
 		if (index < MaxBaseSpecNum)
 		{
 			for (int otherIndex = index + 1; otherIndex < specialist_total; otherIndex++)
 			{
-				specialist_modify(otherIndex - 1, specialist_type(otherIndex));
+				set_specialist_type(otherIndex - 1, specialist_type(otherIndex));
 			}
-			specialist_modify(MaxBaseSpecNum - 1, best_specialist_type);
+			set_specialist_type(MaxBaseSpecNum - 1, best_specialist_type);
 			specialist_total--;
 		}
 		else

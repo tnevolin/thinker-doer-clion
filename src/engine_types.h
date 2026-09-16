@@ -1,5 +1,7 @@
 #pragma once
 #pragma pack(push, 1)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 
 struct MAP {
     uint8_t climate; // 000 00 000 | altitude (3 bit) ; rainfall (2 bit) ; temperature (3 bit)
@@ -39,8 +41,14 @@ struct MAP {
     int lm_items() {
         return landmarks & 0xFFFF;
     }
-    bool is_visible(int faction) {
-        return visibility & (1 << faction);
+    int rocky_level() {
+        return val3 >> 6;
+    }
+    bool is_visible(int faction_id) {
+        return visibility & (1 << faction_id);
+    }
+    bool is_known(int faction_id) {
+        return is_visible(faction_id) || map_is_known(faction_id);
     }
     bool is_owned() {
         return owner >= 0;
@@ -87,7 +95,7 @@ struct MAP {
     bool is_rainy_or_moist() {
         return climate & (TILE_MOIST | TILE_RAINY);
     }
-    bool volcano_center() { // Volcano also counts as rocky
+    bool volcano_center() {
         return landmarks & LM_VOLCANO && code_at() == 0;
     }
     bool veh_in_tile() {
@@ -102,9 +110,9 @@ struct MAP {
     bool allow_supply() {
         return !(items & (BIT_BASE_IN_TILE|BIT_VEH_IN_TILE|BIT_MONOLITH|BIT_SUPPLY_REMOVE));
     }
-    int veh_owner() {
+    int veh_owner() { // this does not check for items, usually who functions are called directly
         if ((val2 & 0xF) >= MaxPlayerNum) {
-            return -1; // No vehicles in this tile
+            return -1;
         }
         return val2 & 0xF;
     }
@@ -181,7 +189,7 @@ struct DefaultPref {
 
 struct Label {
     char** labels;
-    int32_t label_count;
+    uint32_t label_count;
 };
 
 struct Landmark {
@@ -301,6 +309,7 @@ struct MFaction {
         return rule_flags & RFLAG_AQUATIC;
     }
     bool is_alien() {
+        // compatibility edge cases, does not check for ExpansionEnabled unlike is_alien(faction_id)
         return rule_flags & RFLAG_ALIEN;
     }
 };
@@ -408,8 +417,7 @@ struct Faction {
     int32_t unk_27;
     int32_t ODP_deployed;
     int32_t tech_count_transcendent; // Transcendent Thoughts achieved
-    int8_t tech_trade_source[88];
-    int32_t unk_28;
+    int8_t tech_trade_source[92];
     int32_t tech_accumulated;
     int32_t tech_research_id;
     int32_t tech_cost;
@@ -422,22 +430,20 @@ struct Faction {
     int32_t AI_power;
     int32_t target_x;
     int32_t target_y;
-    int32_t best_mineral_output; // For faction bases highest mineral_intake_2 + 2 * mineral_surplus
+    int32_t best_mineral_output;
     int32_t council_call_turn;
     int32_t unk_29[11]; // Council related
     int32_t unk_30[11]; // Council related
-    int32_t facility_announced[2]; // bitfield - used to determine one time play of fac audio blurb
-    int32_t unk_33;
+    uint8_t facility_announced[12]; // bitfield - used to determine one time play of fac audio blurb
     int32_t clean_minerals_modifier; // Starts from zero and increases by one after each fungal pop
     int32_t base_id_attack_target; // Battle planning of base to attack, -1 if not set
     int32_t unk_37;
     char saved_queue_name[8][24];
     int32_t saved_queue_size[8];
     int32_t saved_queue_items[8][10];
-    int32_t unk_40[8]; // From possible SE support -4 to 3 minerals spent on unit support
-    int32_t unk_41[40]; // base_psych
-    int32_t unk_42[32]; // base_psych
-    int32_t unk_43[9]; // From possible SE effic 4 to -4 all energy lost to inefficieny
+    int32_t social_support[8]; // SE_support from -4 to 3 minerals spent on unit support
+    int32_t social_psych[8][9]; // SE_talent from -3 to 4 / SE_police from -5 to 3
+    int32_t social_effic[9]; // SE_effic from 4 to -4 all energy lost on inefficiency
     int32_t unk_45;
     int32_t unk_46;
     int32_t unk_47;
@@ -505,7 +511,7 @@ struct Faction {
     int32_t unk_99; // unused?
     uint32_t secret_project_intel[8]; // Bitfield; News of SPs other factions are working on
     int32_t corner_market_turn;
-    int32_t corner_market_active;
+    int32_t corner_market_cost;
     int32_t unk_101;
     int32_t unk_102;
     int32_t unk_103;
@@ -524,6 +530,10 @@ struct Faction {
     int32_t unk_116;
     int32_t unk_117;
     int32_t unk_118;
+
+    bool corner_market_active() {
+        return corner_market_turn > *CurrentTurn;
+    }
 };
 
 struct CRules {
@@ -709,12 +719,12 @@ struct CChassis {
     int32_t defsv1_is_plural;
     int32_t defsv2_is_plural;
     int32_t defsv_is_plural_lrg;
-    int8_t speed;
-    int8_t triad;
-    int8_t range;
-    int8_t cargo;
-    int8_t cost;
-    int8_t missile;
+    uint8_t speed;
+    uint8_t triad;
+    uint8_t range;
+    uint8_t cargo;
+    uint8_t cost;
+    uint8_t missile;
     char sprite_flag_x_coord[8];
     char sprite_flag_y_coord[8];
     char sprite_unk1_x_coord[8];
@@ -730,8 +740,8 @@ struct CArmor {
     char* name;
     char* name_short;
     int8_t defense_value;
-    int8_t mode;
-    int8_t cost;
+    uint8_t mode;
+    uint8_t cost;
     int8_t padding1;
     int16_t preq_tech;
     int16_t padding2;
@@ -749,8 +759,8 @@ struct CWeapon {
     char* name_short;
     int8_t offense_value;
     int8_t icon;
-    int8_t mode;
-    int8_t cost;
+    uint8_t mode;
+    uint8_t cost;
     int16_t preq_tech;
     int16_t padding;
 };
@@ -796,24 +806,34 @@ struct CTimeControl {
 };
 
 struct CSocialCategory {
-    int32_t politics;
-    int32_t economics;
-    int32_t values;
-    int32_t future;
+    union {
+        struct {
+            int32_t politics;
+            int32_t economics;
+            int32_t values;
+            int32_t future;
+        };
+        int32_t models[4];
+    };
 };
 
 struct CSocialEffect {
-    int32_t economy;
-    int32_t efficiency;
-    int32_t support;
-    int32_t talent;
-    int32_t morale;
-    int32_t police;
-    int32_t growth;
-    int32_t planet;
-    int32_t probe;
-    int32_t industry;
-    int32_t research;
+    union {
+        struct {
+            int32_t economy;
+            int32_t efficiency;
+            int32_t support;
+            int32_t talent;
+            int32_t morale;
+            int32_t police;
+            int32_t growth;
+            int32_t planet;
+            int32_t probe;
+            int32_t industry;
+            int32_t research;
+        };
+        int32_t values[11];
+    };
 };
 
 struct CSocialParam {
@@ -921,5 +941,6 @@ struct CWorldbuilder {
 };
 
 
+#pragma GCC diagnostic pop
 #pragma pack(pop)
 

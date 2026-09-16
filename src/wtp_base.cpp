@@ -41,7 +41,6 @@ void __cdecl wtp_mod_base_yield()
 
 	// base energy parameters
 
-	parameterSet.maxDistance = getInefficiencyFormulaMaxDistance();
 	parameterSet.hqDistance = getInefficiencyFormulaHQDistance(base_id);
 	parameterSet.efficiencyRating = getInefficiencyFormulaEfficiencyRating(base_id);
 
@@ -81,7 +80,7 @@ void __cdecl wtp_mod_base_yield()
 	int allocationPenalty = clamp(4 - SE_effic, 0, 8) * (2 * (abs(alloc_econ - alloc_labs) / 2));
 
 	double const mineralValue = getBaseMineralMultiplier(base_id);
-	double const efficiency = static_cast<double>(16 - wtp_mod_energy_intake_lost(base_id, 16, nullptr)) / 16.0;
+	double const efficiency = static_cast<double>(16 - wtp_mod_black_market(base_id, 16)) / 16.0;
 	double const econValue = allocationPenalty == 0 ? 1.0 : 1.0 - static_cast<double>((alloc_econ > alloc_labs ? 1 : 2) * allocationPenalty) / 100.0;
 	double const labsValue = allocationPenalty == 0 ? 1.0 : 1.0 - static_cast<double>((alloc_labs > alloc_econ ? 1 : 2) * allocationPenalty) / 100.0 / (has_facility(FAC_PUNISHMENT_SPHERE, base_id) ? 2.0 : 1.0);
 	constexpr double psychValue = 1.0;
@@ -95,7 +94,7 @@ void __cdecl wtp_mod_base_yield()
 
 	// specialists
 
-	int bestSpecialistType = mod_best_specialist();
+	int bestSpecialistType = best_specialist();
 	std::vector<int> availableSpecialistTypes = getAvailableSpecialistTypes(faction_id, base->pop_size);
 	int psychSpecialistType = getBestSpecialistType(availableSpecialistTypes, 0, 0, psychValue);
 	int adavancedSpecialistType = getBestSpecialistType(availableSpecialistTypes, econValue, labsValue, 0);
@@ -111,14 +110,14 @@ void __cdecl wtp_mod_base_yield()
 		
 		if (has_tech(citizen.obsol_tech, faction_id))
 		{
-			base->specialist_modify(i, findReplacementSpecialist(faction_id, spc_id));
+			base->set_specialist_type(i, findReplacementSpecialist(faction_id, spc_id));
 		}
 		
 		// not uncovered or not allowed
 		
 		if (!has_tech(citizen.preq_tech, faction_id) || (citizen.psych_bonus == 0 && base->pop_size < Rules->min_base_size_specialists))
 		{
-			base->specialist_modify(i, psychSpecialistType);
+			base->set_specialist_type(i, psychSpecialistType);
 		}
 		
 	}
@@ -213,7 +212,7 @@ void __cdecl wtp_mod_base_yield()
 		
 		for (; workers > 0; workers--)
 		{
-			base->specialist_modify(base->specialist_total, adavancedSpecialistType);
+			base->set_specialist_type(base->specialist_total, adavancedSpecialistType);
 			base->specialist_total++;
 		}
 
@@ -238,6 +237,13 @@ void __cdecl wtp_mod_base_yield()
 		// initial base score variables
 
 		BASE bestBase = *base;
+
+		// Largest gain improvement accepted so far while all hard conditions (nutrition,
+		// support, drone riot) were already satisfied. Used by isBetterBase to stop chasing
+		// diminishing swaps once the base is healthy - see isBetterBase for details. Seeded with
+		// a tiny floor (instead of 0) so the first comparison still requires a real improvement;
+		// it only ever grows from there, so this floor never needs to be reapplied later.
+		double maxGainImprovement = 1e-6;
 
 		// improvement cycle
 
@@ -334,7 +340,7 @@ void __cdecl wtp_mod_base_yield()
 
 					// update best placement
 
-					if (isBetterBase(*base, bestBase))
+					if (isBetterBase(*base, bestBase, maxGainImprovement))
 					{
 						bestBase = *base;
 						goto restart;
@@ -366,7 +372,7 @@ void __cdecl wtp_mod_base_yield()
 					// add specialist
 
 					base->worked_tiles &= ~oldWorkTileBit;
-					base->specialist_add(specialistType);
+					base->add_specialist_type(specialistType);
 
 					// update base
 
@@ -374,7 +380,7 @@ void __cdecl wtp_mod_base_yield()
 
 					// update best placement
 
-					if (isBetterBase(*base, bestBase))
+					if (isBetterBase(*base, bestBase, maxGainImprovement))
 					{
 						bestBase = *base;
 						goto restart;
@@ -431,7 +437,7 @@ void __cdecl wtp_mod_base_yield()
 						// remove specialist
 						// allocate farmer
 
-						base->specialist_remove(specialistIndex, bestSpecialistType);
+						base->remove_specialist(specialistIndex, bestSpecialistType);
 						base->worked_tiles |= newWorkTileBit;
 
 						// update base
@@ -440,7 +446,7 @@ void __cdecl wtp_mod_base_yield()
 
 						// update best placement
 
-						if (isBetterBase(*base, bestBase))
+						if (isBetterBase(*base, bestBase, maxGainImprovement))
 						{
 							bestBase = *base;
 							goto restart;
@@ -470,7 +476,7 @@ void __cdecl wtp_mod_base_yield()
 
 						// change specialist type
 
-						base->specialist_modify(specialistIndex, newSpecialistType);
+						base->set_specialist_type(specialistIndex, newSpecialistType);
 
 						// update base
 
@@ -478,7 +484,7 @@ void __cdecl wtp_mod_base_yield()
 
 						// update best placement
 
-						if (isBetterBase(*base, bestBase))
+						if (isBetterBase(*base, bestBase, maxGainImprovement))
 						{
 							bestBase = *base;
 							goto restart;
@@ -683,7 +689,7 @@ void populateBaseAvailableWorkTiles(BaseComputeParameterSet& baseComputeParamete
 			
 			// valid location
 			
-			if (workerIndex == 0 || otherBaseWorkedTile->owner < 0 || otherBaseWorkedTile->owner == otherBase->faction_id || mod_whose_territory(otherBase->faction_id, workedTileX, workedTileY, nullptr, 0) < 0)
+			if (workerIndex == 0 || otherBaseWorkedTile->owner < 0 || otherBaseWorkedTile->owner == otherBase->faction_id || whose_territory(otherBase->faction_id, workedTileX, workedTileY, nullptr, 0) < 0)
 			{
 				otherBaseWorkedTiles.insert(otherBaseWorkedTile);
 			}
@@ -738,7 +744,7 @@ void populateBaseAvailableWorkTiles(BaseComputeParameterSet& baseComputeParamete
 				BaseTileFlags[workTileNumber] |= BR_VEH_IN_TILE;
 			}
 			
-			if (workTile->owner >= 0 && mod_whose_territory(factionId, x, y, nullptr, 0) != factionId)
+			if (workTile->owner >= 0 && whose_territory(factionId, x, y, nullptr, 0) != factionId)
 			{
 				BaseTileFlags[workTileNumber] |= BR_FOREIGN_TILE;
 			}
@@ -764,7 +770,7 @@ void populateBaseWorkTileYields(BaseComputeParameterSet &baseComputeParameterSet
 {
 	int baseId = *CurrentBaseID;
 	BASE &base = **CurrentBase;
-	int factionId = base.factionId();
+	int factionId = base.faction_id;
 
 	std::array<ResourceYield, 21> &workTileYields = baseComputeParameterSet.workTileResourceYields;
 
@@ -929,12 +935,19 @@ void updateBase(BaseComputeParameterSet const& parameterSet, bool compute)
 
 	if (compute)
 	{
-		// updateBaseNutrient();
-		// updateBaseMineral(parameterSet);
-		// updateBaseEnergy(parameterSet);
-		mod_base_nutrient();
-		mod_base_minerals();
-		mod_base_energy();
+		// [WTP]
+		// Use lightweight scratch helpers instead of the real mod_base_nutrient/minerals/energy
+		// here: this is called once per candidate tile/specialist allocation while searching for
+		// the best base configuration (see wtp_mod_base_yield), so it can run many times per base
+		// per turn. The real functions accumulate into faction-level running totals
+		// (Factions[].nutrient_surplus_total, f->energy_surplus_total) on every call, which would
+		// over-count those totals once per candidate instead of once per base per turn. The caller
+		// of mod_base_yield/wtp_mod_base_yield (base_compute) always makes one more authoritative
+		// call to the real functions afterward on the final settled configuration, so that single
+		// call is what should - and does - perform the actual faction-level accounting.
+		updateBaseNutrient();
+		updateBaseMineral(parameterSet);
+		updateBaseEnergy(parameterSet);
 	}
 
 }
@@ -1039,7 +1052,7 @@ void wtp_add_psych_row(BASE *base, int num)
     
 }
 
-void __cdecl wtp_mod_base_psych(int base_id)
+void __cdecl wtp_mod_base_psych(int base_id, int SE_talent, int SE_police)
 {
 	BASE* base = &Bases[base_id];
 	Faction* f = &Factions[base->faction_id];
@@ -1067,7 +1080,6 @@ void __cdecl wtp_mod_base_psych(int base_id)
     //  1, Can use up to 2 military units as police
     //  2, Can use up to 3 military units as police!
     //  3, 3 units as police. Police effect doubled!!
-    const int SE_police = base->SE_police(SE_Pending);
     const int num_police = clamp((SE_police == -1) + SE_police + 1, 0, 3);
     const int val_police = 1 + (SE_police >= 3);
 
@@ -1106,10 +1118,10 @@ void __cdecl wtp_mod_base_psych(int base_id)
         }
     }
     base->drone_total = drone_value;
-    if (f->SE_talent_pending >= 0) {
-        base->talent_total += f->SE_talent_pending;
+    if (SE_talent >= 0) {
+        base->talent_total += SE_talent;
     } else {
-        base->drone_total -= f->SE_talent_pending;
+        base->drone_total -= SE_talent;
     }
     base->drone_total = max(0, min(base->drone_total, static_cast<int>(base->pop_size)));
     base->drone_total += effic_drones;
@@ -1331,6 +1343,50 @@ bool wtp_base_pop_boom(int base_id)
 }
 
 /*
+Unit support cost/free count table used by conf.alternative_support, kept alongside
+Thinker's own BaseSupportCosts (engine_base.h) for the same [-4,3] SE_support range.
+A negative free count means "this many, or up to base pop_size, whichever is greater",
+matching BaseSupportCosts' own encoding.
+*/
+const int32_t WtpAlternativeSupportCosts[8][2] = {
+	{1, 0}, // -4, Each unit costs 1 to support
+	{1, 1}, // -3, Support 1 unit free per base
+	{1, 2}, // -2, Support 2 units free per base
+	{1, 3}, // -1, Support 3 units free per base
+	{1, 4}, //  0, Support 4 units free per base
+	{1, 5}, //  1, Support 5 units free per base
+	{1, 6}, //  2, Support 6 units free per base!
+	{1,-8}, //  3, Support 8 units OR up to base size for free!!
+};
+
+int wtp_unit_support_cost(int SE_support)
+{
+	if (conf.monetary_support)
+	{
+		return conf.monetary_support_cost[clamp(SE_support + 4, 0, 7)];
+	}
+	if (conf.alternative_support)
+	{
+		return WtpAlternativeSupportCosts[clamp(SE_support + 4, 0, 7)][0];
+	}
+	return unit_support_cost(SE_support);
+}
+
+int wtp_unit_support_free(int SE_support, int pop_size)
+{
+	if (conf.monetary_support)
+	{
+		return conf.monetary_support_free[clamp(SE_support + 4, 0, 7)];
+	}
+	if (conf.alternative_support)
+	{
+		int val = WtpAlternativeSupportCosts[clamp(SE_support + 4, 0, 7)][1];
+		return (val >= 0 ? val : max(abs(val), pop_size));
+	}
+	return unit_support_free(SE_support, pop_size);
+}
+
+/*
 flat hurry cost
 */
 int wtp_flat_hurry_cost(int base_id, int item_id, int hurry_mins)
@@ -1502,48 +1558,6 @@ void clear_stack(int, int, int, int, int, int, int, int, int, int, int, int, int
 	
 }
 
-int getBasePsychCoefficient(int baseId)
-{
-	assert(baseId >= 0 && baseId < *BaseCount);
-	
-	BASE &base = Bases[baseId];
-	int factionId = static_cast<unsigned char>(base.faction_id);
-	
-	int psychCoefficient = 4;
-	
-	if (has_facility(FAC_HOLOGRAM_THEATRE, baseId) || (has_project(FAC_VIRTUAL_WORLD, factionId) && has_facility(FAC_NETWORK_NODE, baseId)))
-	{
-		psychCoefficient += 2;
-	}
-	if (has_facility(FAC_RESEARCH_HOSPITAL, baseId))
-	{
-		psychCoefficient += 1;
-	}
-	if (has_facility(FAC_NANOHOSPITAL, baseId))
-	{
-		psychCoefficient += 1;
-	}
-	if (has_facility(FAC_TREE_FARM, baseId))
-	{
-		psychCoefficient += conf.energy_multipliers_tree_farm[1];
-	}
-	if (has_facility(FAC_HYBRID_FOREST, baseId))
-	{
-		psychCoefficient += conf.energy_multipliers_hybrid_forest[1];
-	}
-	if (has_facility(FAC_CENTAURI_PRESERVE, baseId))
-	{
-		psychCoefficient += conf.energy_multipliers_centauri_preserve[1];
-	}
-	if (has_facility(FAC_TEMPLE_OF_PLANET, baseId))
-	{
-		psychCoefficient += conf.energy_multipliers_temple_of_planet[1];
-	}
-	
-	return psychCoefficient;
-	
-}
-
 double getBaseTileScore(ResourceYield const &tileYield, BaseComputeParameterSet const &baseComputeParameterSet)
 {
 	return
@@ -1556,68 +1570,84 @@ double getBaseTileScore(ResourceYield const &tileYield, BaseComputeParameterSet 
 
 /*
 Calculate the energy loss/inefficiency for the given energy intake in the base.
+
+Deliberately a pure calculator with no side effects, unlike stock mod_black_market, which also
+accumulates a per-efficiency-level sweep into Faction::social_effic[9] (gated by
+base_stats_upkeep()). This function is called from more places than just the once-per-turn
+final base computation (see mod_base_yield's effic_val and wtp_aiMoveFormer's terraforming
+evaluation), and it does not know or check Thinker's base_stats_upkeep()/base_yield_active
+reentrance state - that is Thinker's own concern, not WTP's. The caller in base.cpp explicitly
+invokes wtp_mod_black_market_accumulate below, once, only where that guard says it is safe to do
+so - see the call site in mod_base_energy.
+
+Always uses the pending EFFIC rating, matching stock mod_black_market's own real (stored) value
+computation, which unconditionally reads SE_effic_pending rather than switching between pending
+and current.
 */
-int wtp_mod_energy_intake_lost(int base_id, int energy, int32_t* effic_energy_lost)
+int wtp_mod_black_market(int base_id, int energy)
 {
-	// headquarter does not incure energy loss
-	
-	if (has_facility(FAC_HEADQUARTERS, base_id))
+	// headquarters and non-positive energy are handled inside getEnergyLost below
+
+	BASE &base = Bases[base_id];
+
+	int dist_hq = getInefficiencyFormulaHQDistance(base_id);
+	int efficiencyRating = base.SE_effic(true);
+	int value = getEnergyLost(energy, dist_hq, efficiencyRating);
+
+	return value;
+
+}
+
+/*
+Accumulates a per-efficiency-level (0-8) sweep of the energy loss/inefficiency for the given
+energy intake into Faction::social_effic[9] - the same sweep and the same faction field that
+stock mod_black_market updates internally, feeding social_score()'s SE-model comparison used by
+mod_social_ai. Kept as a separate function from wtp_mod_black_market on purpose: this one has a
+real side effect and must only be invoked once per base per turn, so the decision of *when* it is
+safe to call belongs to the caller (Thinker's base_stats_upkeep()/base_yield_active guard in
+base.cpp), not to this function.
+*/
+void wtp_mod_black_market_accumulate(int base_id, int energy)
+{
+	BASE &base = Bases[base_id];
+	Faction &faction = Factions[base.faction_id];
+
+	int dist_hq = getInefficiencyFormulaHQDistance(base_id);
+
+	bool has_creche = has_facility(FAC_CHILDREN_CRECHE, base_id);
+	int crecheEfficiencyBonus = has_creche ? 2 /* +2 on efficiency scale */ : 0;
+
+	for (int i = 0; i < 9; i++)
 	{
-		return 0;
+		int efficiencyRating = 4 - i + crecheEfficiencyBonus;
+		faction.social_effic[i] += getEnergyLost(energy, dist_hq, efficiencyRating);
 	}
-	
-	// no energy loss if no energy
-	
+
+}
+
+int getEnergyLost(int energy, int hqDistance, int efficiencyRating)
+{
+	int const MAX_HQ_DISTANCE = getInefficiencyFormulaMaxHQDistance();
+
+	// no energy loss to compute when there is no energy
 	if (energy <= 0)
 	{
 		return 0;
 	}
-	
-	BASE &base = Bases[base_id];
-	int max_dist = *MapHalfX * 3 / 2;
-	int dist_hq = max_dist;
-	for (int i = 0; i < *BaseCount; i++)
-	{
-		BASE &otherBase = Bases[i];
-	
-		if (otherBase.faction_id == base.faction_id && has_facility(FAC_HEADQUARTERS, i))
-		{
-			int dist = vector_dist(otherBase.x, otherBase.y, base.x, base.y);
-			dist_hq = std::min(dist_hq, dist);
-			break;
-		}
-		
-	}
-	
-	bool has_creche = has_facility(FAC_CHILDREN_CRECHE, base_id);
-	int crecheEfficiencyBonus = has_creche ? 2 /* +2 on efficiency scale */ : 0;
-	
-	if (effic_energy_lost)
-	{
-		for (int i = 0; i < 9; i++)
-		{
-			int efficiencyRating = 4 - i + crecheEfficiencyBonus;
-			int energy_lost = getEnergyLost(energy, dist_hq, max_dist, efficiencyRating);
-			effic_energy_lost[i] += energy_lost;
-		}
-		
-	}
-	
-	int efficiencyRating = Factions[base.faction_id].SE_effic_pending + crecheEfficiencyBonus;
-	int value = getEnergyLost(energy, dist_hq, max_dist, efficiencyRating);
-	
-	return value;
-	
-}
 
-int getEnergyLost(int energy, int hqDistance, int maxDistance, int efficiencyRating)
-{
+	// headquarters (hqDistance == 0, i.e. this is the HQ base itself) incur no energy loss
+	if (hqDistance == 0)
+	{
+		return 0;
+	}
+
 	int efficiencyLevel = 4 + efficiencyRating;
-	return clamp(energy * 2 * hqDistance / maxDistance - energy * efficiencyLevel / 8, 0, energy);
+	return clamp(energy * 2 * hqDistance / MAX_HQ_DISTANCE - energy * efficiencyLevel / 8, 0, energy);
+
 }
 
 // energy inefficiency parameter: maxDistance
-int getInefficiencyFormulaMaxDistance()
+int getInefficiencyFormulaMaxHQDistance()
 {
 	return *MapHalfX * 3 / 2;
 }
@@ -1625,110 +1655,100 @@ int getInefficiencyFormulaMaxDistance()
 // energy inefficiency parameter: hqDistance
 int getInefficiencyFormulaHQDistance(int base_id)
 {
-	BASE &base = Bases[base_id];
-	int max_dist = getInefficiencyFormulaMaxDistance();
-	int dist_hq = max_dist;
-
-	for (int i = 0; i < *BaseCount; i++)
-	{
-		BASE &otherBase = Bases[i];
-
-		if (otherBase.faction_id == base.faction_id && has_facility(FAC_HEADQUARTERS, i))
-		{
-			int dist = vector_dist(otherBase.x, otherBase.y, base.x, base.y);
-			dist_hq = std::min(dist_hq, dist);
-			break;
-		}
-
-	}
-
-	return dist_hq;
-
+	return getBaseHQDistance(base_id, getInefficiencyFormulaMaxHQDistance());
 }
 
 // energy inefficiency parameter: efficiencyRating
+// pending, matching stock mod_black_market's own real (stored) value computation - see
+// wtp_mod_black_market
 int getInefficiencyFormulaEfficiencyRating(int base_id)
 {
 	BASE &base = Bases[base_id];
 
-	bool has_creche = has_facility(FAC_CHILDREN_CRECHE, base_id);
-	int crecheEfficiencyBonus = has_creche ? 2 /* +2 on efficiency scale */ : 0;
-	int efficiencyRating = Factions[base.faction_id].SE_effic_pending + crecheEfficiencyBonus;
-
-	return efficiencyRating;
-
-}
-
-void storeCitizenAllocation(CitizenAllocation &citizenAllocation)
-{
-	BASE &base = **CurrentBase;
-
-	citizenAllocation.worked_tiles = base.worked_tiles;
-	citizenAllocation.specialist_total = base.specialist_total;
-	citizenAllocation.specialist_types[0] = base.specialist_types[0];
-	citizenAllocation.specialist_types[1] = base.specialist_types[1];
-
-}
-
-void applyCitizenAllocation(CitizenAllocation &citizenAllocation)
-{
-	BASE &base = **CurrentBase;
-
-	base.worked_tiles = citizenAllocation.worked_tiles;
-	base.specialist_total = citizenAllocation.specialist_total;
-	base.specialist_types[0] = citizenAllocation.specialist_types[0];
-	base.specialist_types[1] = citizenAllocation.specialist_types[1];
+	return base.SE_effic(true);
 
 }
 
 /*
  * Checks if given base is better than the current base.
 */
-int isBetterBase(BASE const &newBase, BASE const &oldBase)
+int isBetterBase(BASE const &newBase, BASE const &oldBase, double &maxGainImprovement)
 {
 	// nutrition level
+	// Only fall through to the next condition once both sides are sufficient. Otherwise decide
+	// immediately here and ignore every lower-priority condition (support, psych, gain).
 
-	int oldBaseNutritionLevel = std::min(0, oldBase.nutrient_surplus);
-	int newBaseNutritionLevel = std::min(0, newBase.nutrient_surplus);
-	if (newBaseNutritionLevel != oldBaseNutritionLevel)
+	bool oldNutritionSufficient = oldBase.nutrient_surplus >= 0;
+	bool newNutritionSufficient = newBase.nutrient_surplus >= 0;
+	if (!oldNutritionSufficient && newNutritionSufficient)
 	{
-		return newBaseNutritionLevel > oldBaseNutritionLevel;
+		return true;
+	}
+	if (oldNutritionSufficient && !newNutritionSufficient)
+	{
+		return false;
+	}
+	if (!oldNutritionSufficient && !newNutritionSufficient)
+	{
+		return newBase.nutrient_surplus > oldBase.nutrient_surplus;
 	}
 
 	// support level
 
-	int oldBaseSupportLevel = std::min(0, oldBase.mineral_surplus);
-	int newBaseSupportLevel = std::min(0, newBase.mineral_surplus);
-	if (newBaseSupportLevel != oldBaseSupportLevel)
+	bool oldSupportSufficient = oldBase.mineral_surplus >= 0;
+	bool newSupportSufficient = newBase.mineral_surplus >= 0;
+	if (!oldSupportSufficient && newSupportSufficient)
 	{
-		return newBaseSupportLevel > oldBaseSupportLevel;
+		return true;
+	}
+	if (oldSupportSufficient && !newSupportSufficient)
+	{
+		return false;
+	}
+	if (!oldSupportSufficient && !newSupportSufficient)
+	{
+		return newBase.mineral_surplus > oldBase.mineral_surplus;
 	}
 
 	// psych level
 
-	int oldBasePsychLevel = const_cast<BASE &>(oldBase).drone_riots() ? oldBase.psych_total : INT_MAX;
-	int newBasePsychLevel = const_cast<BASE &>(newBase).drone_riots() ? newBase.psych_total : INT_MAX;
-	if (newBasePsychLevel != oldBasePsychLevel)
+	bool oldBaseRioting = const_cast<BASE &>(oldBase).drone_riots();
+	bool newBaseRioting = const_cast<BASE &>(newBase).drone_riots();
+	if (oldBaseRioting && !newBaseRioting)
 	{
-		return newBasePsychLevel > oldBasePsychLevel;
+		return true;
+	}
+	if (!oldBaseRioting && newBaseRioting)
+	{
+		return false;
+	}
+	if (oldBaseRioting && newBaseRioting)
+	{
+		return newBase.psych_total > oldBase.psych_total;
 	}
 
 	// gain
+	// All three hard conditions above are satisfied by both old and new base at this point
+	// (otherwise we would have returned already).
+	// Base is already healthy: the allocation space is discrete (a handful of distinct tile and
+	// specialist outputs), so once a swap's improvement is a small fraction of the best
+	// improvement already found this search, it is not worth another full restart for it - stop
+	// chasing diminishing swaps instead.
 
 	double oldBaseGain = getBaseSurplusGain(oldBase);
 	double newBaseGain = getBaseSurplusGain(newBase);
+	double improvement = newBaseGain - oldBaseGain;
 
-	// return better base with double epsilon threshold
+	// maxGainImprovement is seeded with a tiny floor and only ever grows (see where it is
+	// declared in wtp_mod_base_yield), so no floor needs to be reapplied here.
+	constexpr double relativeGainTolerance = 0.25;
+	bool better = improvement > relativeGainTolerance * maxGainImprovement;
+	if (better)
+	{
+		maxGainImprovement = std::max(maxGainImprovement, improvement);
+	}
+	return better;
 
-	constexpr double epsilon = 1e-6;
-	return newBaseGain > oldBaseGain + epsilon;
-
-}
-
-ResourceYield getBaseSurplus()
-{
-	BASE &base = **CurrentBase;
-	return {base.nutrient_surplus, base.mineral_surplus, base.energy_surplus};
 }
 
 // Simplified version of getBaseGain
@@ -1786,11 +1806,30 @@ void updateBaseMineral(BaseComputeParameterSet const &parameterSet)
 {
     BASE* base = *CurrentBase;
 
-    base->mineral_intake_2 += BaseResourceConvoyTo[RSC_MINERAL];
+    // multiply first, then add convoyed minerals - convoyed minerals should not be multiplied
+    // by the mineral output modifier (see mod_base_minerals in base.cpp for the same fix)
     base->mineral_intake_2 = base->mineral_intake_2 * parameterSet.mineralMultiplierNumerator / 4;
-    base->mineral_consumption = *BaseForcesMaintCost + BaseResourceConvoyFrom[RSC_MINERAL];
+    base->mineral_intake_2 += BaseResourceConvoyTo[RSC_MINERAL];
+    // monetary support does not affect mineral consumption (see mod_base_minerals in base.cpp)
+    if (conf.monetary_support)
+    {
+        base->mineral_consumption = BaseResourceConvoyFrom[RSC_MINERAL];
+    }
+    else
+    {
+        base->mineral_consumption = *BaseForcesMaintCost + BaseResourceConvoyFrom[RSC_MINERAL];
+    }
     base->mineral_surplus = base->mineral_intake_2 - base->mineral_consumption;
     base->mineral_surplus_final = base->mineral_surplus;
+
+    // Orbital facilities double mineral production rate (see mod_base_minerals in base.cpp)
+    int item_id = base->queue_items[0];
+    if (has_project(FAC_SPACE_ELEVATOR, base->faction_id)
+    && (item_id == -FAC_SKY_HYDRO_LAB || item_id == -FAC_NESSUS_MINING_STATION
+    || item_id == -FAC_ORBITAL_POWER_TRANS || item_id == -FAC_ORBITAL_DEFENSE_POD)) {
+        base->mineral_intake_2 *= 2;
+        base->mineral_surplus = base->mineral_intake_2 - base->mineral_consumption;
+    }
 
 }
 
@@ -1825,7 +1864,7 @@ void updateBaseEnergy(BaseComputeParameterSet const &parameterSet)
 				if (is_alien(otherFactionId) || Factions[otherFactionId].base_count == 0 || Factions[otherFactionId].sanction_turns > 0 || !has_treaty(faction_id, otherFactionId, DIPLO_TREATY))
 					continue;
 
-				int pairedBaseId = mod_base_rank(otherFactionId, baseRank);
+				int pairedBaseId = base_rank(otherFactionId, baseRank);
 				if (pairedBaseId < 0)
 					continue;
 
@@ -1854,7 +1893,9 @@ void updateBaseEnergy(BaseComputeParameterSet const &parameterSet)
 	base->energy_intake_2 += commerce;
 	base->energy_intake_2 += energygrid;
 
-	base->energy_inefficiency = getEnergyLost(base->energy_intake_2 - base->energy_consumption, parameterSet.hqDistance, parameterSet.maxDistance, parameterSet.efficiencyRating);
+	// headquarters and non-positive energy are handled inside getEnergyLost
+	base->energy_inefficiency = getEnergyLost(base->energy_intake_2 - base->energy_consumption, parameterSet.hqDistance,
+											  parameterSet.efficiencyRating);
 	base->energy_surplus = base->energy_intake_2 - base->energy_consumption - base->energy_inefficiency;
 
 	// Non-multiplied energy intake is always limited to this range
@@ -1897,7 +1938,7 @@ void updateBaseEnergy(BaseComputeParameterSet const &parameterSet)
 		if (i < MaxBaseSpecNum) {
 			citizen_id = clamp(base->specialist_type(i), 0, MaxSpecialistNum-1);
 		} else {
-			citizen_id = mod_best_specialist();
+			citizen_id = best_specialist();
 		}
 		base->economy_total += Citizen[citizen_id].econ_bonus;
 		base->psych_total += Citizen[citizen_id].psych_bonus;
@@ -1909,6 +1950,54 @@ void updateBaseEnergy(BaseComputeParameterSet const &parameterSet)
 	base->economy_total = (parameterSet.economyMultiplierNumerator * base->economy_total + 3) / 4;
 	base->psych_total = (parameterSet.psychMultiplierNumerator * base->psych_total + 3) / 4;
 	base->labs_total = (parameterSet.labsMultiplierNumerator * base->labs_total + 3) / 4;
+
+	// science projects labs bonus (see mod_base_energy in base.cpp)
+	if (conf.science_projects_alternative_labs_bonus)
+	{
+		if (has_project(FAC_SUPERCOLLIDER, base->faction_id))
+		{
+			base->labs_total = base->labs_total * (100 + conf.science_projects_supercollider_labs_bonus) / 100;
+		}
+		if (has_project(FAC_THEORY_OF_EVERYTHING, base->faction_id))
+		{
+			base->labs_total = base->labs_total * (100 + conf.science_projects_theoryofeverything_labs_bonus) / 100;
+		}
+		if (has_project(FAC_UNIVERSAL_TRANSLATOR, base->faction_id))
+		{
+			base->labs_total = base->labs_total * (100 + conf.science_projects_universaltranslator_labs_bonus) / 100;
+		}
+	}
+	else
+	{
+		if (project_base(FAC_SUPERCOLLIDER) == base_id) {
+			base->labs_total *= 2;
+		}
+		if (project_base(FAC_THEORY_OF_EVERYTHING) == base_id) {
+			base->labs_total *= 2;
+		}
+	}
+
+	// other project bonuses (see mod_base_energy in base.cpp)
+	if (project_base(FAC_SPACE_ELEVATOR) == base_id) {
+		base->economy_total *= 2;
+	}
+	if (project_base(FAC_LONGEVITY_VACCINE) == base_id
+	&& faction.SE_Economics_pending == SOCIAL_M_FREE_MARKET) {
+		base->economy_total += base->economy_total / 2;
+	}
+	if (project_base(FAC_NETWORK_BACKBONE) == base_id) {
+		for (int i = 0; i < *BaseCount; i++) {
+			if (has_fac_built(FAC_NETWORK_NODE, i)) {
+				base->labs_total++;
+			}
+		}
+		// Sanctions also prevent this bonus since no commerce would be occurring
+		if (is_alien(faction_id)) {
+			base->labs_total += energygrid;
+		} else {
+			base->labs_total += commerce;
+		}
+	}
 
 	updateBasePsych(parameterSet);
 
@@ -1981,8 +2070,10 @@ void updateBasePsych(BaseComputeParameterSet const &parameterSet)
 void populateBaseFixedPsychBalance(BaseComputeParameterSet &parameterSet)
 {
 	int baseId = *CurrentBaseID;
+	BASE &base = Bases[baseId];
+	Faction &faction = Factions[base.faction_id];
 
-	wtp_mod_base_psych(baseId);
+	wtp_mod_base_psych(baseId, faction.SE_talent_pending, base.SE_police(SE_Pending));
 
 	parameterSet.fixedTalentTotal = BasePsychTalents[3];
 	parameterSet.fixedDroneTotal = BasePsychNDrones[3];
@@ -1993,7 +2084,7 @@ void populateBaseFixedPsychBalance(BaseComputeParameterSet &parameterSet)
 char *getBaseAllocationString()
 {
 	BASE &base = **CurrentBase;
-	int bestSpecialistType = mod_best_specialist();
+	int bestSpecialistType = best_specialist();
 
 	static char baseAllocationString[256];
 

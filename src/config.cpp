@@ -1,8 +1,15 @@
 
 #include "config.h"
 
-const char* AlphaFile = "alphax";
-const char* ScriptFile = "script";
+const char* AlphaFile = "ALPHAX";
+const char* ScriptFile = "SCRIPT";
+const char* BlurbsxFile = "BLURBSX";
+const char* OpeningFile = "OPENING";
+const char* MovlistFile = "MOVLIST";
+const char* TutorFile = "TUTOR";
+const char* PopupScriptFile = "SCRIPT.txt";
+const char* MovlistTxtFile = "movlist.txt";
+const char* ExpMovlistTxtFile = "movlistx.txt";
 const char* ModAlphaFile = "smac_mod\\alphax";
 const char* ModHelpFile = "smac_mod\\helpx";
 const char* ModTutorFile = "smac_mod\\tutor";
@@ -11,10 +18,6 @@ const char* ModAlphaTxtFile = "smac_mod\\alphax.txt";
 const char* ModHelpTxtFile = "smac_mod\\helpx.txt";
 const char* ModTutorTxtFile = "smac_mod\\tutor.txt";
 const char* ModConceptsTxtFile = "smac_mod\\conceptsx.txt";
-const char* OpeningFile = "opening";
-const char* MovlistFile = "movlist";
-const char* MovlistTxtFile = "movlist.txt";
-const char* ExpMovlistTxtFile = "movlistx.txt";
 
 char*  const TextBufferFileName = (char* )0x9B7BA0;
 char*  const TextBufferFilePath = (char* )0x9B7BF0;
@@ -39,7 +42,7 @@ public:
 
 static TextBuffer Text = {};
 
-static const char* alpha_file() {
+const char* alpha_file() {
     return conf.smac_only ? ModAlphaFile : AlphaFile;
 }
 
@@ -61,33 +64,38 @@ static char* prefs_get_binary(char* buf, int value) {
     return buf;
 }
 
-static FILE* env_open(const char* path, const char* mode) {
+FILE* env_open(const char* path, const char* mode) {
     char* path_alt = filefind_get(path);
-    return fopen(path_alt ?  path_alt : path, mode);
+    return fopen(path_alt ? path_alt : path, mode);
 }
 
-static void text_close() {
-    if (Text.File) {
-        fclose(Text.File);
-        Text.File = NULL;
+int __cdecl X_text_open(const char* filename, const char* label) {
+    int value;
+    if (strcmp(filename, ScriptFile)) {
+        return text_open(filename, label);
     }
+    if (!*ExpansionEnabled || !MFactions[MapWin->cOwner].is_alien()
+    || (value = text_open("alienIscript", label)) != 0) {
+        value = text_open(filename, label);
+    }
+    return value;
 }
 
-static int text_open(const char* filename, const char* label) {
+int __cdecl text_open(const char* filename, const char* label) {
     debug("text_open %s / %s\n", filename, label);
     bool is_seeking = false;
     if (filename) {
         if (!strchr(filename, '.')) {
             snprintf(Text.FileName, 80, "%s.txt", filename);
         } else {
-            snprintf(Text.FileName, 80, filename);
+            snprintf(Text.FileName, 80, "%s", filename);
         }
         text_close();
         Text.File = env_open(Text.FileName, "rt");
         if (!Text.File) {
             return true;
         }
-        snprintf(Text.FilePath, 256, FileFind->last_path);
+        snprintf(Text.FilePath, 256, "%s", FileFind->last_path);
     } else if (Text.File) {
         is_seeking = true;
     } else {
@@ -95,7 +103,7 @@ static int text_open(const char* filename, const char* label) {
         if (!Text.File) {
             return true;
         }
-        snprintf(Text.FilePath, 256, FileFind->last_path);
+        snprintf(Text.FilePath, 256, "%s", FileFind->last_path);
     }
     if (!label) {
         return false;
@@ -124,12 +132,24 @@ static int text_open(const char* filename, const char* label) {
     return false;
 }
 
+void __cdecl text_close() {
+    if (Text.File) {
+        fclose(Text.File);
+        Text.File = NULL;
+    }
+}
+
 static char* text_update() {
     Text.Position = Text.SrcPtr;
     return Text.SrcPtr;
 }
 
-static char* text_get() {
+char* text_buf_ptr() {
+    // TextBufferGetPtr with legacy text_get()
+    return Text.SrcPtr;
+}
+
+char* __cdecl text_get() {
     if (feof(Text.File)) {
         Text.SrcPtr[0] = '\0';
         return NULL;
@@ -144,7 +164,7 @@ static char* text_get() {
     }
 }
 
-static char* text_item() {
+char* __cdecl text_item() {
     char* dst = Text.DstPtr;
     char** src = &Text.Position;
     while (**src != '\0' && **src != ',') {
@@ -160,19 +180,19 @@ static char* text_item() {
     return Text.DstPtr;
 }
 
-static char* text_item_string() {
+char* __cdecl text_item_string() {
     return Strings_put(TextTable, text_item());
 }
 
-static int text_item_number() {
+int __cdecl text_item_number() {
     return stoi(text_item());
 }
 
-static int text_item_binary() {
+int __cdecl text_item_binary() {
     return btoi(text_item());
 }
 
-static int text_get_number(int min_val, int max_val) {
+int __cdecl text_get_number(int min_val, int max_val) {
     text_get();
     return clamp(text_item_number(), min_val, max_val);
 }
@@ -197,7 +217,7 @@ int __cdecl tech_name(char* name) {
     parse_says(0, Text.FilePath, -1, -1);
     parse_says(1, name, -1, -1);
     parse_says(2, Text.SrcPtr, -1, -1);
-    X_pop2("BADTECHKEY", 0);
+    X_pop("BADTECHKEY", 0);
     exit_fail(); // Game would crash after parser errors
     return TECH_Disable;
 }
@@ -206,12 +226,12 @@ int __cdecl tech_name(char* name) {
 Convert the chassis name string to a numeric chassis_id.
 Return Value: chassis_id; 'None' (-1); 'Disabled' (-2); or error (0)
 */
-int __cdecl chas_name(char* name) {
+static int __cdecl get_chas_name(char* name, bool check) {
     strtrail(name);
-    if (!_stricmp(name, "None")) {
+    if (!check && !_stricmp(name, "None")) {
         return TECH_None;
     }
-    if (!_stricmp(name, "Disable")) {
+    if (!check && !_stricmp(name, "Disable")) {
         return TECH_Disable;
     }
     for (int chas_id = 0; chas_id < MaxChassisNum; chas_id++) {
@@ -222,21 +242,25 @@ int __cdecl chas_name(char* name) {
     parse_says(0, Text.FilePath, -1, -1);
     parse_says(1, name, -1, -1);
     parse_says(2, Text.SrcPtr, -1, -1);
-    X_pop2("BADCHASKEY", 0);
+    X_pop("BADCHASKEY", 0);
     exit_fail();
     return 0;
+}
+
+int __cdecl chas_name(char* name) {
+    return get_chas_name(name, false); // Allows None/Disable
 }
 
 /*
 Convert the weapon name string to a numeric weapon_id.
 Return Value: weapon_id; 'None' (-1); 'Disabled' (-2); or error (0)
 */
-int __cdecl weap_name(char* name) {
+static int __cdecl get_weap_name(char* name, bool check) {
     strtrail(name);
-    if (!_stricmp(name, "None")) {
+    if (!check && !_stricmp(name, "None")) {
         return TECH_None;
     }
-    if (!_stricmp(name, "Disable")) {
+    if (!check && !_stricmp(name, "Disable")) {
         return TECH_Disable;
     }
     for (int wpn_id = 0; wpn_id < MaxWeaponNum; wpn_id++) {
@@ -247,21 +271,25 @@ int __cdecl weap_name(char* name) {
     parse_says(0, Text.FilePath, -1, -1);
     parse_says(1, name, -1, -1);
     parse_says(2, Text.SrcPtr, -1, -1);
-    X_pop2("BADWEAPKEY", 0);
+    X_pop("BADWEAPKEY", 0);
     exit_fail();
     return 0;
+}
+
+int __cdecl weap_name(char* name) {
+    return get_weap_name(name, false); // Allows None/Disable
 }
 
 /*
 Convert the armor name string to a numeric armor_id.
 Return Value: armor_id; 'None' (-1); 'Disabled' (-2); or error (0)
 */
-int __cdecl arm_name(char* name) {
+static int __cdecl get_arm_name(char* name, bool check) {
     strtrail(name);
-    if (!_stricmp(name, "None")) {
+    if (!check && !_stricmp(name, "None")) {
         return TECH_None;
     }
-    if (!_stricmp(name, "Disable")) {
+    if (!check && !_stricmp(name, "Disable")) {
         return TECH_Disable;
     }
     for (int arm_id = 0; arm_id < MaxArmorNum; arm_id++) {
@@ -272,9 +300,13 @@ int __cdecl arm_name(char* name) {
     parse_says(0, Text.FilePath, -1, -1);
     parse_says(1, name, -1, -1);
     parse_says(2, Text.SrcPtr, -1, -1);
-    X_pop2("BADARMKEY", 0);
+    X_pop("BADARMKEY", 0);
     exit_fail();
     return 0;
+}
+
+int __cdecl arm_name(char* name) {
+    return get_arm_name(name, false); // Allows None/Disable
 }
 
 /*
@@ -449,12 +481,12 @@ int __cdecl read_basic_rules() {
         conf.road_movement_rate = conf.magtube_movement_rate;
         Rules->move_rate_roads *= conf.magtube_movement_rate;
     }
-    
+
     // [WTP]
     // set move rate explicitly
     Rules->move_rate_roads = conf.move_points;
     //
-    
+
     if (!conf.revised_tech_cost) {
         conf.tech_stagnate_rate = 150;
     }
@@ -483,7 +515,7 @@ int __cdecl read_tech() {
                 parse_says(0, Tech[i].short_name, -1, -1);
                 parse_says(1, Text.FilePath, -1, -1); // Changed pointer to directly reference Text class
                 parse_says(2, Text.SrcPtr, -1, -1);
-                X_pop2("DUPLICATETECH", 0);
+                X_pop("DUPLICATETECH", 0);
                 exit_fail();
             }
         }
@@ -562,7 +594,7 @@ void __cdecl read_faction(MFaction* plr, int toggle) {
     && text_open(plr->filename, plr->filename)) {
         parse_says(0, plr->search_key, -1, -1);
         parse_says(1, plr->filename, -1, -1);
-        X_pop2("PLAYERFILE", 0);
+        X_pop("PLAYERFILE", 0);
         return;
     }
     text_get();
@@ -591,7 +623,7 @@ void __cdecl read_faction(MFaction* plr, int toggle) {
     plr->AI_growth = clamp(text_item_number(), 0, 1);
     text_get();
     char* parse_check;
-    while (parse_check = text_item(), strlen(parse_check) > 0) {
+    while ((parse_check = text_item()) && strlen(parse_check) > 0) {
         char parse_rule[StrBufLen];
         strcpy_n(parse_rule, StrBufLen, parse_check);
         char* parse_param = text_item();
@@ -824,77 +856,114 @@ int __cdecl read_factions() {
         }
         strcpy_n(BonusName[i].key, 24, text_item());
     }
-    if (text_open(alpha_file(), conf.smac_only ? "FACTIONS" : "NEWFACTIONS")) {
+    faction_pool.clear();
+    if (text_open(alpha_file(), "FACTIONS")) {
         return true;
     }
     for (int i = 1; i < MaxPlayerNum; i++) {
         text_get();
-        strcpy_n(MFactions[i].filename, 24, text_item());
-        strcpy_n(MFactions[i].search_key, 24, text_item());
+        char* fn = text_item();
+        char* sk = text_item();
+        faction_pool.push_back({fn, sk});
+        if (conf.smac_only) {
+            strcpy_n(MFactions[i].filename, 24, fn);
+            strcpy_n(MFactions[i].search_key, 24, sk);
+        }
+    }
+    if (text_open(alpha_file(), "NEWFACTIONS")) {
+        return true;
+    }
+    for (int i = 1; i < MaxPlayerNum; i++) {
+        text_get();
+        char* fn = text_item();
+        char* sk = text_item();
+        faction_pool.push_back({fn, sk});
+        if (!conf.smac_only) {
+            strcpy_n(MFactions[i].filename, 24, fn);
+            strcpy_n(MFactions[i].search_key, 24, sk);
+        }
     }
     // Previously SMACX only: override any values parsed from alphax.txt #NEWFACTIONS if set in ini.
     // Original version checked for ExpansionEnabled but this is not
     // necessary because smac_only allows changing active faction lists.
     prefs_fac_load();
-    conf.faction_file_count = 14;
-    if (!text_open(alpha_file(), "CUSTOMFACTIONS")) { // get count of custom factions
+    if (!text_open(alpha_file(), "CUSTOMFACTIONS")) {
         text_get();
-        for (char* custom = text_item(); *custom; custom = text_item()) {
-            conf.faction_file_count++;
+        char* fn = text_item();
+        char* sk = text_item();
+        while (*fn && *sk) {
+            faction_pool.push_back({fn, sk});
             text_get();
+            fn = text_item();
+            sk = text_item();
         }
     }
+    conf.faction_file_count = faction_pool.size();
     debug("read_factions count: %d\n", conf.faction_file_count);
+    if (!faction_pool.size()) {
+        return true;
+    }
     for (int i = 1; i < MaxPlayerNum; i++) { // Skip MFactions[0] used for native units
         if (!strcmp(MFactions[i].filename, "JENN282")) {
-            int choice;
-            do {
-                int rand_val = 0;
-                for (int j = 0; j < 1000; j++) {
-                    rand_val = random(conf.faction_file_count);
-                    if ((1 << rand_val) & ~conf.skip_random_factions) {
-                        break;
-                    }
-                }
-                const char* label;
-                if (rand_val < 7) {
-                    label = "FACTIONS";
-                    choice = rand_val;
-                } else if (rand_val < 14) {
-                    label = "NEWFACTIONS";
-                    choice = rand_val - 7;
-                } else {
-                    label = "CUSTOMFACTIONS";
-                    choice = rand_val - 14;
-                }
-                if (text_open(alpha_file(), label)) {
-                    return true;
-                }
-                for (int j = choice; j >= 0; j--) {
-                    text_get();
-                }
-                // Original version copied filename twice?
-                // This is most likely redundant debug feature that was left in the game
-                strcpy_n(MFactions[i].filename, 24, text_item());
-                strcpy_n(MFactions[i].search_key, 24, text_item());
-                for (int k = 1; k < MaxPlayerNum; k++) {
-                    if (i != k && !strcmp(MFactions[i].filename, MFactions[k].filename)) {
-                        choice = -1;
-                        break;
-                    }
-                }
-                if (choice >= 0) {
-                    read_faction(&MFactions[i], 0);
-                    load_faction_art(i);
-                }
-            } while (choice < 0);
-        } else {
-            read_faction(&MFactions[i], 0);
-            load_faction_art(i);
+            size_t pick = pick_random_faction(i);
+            assert(pick < faction_pool.size());
+            // search_key is most likely redundant debug feature that was left in the game
+            strcpy_n(MFactions[i].filename, 24, faction_pool[pick].first.c_str());
+            strcpy_n(MFactions[i].search_key, 24, faction_pool[pick].second.c_str());
         }
+        read_faction(&MFactions[i], 0);
+        load_faction_art(i);
     }
     text_close(); // Make sure file handle is closed
     return false;
+}
+
+size_t pick_random_faction(int faction_id) {
+    uint32_t used = 0;
+    int num = 0;
+    for (int i = 1; i < MaxPlayerNum; i++) {
+        if (faction_id != i) {
+            if (!strcmp(MFactions[i].filename, "JENN282")) {
+                ++num;
+            } else {
+                for (size_t n = 0; n < faction_pool.size(); n++) {
+                    if (!strcmp(MFactions[i].filename, faction_pool[n].first.c_str())) {
+                        used |= (1 << n);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    size_t pick;
+    for (int i = 0; i < 1000; i++) {
+        pick = random(faction_pool.size());
+        if (!(conf.skip_random_factions & (1 << pick)) && !(used & (1 << pick))) {
+            bool valid = true;
+            for (auto& p : faction_pair) {
+                bool a = used & (1 << p.first);
+                bool b = used & (1 << p.second);
+                if (max(p.first, p.second) >= faction_pool.size()
+                || (conf.skip_random_factions & (1 << p.first))
+                || (conf.skip_random_factions & (1 << p.second))) {
+                    continue;
+                }
+                if (num == 0 && !a && !b && (pick == p.first || pick == p.second)) {
+                    valid = false; break;
+                }
+                if (a && !b) {
+                    pick = p.second; break;
+                }
+                if (!a && b) {
+                    pick = p.first; break;
+                }
+            }
+            if (valid) {
+                break;
+            }
+        }
+    }
+    return pick;
 }
 
 /*
@@ -926,16 +995,17 @@ int __cdecl read_units() {
     for (int unit_id = 0; unit_id < total_units; unit_id++) {
         text_get();
         strcpy_n(Units[unit_id].name, 32, text_item());
-        int chas_id = chas_name(text_item());
-        int weap_id = weap_name(text_item());
-        int armor_id = arm_name(text_item());
+        int chas_id = get_chas_name(text_item(), true);
+        int weap_id = get_weap_name(text_item(), true);
+        int armor_id = get_arm_name(text_item(), true);
         int plan = text_item_number();
         int cost = text_item_number();
         int carry = text_item_number();
         Units[unit_id].preq_tech = (int16_t)tech_name(text_item());
         int icon = text_item_number();
         int ability = text_item_binary();
-        int reactor_id = text_item_number(); // Add ability to read reactor for #UNITS
+        // Add ability to set custom reactor for #UNITS
+        int reactor_id = clamp(text_item_number(), 0, MaxReactorNum);
         if (!reactor_id) { // If not set or 0, default behavior
             switch (unit_id) {
               case BSC_BATTLE_OGRE_MK2:
@@ -952,7 +1022,7 @@ int __cdecl read_units() {
         mod_make_proto(unit_id, (VehChassis)chas_id, (VehWeapon)weap_id, (VehArmor)armor_id,
             (VehAblFlag)ability, (VehReactor)reactor_id);
         // If set, override auto calculated values from make_proto()
-        if (plan != -1) { // plan auto calculate: -1
+        if (plan >= 0) { // plan auto calculate: -1
             Units[unit_id].plan = (uint8_t)plan;
         }
         if (cost) { // cost auto calculate: 0
@@ -1347,21 +1417,21 @@ int __cdecl read_rules(int tgl_all_rules) {
     BaseButton_set_bubble_text(&FlatButtons[34], Natural[3].name_short); // LM_URANIUM
     BaseButton_set_bubble_text(&FlatButtons[35], Natural[10].name_short); // LM_GEOTHERMAL
     text_close(); // Make sure file handle is closed
-    
+
     // [WTP]
     // disable air superiority for ground units if not required
     if (!conf.needlejet_air_superiority_required)
-	{
-		Ability[ABL_ID_AIR_SUPERIORITY].flags &= ~(AFLAG_ALLOWED_LAND_UNIT | AFLAG_ALLOWED_SEA_UNIT);
-	}
-	
+    {
+        Ability[ABL_ID_AIR_SUPERIORITY].flags &= ~(AFLAG_ALLOWED_LAND_UNIT | AFLAG_ALLOWED_SEA_UNIT);
+    }
+
     // [WTP]
     // enable fuel nanocells for ships
     if (conf.fuel_nanocell_ship_bonus > 0)
-	{
-		Ability[ABL_ID_FUEL_NANOCELLS].flags |= (AFLAG_ALLOWED_SEA_UNIT);
-	}
-	
+    {
+        Ability[ABL_ID_FUEL_NANOCELLS].flags |= AFLAG_ALLOWED_SEA_UNIT;
+    }
+
     return false;
 }
 
@@ -1376,7 +1446,7 @@ char* __cdecl prefs_get_strcpy(char* dst, const char* src) {
 /*
 Deprecated function. Attempt to read the setting string value from the ini file.
 */
-char* __cdecl prefs_get2(const char* key_name, const char* default_value, int use_default) {
+char* __cdecl prefs_get(const char* key_name, const char* default_value, int use_default) {
     if (use_default || GetPrivateProfileIntA(GameAppName, "Prefs Format", 0, GameIniFile) != 12) {
         snprintf(Text.SrcPtr, 256, "%s", default_value);
     } else {
@@ -1389,7 +1459,7 @@ char* __cdecl prefs_get2(const char* key_name, const char* default_value, int us
 Attempt to read the setting integer value from the ini file. This version removes
 references on Text_update / TextBufferGetPtr because the result is returned as integer.
 */
-int __cdecl prefs_get(const char* key_name, int default_value, int use_default) {
+int __cdecl prefs_get_2(const char* key_name, int default_value, int use_default) {
     if (conf.directdraw >= 0 && !strcmp(key_name, "DirectDraw")) {
         return (conf.directdraw ? 1 : 0);
     }
@@ -1420,7 +1490,7 @@ uint32_t __cdecl default_prefs() {
     if (conf.ignore_reactor_power) {
         base_prefs &= ~PREF_BSC_AUTO_DESIGN_VEH;
     }
-    return prefs_get("Laptop", 0, false) ? base_prefs :
+    return prefs_get_2("Laptop", 0, false) ? base_prefs :
         base_prefs | PREF_AV_SECRET_PROJECT_MOVIES | PREF_AV_SLIDING_WINDOWS | PREF_AV_MAP_ANIMATIONS;
 }
 
@@ -1433,7 +1503,7 @@ uint32_t __cdecl default_prefs2() {
         // Skip possibly redundant upgrade prototype dialogs when new reactor techs are discovered
         base_prefs2 &= ~MPREF_BSC_AUTO_PRUNE_OBS_VEH;
     }
-    return prefs_get("Laptop", 0, false) ? base_prefs2 : base_prefs2 | MPREF_AV_SLIDING_SCROLLBARS;
+    return prefs_get_2("Laptop", 0, false) ? base_prefs2 : base_prefs2 | MPREF_AV_SLIDING_SCROLLBARS;
 }
 
 /*
@@ -1481,11 +1551,11 @@ Load the most common preferences from the game's ini to globals.
 void __cdecl prefs_load(int use_default) {
     char dst[StrBufLen];
     char src[StrBufLen];
-    set_language(prefs_get("Language", 0, false));
-    DefaultPrefs->difficulty = prefs_get("Difficulty", 0, false);
-    DefaultPrefs->map_type = prefs_get("Map Type", 0, false);
-    DefaultPrefs->top_menu = prefs_get("Top Menu", 0, false);
-    DefaultPrefs->faction_id = prefs_get("Faction", 1, false);
+    set_language(prefs_get_2("Language", 0, false));
+    DefaultPrefs->difficulty = prefs_get_2("Difficulty", 0, false);
+    DefaultPrefs->map_type = prefs_get_2("Map Type", 0, false);
+    DefaultPrefs->top_menu = prefs_get_2("Top Menu", 0, false);
+    DefaultPrefs->faction_id = prefs_get_2("Faction", 1, false);
     uint32_t prefs = default_prefs();
     if (DefaultPrefs->difficulty < DIFF_TALENT) {
         prefs |= PREF_BSC_TUTORIAL_MSGS;
@@ -1496,27 +1566,27 @@ void __cdecl prefs_load(int use_default) {
     AlphaIniPrefs->more_preferences = btoi(strtrim(dst));
     prefs_read(dst, StrBufLen, "Semaphore", "00000000", use_default);
     AlphaIniPrefs->semaphore = btoi(strtrim(dst));
-    AlphaIniPrefs->customize = prefs_get("Customize", 0, false);
+    AlphaIniPrefs->customize = prefs_get_2("Customize", 0, false);
     prefs_read(dst, StrBufLen, "Rules", prefs_get_binary(src, default_rules()), use_default);
     AlphaIniPrefs->rules = btoi(strtrim(dst));
     prefs_read(dst, StrBufLen, "Announce", prefs_get_binary(src, default_warn()), use_default);
     AlphaIniPrefs->announce = btoi(strtrim(dst));
     prefs_read(dst, StrBufLen, "Custom World", "2, 1, 1, 1, 1, 1, 1,", use_default);
-    opt_list_parse(&AlphaIniPrefs->custom_world[0], dst, 7, 0);
-    AlphaIniPrefs->time_controls = prefs_get("Time Controls", 1, use_default);
+    opt_list_parse(&AlphaIniPrefs->custom_world[0], dst, 7, 0, 100);
+    AlphaIniPrefs->time_controls = prefs_get_2("Time Controls", 1, use_default);
 }
 
 /*
 Write the string value to the pref key of the ini.
 */
-void __cdecl prefs_put2(const char* key_name, const char* value) {
+void __cdecl prefs_put(const char* key_name, const char* value) {
     WritePrivateProfileStringA(GameAppName, key_name, value, GameIniFile);
 }
 
 /*
 Write the value as either an integer or a binary string to the pref key inside the ini.
 */
-void __cdecl prefs_put(const char* key_name, int value, int tgl_binary) {
+void __cdecl prefs_put_2(const char* key_name, int value, int tgl_binary) {
     char buf[LineBufLen] = {};
     if (tgl_binary) {
         prefs_get_binary(buf, value);
@@ -1530,17 +1600,17 @@ void __cdecl prefs_put(const char* key_name, int value, int tgl_binary) {
 Save the most common preferences from memory to the game's ini.
 */
 void __cdecl prefs_save(int save_factions) {
-    prefs_put("Prefs Format", 12, false);
-    prefs_put("Difficulty", DefaultPrefs->difficulty, false);
-    prefs_put("Map Type", DefaultPrefs->map_type, false);
-    prefs_put("Top Menu", DefaultPrefs->top_menu, false);
-    prefs_put("Faction", DefaultPrefs->faction_id, false);
-    prefs_put("Preferences", AlphaIniPrefs->preferences, true);
-    prefs_put("More Preferences", AlphaIniPrefs->more_preferences, true);
-    prefs_put("Semaphore", AlphaIniPrefs->semaphore, true);
-    prefs_put("Announce", AlphaIniPrefs->announce, true);
-    prefs_put("Rules", AlphaIniPrefs->rules, true);
-    prefs_put("Customize", AlphaIniPrefs->customize, false);
+    prefs_put_2("Prefs Format", 12, false);
+    prefs_put_2("Difficulty", DefaultPrefs->difficulty, false);
+    prefs_put_2("Map Type", DefaultPrefs->map_type, false);
+    prefs_put_2("Top Menu", DefaultPrefs->top_menu, false);
+    prefs_put_2("Faction", DefaultPrefs->faction_id, false);
+    prefs_put_2("Preferences", AlphaIniPrefs->preferences, true);
+    prefs_put_2("More Preferences", AlphaIniPrefs->more_preferences, true);
+    prefs_put_2("Semaphore", AlphaIniPrefs->semaphore, true);
+    prefs_put_2("Announce", AlphaIniPrefs->announce, true);
+    prefs_put_2("Rules", AlphaIniPrefs->rules, true);
+    prefs_put_2("Customize", AlphaIniPrefs->customize, false);
     char buf[LineBufLen] = {};
     snprintf(buf, LineBufLen, "%d, %d, %d, %d, %d, %d, %d,",
         AlphaIniPrefs->custom_world[0], // MapSizePlanet
@@ -1551,13 +1621,13 @@ void __cdecl prefs_save(int save_factions) {
         AlphaIniPrefs->custom_world[5], // MapCloudCover
         AlphaIniPrefs->custom_world[6]  // MapNativeLifeForms
     );
-    prefs_put2("Custom World", buf);
-    prefs_put("Time Controls", AlphaIniPrefs->time_controls, false);
+    prefs_put("Custom World", buf);
+    prefs_put_2("Time Controls", AlphaIniPrefs->time_controls, false);
     // Original version checked for ExpansionEnabled but this is not necessary.
     if (save_factions) {
         for (int i = 1; i < MaxPlayerNum; i++) {
             snprintf(buf, LineBufLen, "Faction %d", i);
-            prefs_put2(buf, MFactions[i].filename);
+            prefs_put(buf, MFactions[i].filename);
         }
     }
 }
