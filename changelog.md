@@ -1,3 +1,7 @@
+# Version 425
+
+* Merged Thinker 5.5
+
 # Version 424
 
 * [bug] Fixed incorrect psi combat odds display.
