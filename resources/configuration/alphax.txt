@@ -119,7 +119,7 @@ Mine,             None,    Mining Platform,  None,     8,  Construct $STR0, M, M
 Solar Collector,  None,    Tidal Harness,    None,     4,  Construct $STR0, S, S
 Forest,           None,    ...,              Disable,  8,  Plant $STR0,     F, Shift+F
 Road,             None,    Road,             Disable,  1,  Build $STR0,     R, R
-Mag Tube,         Magnets, Mag Tube,         Disable,  6,  Build $STR0,     R, R
+Mag Tube,         Magnets, Mag Tube,         Disable,  8,  Build $STR0,     R, R
 Bunker,           None,    Bunker,           Disable,  5,  Construct $STR0, K, K
 Airbase,          DocAir,  Airbase,          Disable, 10,  Construct $STR0, ., .
 Sensor Array,     None,    Sensor Buoy,      None,     4,  Construct $STR0, O, O
