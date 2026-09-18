@@ -839,6 +839,11 @@ LRESULT WINAPI ModWinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
         flushlog();
 
+    } else if (!conf.reduced_mode && msg == WM_CHAR && wParam == 'a' && alt_key_down()) {
+
+    	// Psych allocation adviser
+    	show_mod_menu();
+
     } else {
         return WinProc(hwnd, msg, wParam, lParam);
     }

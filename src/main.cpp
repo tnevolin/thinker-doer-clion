@@ -1705,9 +1705,41 @@ DLL_EXPORT DWORD ThinkerModule() {
     return 0;
 }
 
+/*
+Stops Windows from bitmap-stretching the whole (non-DPI-aware) game window when the
+display is scaled above 100%. That stretch is what makes every font look jaggy/blurry
+regardless of the typeface chosen, since it resamples already-rendered pixels rather
+than letting GDI rasterize text at the true output size.
+Resolved dynamically since DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED requires Windows 10
+1703+; older systems fall back to the plain system-DPI-aware API (Vista+), which still
+avoids the stretch but at only one DPI reference point instead of matching it live.
+*/
+static void set_dpi_awareness() {
+    HMODULE user32 = GetModuleHandleA("user32.dll");
+    if (!user32) {
+        return;
+    }
+    typedef BOOL (WINAPI *PFN_SetProcessDpiAwarenessContext)(HANDLE);
+    PFN_SetProcessDpiAwarenessContext pSetProcessDpiAwarenessContext =
+        (PFN_SetProcessDpiAwarenessContext)GetProcAddress(user32, "SetProcessDpiAwarenessContext");
+    if (pSetProcessDpiAwarenessContext) {
+        const HANDLE DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED = (HANDLE)(-5);
+        if (pSetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED)) {
+            return;
+        }
+    }
+    typedef BOOL (WINAPI *PFN_SetProcessDPIAware)(void);
+    PFN_SetProcessDPIAware pSetProcessDPIAware =
+        (PFN_SetProcessDPIAware)GetProcAddress(user32, "SetProcessDPIAware");
+    if (pSetProcessDPIAware) {
+        pSetProcessDPIAware();
+    }
+}
+
 DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE UNUSED(hinstDLL), DWORD fdwReason, LPVOID UNUSED(lpvReserved)) {
     switch (fdwReason) {
         case DLL_PROCESS_ATTACH:
+            set_dpi_awareness();
             if (DEBUG && !(debug_log = fopen("debug.txt", "w"))) {
                 MessageBoxA(0, "Error while opening debug.txt file.",
                     MOD_VERSION, MB_OK | MB_ICONSTOP);
