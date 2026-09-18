@@ -24,5 +24,11 @@ Download faction release and unpack its content to game directory.
 
 # Run
 
-Run thinker.exe or terranx_mod.exe. They both do the same thing. Although thinker.exe should be more modern and supporting resolution better.
+Run thinker.exe (preferred) or terranx_mod.exe. They both do the same thing. Although thinker.exe should be more modern and supporting resolution better.
 
+# Windows scaling issue
+
+If you experience scaling issues (game does not utilize full screen width with Windows scaling more than 100%), try setting DPI option.
+Set them on terranx_mod.exe if you are using it. Set them on terranx.exe if you are using thinker.exe.
+
+Right-click → Properties → Compatibility tab → Change high DPI settings → check "Override high DPI scaling behavior. Scaling performed by:" → set to Application → OK.
