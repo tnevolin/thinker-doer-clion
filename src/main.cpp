@@ -1736,10 +1736,50 @@ static void set_dpi_awareness() {
     }
 }
 
+/*
+Registers (or unregisters) every .ttf file that ships next to the exe as a private,
+process-only font, so bundled fonts (e.g. datalinks_text_font/datalinks_menu_font)
+work for every player without a separate Windows font installation step. FR_PRIVATE
+fonts are invisible to other processes and would be dropped automatically on exit
+anyway, but detach explicitly for symmetry.
+*/
+static void register_bundled_fonts(bool add) {
+    char exePath[MAX_PATH];
+    DWORD len = GetModuleFileNameA(NULL, exePath, sizeof(exePath));
+    if (len == 0 || len >= sizeof(exePath)) {
+        return;
+    }
+    char* lastSlash = strrchr(exePath, '\\');
+    if (!lastSlash) {
+        return;
+    }
+    *(lastSlash + 1) = '\0';
+
+    char searchPattern[MAX_PATH];
+    snprintf(searchPattern, sizeof(searchPattern), "%s*.ttf", exePath);
+
+    WIN32_FIND_DATAA findData;
+    HANDLE hFind = FindFirstFileA(searchPattern, &findData);
+    if (hFind == INVALID_HANDLE_VALUE) {
+        return;
+    }
+    do {
+        char fontPath[MAX_PATH];
+        snprintf(fontPath, sizeof(fontPath), "%s%s", exePath, findData.cFileName);
+        if (add) {
+            AddFontResourceExA(fontPath, FR_PRIVATE, 0);
+        } else {
+            RemoveFontResourceExA(fontPath, FR_PRIVATE, 0);
+        }
+    } while (FindNextFileA(hFind, &findData));
+    FindClose(hFind);
+}
+
 DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE UNUSED(hinstDLL), DWORD fdwReason, LPVOID UNUSED(lpvReserved)) {
     switch (fdwReason) {
         case DLL_PROCESS_ATTACH:
             set_dpi_awareness();
+            register_bundled_fonts(true);
             if (DEBUG && !(debug_log = fopen("debug.txt", "w"))) {
                 MessageBoxA(0, "Error while opening debug.txt file.",
                     MOD_VERSION, MB_OK | MB_ICONSTOP);
@@ -1768,6 +1808,7 @@ DLL_EXPORT BOOL APIENTRY DllMain(HINSTANCE UNUSED(hinstDLL), DWORD fdwReason, LP
             break;
 
         case DLL_PROCESS_DETACH:
+            register_bundled_fonts(false);
             if (debug_log) {
                 fclose(debug_log);
             }
