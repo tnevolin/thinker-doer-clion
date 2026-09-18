@@ -1,3 +1,7 @@
+# Version 426
+
+* 96/72 DPI conversion fix.
+
 # Version 425
 
 * Merged Thinker 5.5
