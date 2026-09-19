@@ -17,7 +17,7 @@ endif()
 project(thinker)
 
 # Mod version — update this for each release
-set(WTP_VERSION "426")
+set(WTP_VERSION "427")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

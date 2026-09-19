@@ -1,3 +1,8 @@
+# Version 427
+
+* Alt-A: faction adviser.
+  * Currently advises on psych and labs energy allocation.
+
 # Version 426
 
 * 96/72 DPI conversion fix.
