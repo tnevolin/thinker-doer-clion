@@ -813,7 +813,7 @@ int __cdecl mod_crop_yield(int faction_id, int base_id, int x, int y, int flag) 
 	/*
     bool is_base = sq->is_base();
     */
-    bool is_base = sq->is_base() && base_id > 0 && base_id < *BaseCount && Bases[base_id].x == x && Bases[base_id].y == y;
+    bool is_base = sq->is_base() && base_id >= 0 && base_id < *BaseCount && Bases[base_id].x == x && Bases[base_id].y == y;
 	//
 
     int planet = Factions[faction_id].SE_planet_pending;
@@ -1028,7 +1028,7 @@ int __cdecl mod_mine_yield(int faction_id, int base_id, int x, int y, int flag) 
 	/*
     bool is_base = sq->is_base();
 	*/
-	bool is_base = sq->is_base() && base_id > 0 && base_id < *BaseCount && Bases[base_id].x == x && Bases[base_id].y == y;
+	bool is_base = sq->is_base() && base_id >= 0 && base_id < *BaseCount && Bases[base_id].x == x && Bases[base_id].y == y;
 	//
 
 	int alt = sq->alt_level();
@@ -1242,7 +1242,7 @@ int __cdecl mod_energy_yield(int faction_id, int base_id, int x, int y, int flag
 	/*
     bool is_base = sq->is_base();
 	*/
-	bool is_base = sq->is_base() && base_id > 0 && base_id < *BaseCount && Bases[base_id].x == x && Bases[base_id].y == y;
+	bool is_base = sq->is_base() && base_id >= 0 && base_id < *BaseCount && Bases[base_id].x == x && Bases[base_id].y == y;
 	//
 
 	int economy = Factions[faction_id].SE_economy_pending

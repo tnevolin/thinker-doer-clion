@@ -1,3 +1,7 @@
+# Version 428
+
+* [bug] Fixed: First base tile incorrect yield.
+
 # Version 427
 
 * Alt-A: faction adviser.
