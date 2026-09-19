@@ -96,5 +96,5 @@ int __thiscall mod_BasePop_start(
 int __cdecl mod_design_new_veh(int faction_id, int unit_id);
 int __cdecl MapWin_right_menu_arty(int veh_id, int x, int y);
 void __thiscall Console_arty_cursor_on(Console* This, int cursor_type, int veh_id);
-
+void show_psych_allocation_adviser_dialog();
 

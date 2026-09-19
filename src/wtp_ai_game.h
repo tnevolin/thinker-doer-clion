@@ -1074,4 +1074,6 @@ double getMutualCombatGain(double attackerDestructionGain, double defenderDestru
 double getBombardmentGain(double defenderDestructionGain, double relativeBombardmentDamage);
 double getAssignedTaskProtectDefendGain(int vehicleId);
 void createFakeVehicle(int vehicleId, int factionId, int unitId);
+int getOptimalPsychAllocation(int factionId);
+int getOptimalLabsAllocation(int factionId);
 

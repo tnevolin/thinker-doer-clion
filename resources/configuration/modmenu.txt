@@ -314,3 +314,8 @@ There is not enough energy reserves to support
 ^{$UNITTYPE1} unit.
 ^The unit has been disbanded.
 
+#ADVISER
+#xs 400
+#caption faction adviser recommendations
+^allocation: psych = {$NUM0}%  labs = {$NUM1}%
+

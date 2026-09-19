@@ -3863,14 +3863,6 @@ void wtp_mod_allocate_energy(int factionId)
 
 	debug("wtp_mod_allocate_energy - %s\n", MFactions[factionId].noun_faction);
 
-	// Penalty factor to deviate from Thinker proposal.
-	// ReSharper disable once CppTooWideScope
-	constexpr double thinkerTrustPsych = 0.00;
-	// ReSharper disable once CppTooWideScope
-	constexpr double thinkerTrustLabs = 0.25;
-
-	// evaluate best psych allocation
-
 	debug
 	(
 		"\told allocation={%d,%d,%d}"
@@ -3889,167 +3881,33 @@ void wtp_mod_allocate_energy(int factionId)
 		, thinkerLabsAllocation
 	);
 
-	int newPsychAllocation = oldPsychAllocation;
-	int newLabsAllocation = oldLabsAllocation;
-	double bestScore = -std::numeric_limits<double>::infinity();
-	
-	for (int psychAllocationChange = -1; psychAllocationChange <= +1; psychAllocationChange++)
-	{
-		for (int labsAllocationChange = -1; labsAllocationChange <= +1; labsAllocationChange++)
-		{
-			int psychAllocation;
-			int labsAllocation;
-			
-			// compute modified allocation
-			
-			psychAllocation = oldPsychAllocation + psychAllocationChange;
-			labsAllocation = oldLabsAllocation + labsAllocationChange;
-			
-			if (psychAllocation < 0 || psychAllocation > 10 || labsAllocation < 0 || labsAllocation > 10)
-				continue;
-			
-			// compute bases
-			
-			faction.SE_alloc_psych = psychAllocation;
-			faction.SE_alloc_labs = labsAllocation;
-			
-			for (int baseId = 0; baseId < *BaseCount; baseId++)
-			{
-				BASE &base = Bases[baseId];
-				
-				if (base.faction_id != factionId)
-					continue;
-				
-				computeBase(baseId, true);
-				
-			}
-			
-			energy_compute(factionId, 0);
-			
-			// avoid negative net income
-			
-			if (*net_income < 0)
-				continue;
-			
-			// evaluate effect score
-			
-			int totalNutrient = 0;
-			int totalMineral = 0;
-			int totalEconomy = 0;
-			int totalPsych = 0;
-			int totalLabs = 0;
-			int totalBudget = 0;
-			int totalDoctorCount = 0;
-			
-			for (int baseId = 0; baseId < *BaseCount; baseId++)
-			{
-				BASE &base = Bases[baseId];
-				
-				if (base.faction_id != factionId)
-					continue;
-				
-				totalNutrient += base.nutrient_surplus;
-				totalMineral += base.mineral_surplus;
-				totalEconomy += base.economy_total;
-				totalPsych += base.psych_total;
-				totalLabs += base.labs_total;
-				totalBudget += base.economy_total + base.labs_total;
-				totalDoctorCount += getBaseDoctorCount(baseId);
-				
-			}
-			
-			// how many credits one lab is worth
-			
-			double totalLabsWorth =
-				static_cast<double>(totalLabs)
-				*
-				(
-					conf.flat_hurry_cost ?
-						conf.lab_mineral_worth * conf.flat_hurry_cost_multiplier_facility
-						:
-						1.0
-				)
-			;
-			
-			double score = getResourceScore(static_cast<double>(totalNutrient), static_cast<double>(totalMineral), static_cast<double>(totalEconomy) + totalLabsWorth);
+	// the estimation functions below assume the faction's current sliders match whatever
+	// allocation actually produced the bases' current totals (bases are not recomputed here),
+	// so start them from last turn's allocation rather than Thinker's fresh proposal
 
-			// lean toward Thinker's own proposal proportionally to how much each slider
-			// is trusted; this never overrides the net income sanity check above, only
-			// rescales the score of candidates that already passed it
+	faction.SE_alloc_psych = oldPsychAllocation;
+	faction.SE_alloc_labs = oldLabsAllocation;
 
-			int psychDeviation = std::abs(psychAllocation - thinkerPsychAllocation);
-			int labsDeviation = std::abs(labsAllocation - thinkerLabsAllocation);
-			double thinkerDeviationCoefficient =
-				1.0
-				- thinkerTrustPsych * psychDeviation
-				- thinkerTrustLabs * labsDeviation
-			;
-			score *= thinkerDeviationCoefficient;
+	// psych allocation: move at most one step toward the estimated optimum; clamped against
+	// the still-old labs allocation so economy cannot be pushed negative
 
-			debug
-			(
-				"\tallocation={%d,%d,%d}"
-				" totalNutrient=%3d"
-				" totalMineral=%3d"
-				" totalEconomy=%3d"
-				" totalPsych=%3d"
-				" totalLabs=%3d"
-				" totalLabsWorth=%5.2f"
-				" totalBudget=%3d"
-				" totalDoctorCount=%3d"
-				" *net_income=%3d"
-				" psychDeviation=%3d"
-				" labsDeviation=%3d"
-				" thinkerDeviationCoefficient=%5.2f"
-				" score=%5.2f"
-				"\n"
-				, 10 - psychAllocation - labsAllocation
-				, psychAllocation
-				, labsAllocation
-				, totalNutrient
-				, totalMineral
-				, totalEconomy
-				, totalPsych
-				, totalLabs
-				, totalLabsWorth
-				, totalBudget
-				, totalDoctorCount
-				, *net_income
-				, psychDeviation
-				, labsDeviation
-				, thinkerDeviationCoefficient
-				, score
-			);
-			
-			if (score > bestScore)
-			{
-				newPsychAllocation = psychAllocation;
-				newLabsAllocation = labsAllocation;
-				bestScore = score;
-			}
-			
-		}
-		
-	}
-	
-	// set values
-	
+	int optimalPsychAllocation = getOptimalPsychAllocation(factionId);
+	int newPsychAllocation = clamp(oldPsychAllocation + clamp(optimalPsychAllocation - oldPsychAllocation, -1, 1), 0, 10 - oldLabsAllocation);
 	faction.SE_alloc_psych = newPsychAllocation;
+
+	debug("\toptimalPsychAllocation=%2d newPsychAllocation=%2d\n", optimalPsychAllocation, newPsychAllocation);
+
+	// labs allocation: move at most one step toward the estimated optimum, holding the psych
+	// allocation just chosen above fixed; clamped against it so economy cannot go negative
+	// (getOptimalLabsAllocation refreshes *net_income itself for its own safety check, which is
+	// the only place in this function that still needs it)
+
+	int optimalLabsAllocation = getOptimalLabsAllocation(factionId);
+	int newLabsAllocation = clamp(oldLabsAllocation + clamp(optimalLabsAllocation - oldLabsAllocation, -1, 1), 0, 10 - newPsychAllocation);
 	faction.SE_alloc_labs = newLabsAllocation;
-	
-	for (int baseId = 0; baseId < *BaseCount; baseId++)
-	{
-		BASE &base = Bases[baseId];
-		
-		if (base.faction_id != factionId)
-			continue;
-		
-		computeBase(baseId, true);
-		
-	}
-	
-	energy_compute(factionId, 0);
-	
+
+	debug("\toptimalLabsAllocation=%2d newLabsAllocation=%2d\n", optimalLabsAllocation, newLabsAllocation);
+
 	debug
 	(
 		"\tnew allocation={%d,%d,%d}"
@@ -4058,9 +3916,9 @@ void wtp_mod_allocate_energy(int factionId)
 		, newPsychAllocation
 		, newLabsAllocation
 	);
-	
+
 	Profiling::stop("- wtp_mod_allocate_energy");
-	
+
 }
 
 /*
@@ -4361,6 +4219,9 @@ void __cdecl wtp_mod_BaseWin_draw_psych_strcat(char *buffer, char *source)
 {
 	BASE &base = **CurrentBase;
 
+	// padding
+	constexpr char const *prefix = " ";
+
 	robin_hood::unordered_flat_map<char *, int> labelIndexes = {{label_get(322), 322}, {label_get(323), 324}, {label_get(324), 325}, {label_get(325), 327}, {label_get(326), 327}, {label_get(327), 323}, {label_get(970), 970}, {label_get(971), 971}, };
 	robin_hood::unordered_flat_map<char *, int> rowIndexes = {{label_get(322), 0}, {label_get(323), 1}, {label_get(324), 2}, {label_get(325), 3}, {label_get(326), 3}, {label_get(327), 4}, {label_get(970), 0}, {label_get(971), 0}, };
 
@@ -4384,15 +4245,18 @@ void __cdecl wtp_mod_BaseWin_draw_psych_strcat(char *buffer, char *source)
 		case 1:
 			snprintf
 			(
-				buffer, StrBufLen, "%c%2d  %s"
-				, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
+				buffer, StrBufLen, "%s%c%2d  %s"
+				, prefix
+				, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-'
+				, std::abs(psychBalance)
 				, label
 			);
 			break;
 		case 2:
 			snprintf
 			(
-				buffer, StrBufLen, "+%2d-%2d-%2d=%c%2d  %s"
+				buffer, StrBufLen, "%s+%2d-%2d-%2d=%c%2d  %s"
+				, prefix
 				, BasePsychTalents[rowIndex]
 				, BasePsychNDrones[rowIndex]
 				, BasePsychSDrones[rowIndex]
@@ -4405,7 +4269,8 @@ void __cdecl wtp_mod_BaseWin_draw_psych_strcat(char *buffer, char *source)
 			{
 				snprintf
 				(
-					buffer, StrBufLen, "    %c%2d %s"
+					buffer, StrBufLen, "%s  %c%2d %s"
+					, prefix
 					, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
 					, label
 				);
@@ -4414,7 +4279,8 @@ void __cdecl wtp_mod_BaseWin_draw_psych_strcat(char *buffer, char *source)
 			{
 				snprintf
 				(
-					buffer, StrBufLen, "%c%2d %c%2d %s"
+					buffer, StrBufLen, "%s%c%2d %c%2d %s"
+					, prefix
 					, psychBalanceChange == 0 ? ' ' : psychBalanceChange > 0 ? '+' : '-', std::abs(psychBalanceChange)
 					, psychBalance == 0 ? ' ' : psychBalance > 0 ? '+' : '-', std::abs(psychBalance)
 					, label
@@ -4426,7 +4292,8 @@ void __cdecl wtp_mod_BaseWin_draw_psych_strcat(char *buffer, char *source)
 			{
 				snprintf
 				(
-					buffer, StrBufLen, "    %s"
+					buffer, StrBufLen, "%s    %s"
+					, prefix
 					, label
 				);
 			}
@@ -4434,14 +4301,15 @@ void __cdecl wtp_mod_BaseWin_draw_psych_strcat(char *buffer, char *source)
 			{
 				snprintf
 				(
-					buffer, StrBufLen, "%c%2d %s"
+					buffer, StrBufLen, "%s%c%2d %s"
+					, prefix
 					, psychBalanceChange == 0 ? ' ' : psychBalanceChange > 0 ? '+' : '-', std::abs(psychBalanceChange)
 					, label
 				);
 			}
 			break;
 		default: ;
-			strncat(buffer, label, StrBufLen);
+			snprintf(buffer, StrBufLen, "%s%s", prefix, label);
 		}
 
 	}
@@ -4451,14 +4319,14 @@ void __cdecl wtp_mod_BaseWin_draw_psych_strcat(char *buffer, char *source)
 		{
 			// replace label #1 with [Stapled Base] if stapled or Punishment Sphere
 
-			strncat(buffer, label_get(971), StrBufLen); // Stapled Base
+			snprintf(buffer, StrBufLen, "%s%s", prefix, label_get(971)); // Stapled Base
 
 		}
 		else
 		{
 			// default value
 
-			strncat(buffer, source, StrBufLen);
+			snprintf(buffer, StrBufLen, "%s%s", prefix, source);
 
 		}
 

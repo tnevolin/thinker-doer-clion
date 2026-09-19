@@ -1911,25 +1911,10 @@ void updateBaseEnergy(BaseComputeParameterSet const &parameterSet)
 
 	// allocation imbalance penalty
 
-	int alloc_labs = faction.SE_alloc_labs;
-	int alloc_psych = faction.SE_alloc_psych;
-	int effic_val = 4 - clamp(faction.SE_effic_pending, -4, 4);
-	int psych_val;
-	if (2 * alloc_labs + alloc_psych - 10 < 0) {
-		psych_val = (2 * (5 - alloc_labs) - alloc_psych) / 2;
-	} else {
-		psych_val = (2 * alloc_labs + alloc_psych - 10) / 2;
-	}
-	if (psych_val && effic_val) {
-		int penalty = psych_val * effic_val * 2;
-		if (2 * alloc_labs + alloc_psych <= 10) {
-			base->labs_total = (base->labs_total * (100 - clamp(2 * penalty, 0, 80)) + 50) / 100;
-			base->economy_total = (base->economy_total * (100 - clamp(penalty, 0, 40)) + 50) / 100;
-		} else {
-			base->labs_total = (base->labs_total * (100 - clamp(penalty, 0, 40)) + 50) / 100;
-			base->economy_total = (base->economy_total * (100 - clamp(2 * penalty, 0, 80)) + 50) / 100;
-		}
-	}
+	int labsAllocationPenalty = getFactionLabsAllocationPenalty(faction_id);
+	int economyAllocationPenalty = getFactionEconomyAllocationPenalty(faction_id);
+	base->labs_total = (base->labs_total * (100 - labsAllocationPenalty) + 50) / 100;
+	base->economy_total = (base->economy_total * (100 - economyAllocationPenalty) + 50) / 100;
 
 	// specialists
 

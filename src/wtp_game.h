@@ -1387,6 +1387,8 @@ int getBasePsychMultiplierNumerator(int baseId);
 double getBasePsychMultiplier(int baseId);
 int getBaseLabsMultiplierNumerator(int baseId);
 double getBaseLabsMultiplier(int baseId);
+int getFactionEconomyAllocationPenalty(int factionId);
+int getFactionLabsAllocationPenalty(int factionId);
 bool isLandVechileMoveAllowed(int vehicleId, MAP *from, MAP *to);
 int getRange(int x1, int y1, int x2, int y2);
 int getRange(int tile1Index, int tile2Index);

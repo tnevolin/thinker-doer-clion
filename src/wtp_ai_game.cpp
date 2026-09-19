@@ -8,6 +8,7 @@
 #include "wtp_mod.h"
 #include "wtp_terranx.h"
 #include "wtp_aiRoute.h"
+#include "wtp_base.h"
 
 /**
 AI related common functions.
@@ -5012,5 +5013,318 @@ void createFakeVehicle(int vehicleId, int factionId, int unitId)
 {
 	assert(vehicleId >= conf.max_veh_num && vehicleId < conf.max_veh_num + 2);
 	veh_clear(vehicleId, unitId, factionId);
+}
+
+/*
+Estimates optimal psych allocation without recomputing bases.
+
+For a candidate psychAllocation the approximation assumes:
+- the base's total raw (pre-multiplier) energy production stays the same; only the split between
+  psych and economy/labs shifts, each rescaled by its own facility multiplier (psych and
+  economy/labs can differ) before moving that share into/out of the energy score;
+- diverting energy into psych suppresses drones/grows talents at the same rate the engine itself
+  uses (psych / conf.base_psych_cost), which lets some doctor specialists go back to work (and the
+  opposite when less psych is allocated); each doctor gained or lost changes nutrient/mineral/energy
+  by the base's average per-worker output.
+*/
+int getOptimalPsychAllocation(int factionId)
+{
+	debug("getOptimalPsychAllocation - %s\n", MFactions[factionId].noun_faction);
+
+	Profiling::start("- getOptimalPsychAllocation");
+
+	Faction &faction = Factions[factionId];
+
+	int currentPsychAllocation = faction.SE_alloc_psych;
+	debug("\tcurrentPsychAllocation=%2d\n", currentPsychAllocation);
+
+	double currentPsychFraction = static_cast<double>(currentPsychAllocation) / 10.0;
+
+	// bases always assign their best-scoring psych specialist as a doctor, and which citizen
+	// type that is depends only on faction tech (not on any particular base's population - a
+	// non-psych specialist never outscores it here since econValue/labsValue are both 0), so
+	// resolve it once instead of rederiving it for every base
+
+	std::vector<int> availableSpecialistTypes = getAvailableSpecialistTypes(factionId, 999);
+	int bestPsychSpecialistType = getBestSpecialistType(availableSpecialistTypes, 0, 0, 1);
+	int bestPsychSpecialistPsychBonus = Citizen[bestPsychSpecialistType].psych_bonus;
+
+	// accumulate approximated base intake gain for every candidate psychAllocation:
+	// it trades off energy diverted into psych directly against doctors freed up or needed,
+	// both folded into the same linear resource score as they are computed
+
+	double baseIntakeGainByPsychAllocation[11] = {};
+
+	for (int baseId = 0; baseId < *BaseCount; baseId++)
+	{
+		BASE &base = Bases[baseId];
+
+		if (base.faction_id != factionId)
+			continue;
+
+		// economy/labs/psych totals include every specialist's flat bonus, not just tile
+		// workers' share of energy, so averages below are taken over pop_size minus doctors
+		// (not minus all specialists): nutrient/mineral come only from tile workers, and since
+		// non-doctor specialists contribute 0 of those, dividing by the whole non-doctor pool
+		// already gives the correct expected per-citizen value without tracking who is which
+
+		int currentDoctorCount = getBaseDoctorCount(baseId);
+
+		// the specialist's own psych_bonus is a flat per-faction constant, but its actual
+		// contribution to base.psych_total is still run through this base's own facility
+		// multiplier (getBasePsychMultiplier is the same coeff_psych/4 ratio computeBase
+		// applies), so that part still has to be resolved per base
+
+		double basePsychMultiplier = getBasePsychMultiplier(baseId);
+		double averageDoctorPsychBonus = static_cast<double>(bestPsychSpecialistPsychBonus) * basePsychMultiplier;
+		double currentDoctorPsychTotal = static_cast<double>(currentDoctorCount) * averageDoctorPsychBonus;
+		double nonDoctorCount = static_cast<double>(std::max(1, static_cast<int>(base.pop_size) - currentDoctorCount));
+
+		double averageMineralPerWorker = static_cast<double>(base.mineral_surplus) / nonDoctorCount;
+		double averageNutrientPerWorker = static_cast<double>(base.nutrient_surplus) / nonDoctorCount;
+
+		// tile-derived psych (psych_total minus doctors' own flat bonus) currently generated
+		// by the non-doctor population; this is what a citizen stops contributing once turned
+		// into a doctor, and what a freed doctor adds back
+
+		double currentTileDerivedPsych = static_cast<double>(base.psych_total) - currentDoctorPsychTotal;
+		double averageWorkerPsych = currentTileDerivedPsych / nonDoctorCount;
+
+		// net drone suppression a doctor provides beyond what that citizen would already
+		// contribute to psych while working a tile
+
+		double doctorNetSuppression = std::max(0.1, (averageDoctorPsychBonus - averageWorkerPsych) / static_cast<double>(conf.base_psych_cost));
+
+		// psych and economy/labs can have different facility multipliers, so shifting a share
+		// of raw energy allocation does not translate into the same final-total shift for each:
+		// reconstruct the base's raw (pre-multiplier) energy pool by dividing each final total
+		// by its own coefficient (each is >= 1.0, so this is always safe) and summing, so psych
+		// and economy/labs can each be rescaled by their own multiplier below
+
+		double economyCoefficient = getBaseEconomyMultiplier(baseId);
+		double labsCoefficient = getBaseLabsMultiplier(baseId);
+		double totalRawEnergy = static_cast<double>(base.economy_total) / economyCoefficient + static_cast<double>(base.labs_total) / labsCoefficient + static_cast<double>(base.psych_total) / basePsychMultiplier;
+
+		// economy and labs are blended into one economy/labs coefficient, weighted by their
+		// current raw allocation ratio, which is assumed to hold as that ratio shifts
+
+		int economyAllocation = 10 - faction.SE_alloc_labs - currentPsychAllocation;
+		double labsRawFraction = static_cast<double>(faction.SE_alloc_labs) / 10.0;
+		double econLabsRawFraction = 1.0 - currentPsychFraction;
+		double econLabsCoefficient =
+			faction.SE_alloc_labs > 0 || economyAllocation > 0 ?
+				(economyCoefficient * static_cast<double>(economyAllocation) / 10.0 + labsCoefficient * labsRawFraction) / econLabsRawFraction
+				:
+				0.0
+		;
+
+		for (int psychAllocation = 0; psychAllocation <= 10; psychAllocation++)
+		{
+			double newPsychFraction = static_cast<double>(psychAllocation) / 10.0;
+
+			double newTileDerivedPsych = basePsychMultiplier * newPsychFraction * totalRawEnergy;
+			double newEconLabs = econLabsCoefficient * (1.0 - newPsychFraction) * totalRawEnergy;
+
+			// a doctor conversion at this candidate allocation costs/refunds this candidate's
+			// own per-worker economy/labs rate, not the current one - it shrinks the same way
+			// newEconLabs does as more of the raw pool is diverted into psych
+
+			double newAverageEnergyPerWorker = newEconLabs / nonDoctorCount;
+
+			// drone suppression gained/lost purely from reallocating the base's existing
+			// energy production toward/away from psych
+
+			double deltaSuppressionFromPsych = (newTileDerivedPsych - currentTileDerivedPsych) / static_cast<double>(conf.base_psych_cost);
+
+			// more suppression from psych means fewer doctors are needed to stay content, and vice versa
+
+			double deltaDoctorCount = clamp(-deltaSuppressionFromPsych / doctorNetSuppression, static_cast<double>(-currentDoctorCount), nonDoctorCount);
+
+			double newNutrient = static_cast<double>(base.nutrient_surplus) - deltaDoctorCount * averageNutrientPerWorker;
+			double newMineral = static_cast<double>(base.mineral_surplus) - deltaDoctorCount * averageMineralPerWorker;
+			double newEnergy = newEconLabs - deltaDoctorCount * newAverageEnergyPerWorker;
+
+			baseIntakeGainByPsychAllocation[psychAllocation] += getResourceScore(newNutrient, newMineral, newEnergy);
+
+		}
+
+	}
+
+	// pick best candidate
+
+	int bestPsychAllocation = currentPsychAllocation;
+	double bestScore = -std::numeric_limits<double>::infinity();
+
+	for (int psychAllocation = 0; psychAllocation <= 10; psychAllocation++)
+	{
+		double score = baseIntakeGainByPsychAllocation[psychAllocation];
+
+		debug("\tpsychAllocation=%2d baseIntakeGain=%7.2f\n", psychAllocation, score);
+
+		if (score > bestScore)
+		{
+			bestPsychAllocation = psychAllocation;
+			bestScore = score;
+		}
+
+	}
+
+	debug("\tbest psychAllocation=%2d\n", bestPsychAllocation);
+
+	Profiling::stop("- getOptimalPsychAllocation");
+
+	return bestPsychAllocation;
+
+}
+
+/*
+Estimates optimal labs allocation without recomputing bases, holding the current psych allocation
+fixed (this only balances labs against economy; see getOptimalPsychAllocation for the psych vs.
+economy/labs decision).
+
+For a candidate labsAllocation the approximation assumes:
+- the base's total raw (pre-multiplier) energy production stays the same, and psych keeps its
+  current share of it; only the remaining share is re-split between labs and economy, each
+  rescaled by its own facility multiplier (getBaseEconomyMultiplier/getBaseLabsMultiplier);
+- the same econ/labs allocation-imbalance penalty the engine applies is reapplied for each
+  candidate split, read from the engine's own getFactionLabsAllocationPenalty/
+  getFactionEconomyAllocationPenalty by briefly pointing the faction's labs slider at each
+  candidate;
+- labs are valued at their RESEARCH-rating-adjusted rate (the same percentage mod_base_research
+  applies to labs_total when turning it into tech points, not stored back into labs_total itself),
+  since that is what actually determines a lab point's worth relative to an economy point.
+
+Candidates whose approximated total economy would fall below the faction's total expense are
+skipped, the same net-income safeguard wtp_mod_allocate_energy applies after each real recompute.
+Total expense (bureaucracy, unit support, facility maintenance, ...) is backed out of one real
+getFactionNetIncome reading at the current allocation and held constant across candidates below,
+since none of it depends on the labs/economy split - this avoids an energy_compute call per
+candidate while still comparing against the engine's real number, not an approximation of it.
+*/
+int getOptimalLabsAllocation(int factionId)
+{
+	debug("getOptimalLabsAllocation - %s\n", MFactions[factionId].noun_faction);
+
+	Profiling::start("- getOptimalLabsAllocation");
+
+	Faction &faction = Factions[factionId];
+
+	int currentPsychAllocation = faction.SE_alloc_psych;
+	int currentLabsAllocation = faction.SE_alloc_labs;
+	debug("\tcurrentLabsAllocation=%2d (psychAllocation=%2d held fixed)\n", currentLabsAllocation, currentPsychAllocation);
+
+	int maxLabsAllocation = 10 - currentPsychAllocation;
+
+	// faction-wide constants shared by every base and every candidate
+
+	double researchMultiplier = (clamp(static_cast<double>(faction.SE_research_pending), -5.0, 5.0) + 10.0) / 10.0;
+
+	// the imbalance penalty only depends on the faction's own sliders, not on any base, so read
+	// the engine's exact formula once per candidate here by briefly pointing SE_alloc_labs at it,
+	// rather than approximating it or recomputing it per base below
+
+	double labsImbalanceMultiplierByAllocation[11];
+	double economyImbalanceMultiplierByAllocation[11];
+	for (int labsAllocation = 0; labsAllocation <= maxLabsAllocation; labsAllocation++)
+	{
+		faction.SE_alloc_labs = labsAllocation;
+		labsImbalanceMultiplierByAllocation[labsAllocation] = (100 - getFactionLabsAllocationPenalty(factionId)) / 100.0;
+		economyImbalanceMultiplierByAllocation[labsAllocation] = (100 - getFactionEconomyAllocationPenalty(factionId)) / 100.0;
+	}
+	faction.SE_alloc_labs = currentLabsAllocation;
+
+	double currentLabsImbalanceMultiplier = labsImbalanceMultiplierByAllocation[currentLabsAllocation];
+	double currentEconomyImbalanceMultiplier = economyImbalanceMultiplierByAllocation[currentLabsAllocation];
+
+	// total faction expense (bureaucracy, unit support, facility maintenance, ...) does not depend
+	// on the labs/economy split, so back it out of one real net income reading at the current
+	// allocation (same net_income wtp_mod_allocate_energy checks after each real recompute) and
+	// hold it constant below, instead of paying for an energy_compute call per candidate
+
+	int currentNetIncome = getFactionNetIncome(factionId);
+
+	double baseIntakeGainByLabsAllocation[11] = {};
+	double totalEconomyByLabsAllocation[11] = {};
+	double currentTotalEconomy = 0.0;
+
+	for (int baseId = 0; baseId < *BaseCount; baseId++)
+	{
+		BASE &base = Bases[baseId];
+
+		if (base.faction_id != factionId)
+			continue;
+
+		currentTotalEconomy += static_cast<double>(base.economy_total);
+
+		double economyCoefficient = getBaseEconomyMultiplier(baseId);
+		double labsCoefficient = getBaseLabsMultiplier(baseId);
+		double basePsychMultiplier = getBasePsychMultiplier(baseId);
+
+		// back out the raw (pre-multiplier, pre-imbalance-penalty) energy pool so it can be
+		// re-split by each candidate labsAllocation below; also undo the current imbalance
+		// penalty on economy/labs (psych is never subject to it), since otherwise a currently
+		// imbalanced base would understate its own raw energy pool
+
+		double totalRawEnergy =
+			static_cast<double>(base.economy_total) / (economyCoefficient * currentEconomyImbalanceMultiplier)
+			+ static_cast<double>(base.labs_total) / (labsCoefficient * currentLabsImbalanceMultiplier)
+			+ static_cast<double>(base.psych_total) / basePsychMultiplier
+		;
+
+		for (int labsAllocation = 0; labsAllocation <= maxLabsAllocation; labsAllocation++)
+		{
+			double labsFraction = static_cast<double>(labsAllocation) / 10.0;
+			double economyFraction = static_cast<double>(maxLabsAllocation - labsAllocation) / 10.0;
+
+			double newLabsTotal = labsCoefficient * labsImbalanceMultiplierByAllocation[labsAllocation] * labsFraction * totalRawEnergy;
+			double newEconomyTotal = economyCoefficient * economyImbalanceMultiplierByAllocation[labsAllocation] * economyFraction * totalRawEnergy;
+
+			// labs are only worth their RESEARCH-adjusted rate, not their face value, when
+			// compared against economy for scoring purposes
+
+			double energyEquivalent = newEconomyTotal + newLabsTotal * researchMultiplier;
+
+			baseIntakeGainByLabsAllocation[labsAllocation] += getResourceScore(static_cast<double>(base.nutrient_surplus), static_cast<double>(base.mineral_surplus), energyEquivalent);
+			totalEconomyByLabsAllocation[labsAllocation] += newEconomyTotal;
+
+		}
+
+	}
+
+	// pick best candidate
+
+	double totalExpense = currentTotalEconomy - static_cast<double>(currentNetIncome);
+
+	int bestLabsAllocation = currentLabsAllocation;
+	double bestScore = -std::numeric_limits<double>::infinity();
+
+	for (int labsAllocation = 0; labsAllocation <= maxLabsAllocation; labsAllocation++)
+	{
+		double score = baseIntakeGainByLabsAllocation[labsAllocation];
+
+		// avoid negative net income
+
+		if (totalEconomyByLabsAllocation[labsAllocation] < totalExpense)
+		{
+			debug("\tlabsAllocation=%2d totalEconomy=%7.2f totalExpense=%7.2f skipped (negative net income)\n", labsAllocation, totalEconomyByLabsAllocation[labsAllocation], totalExpense);
+			continue;
+		}
+
+		debug("\tlabsAllocation=%2d baseIntakeGain=%7.2f\n", labsAllocation, score);
+
+		if (score > bestScore)
+		{
+			bestLabsAllocation = labsAllocation;
+			bestScore = score;
+		}
+
+	}
+
+	debug("\tbest labsAllocation=%2d\n", bestLabsAllocation);
+
+	Profiling::stop("- getOptimalLabsAllocation");
+
+	return bestLabsAllocation;
+
 }
 

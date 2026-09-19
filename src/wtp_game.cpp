@@ -6818,6 +6818,58 @@ double getBaseLabsMultiplier(int baseId)
 }
 
 /*
+Percentage penalty (0-80) applied to economy allocation imbalance (see the "allocation imbalance penalty" block in updateBaseEnergy).
+Zero when SE Efficiency is at its cap (+4) or the allocation is already balanced.
+*/
+int getFactionEconomyAllocationPenalty(int factionId)
+{
+	Faction &faction = Factions[factionId];
+
+	int inefficiencyValue = 4 - clamp(faction.SE_effic_pending, -4, 4);
+	if (inefficiencyValue == 0)
+		return 0;
+
+	int allocEconomy = 10 - faction.SE_alloc_psych - faction.SE_alloc_labs;
+	int allocLabs = faction.SE_alloc_labs;
+
+	int deviation = std::abs(allocEconomy - allocLabs) / 2;
+	if (deviation == 0)
+		return 0;
+
+	int penalty = 2 * deviation * inefficiencyValue;
+	int penaltyMultiplier = allocEconomy < allocLabs ? 2 : 1;
+
+	return penaltyMultiplier * clamp(penalty, 0, 40);
+
+}
+
+/*
+Percentage penalty (0-80) applied to labs allocation imbalance (see the "allocation imbalance penalty" block in updateBaseEnergy).
+Zero when SE Efficiency is at its cap (+4) or the allocation is already balanced.
+*/
+int getFactionLabsAllocationPenalty(int factionId)
+{
+	Faction &faction = Factions[factionId];
+
+	int inefficiencyValue = 4 - clamp(faction.SE_effic_pending, -4, 4);
+	if (inefficiencyValue == 0)
+		return 0;
+
+	int allocEconomy = 10 - faction.SE_alloc_psych - faction.SE_alloc_labs;
+	int allocLabs = faction.SE_alloc_labs;
+
+	int deviation = std::abs(allocEconomy - allocLabs) / 2;
+	if (deviation == 0)
+		return 0;
+
+	int penalty = 2 * deviation * inefficiencyValue;
+	int penaltyMultiplier = allocLabs < allocEconomy ? 2 : 1;
+
+	return penaltyMultiplier * clamp(penalty, 0, 40);
+
+}
+
+/*
 Checks if land vehicle can move.
 */
 bool isLandVechileMoveAllowed(int vehicleId, MAP *from, MAP *to)

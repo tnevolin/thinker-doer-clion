@@ -1,6 +1,8 @@
 #include "gui.h"
 
-const int32_t MainWinHandle = (int32_t)(&MapWin->oMainWin.field_4); // 0x939444
+#include "wtp_ai_game.h"
+
+int32_t const MainWinHandle = (int32_t)(&MapWin->oMainWin.field_4); // 0x939444
 
 char label_pop_size[StrBufLen] = "Pop: %d / %d / %d / %d";
 char label_pop_boom[StrBufLen] = "Population Boom";
@@ -842,7 +844,7 @@ LRESULT WINAPI ModWinProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     } else if (!conf.reduced_mode && msg == WM_CHAR && wParam == 'a' && alt_key_down()) {
 
     	// Psych allocation adviser
-    	show_mod_menu();
+    	show_psych_allocation_adviser_dialog();
 
     } else {
         return WinProc(hwnd, msg, wParam, lParam);
@@ -1553,6 +1555,12 @@ void __thiscall Console_arty_cursor_on(Console* This, int cursor_type, int veh_i
     Console_cursor_on_2(This, cursor_type, veh_range);
 }
 
+// [WTP]
+void show_psych_allocation_adviser_dialog()
+{
+	ParseNumTable[0] = 10 * getOptimalPsychAllocation(*CurrentPlayerFaction);
+	ParseNumTable[1] = 10 * getOptimalLabsAllocation(*CurrentPlayerFaction);
+	popp("modmenu", "ADVISER", 0, "stars_sm.pcx", nullptr);
 
-
+}
 
