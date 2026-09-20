@@ -492,10 +492,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->probe_risk_procure_research_data = std::max(0, atoi(value));
     }
-    else if (MATCH("probe_risk_introduce_genetic_plague"))
-    {
-        cf->probe_risk_introduce_genetic_plague = std::max(0, atoi(value));
-    }
     else if (MATCH("sensor_offense"))
     {
         cf->sensor_offense = (atoi(value) == 0 ? false : true);
@@ -651,10 +647,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     else if (MATCH("conventional_power_psi_percentage"))
     {
         cf->conventional_power_psi_percentage = atoi(value);
-    }
-    else if (MATCH("zoc_enabled"))
-    {
-        cf->zoc_enabled = (atoi(value) == 0 ? false : true);
     }
     else if (MATCH("aaa_range"))
     {

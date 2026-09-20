@@ -1,6 +1,8 @@
 
 #include "faction.h"
 
+#include "wtp_mod.h"
+
 static char PlrBuf[StrBufLen] = {};
 
 bool has_chassis(int faction_id, VehChassis chs) {
@@ -2261,7 +2263,13 @@ int __cdecl mod_setup_player(int faction_id, int setup_id, int is_probe) {
             if (*GameRules & RULES_LOOK_FIRST && !(*GameRules & RULES_TIME_WARP)) {
                 veh_init_free(colony_unit, faction_id, x, y);
             } else {
+                // [WTP]
+                // intercept mod_base_init
+                /*
                 int base_id = mod_base_init(faction_id, x, y);
+                */
+                int base_id = wtp_mod_base_init(faction_id, x, y);
+                //
                 if (base_id >= 0 && !_stricmp(m->filename, "FUNGBOY") && special_spawn) {
                     Bases[base_id].pop_size = 3;
                 }

@@ -1323,48 +1323,6 @@ void patch_pact_base_map_production_display()
 }
 
 /*
-Introduce a hook to modify probe action risks.
-*/
-void patch_modified_probe_risks()
-{
-	int modified_probe_risk_hook_bytes_length = 0x13;
-/*
-0:  8b 55 08                mov    edx,DWORD PTR [ebp+0x8]
-3:  6a 00                   push   0x0
-5:  6a 01                   push   0x1
-7:  52                      push   edx
-8:  e8 f2 dc 01 00          call   0x1dcff
-d:  83 c4 0c                add    esp,0xc
-10: 89 45 b4                mov    DWORD PTR [ebp-0x4c],eax
-*/
-	byte modified_probe_risk_hook_bytes_old[] = { 0x8B, 0x55, 0x08, 0x6A, 0x00, 0x6A, 0x01, 0x52, 0xE8, 0xF2, 0xDC, 0x01, 0x00, 0x83, 0xC4, 0x0C, 0x89, 0x45, 0xB4 };
-/*
-0:  89 45 b4                mov    DWORD PTR [ebp-0x4c],eax
-3:  8d 45 d0                lea    eax,[ebp-0x30]
-6:  50                      push   eax
-7:  ff 75 e8                push   DWORD PTR [ebp-0x18]
-a:  e8 fd ff ff ff          call   c <_main+0xc>
-f:  83 c4 08                add    esp,0x8
-...
-*/
-	byte modified_probe_risk_hook_bytes_new[] = { 0x89, 0x45, 0xB4, 0x8D, 0x45, 0xD0, 0x50, 0xFF, 0x75, 0xE8, 0xE8, 0xFD, 0xFF, 0xFF, 0xFF, 0x83, 0xC4, 0x08, 0x90 };
-	write_bytes
-	(
-		0x005A3141,
-		modified_probe_risk_hook_bytes_old,
-		modified_probe_risk_hook_bytes_new,
-		modified_probe_risk_hook_bytes_length
-	);
-	
-	write_call(0x005A314B, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedProbeActionRisk)));
-	
-	// procure research data success_rates
-	
-	write_call(0x0059FEBB, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_success_rates_procure_research_data)));
-	
-}
-
-/*
 Disable setting knowledge price over the credits.
 */
 void patch_min_knowledge_price()
@@ -2726,62 +2684,6 @@ void patch_base_check_support()
 	
 }
 
-void patch_zoc_disabled()
-{
-	write_call(0x005969B7, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_quick_zoc)));
-	write_call(0x005969D2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_quick_zoc)));
-	write_call(0x00522A70, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_any)));
-	write_call(0x005668E2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_any)));
-	write_call(0x00566DE0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_any)));
-	write_call(0x00579351, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_any)));
-	write_call(0x0057B638, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_any)));
-	write_call(0x005998FA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_any)));
-	write_call(0x0056702F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x0056B8C5, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x0056BB82, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x005716B0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x005758FA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x00577393, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x00577963, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x00577B27, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x00577E4E, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x00577E80, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x00598F8E, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x0059A089, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x0059CDF9, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_veh)));
-	write_call(0x004EC828, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
-	write_call(0x00560C91, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
-	write_call(0x00561A7F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
-	write_call(0x00561D21, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
-	write_call(0x0056C5A3, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
-	write_call(0x00571820, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
-	write_call(0x005724F2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
-	write_call(0x00577281, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
-	write_call(0x0057745B, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
-	write_call(0x00577681, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
-	write_call(0x00577FA2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
-	write_call(0x005C8D8C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_sea)));
-	write_call(0x004CC5E3, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x004ED6EE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x00509478, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x0056B8B1, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x0056BBA1, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x0056C1FF, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x005723FE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x005725EE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x00573D7D, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x00577614, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x00595395, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x005953AA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x0059BEB2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x0059C0B7, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_move)));
-	write_call(0x0059A937, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_path)));
-	write_call(0x0059AF1A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_path)));
-	write_call(0x0059B45F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_path)));
-	write_call(0x0059B7B1, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_zoc_path)));
-	
-}
-
 void patch_scroll_other_faction_bases()
 {
 	// in BaseWin::prev
@@ -3482,12 +3384,7 @@ void patch_setup_wtp(Config* cf)
 	}
 	
 	patch_pact_base_map_production_display();
-	
-	if (cf->modified_probe_risks)
-	{
-		patch_modified_probe_risks();
-	}
-	
+
 	patch_min_knowledge_price();
 	
 	patch_best_defender();
@@ -3602,12 +3499,7 @@ void patch_setup_wtp(Config* cf)
 	patch_scary_former();
 	
 	patch_base_check_support();
-	
-	if (!conf.zoc_enabled)
-	{
-		patch_zoc_disabled();
-	}
-	
+
 	patch_scroll_other_faction_bases();
 	
 	if (conf.base_psych && conf.base_psych_improved)

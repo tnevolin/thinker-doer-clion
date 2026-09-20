@@ -1037,7 +1037,7 @@ __cdecl int wtp_mod_base_init(int factionId, int x, int y)
 		
 		// set base size
 		
-		base->pop_size = newBaseSize;
+		base->pop_size = static_cast<int8_t>(newBaseSize);
 		
 	}
 	
@@ -1319,29 +1319,6 @@ __cdecl int modifiedSpyingForPactBaseProductionDisplay(int factionId)
 	
 	return ((spying != 0 || pact) ? 1 : 0);
 	
-}
-
-/*
-Returns modified probe action risk.
-*/
-__cdecl void modifiedProbeActionRisk(int action, int riskPointer)
-{
-	// convert risk pointer
-
-	int *risk = (int *)riskPointer;
-
-	switch (action)
-	{
-		// Procure Research Data
-	case 1:
-		*risk = conf.probe_risk_procure_research_data;
-		break;
-		// Introduce Genetic Plague
-	case 7:
-		*risk = conf.probe_risk_introduce_genetic_plague;
-		break;
-	}
-
 }
 
 /*
@@ -3286,36 +3263,6 @@ void __cdecl displayPartialHurryCostToCompleteNextTurnInformation(int input_stri
 //	
 }
 
-int __cdecl wtp_mod_quick_zoc(int /*a0*/, int /*a1*/, int /*a2*/, int /*a3*/, int /*a4*/, int /*a5*/, int /*a6*/)
-{
-	return 0;
-}
-
-int __cdecl wtp_mod_zoc_any(int /*a0*/, int /*a1*/, int /*a2*/)
-{
-	return 0;
-}
-
-int __cdecl wtp_mod_zoc_veh(int /*a0*/, int /*a1*/, int /*a2*/)
-{
-	return 0;
-}
-
-int __cdecl wtp_mod_zoc_sea(int /*a0*/, int /*a1*/, int /*a2*/)
-{
-	return 0;
-}
-
-int __cdecl wtp_mod_zoc_move(int /*a0*/, int /*a1*/, int /*a2*/)
-{
-	return 0;
-}
-
-int __thiscall wtp_mod_zoc_path(Path */*This*/, int /*a0*/, int /*a1*/, int /*a2*/)
-{
-	return 0;
-}
-
 /*
 BaseWin psych row.
 Does no draw specialists.
@@ -3715,15 +3662,6 @@ void __cdecl wtp_mod_diplomacy_caption_say_fac_special(char *dst, char *src, int
 }
 
 /*
-Intercepts probe -> success_rates for procure research data action.
-*/
-int wtp_mod_probe_success_rates_procure_research_data(int position, int morale, int risk, int baseId)
-{
-	risk += conf.probe_risk_procure_research_data;
-	return success_rates(position, morale, risk, baseId);
-}
-
-/*
 Intercepts probe -> veh_skip to disable promotion on infiltrate datalinks.
 */
 int wtp_mod_probe_veh_skip(int vehicleId)
@@ -3927,7 +3865,7 @@ Destroys terrain improvements on lost territory.
 void __cdecl wtp_mod_capture_base(int base_id, int faction, int is_probe)
 {
 	BASE &base = Bases[base_id];
-	int oldBaseFactionId = base.faction_id;
+	int oldBaseFactionId = static_cast<unsigned char>(base.faction_id);
 	
 	// destroyable terrain improvements
 	

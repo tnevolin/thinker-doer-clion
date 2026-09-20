@@ -1,5 +1,7 @@
 #include "basewin.h"
 
+#include "wtp_mod.h"
+
 static int hurry_minimal_cost = 0;
 static int base_zoom_factor = -14;
 
@@ -137,9 +139,17 @@ void __cdecl sat_attack(int faction_id, int faction_id_tgt, int target_id) {
     case 4: if (!gsp_count) { return; } break;
     default: assert(0); return;
     }
+    // [WTP]
+    // intercept break_treaty
+    /*
     if (break_treaty(faction_id, faction_id_tgt, DIPLO_TRUCE|DIPLO_TREATY|DIPLO_PACT)) {
         return;
     }
+    */
+    if (modifiedBreakTreaty(faction_id, faction_id_tgt, DIPLO_TRUCE|DIPLO_TREATY|DIPLO_PACT)) {
+        return;
+    }
+    //
     if (diplo_lock(100)) {
         return;
     }

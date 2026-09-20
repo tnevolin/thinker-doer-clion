@@ -1,6 +1,8 @@
 
 #include "veh_action.h"
 
+#include "wtp_mod.h"
+
 
 int __cdecl terrain_avail(FormerItem frm_id, int ocean, int faction_id) {
     assert(frm_id >= FORMER_FARM && frm_id <= FORMER_MONOLITH);
@@ -117,7 +119,13 @@ int __cdecl action_build(int veh_id, const char* name) {
             treaty_on(faction_id, owner, DIPLO_VENDETTA);
         }
     }
+    // [WTP]
+    // intercept mod_base_init
+    /*
     int base_id = mod_base_init(faction_id, veh_x, veh_y);
+    */
+    int base_id = wtp_mod_base_init(faction_id, veh_x, veh_y);
+    //
     if (base_id >= 0) {
         if (is_human(faction_id)) {
             int home_base_id = veh->home_base_id;
@@ -978,10 +986,19 @@ int __cdecl action_airdrop(int veh_id, int tx, int ty, int flags) {
             }
             return 0;
         }
+        // [WTP]
+        // intercept break_treaty
+        /*
         if ((*VehAttackFlags & 1) && faction_id == player_id
         && break_treaty(faction_id, base_owner, DIPLO_PACT|DIPLO_TREATY|DIPLO_TRUCE)) {
             return 0;
         }
+        */
+        if ((*VehAttackFlags & 1) && faction_id == player_id
+        && modifiedBreakTreaty(faction_id, base_owner, DIPLO_PACT|DIPLO_TREATY|DIPLO_TRUCE)) {
+            return 0;
+        }
+        //
     }
     // Fix: previously this skipped owner=0 bases
     for (int i = 0; i < airdef_range; i++) {
@@ -1112,7 +1129,13 @@ int __cdecl action_airdrop(int veh_id, int tx, int ty, int flags) {
         *CurrentVehID = veh_id;
         veh->damage_taken = 0;
         act_of_aggression(faction_id, Bases[base_id].faction_id);
+        // [WTP]
+        // intercept mod_capture_base
+        /*
         mod_capture_base(base_id, faction_id, 0);
+        */
+        wtp_mod_capture_base(base_id, faction_id, 0);
+        //
         veh_id = *CurrentVehID;
     }
     spot_all(veh_id, 1);
@@ -2662,9 +2685,17 @@ MOV_NAVAL:
             }
             if (veh_fc_id == MapWin->cOwner) {
                 if (*VehAttackFlags & 1) {
+                    // [WTP]
+                    // intercept break_treaty
+                    /*
                     if (break_treaty(veh_fc_id, tgt_fc_id, DIPLO_TRUCE|DIPLO_TREATY|DIPLO_PACT)) {
                         goto MOV_END;
                     }
+                    */
+                    if (modifiedBreakTreaty(veh_fc_id, tgt_fc_id, DIPLO_TRUCE|DIPLO_TREATY|DIPLO_PACT)) {
+                        goto MOV_END;
+                    }
+                    //
                 }
                 check_move = true;
             }
@@ -3039,7 +3070,13 @@ MOV_NAVAL:
         }
         *CurrentVehID = veh_id;
         act_of_aggression(veh_fc_id, tgt_fc_id);
+        // [WTP]
+        // intercept mod_capture_base
+        /*
         mod_capture_base(base_id, veh_fc_id, 0);
+        */
+        wtp_mod_capture_base(base_id, veh_fc_id, 0);
+        //
         veh_id = *CurrentVehID;
     }
     if (base_id >= 0 && veh_cargo(veh_id)) {

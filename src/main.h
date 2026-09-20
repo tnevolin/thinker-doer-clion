@@ -313,7 +313,6 @@ struct Config {
     bool fix_mineral_contribution = true; // internal setting
     bool modified_probe_risks = false;
     int probe_risk_procure_research_data = 0;
-    int probe_risk_introduce_genetic_plague = 0;
     bool sensor_offense = false;
     bool sensor_offense_ocean = false;
     bool break_treaty_before_fight = false;
@@ -353,7 +352,6 @@ struct Config {
 	bool pressure_dome_recycling_tanks_bonus = 1;
 	int tech_trade_likeability = 0x12;
 	int conventional_power_psi_percentage = 0;
-	bool zoc_enabled = 1;
 	int aaa_range = -1;
 	bool base_psych_improved = false;
 	int base_psych_cost = 2;

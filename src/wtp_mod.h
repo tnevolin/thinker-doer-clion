@@ -141,7 +141,6 @@ __cdecl void displayArtifactMineralContributionInformation(int input_string_poin
 __cdecl int getCurrentBaseProductionMineralCost();
 int scaleValueToBasicMinieralCostMultiplier(int factionId, int value);
 __cdecl int modifiedSpyingForPactBaseProductionDisplay(int factionId);
-__cdecl void modifiedProbeActionRisk(int action, int riskPointer);
 __cdecl int modifiedBestDefender(int defenderVehicleId, int attackerVehicleId, int bombardment);
 __cdecl void appendAbilityCostTextInWorkshop(int output_string_pointer, int input_string_pointer);
 int __cdecl wtp_mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int table_offset, int option, int* def_id);
@@ -188,12 +187,6 @@ __cdecl int modified_zoc_veh(int a0, int a1, int a2);
 __cdecl void modified_base_check_support();
 void __cdecl displayHurryCostScaledToBasicMineralCostMultiplierInformation(int input_string_pointer, int output_string_pointer);
 void __cdecl displayPartialHurryCostToCompleteNextTurnInformation(int input_string_pointer, int output_string_pointer);
-int __cdecl wtp_mod_quick_zoc(int a0, int a1, int a2, int a3, int a4, int a5, int a6);
-int __cdecl wtp_mod_zoc_any(int a0, int a1, int a2);
-int __cdecl wtp_mod_zoc_veh(int a0, int a1, int a2);
-int __cdecl wtp_mod_zoc_sea(int a0, int a1, int a2);
-int __cdecl wtp_mod_zoc_move(int a0, int a1, int a2);
-int __thiscall wtp_mod_zoc_path(Path *This, int a0, int a1, int a2);
 void __thiscall wtp_mod_BaseWin_psych_row(BaseWindow* This, int horizontal_pos, int vertical_pos, int a4, int a5, int talents, int drones, int sdrones);
 //int __thiscall wtp_mod_BaseWin_pop_click(Win* This, int clicked_specialist_index, int a2, int a3, int a4);
 int __thiscall wtp_mod_BaseWin_pop_click_popup_start(Popup* This, char const* filename, char const* label, int a4, char* a5, int a6, GraphicWin* a7);
@@ -209,7 +202,6 @@ void __cdecl wtp_mod_probe_treaty_on(int faction1Id, int faction2Id, int treaty)
 int __cdecl wtp_mod_enemy_move(int vehicleId);
 int __cdecl wtp_mod_steal_energy(int baseId);
 void __cdecl wtp_mod_diplomacy_caption_say_fac_special(char *dst, char *src, int factionId);
-int wtp_mod_probe_success_rates_procure_research_data(int position, int morale, int risk, int baseId);
 int wtp_mod_probe_veh_skip(int vehicleId);
 int __cdecl wtp_mod_action_terraform(int vehicleId, int action, int execute);
 void __thiscall wtp_mod_Console_go_to(Console *This, int a1, int a2, int a3);

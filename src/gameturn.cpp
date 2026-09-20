@@ -2,6 +2,7 @@
 #include "gameturn.h"
 
 #include "wtp_mod.h"
+#include "wtp_ai.h"
 
 fp_1int sub_51E530 = (fp_1int)0x51E530;
 
@@ -50,7 +51,13 @@ void __cdecl control_turn() {
                 rankings(1);
             } else {
                 *ControlTurnC = 1;
+                // [WTP]
+                // intercept turn_upkeep
+                /*
                 turn_upkeep();
+                */
+                modifiedTurnUpkeep();
+                //
                 if (end_of_game(1)) {
                     return;
                 }
@@ -282,7 +289,13 @@ void __cdecl control_turn() {
             }
             if (!*ControlTurnMove || (*PbemActive && (*GameMoreRules & MRULES_UNK_40))) {
                 *ControlTurnC = 1;
+                // [WTP]
+                // intercept faction_upkeep
+                /*
                 faction_upkeep(current_id);
+                */
+                modifiedFactionUpkeep(current_id);
+                //
                 if (end_of_game(0)) {
                     return;
                 }
@@ -301,7 +314,13 @@ void __cdecl control_turn() {
                     }
                 }
             } else {
+                // [WTP]
+                // intercept mod_enemy_turn
+                /*
                 mod_enemy_turn(current_id);
+                */
+                wtp_mod_enemy_turn(current_id);
+                //
             }
             if (!restart) {
                 *ControlTurnMove = 0;

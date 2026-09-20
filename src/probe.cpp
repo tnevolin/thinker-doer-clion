@@ -546,15 +546,35 @@ MOV_START:
             if (action_id != PRB_PROCURE_RESEARCH_DATA) {
                 break;
             }
+            // [WTP]
+            // extra risk for procuring research data, applied once here so it carries through
+            // both dialogs below and into the real busted roll further down this function
+            prb_diff += conf.probe_risk_procure_research_data;
+            //
             if (Bases[tgt_base_id].state_flags & BSTATE_RESEARCH_DATA_STOLEN) {
+                // [WTP]
+                // was: prb_diff = 1; changed to += to preserve the risk boost above
+                /*
                 prb_diff = 1;
+                */
+                prb_diff += 1;
+                //
                 if (veh_fc_id == MapWin->cOwner && is_human(veh_fc_id) && *VehAttackFlags & 1) {
                     parse_says(0, Bases[tgt_base_id].name, -1, -1);
                     mod_success_rates(1, mod_morale_veh(veh_id, 1, 0), -1, tgt_base_id);
+                    // [WTP]
+                    // was hardcoded 1; use prb_diff, which already carries the risk boost above
+                    /*
                     if (!mod_success_rates(2, mod_morale_veh(veh_id, 1, 0), 1, tgt_base_id)) {
                         NetMsg_pop(NetMsg, "ADVDECIPHER1", -5000, 0, 0);
                         return 0;
                     }
+                    */
+                    if (!mod_success_rates(2, mod_morale_veh(veh_id, 1, 0), prb_diff, tgt_base_id)) {
+                        NetMsg_pop(NetMsg, "ADVDECIPHER1", -5000, 0, 0);
+                        return 0;
+                    }
+                    //
                     if (!popp(ScriptFile, "ADVDECIPHER", 0, infil_img, 0)) {
                         return 0;
                     }
@@ -1674,7 +1694,13 @@ MOV_DEFEND:
             if (!prb_diff) {
                 act_of_aggression(veh_fc_id, tgt_fc_id);
             }
+            // [WTP]
+            // intercept mod_capture_base
+            /*
             mod_capture_base(tgt_base_id, veh_fc_id, 1);
+            */
+            wtp_mod_capture_base(tgt_base_id, veh_fc_id, 1);
+            //
         }
         if (veh_fc_id == MapWin->cOwner && ret_base_id < 0) {
             NetMsg_pop_2(action_id == PRB_MIND_CONTROL_CITY ? "PROBESUCCUMB" : "PROBECAUGHT",
