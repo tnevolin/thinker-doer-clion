@@ -645,7 +645,7 @@ Scout Rover,            Speeder,  Gun,          Scout,      3, 0, 0, Mobile,  -1
 #FACILITIES
 Headquarters,                  5, 0, None,    Disable,  Efficiency
 Children's Creche,            16, 3, EthCalc, Disable,  Growth/Effic
-Recycling Tanks,               6, 0, Biogen,  QuanMac,  Bonus Resources
+Recycling Tanks,              10, 0, Biogen,  QuanMac,  Bonus Resources
 Perimeter Defense,             5, 0, DocLoy,  Disable,  Anti-land defense +50%
 Tachyon Field,                12, 2, ProbMec, Disable,  All defense +50%
 Recreation Commons,            4, 1, Psych,   SentEco,  Fewer Drones

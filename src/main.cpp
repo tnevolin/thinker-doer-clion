@@ -1399,26 +1399,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_terraforming_networkValueTravelTimeDenominator = atof(value);
     }
-    else if (MATCH("ai_terraforming_networkValueReduction"))
-    {
-        cf->ai_terraforming_networkValueReduction = atof(value);
-    }
-    else if (MATCH("ai_terraforming_networkConnectionValue"))
-    {
-        cf->ai_terraforming_networkConnectionValue = atof(value);
-    }
-    else if (MATCH("ai_terraforming_networkImprovementValue"))
-    {
-        cf->ai_terraforming_networkImprovementValue = atof(value);
-    }
-    else if (MATCH("ai_terraforming_networkBaseExtensionValue"))
-    {
-        cf->ai_terraforming_networkBaseExtensionValue = atof(value);
-    }
-    else if (MATCH("ai_terraforming_networkWildExtensionValue"))
-    {
-        cf->ai_terraforming_networkWildExtensionValue = atof(value);
-    }
     else if (MATCH("ai_terraforming_networkDensityThreshold"))
     {
         cf->ai_terraforming_networkDensityThreshold = atof(value);
@@ -1482,6 +1462,14 @@ int option_handler(void* user, const char* section, const char* name, const char
     else if (MATCH("ai_terraforming_landBridgeLogisticsValue"))
     {
         cf->ai_terraforming_landBridgeLogisticsValue = atof(value);
+    }
+    else if (MATCH("ai_terraforming_futureCitizenSlotCount"))
+    {
+        cf->ai_terraforming_futureCitizenSlotCount = atoi(value);
+    }
+    else if (MATCH("ai_terraforming_committedTargetGainMargin"))
+    {
+        cf->ai_terraforming_committedTargetGainMargin = atof(value);
     }
     else if (MATCH("ai_combat_enemy_unit_value_coefficient"))
     {

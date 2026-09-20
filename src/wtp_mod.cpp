@@ -2213,19 +2213,19 @@ void __cdecl modifiedTurnUpkeep()
 	
 	if (conf.collect_statistics)
 	{
-		int factionBaseCount = 0;
-		int factionPopCount = 0;
-		int factionWorkerCount = 0;
-		int factionMinerals = 0;
-		int factionEcoLab = 0;
-		double factionResearch = 0.0;
-		int factionTechCount = 0;
-		
 		FILE* statistics_faction_log = fopen("statistics_faction.log", "a");
 		FILE* statistics_base_log = fopen("statistics_base.log", "a");
 
 		for (int factionId = 1; factionId < MaxPlayerNum; factionId++)
 		{
+			int factionBaseCount = 0;
+			int factionPopCount = 0;
+			int factionWorkerCount = 0;
+			int factionMinerals = 0;
+			int factionEcoLab = 0;
+			double factionResearch = 0.0;
+			int factionTechCount = 0;
+
 			bool human = is_human(factionId);
 
 			for (int baseId = 0; baseId < *BaseCount; baseId++)

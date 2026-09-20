@@ -525,11 +525,6 @@ struct Config {
 	int ai_terraforming_travel_time_multiplier;
 	double ai_terraforming_networkValueIncomeImprovement;
 	double ai_terraforming_networkValueTravelTimeDenominator;
-	double ai_terraforming_networkValueReduction;
-	double ai_terraforming_networkConnectionValue;
-	double ai_terraforming_networkImprovementValue;
-	double ai_terraforming_networkBaseExtensionValue;
-	double ai_terraforming_networkWildExtensionValue;
 	double ai_terraforming_networkDensityThreshold;
 	double ai_terraforming_nearbyForestKelpPenalty;
 	double ai_terraforming_fitnessMultiplier;
@@ -546,6 +541,8 @@ struct Config {
     double ai_terraforming_landBridgeValue;
     double ai_terraforming_landBridgeRangeScale;
     double ai_terraforming_landBridgeLogisticsValue;
+    int ai_terraforming_futureCitizenSlotCount;
+    double ai_terraforming_committedTargetGainMargin;
     double ai_combat_enemy_unit_value_coefficient;
     double ai_combat_unit_value_offense_coefficient;
     double ai_combat_unit_value_defense_coefficient;

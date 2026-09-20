@@ -643,7 +643,19 @@ void populateTerraformingData()
 
 				// add vehicle
 
-				formerOrders.emplace_back(vehicleId);
+				FormerOrder &newFormerOrder = formerOrders.emplace_back(vehicleId);
+
+				// remember former's current live travel commitment, if any, for assignment stickiness.
+				// vehicle->order/waypoint_x/waypoint_y are persistent engine state (not cleared between
+				// our turns), so this is the destination transitVehicle() set last turn, read here before
+				// this turn's assignFormerOrders/setFormerTasks has a chance to overwrite it.
+				// (one known gap: a land former queued for sea transport reads as the pickup tile, not the
+				// final terraforming tile, so it simply won't get the bonus while it is being ferried)
+
+				if (vehicle->order == ORDER_MOVE_TO && isOnMap(vehicle->waypoint_x[0], vehicle->waypoint_y[0]))
+				{
+					newFormerOrder.committedTarget = getMapTile(vehicle->waypoint_x[0], vehicle->waypoint_y[0]);
+				}
 
 			}
 
@@ -791,6 +803,21 @@ void populateTerraformingData()
 			debug("\t\t\t\t%s %5.2f\n", citizen.singular_name, specialistGain);
 
 		}
+
+		// virtual future citizen slots
+		// growth-matching below caps how many terraforming requests survive at roughly one per worker slot,
+		// so a base that is currently growing (positive nutrient surplus) gets a few zero-cost slots added
+		// to let it prepare tiles no current citizen can work yet, without displacing a real worker's gain
+		if (base.nutrient_surplus > 0)
+		{
+			debug("\t\t\tfuture citizen slots\n");
+			for (int i = 0; i < conf.ai_terraforming_futureCitizenSlotCount; i++)
+			{
+				baseTerraformingInfo.workerGains.push_back({0.0, nullptr});
+				debug("\t\t\t\t(future) %5.2f\n", 0.0);
+			}
+		}
+
 		// sort gains ascending
 		std::sort(baseTerraformingInfo.workerGains.begin(), baseTerraformingInfo.workerGains.end(), [](WorkerGain const &o1, WorkerGain const &o2) { return o1.gain < o2.gain; });
 
@@ -815,7 +842,7 @@ void populateTerraformingData()
 		{
 			// unworked
 
-			if (workedTileSet.find(availableTile) == workedTileSet.end())
+			if (workedTileSet.contains(availableTile))
 				continue;
 
 			unworkedTileYields.push_back(getTileResourceYield(availableTile, baseId));
@@ -1834,6 +1861,15 @@ void assignFormerOrders()
 
 				double totalTime = conf.ai_terraforming_travel_time_multiplier * travelTime + static_cast<double>(terraformingTime);
 				double gain = getGainIncomeGrowth(terraformingRequest.incomeGain / totalTime);
+
+				// stickiness: a former already traveling toward this exact tile gets a bonus so a
+				// competing tile has to be meaningfully better to redirect it, instead of winning on
+				// every minor score fluctuation and making the former jerk back and forth
+
+				if (formerOrder.committedTarget == tile)
+				{
+					gain *= (1.0 + conf.ai_terraforming_committedTargetGainMargin);
+				}
 
 				// update best combination
 

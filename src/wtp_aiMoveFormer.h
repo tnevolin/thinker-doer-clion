@@ -100,20 +100,20 @@ struct BaseTerraformingInfo
 
 // terraforming options
 
-TERRAFORMING_OPTION const TO_ROCKY_MINE			{"rocky mine"			, false, true , false, true , FORMER_MINE			, {FORMER_MINE}};
-TERRAFORMING_OPTION const TO_MINE				{"mine"				, false, false, false, true , FORMER_MINE			, {FORMER_FARM, FORMER_SOIL_ENR, FORMER_MINE}};
+TERRAFORMING_OPTION const TO_ROCKY_MINE			{"rocky mine"			, false, true , false, true , FORMER_MINE				, {FORMER_MINE}};
+TERRAFORMING_OPTION const TO_MINE				{"mine"				, false, false, false, true , FORMER_MINE				, {FORMER_FARM, FORMER_SOIL_ENR, FORMER_MINE}};
 TERRAFORMING_OPTION const TO_SOLAR_COLLECTOR	{"solar collector"	, false, false, false, true , FORMER_SOLAR			, {FORMER_FARM, FORMER_SOIL_ENR, FORMER_SOLAR}};
 TERRAFORMING_OPTION const TO_CONDENSER			{"condenser"			, false, false, true , true , FORMER_CONDENSER		, {FORMER_FARM, FORMER_SOIL_ENR, FORMER_CONDENSER}};
 TERRAFORMING_OPTION const TO_ECHELON_MIRROR		{"echelon mirror"		, false, false, true , true , FORMER_ECH_MIRROR		, {FORMER_FARM, FORMER_SOIL_ENR, FORMER_ECH_MIRROR}};
-TERRAFORMING_OPTION const TO_THERMAL_BOREHOLE	{"thermal borehole"	, false, false, false, true , FORMER_THERMAL_BORE	, {FORMER_THERMAL_BORE}};
+TERRAFORMING_OPTION const TO_THERMAL_BOREHOLE	{"thermal borehole"	, false, false, false, true , FORMER_THERMAL_BORE		, {FORMER_THERMAL_BORE}};
 TERRAFORMING_OPTION const TO_FOREST				{"forest"				, false, false, false, true , FORMER_FOREST			, {FORMER_FOREST}};
-TERRAFORMING_OPTION const TO_LAND_FUNGUS		{"land fungus"		, false, false, false, true , FORMER_PLANT_FUNGUS	, {FORMER_PLANT_FUNGUS}};
-TERRAFORMING_OPTION const TO_MINING_PLATFORM	{"mining platform"	, true , false, false, true , FORMER_MINE			, {FORMER_MINE}};
-TERRAFORMING_OPTION const TO_TIDAL_HARNESS		{"tidal harness"		, true , false, false, true , FORMER_SOLAR			, {FORMER_SOLAR}};
-TERRAFORMING_OPTION const TO_SEA_FUNGUS			{"sea fungus"			, true , false, false, true , FORMER_PLANT_FUNGUS	, {FORMER_PLANT_FUNGUS}};
+TERRAFORMING_OPTION const TO_LAND_FUNGUS		{"land fungus"		, false, false, false, true , FORMER_PLANT_FUNGUS		, {FORMER_PLANT_FUNGUS}};
+TERRAFORMING_OPTION const TO_MINING_PLATFORM	{"mining platform"	, true , false, false, true , FORMER_MINE				, {FORMER_FARM, FORMER_MINE}};
+TERRAFORMING_OPTION const TO_TIDAL_HARNESS		{"tidal harness"		, true , false, false, true , FORMER_SOLAR			, {FORMER_FARM, FORMER_SOLAR}};
+TERRAFORMING_OPTION const TO_SEA_FUNGUS			{"sea fungus"			, true , false, false, true , FORMER_PLANT_FUNGUS		, {FORMER_PLANT_FUNGUS}};
 TERRAFORMING_OPTION const TO_AQUIFER			{"aquifer"			, false, false, true , true , FORMER_AQUIFER			, {FORMER_AQUIFER}};
 TERRAFORMING_OPTION const TO_RAISE_LAND			{"raise land"			, false, false, true , true , FORMER_RAISE_LAND		, {FORMER_RAISE_LAND}};
-TERRAFORMING_OPTION const TO_NETWORK			{"road/tube"			, false, false, false, false, FORMER_ROAD			, {FORMER_ROAD, FORMER_MAGTUBE}};
+TERRAFORMING_OPTION const TO_NETWORK			{"road/tube"			, false, false, false, false, FORMER_ROAD				, {FORMER_ROAD, FORMER_MAGTUBE}};
 TERRAFORMING_OPTION const TO_LAND_SENSOR		{"sensor (land)"		, false, false, false, false, FORMER_SENSOR			, {FORMER_SENSOR}};
 TERRAFORMING_OPTION const TO_SEA_SENSOR			{"sensor (sea)"		, true , false, false, false, FORMER_SENSOR			, {FORMER_SENSOR}};
 TERRAFORMING_OPTION const TO_LAND_BUNKER		{"bunker (land)"		, false, false, false, false, FORMER_BUNKER			, {FORMER_BUNKER}};
@@ -178,8 +178,11 @@ struct FormerOrder
 	int vehicleId;
 	MAP *tile = nullptr;
 	int action = -1;
+	// tile this former was already traveling toward before this turn's reassignment (ORDER_MOVE_TO
+	// destination read from live vehicle state); used to give its current target a stickiness bonus
+	MAP *committedTarget = nullptr;
 
-	FormerOrder(int _vehicleId);
+	explicit FormerOrder(int _vehicleId);
 
 };
 

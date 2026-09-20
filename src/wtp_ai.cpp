@@ -3214,27 +3214,27 @@ void populateEnemyBaseCaptureGains()
 		aiData.factionInfos.at(baseFactionId).baseIds.push_back(baseId);
 		
 		// captureGain
-		
+
 		double baseRegularGain = BASE_CAPTURE_GAIN_COEFFICIENT * baseInfo.gain;
-		
+
 		double baseProjectGain = 0.0;
-		
+
 		for (int projectFacilityId : getBaseProjects(baseId))
 		{
 			CFacility *projectFacility = getFacility(projectFacilityId);
-			
+
 			double projectMineralCost = Rules->mineral_cost_multi * projectFacility->cost;
 			double projectValue = PROJECT_VALUE_MULTIPLIER * projectMineralCost;
 			double projectGain = getGainBonus(projectValue);
-			
+
 			baseProjectGain += projectGain;
-			
+
 		}
-		
+
 		double baseGain = baseRegularGain + baseProjectGain;
-		
+
 		baseInfo.captureGain = baseGain;
-		
+
 	}
 	
 //	if (DEBUG)

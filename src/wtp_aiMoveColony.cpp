@@ -682,7 +682,14 @@ double getBuildSiteBaseGain(MAP *buildSite)
 		}
 		
 	}
-	
+
+	// reduce gain for wasting land base tile resources
+	if (buildSite->is_land())
+	{
+		double baseTileWaste = getResourceScore(map_rainfall(buildSite), map_rockiness(buildSite), map_elevation(buildSite));
+		totalBonus -= baseTileWaste;
+	}
+
 	double gain = (totalBonus / static_cast<double>(evaluationTurns)) * (1.0 + getExponentialCoefficient(aiData.developmentScale, evaluationTurns));
 	
 //	if (DEBUG)
@@ -1248,7 +1255,7 @@ double getBuildSiteOverlapScore(MAP *buildSite)
 
 	debug
 	(
-		"getoverlapScore%s"
+		"getOverlapScore%s"
 		" overlapCount=%d"
 		" minOverlapTile=%s"
 		" minOverlapCount=%d"
@@ -1329,7 +1336,7 @@ double getBuildSiteConnectionScore(MAP *buildSite)
 
 	debug
 	(
-		"getconnectionScore%s"
+		"getConnectionScore%s"
 		" ai_expansion_internal_border_connection_coefficient=%5.2f"
 		" internalConnectionCongestion=%5.2f"
 		" ai_expansion_external_border_connection_coefficient=%5.2f"

@@ -3496,8 +3496,8 @@ void disbandExcessEmptyTransports()
 
 	static constexpr double PRESERVED_EMPTY_TRANSPORT_RATIO = 0.6;
 
-	robin_hood::unordered_flat_map<int, std::vector<int>> seaClusterTransportVehicleIds;
-	robin_hood::unordered_flat_map<int, std::vector<int>> seaClusterEmptyTransportVehicleIds;
+	robin_hood::unordered_flat_map<int, std::vector<int>> regionTransportVehicleIds;
+	robin_hood::unordered_flat_map<int, std::vector<int>> regionEmptyTransportVehicleIds;
 
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
@@ -3517,24 +3517,24 @@ void disbandExcessEmptyTransports()
 		if (!isTransportVehicle(vehicleId))
 			continue;
 
-		int seaCluster = getSeaCluster(vehicleTile);
+		int region = vehicleTile->region;
 
-		seaClusterTransportVehicleIds[seaCluster].push_back(vehicleId);
+		regionTransportVehicleIds[region].push_back(vehicleId);
 
 		// physically empty
 
 		if (getTransportUsedCapacity(vehicleId) == 0)
 		{
-			seaClusterEmptyTransportVehicleIds[seaCluster].push_back(vehicleId);
+			regionEmptyTransportVehicleIds[region].push_back(vehicleId);
 		}
 
 	}
 
-	for (robin_hood::pair<int, std::vector<int>> const &seaClusterTransportVehicleIdEntry : seaClusterTransportVehicleIds)
+	for (robin_hood::pair<int, std::vector<int>> const &regionTransportVehicleIdEntry : regionTransportVehicleIds)
 	{
-		int seaCluster = seaClusterTransportVehicleIdEntry.first;
-		std::vector<int> const &transportVehicleIds = seaClusterTransportVehicleIdEntry.second;
-		std::vector<int> const &emptyTransportVehicleIds = seaClusterEmptyTransportVehicleIds[seaCluster];
+		int region = regionTransportVehicleIdEntry.first;
+		std::vector<int> const &transportVehicleIds = regionTransportVehicleIdEntry.second;
+		std::vector<int> const &emptyTransportVehicleIds = regionEmptyTransportVehicleIds[region];
 
 		int preservedEmptyCount = static_cast<int>(ceil(PRESERVED_EMPTY_TRANSPORT_RATIO * static_cast<double>(transportVehicleIds.size())));
 
