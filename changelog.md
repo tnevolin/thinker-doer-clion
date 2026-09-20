@@ -1,3 +1,7 @@
+# Version 429
+
+* Merged Thinker 5.5. Some more fixes I missed initially.
+
 # Version 428
 
 * [bug] Fixed: First base tile incorrect yield.
@@ -13,7 +17,7 @@
 
 # Version 425
 
-* Merged Thinker 5.5
+* Merged Thinker 5.5.
 
 # Version 424
 
