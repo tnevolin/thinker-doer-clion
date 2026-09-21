@@ -774,7 +774,13 @@ int __cdecl steal_tech(int faction_id, int faction_id_tgt, int is_steal) {
             parse_says(1, StrBuffer, -1, -1);
             NetMsg_pop(NetMsg, "STOLETECH", 5000, 0, 0);
         }
+        // [WTP]
+        // route through WTP's tech_achieved wrapper
+        /*
         tech_achieved(faction_id, tech_id, faction_id_tgt, 0);
+        */
+        wtp_mod_tech_achieved(faction_id, tech_id, faction_id_tgt, 0);
+        //
         if (!is_human(faction_id) && tech_id != 9999) {
             mod_bases_reset(-1, faction_id, 0);
         }

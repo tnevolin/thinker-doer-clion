@@ -71,7 +71,13 @@ int __cdecl action(int veh_id) {
     uint8_t order = veh->order;
 
     if (order >= VehOrderFormerFirst && order <= VehOrderFormerLast) {
+        // [WTP]
+        // intercept action_terraform
+        /*
         action_terraform(veh_id, order - VehOrderFormerFirst, 1);
+        */
+        wtp_mod_action_terraform(veh_id, order - VehOrderFormerFirst, 1);
+        //
     } else if (order == ORDER_ROAD_TO || order == ORDER_MAGTUBE_TO) {
         action_road_to(veh_id);
     } else if (order == ORDER_MOVE_TO || order == ORDER_AI_GO_TO || order == ORDER_MOVE) {
@@ -141,7 +147,13 @@ int __cdecl action_build(int veh_id, const char* name) {
             strcpy_n(Bases[base_id].name, MaxBaseNameLen, name);
             make_base_unique(base_id);
         }
+        // [WTP]
+        // intercept veh_kill
+        /*
         veh_kill(veh_id);
+        */
+        wtp_mod_veh_kill(veh_id);
+        //
         if (faction_id == player_id
         || Bases[base_id].faction_id == player_id
         || (Bases[base_id].visibility & (1 << player_id))
@@ -473,7 +485,13 @@ void __cdecl action_go_to(net_int_t veh_id) {
             NetDaemon_unlock_veh(NetState);
         }
     } else if (!*MultiplayerActive || *ControlTurnC) {
+        // [WTP]
+        // intercept order_veh
+        /*
         if (order_veh(veh_id, move_dir, 3)) {
+        */
+        if (wtp_mod_order_veh(veh_id, move_dir, 3)) {
+        //
             uint8_t order = Vehs[veh_id].order;
             if (order == ORDER_MOVE) {
                 if (Vehs[veh_id].x == Vehs[veh_id].waypoint_x[1] && Vehs[veh_id].y == Vehs[veh_id].waypoint_y[1]) {
@@ -499,7 +517,13 @@ void __cdecl action_go_to(net_int_t veh_id) {
                         if (Chassis[Units[Vehs[veh_id].unit_id].chassis_id].cargo) {
                             MAP* sq = mapsq(Vehs[veh_id].x, Vehs[veh_id].y);
                             if (sq && sq->base_who() >= 0) {
+                                // [WTP]
+                                // intercept veh_skip
+                                /*
                                 veh_skip(veh_id);
+                                */
+                                modified_veh_skip_disable_non_transport_stop_in_base(veh_id);
+                                //
                             }
                         }
                     }
@@ -544,7 +568,13 @@ void __cdecl action_road_to(net_int_t veh_id) {
                 return;
             }
             uint8_t saved_order = Vehs[veh_id].order;
+            // [WTP]
+            // intercept action_terraform
+            /*
             action_terraform(veh_id, FORMER_REMOVE_FUNGUS, 1);
+            */
+            wtp_mod_action_terraform(veh_id, FORMER_REMOVE_FUNGUS, 1);
+            //
             Vehs[veh_id].order = saved_order;
             return;
         }
@@ -558,7 +588,13 @@ void __cdecl action_road_to(net_int_t veh_id) {
                 return;
             }
             uint8_t saved_order = Vehs[veh_id].order;
+            // [WTP]
+            // intercept action_terraform
+            /*
             action_terraform(veh_id, FORMER_ROAD, 1);
+            */
+            wtp_mod_action_terraform(veh_id, FORMER_ROAD, 1);
+            //
             Vehs[veh_id].order = saved_order;
             return;
         }
@@ -569,7 +605,13 @@ void __cdecl action_road_to(net_int_t veh_id) {
                     NetDaemon_await_exec(NetState, 1);
                     return;
                 }
+                // [WTP]
+                // intercept action_terraform
+                /*
                 action_terraform(veh_id, FORMER_ROAD, 1);
+                */
+                wtp_mod_action_terraform(veh_id, FORMER_ROAD, 1);
+                //
                 Vehs[veh_id].order = ORDER_MAGTUBE_TO;
                 return;
             }
@@ -595,7 +637,13 @@ void __cdecl action_road_to(net_int_t veh_id) {
     int dir = Path_find(Paths, x, y, dest_x, dest_y, 0, -1, path_flags, -1);
     if (dir >= 0 && dir < 8) {
         if (!*MultiplayerActive || *ControlTurnC) {
+            // [WTP]
+            // intercept order_veh
+            /*
             order_veh(veh_id, dir, 3);
+            */
+            wtp_mod_order_veh(veh_id, dir, 3);
+            //
         } else if (NetDaemon_order_veh(NetState, veh_id, dir, 1)) {
             NetDaemon_await_exec(NetState, 1);
         }
@@ -1191,7 +1239,13 @@ void __cdecl action_arty(net_int_t veh_id, int tx, int ty) {
                     NetDaemon_await_exec(NetState, 1);
                 }
             } else {
+                // [WTP]
+                // intercept action_destroy
+                /*
                 action_destroy(veh_id, 0, tx, ty);
+                */
+                wtp_mod_action_destroy(veh_id, 0, tx, ty);
+                //
             }
         } else {
             NetMsg_pop(NetMsg, "OUTOFRANGE", 5000, 0, 0);
@@ -1626,7 +1680,13 @@ void  __cdecl action_fungal(int veh_id, int tx, int ty) {
             }
             if (game_rand() & 1 && sq->base_who() < 0 && sq->veh_who() < 0) {
                 int spawn_unit = (is_ocean(sq) ? BSC_ISLE_OF_THE_DEEP : BSC_MIND_WORMS);
+                // [WTP]
+                // intercept veh_init
+                /*
                 veh_init(spawn_unit, 0, x, y);
+                */
+                wtp_mod_alien_veh_init(spawn_unit, 0, x, y);
+                //
                 spawn += 1;
             } else {
                 spawn += !sq->is_fungus();
@@ -1655,11 +1715,21 @@ void  __cdecl action_fungal(int veh_id, int tx, int ty) {
                 draw_tile(x, y, 2);
             }
         }
+        // [WTP]
+        // intercept veh_init
+        /*
         if (is_ocean(mapsq(tx, ty))) {
             veh_init(conf.spawn_sealurks && (game_rand() & 1) ? BSC_SEALURK : BSC_ISLE_OF_THE_DEEP, 0, tx, ty);
         } else {
             veh_init(BSC_FUNGAL_TOWER, 0, tx, ty);
         }
+        */
+        if (is_ocean(mapsq(tx, ty))) {
+            wtp_mod_alien_veh_init(conf.spawn_sealurks && (game_rand() & 1) ? BSC_SEALURK : BSC_ISLE_OF_THE_DEEP, 0, tx, ty);
+        } else {
+            wtp_mod_alien_veh_init(BSC_FUNGAL_TOWER, 0, tx, ty);
+        }
+        //
         *GameDrawState |= 4;
 
         if (is_visible) {
@@ -2062,7 +2132,13 @@ int __cdecl order_veh(int veh_id, int offset, int flag) {
                     if (!(Factions[veh_fc_id].diplo_status[tgt_fc_id] & DIPLO_PACT)
                     && (stack_veh_id < 0 || !mod_stack_check(stack_veh_id, 2, PLAN_PROBE, -1, -1))) {
                         move_probe = 1;
+                        // [WTP]
+                        // route through WTP's probe wrapper
+                        /*
                         if (probe(veh_id, -1, stack_veh_id, 1) && *MultiplayerActive
+                        */
+                        if (wtp_mod_probe(veh_id, -1, stack_veh_id, 1) && *MultiplayerActive
+                        //
                         && !*ControlTurnC && *VehAttackFlags & 1 && !(*VehAttackFlags & 2)) {
                             synch_veh(veh_id);
                             NetDaemon_await_synch(NetState);
@@ -2088,8 +2164,15 @@ int __cdecl order_veh(int veh_id, int offset, int flag) {
                         stack_put(veh_id, veh_x, veh_y);
                         draw_tile(tgt_x, tgt_y, 2);
                     }
+                    // [WTP]
+                    // route through WTP's probe wrapper
+                    /*
                     if (!probe(veh_id, base_id, -1, 1) || !*MultiplayerActive || *ControlTurnC
                     || !(*VehAttackFlags & 1) || *VehAttackFlags & 2) {
+                    */
+                    if (!wtp_mod_probe(veh_id, base_id, -1, 1) || !*MultiplayerActive || *ControlTurnC
+                    || !(*VehAttackFlags & 1) || *VehAttackFlags & 2) {
+                    //
                         goto MOV_END;
                     }
                     synch_veh(veh_id);
@@ -2137,10 +2220,20 @@ int __cdecl order_veh(int veh_id, int offset, int flag) {
                     goto MOV_END;
                 }
             } else {
+                // [WTP]
+                // route through WTP's has_abil wrapper (disallows land air-superiority
+                // vehicle attacking needlejet at sea)
+                /*
                 if (stack_veh_id < 0
                 || !has_abil(Vehs[veh_id].unit_id, ABL_AIR_SUPERIORITY)
                 || !mod_stack_check(stack_veh_id, 18, -1, -1, -1)
                 || mod_stack_check(stack_veh_id, 6, ABL_CARRIER, -1, -1)) {
+                */
+                if (stack_veh_id < 0
+                || !wtp_mod_has_abil_land_air_superiority_attack_needlejet_at_sea(Vehs[veh_id].unit_id, ABL_AIR_SUPERIORITY)
+                || !mod_stack_check(stack_veh_id, 18, -1, -1, -1)
+                || mod_stack_check(stack_veh_id, 6, ABL_CARRIER, -1, -1)) {
+                //
                     goto MOV_END;
                 }
                 goto MOV_SPOT;
@@ -2266,7 +2359,13 @@ int __cdecl order_veh(int veh_id, int offset, int flag) {
             } else {
                 spawn_unit_id = BSC_MIND_WORMS;
             }
+            // [WTP]
+            // intercept veh_init
+            /*
             stack_veh_id = veh_init(spawn_unit_id, 0, tgt_x, tgt_y);
+            */
+            stack_veh_id = wtp_mod_alien_veh_init(spawn_unit_id, 0, tgt_x, tgt_y);
+            //
             if (stack_veh_id >= 0) {
                 Vehs[veh_id].order = ORDER_NONE;
                 spot_stack(stack_veh_id, veh_fc_id);
@@ -2324,7 +2423,13 @@ MOV_SPOT:
         if (base_id < 0 && !(mapsq(tgt_x, tgt_y)->items & BIT_AIRBASE)
         && mod_stack_check(stack_veh_id, 18, -1, -1, -1)
         && !mod_stack_check(stack_veh_id, 6, 128, -1, -1)
+        // [WTP]
+        // route through WTP's has_abil wrapper (needlejet-in-flight interception rule)
+        /*
         && !has_abil(Vehs[veh_id].unit_id, ABL_AIR_SUPERIORITY)) {
+        */
+        && !wtp_mod_has_abil_air_superiority_attack_needlejet(Vehs[veh_id].unit_id, ABL_AIR_SUPERIORITY)) {
+        //
             if (veh_fc_id == MapWin->cOwner && *VehAttackFlags & 1) {
                 parse_says(0, Ability[abil_index(32)].name, -1, -1);
                 NetMsg_pop(NetMsg, "FIGHTERRULE", 5000, 0, 0);
@@ -2419,7 +2524,13 @@ MOV_SPOT:
                         int ret_base_id = find_return_base(stack_veh_id);
                         if (ret_base_id < 0) {
                             if (!is_human(tgt_fc_id)) {
+                                // [WTP]
+                                // intercept veh_kill
+                                /*
                                 veh_kill(stack_veh_id);
+                                */
+                                wtp_mod_veh_kill(stack_veh_id);
+                                //
                             }
                         } else {
                             veh_put(stack_veh_id, Bases[ret_base_id].x, Bases[ret_base_id].y);
@@ -2991,7 +3102,13 @@ MOV_NAVAL:
                         while (next_id >= 0) {
                             next_id = Vehs[veh_id].next_veh_id_stack;
                             if (num >= Factions[tgt_fc_id].clean_minerals_modifier) {
+                                // [WTP]
+                                // intercept veh_kill
+                                /*
                                 veh_kill(veh_id);
+                                */
+                                wtp_mod_veh_kill(veh_id);
+                                //
                                 if (next_id >= 0 && veh_id < next_id) {
                                     --next_id;
                                 }

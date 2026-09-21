@@ -386,7 +386,13 @@ void __cdecl stack_kill(int veh_id) {
     int cur_id = veh_top(veh_id);
     while (cur_id >= 0) {
         int next_id = Vehs[cur_id].next_veh_id_stack;
+        // [WTP]
+        // route through WTP's veh_kill wrapper
+        /*
         veh_kill(cur_id);
+        */
+        wtp_mod_veh_kill(cur_id);
+        //
         if (next_id > cur_id) {
             next_id--;
         }
@@ -760,7 +766,15 @@ void __cdecl kill(int veh_id) {
     const int deep_radar = has_abil(unit_id, ABL_DEEP_RADAR);
 
     if (!veh_cargo(veh_id)) { // remove redundant reference on Spore Launchers
+        // [WTP]
+        // both this call and the one in the is_ocean branch below correspond to the
+        // same single veh_kill call site in the original binary (control flow merges
+        // there); route both through WTP's veh_kill wrapper
+        /*
         veh_kill(veh_id);
+        */
+        wtp_mod_veh_kill(veh_id);
+        //
     } else if (!on_map(x, y)) {
         if (x == -2) {
             stack_kill(veh_id);
@@ -769,7 +783,12 @@ void __cdecl kill(int veh_id) {
         stack_veh(veh_id, 2);
         stack_kill(veh_id);
     } else if (!is_ocean(mapsq(x, y))) {
+        // [WTP]
+        /*
         veh_kill(veh_id);
+        */
+        wtp_mod_veh_kill(veh_id);
+        //
     } else {
         stack_veh(veh_id, 2);
         stack_kill(veh_id);

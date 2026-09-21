@@ -1025,7 +1025,13 @@ void __cdecl scenario_setup() {
         }
         veh_drop(veh_id, x, y);
         if (iter >= 10000) {
+            // [WTP]
+            // route through WTP's veh_kill wrapper
+            /*
             veh_kill(veh_id);
+            */
+            wtp_mod_veh_kill(veh_id);
+            //
         }
     }
 }

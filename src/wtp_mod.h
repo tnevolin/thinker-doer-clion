@@ -155,7 +155,7 @@ int __cdecl modifiedBaseMaking(int item, int baseId);
 int __cdecl modifiedMindControlCost(int baseId, int probeFactionId, int cornerMarket);
 int __cdecl getBasicAlternativeSubversionCost(int vehicleId);
 int getBasicAlternativeSubversionCostWithHQDistance(int vehicleId, int hqDistance);
-void __cdecl wtp_mod_probe(int probeVehicleId, int targetBaseId, int targetVehicleId, int flags);
+int __cdecl wtp_mod_probe(int probeVehicleId, int targetBaseId, int targetVehicleId, int flags);
 void __cdecl modifiedSubveredVehicleDrawTile(int probeVehicleId, int subvertedVehicleId, int radius);
 int __cdecl modifiedProbe(int vehicleId, int a2, int a3, int a4);
 void __cdecl modifiedTurnUpkeep();

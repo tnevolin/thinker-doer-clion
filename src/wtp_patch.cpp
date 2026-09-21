@@ -1011,20 +1011,8 @@ This is for The Planetary Transit System patch.
 */
 void patch_base_init()
 {
-    write_call(0x004C9870, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_base_init)));
     write_call(0x005AF926, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_base_init)));
     write_call(0x005B2BB8, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_base_init)));
-
-}
-
-/*
-HSA does not kill probe.
-*/
-void patch_hsa_does_not_kill_probe()
-{
-	// HSA does not kill probe but exhausts its movement points instead.
-
-    write_call(0x0059F6EA, static_cast<int>(reinterpret_cast<uintptr_t>(mod_veh_skip)));
 
 }
 
@@ -1689,13 +1677,10 @@ void patch_disable_move_territory_restrictions()
 
 void patch_silent_vendetta_warning()
 {
-    write_call(0x004A050D, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
-    write_call(0x004CC766, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
     write_call(0x004D498F, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
     write_call(0x004D5A06, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
     write_call(0x004D8334, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
     write_call(0x00507117, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
-    write_call(0x00597551, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedBreakTreaty)));
 
 }
 
@@ -1971,10 +1956,7 @@ void patch_subversion_allow_stacked_units()
 	
     write_call(0x0056E19C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe)));
     write_call(0x00578512, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe)));
-    write_call(0x00595026, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe)));
-    write_call(0x00596615, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe)));
-	
-    write_call(0x005A4250, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedSubveredVehicleDrawTile)));
+
     
     // intercepting enemy_move is done in patch_enemy_move
     
@@ -2098,11 +2080,6 @@ void patch_alternative_subversion_and_mind_control()
 		alternative_subversion_and_mind_control_ignore_units_bytes_new,
 		alternative_subversion_and_mind_control_ignore_units_bytes_length
 	);
-
-	// wrap mind_cost to add plain unit cost
-
-    write_call(0x0059EEA1, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedMindControlCost)));
-    write_call(0x005A20E8, static_cast<int>(reinterpret_cast<uintptr_t>(modifiedMindControlCost)));
 
 }
 
@@ -2306,7 +2283,6 @@ void patch_sensor_indestructible()
 	// action_destroy
 	// disable sensor destruction
 	
-    write_call(0x004CD181, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
     write_call(0x004D5B71, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
     write_call(0x00536A7C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
     write_call(0x00536AB6, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_destroy)));
@@ -2410,8 +2386,6 @@ void patch_disengagement_from_stack()
 
 void patch_order_veh()
 {
-   	write_call(0x004CB3BA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_order_veh)));
-   	write_call(0x004CBA24, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_order_veh)));
    	write_call(0x0053179F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_order_veh)));
    	write_call(0x00531AC5, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_order_veh)));
    	write_call(0x005367EC, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_order_veh)));
@@ -2559,18 +2533,20 @@ Disables transport to pick not boarded vehicles.
 */
 void patch_transport_pick_everybody()
 {
+	// [WTP] currently NOT EFFECTIVE.
+	// order_veh (veh_action.cpp) was decompiled by Thinker and its call to stack_veh
+	// at this address was tentatively routed through modified_stack_veh_disable_transport_pick_everybody
+	// during the merge sweep, but which of the several stack_veh call sites in order_veh
+	// actually corresponds to 0x5980AE could not be confirmed against the disassembly with
+	// confidence, so the interception was reverted back to plain stack_veh(veh_id, 1).
+	// This write_call patch is registered but has no effect since 0x5980AE now lies inside
+	// order_veh's own decompiled C++ body (the original call instruction no longer exists
+	// in the compiled binary). Needs proper investigation to find the correct call site (or
+	// confirm the original behavior is otherwise preserved) before re-enabling.
    	write_call(0x005980AE, static_cast<int>(reinterpret_cast<uintptr_t>(modified_stack_veh_disable_transport_pick_everybody)));
-	
+
 }
 
-/*
-Disables non transport vehicles to stop turn in base.
-*/
-void patch_non_transport_stop_in_base()
-{
-   	write_call(0x004CB53C, static_cast<int>(reinterpret_cast<uintptr_t>(modified_veh_skip_disable_non_transport_stop_in_base)));
-	
-}
 
 void patch_disable_alien_ranged_from_transport()
 {
@@ -2857,29 +2833,6 @@ void patch_disable_popb()
 	
 }
 
-void patch_enemy_diplomacy()
-{
-	write_call(0x005272E4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_enemy_diplomacy)));
-	
-}
-
-void patch_diplomacy_probe_action_vendetta_global_friction()
-{
-	write_call(0x005A4C2F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_treaty_on)));
-	write_call(0x005A4EB8, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_treaty_on)));
-	write_call(0x005A5375, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_treaty_on)));
-	write_call(0x005A53C2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_treaty_on)));
-	write_call(0x005A56AA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_treaty_on)));
-	write_call(0x005A5801, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_treaty_on)));
-	
-}
-
-void patch_steal_energy()
-{
-	write_call(0x005A371C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_steal_energy)));
-	
-}
-
 void patch_diplomacy_caption_display_numeric_mood()
 {
 	write_call(0x00539B20, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_diplomacy_caption_say_fac_special)));
@@ -2898,10 +2851,6 @@ void patch_tidal_harness_terraform_rate()
 	write_call(0x00461AD9, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
 	write_call(0x004B5C71, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
 	write_call(0x004B85A7, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
-	write_call(0x004CB70A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
-	write_call(0x004CB7FA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
-	write_call(0x004CB88D, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
-	write_call(0x004CF766, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
 	write_call(0x004D31DE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
 	write_call(0x00536A1E, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
 	
@@ -2927,9 +2876,7 @@ void patch_tech_achieved()
 	write_call(0x00428136, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	write_call(0x00428145, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	write_call(0x004DFD3B, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
-	write_call(0x0050C469, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	write_call(0x005371C4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
-	write_call(0x00539652, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	write_call(0x0053A3F1, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	write_call(0x0053A450, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	write_call(0x0053FC48, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
@@ -2965,21 +2912,15 @@ void patch_tech_achieved()
 	write_call(0x0055D744, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	write_call(0x0057C239, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	write_call(0x0057D1D4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
-	write_call(0x005A33B1, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	write_call(0x005B29D0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	write_call(0x005B2A01, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	write_call(0x005B2A0D, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
 	write_call(0x005B2A79, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
-	write_call(0x005BC24B, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
-	write_call(0x005BC3FF, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
-	write_call(0x005BE603, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_tech_achieved)));
-	
+
 }
 
 void patch_alien_veh_init()
 {
-	write_call(0x004CEB0A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // action_fungal
-	write_call(0x004CECBF, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // action_fungal
 	write_call(0x004F7143, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // base_ecology
 	write_call(0x004F7407, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // base_ecology
 	write_call(0x004F74FC, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // base_ecology
@@ -2992,18 +2933,7 @@ void patch_alien_veh_init()
 	write_call(0x00522C49, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // alien_fauna
 	write_call(0x00522D9B, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // alien_fauna
 	write_call(0x00522DB2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // alien_fauna
-	write_call(0x0059571C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_alien_veh_init))); // order_veh
-	
-}
 
-void patch_capture_base()
-{
-	// wrap reset_territory when base is captured or killed
-	
-    write_call(0x004CCF13, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_capture_base))); // action_airdrop
-    write_call(0x00598778, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_capture_base))); // order_veh
-    write_call(0x005A4AB0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_capture_base))); // probe
-    
 }
 
 void patch_retire_proto()
@@ -3015,23 +2945,14 @@ void patch_retire_proto()
 	
 }
 
-void patch_land_air_superiority_attack_needlejet_at_sea()
-{
-    write_call(0x005950E4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_has_abil_land_air_superiority_attack_needlejet_at_sea))); // order_veh
-    
-}
-
 void patch_air_superiority_attack_needlejet()
 {
-    write_call(0x00595274, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_has_abil_air_superiority_attack_needlejet))); // order_veh
     write_call(0x00578456, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_has_abil_air_superiority_attack_needlejet))); // enemy_move
-    write_call(0x005A132A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_has_abil_air_superiority_attack_needlejet))); // probe
-    
+
 }
 
 void patch_veh_kill()
 {
-	write_call(0x004C9936, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // action_build
 	write_call(0x004DBCCA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // Console::editor_reset_tech
 	write_call(0x00506116, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // battle_kill
 	write_call(0x00518929, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // Console::on_key_click
@@ -3041,15 +2962,7 @@ void patch_veh_kill()
 	write_call(0x00561E58, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // enemy_strategy
 	write_call(0x0057D06F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // study_artifact
 	write_call(0x00589126, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // alien_start
-	write_call(0x00591639, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // alt_set
-	write_call(0x005970B1, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // order_veh
-	write_call(0x005985FC, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // order_veh
-	write_call(0x005A3C7A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // probe
-	write_call(0x005A4771, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // probe
-	write_call(0x005B0D42, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // scenario_setup
 	write_call(0x005B33EA, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // eliminate_player
-	write_call(0x005B9560, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // stack_kill
-	write_call(0x005C0C1F, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_veh_kill))); // kill
 
 }
 
@@ -3338,13 +3251,6 @@ void patch_setup_wtp(Config* cf)
 	
 	patch_base_init();
 	
-	// HSA does not kill probe
-	
-	if (cf->hsa_does_not_kill_probe)
-	{
-		patch_hsa_does_not_kill_probe();
-	}
-	
 	// probe does not destroy defense
 	
 	// feature disabled
@@ -3481,8 +3387,6 @@ void patch_setup_wtp(Config* cf)
 	
 	patch_transport_pick_everybody();
 	
-	patch_non_transport_stop_in_base();
-	
 	patch_disable_alien_ranged_from_transport();
 	
 	patch_disable_kill_ai();
@@ -3516,16 +3420,7 @@ void patch_setup_wtp(Config* cf)
 	
 	patch_disable_popb();
 
-	
-	patch_enemy_diplomacy();
-	
-	if (conf.diplomacy_probe_action_vendetta_global_friction > 0)
-	{
-		patch_diplomacy_probe_action_vendetta_global_friction();
-	}
-	
-	patch_steal_energy();
-	
+
 	if (conf.display_numeric_mood)
 	{
 		patch_diplomacy_caption_display_numeric_mood();
@@ -3547,9 +3442,7 @@ void patch_setup_wtp(Config* cf)
 	patch_alien_veh_init();
 	
 	patch_alien_veh_init();
-	
-	patch_capture_base();
-	
+
 	patch_retire_proto();
 	
 	if (!conf.needlejet_air_superiority_required)

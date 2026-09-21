@@ -669,7 +669,13 @@ int __cdecl tech_advance(int faction_id) {
     int tech_id = plr->tech_research_id;
     if (tech_id >= 0 || (tech_id = mod_tech_selection(faction_id), tech_id >= 0)) {
         plr->tech_research_id = -1;
+        // [WTP]
+        // route through WTP's tech_achieved wrapper
+        /*
         tech_achieved(faction_id, tech_id, 0, 0);
+        */
+        wtp_mod_tech_achieved(faction_id, tech_id, 0, 0);
+        //
         if (!is_human(faction_id)) {
             int base_id = *CurrentBaseID;
             mod_bases_reset(-1, faction_id, 0);
@@ -1107,7 +1113,13 @@ void __cdecl tech_achieved(int faction_id, int tech_id, int faction_id_2, int is
                     }
                 }
                 if (num >= PlanetaryDatalinksCount) {
+                    // [WTP]
+                    // route through WTP's tech_achieved wrapper
+                    /*
                     tech_achieved(links_owner_id, tech_id, -1, 0);
+                    */
+                    wtp_mod_tech_achieved(links_owner_id, tech_id, -1, 0);
+                    //
                 }
             }
         }
@@ -1135,7 +1147,13 @@ void __cdecl tech_achieved(int faction_id, int tech_id, int faction_id_2, int is
                     }
                 }
                 if (num >= MFactions[fc_id].rule_sharetech) {
+                    // [WTP]
+                    // route through WTP's tech_achieved wrapper
+                    /*
                     tech_achieved(fc_id, tech_id, -2, 1);
+                    */
+                    wtp_mod_tech_achieved(fc_id, tech_id, -2, 1);
+                    //
                 }
             }
         }

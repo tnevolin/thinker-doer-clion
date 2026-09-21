@@ -725,8 +725,15 @@ MOV_START:
             if (mod_stack_check(tgt_veh_id, 1, -1, -1, -1) > 1) {
                 return 0;
             }
+            // [WTP]
+            // route through WTP's has_abil wrapper (needlejet-in-flight interception rule)
+            /*
             if (Vehs[tgt_veh_id].triad() == TRIAD_AIR
                     && !has_abil(Vehs[veh_id].unit_id, ABL_AIR_SUPERIORITY)) {
+            */
+            if (Vehs[tgt_veh_id].triad() == TRIAD_AIR
+                    && !wtp_mod_has_abil_air_superiority_attack_needlejet(Vehs[veh_id].unit_id, ABL_AIR_SUPERIORITY)) {
+            //
                 if (veh_fc_id == MapWin->cOwner && toggle && is_human(veh_fc_id) && *VehAttackFlags & 1) {
                     parse_says(0, Ability[abil_index(32)].name, -1, -1);
                     NetMsg_pop(NetMsg, "PROBEABILSUPERIORITY", 5000, 0, 0);
@@ -1284,7 +1291,13 @@ MOV_DEFEND:
                 }
                 NetMsg_pop_2(StrBuffer, infil_img);
             }
+            // [WTP]
+            // route through WTP's tech_achieved wrapper
+            /*
             tech_achieved(veh_fc_id, prb_tech_id, tgt_fc_id, 0);
+            */
+            wtp_mod_tech_achieved(veh_fc_id, prb_tech_id, tgt_fc_id, 0);
+            //
         } else {
             steal_tech(veh_fc_id, tgt_fc_id, 1);
         }
@@ -1351,7 +1364,13 @@ MOV_DEFEND:
         return 1;
     case PRB_DRAIN_ENERGY_RESERVES:
         int steal_val, mor_val;
+        // [WTP]
+        // route through WTP's steal_energy wrapper
+        /*
         steal_val = steal_energy(tgt_base_id);
+        */
+        steal_val = wtp_mod_steal_energy(tgt_base_id);
+        //
         mor_val = steal_val * mod_morale_veh(veh_id, 1, 0) / 6;
         steal_val = max(0, min(mor_val + game_randv(steal_val - mor_val) / 2, tgt->energy_credits));
         if (steal_val == 1) {
@@ -1557,7 +1576,13 @@ MOV_DEFEND:
         Vehs[tgt_veh_id].order = ORDER_NONE;
         Vehs[tgt_veh_id].state &= ~(VSTATE_UNK_2000000|VSTATE_UNK_1000000|VSTATE_EXPLORE|VSTATE_ON_ALERT);
         spot_stack(tgt_veh_id, tgt_fc_id);
+        // [WTP]
+        // route through WTP's subverted-vehicle draw_tile wrapper
+        /*
         draw_tile(Vehs[tgt_veh_id].x, Vehs[tgt_veh_id].y, 2);
+        */
+        modifiedSubveredVehicleDrawTile(Vehs[tgt_veh_id].x, Vehs[tgt_veh_id].y, 2);
+        //
         if (tgt_fc_id == MapWin->cOwner) {
             Console_focus(MapWin, Vehs[tgt_veh_id].x, Vehs[tgt_veh_id].y, veh_fc_id);
             parse_says(1, get_noun(veh_fc_id), -1, -1);
@@ -1609,7 +1634,15 @@ MOV_DEFEND:
             ret_base_id = Vehs[veh_id].home_base_id;
         }
         if (ret_base_id < 0) {
+            // [WTP]
+            // this single call corresponds to two duplicated call sites in the
+            // original binary (both branches above converge here); route through
+            // WTP's veh_kill wrapper
+            /*
             veh_kill(veh_id);
+            */
+            wtp_mod_veh_kill(veh_id);
+            //
         } else {
             int morale;
             veh_put(veh_id, Bases[ret_base_id].x, Bases[ret_base_id].y);
@@ -1619,7 +1652,14 @@ MOV_DEFEND:
             parse_says(1, Bases[ret_base_id].name, -1, -1);
             morale = mod_morale_veh(veh_id, 1, 0);
             Vehs[veh_id].morale = clamp(Vehs[veh_id].morale + 1, 0, 6);
+            // [WTP]
+            // route through WTP's probe-specific veh_skip wrapper (disables promotion
+            // on infiltrate datalinks with no direct theft)
+            /*
             veh_skip(veh_id);
+            */
+            wtp_mod_probe_veh_skip(veh_id);
+            //
             if (veh_fc_id == MapWin->cOwner) {
                 parse_says(0, Units[Vehs[veh_id].unit_id].name, -1, -1);
                 parse_says(2, Morale[mod_morale_veh(veh_id, 1, 0)].name, -1, -1);
@@ -1743,7 +1783,12 @@ MOV_UPKEEP:
                     NetMsg_pop_2("FRAMEFLOP", "al_cap_sm.pcx");
                 }
             }
+            // [WTP]
+            /*
             treaty_on(-prb_state, veh_fc_id, DIPLO_VENDETTA);
+            */
+            wtp_mod_probe_treaty_on(-prb_state, veh_fc_id, DIPLO_VENDETTA);
+            //
             prb_state = -prb_state;
         } else {
             parse_says(0, get_title(veh_fc_id), -1, -1);
@@ -1788,7 +1833,12 @@ MOV_UPKEEP:
                     choice = popp_2("FRAMEEXCUSE", "al_cap_sm.pcx", 0);
                 }
                 if (choice) {
+                    // [WTP]
+                    /*
                     treaty_on(veh_fc_id, -prb_state, DIPLO_VENDETTA);
+                    */
+                    wtp_mod_probe_treaty_on(veh_fc_id, -prb_state, DIPLO_VENDETTA);
+                    //
                     Factions[-prb_state].diplo_spoke[veh_fc_id] = *CurrentTurn;
                 }
             }
@@ -1858,7 +1908,12 @@ MOV_UPKEEP:
                     if (action_id >= PRB_MIND_CONTROL_CITY) {
                         double_cross(veh_fc_id, tgt_fc_id, -1);
                     } else {
+                        // [WTP]
+                        /*
                         treaty_on(veh_fc_id, tgt_fc_id, DIPLO_VENDETTA);
+                        */
+                        wtp_mod_probe_treaty_on(veh_fc_id, tgt_fc_id, DIPLO_VENDETTA);
+                        //
                     }
                     tgt->diplo_spoke[veh_fc_id] = *CurrentTurn;
                 }
@@ -1867,7 +1922,12 @@ MOV_UPKEEP:
         return 1;
     }
     if (prb_state > 0) {
+        // [WTP]
+        /*
         treaty_on(tgt_fc_id, prb_state, DIPLO_UNK_40|DIPLO_VENDETTA|DIPLO_COMMLINK);
+        */
+        wtp_mod_probe_treaty_on(tgt_fc_id, prb_state, DIPLO_UNK_40|DIPLO_VENDETTA|DIPLO_COMMLINK);
+        //
         set_treaty(tgt_fc_id, prb_state, DIPLO_WANT_REVENGE, 1);
         if (prb_state == MapWin->cOwner) {
             parse_says(0, get_title(tgt_fc_id), -1, -1);
@@ -1918,7 +1978,12 @@ MOV_UPKEEP:
         }
         if (action_id >= PRB_MIND_CONTROL_CITY) {
             double_cross(veh_fc_id, tgt_fc_id, -1);
+            // [WTP]
+            /*
             treaty_on(veh_fc_id, tgt_fc_id, DIPLO_VENDETTA);
+            */
+            wtp_mod_probe_treaty_on(veh_fc_id, tgt_fc_id, DIPLO_VENDETTA);
+            //
         } else {
             pact_ends(veh_fc_id, tgt_fc_id);
         }
@@ -1954,7 +2019,12 @@ MOV_UPKEEP:
     if (action_id >= PRB_MIND_CONTROL_CITY) {
         double_cross(veh_fc_id, tgt_fc_id, -1);
     } else {
+        // [WTP]
+        /*
         treaty_on(veh_fc_id, tgt_fc_id, DIPLO_VENDETTA);
+        */
+        wtp_mod_probe_treaty_on(veh_fc_id, tgt_fc_id, DIPLO_VENDETTA);
+        //
     }
     return 1;
 }

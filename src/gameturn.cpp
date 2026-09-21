@@ -1593,7 +1593,13 @@ void __cdecl faction_upkeep(int faction_id) {
         wtp_mod_allocate_energy(faction_id);
         //
         do_all_non_input();
+        // [WTP]
+        // intercept enemy_diplomacy
+        /*
         enemy_diplomacy(faction_id);
+        */
+        wtp_mod_enemy_diplomacy(faction_id);
+        //
         do_all_non_input();
         enemy_strategy(faction_id);
         do_all_non_input();

@@ -1,5 +1,6 @@
 
 #include "net.h"
+#include "wtp_mod.h"
 
 
 void __cdecl net_game_close() {
@@ -121,7 +122,13 @@ void __cdecl net_tech(int a1, int a2, int a3, int wait_diplo) {
             NetDaemon_await_diplo(NetState, 0x44B);
         }
     } else {
+        // [WTP]
+        // route through WTP's tech_achieved wrapper
+        /*
         tech_achieved(a1, a2, a3, 0);
+        */
+        wtp_mod_tech_achieved(a1, a2, a3, 0);
+        //
     }
 }
 

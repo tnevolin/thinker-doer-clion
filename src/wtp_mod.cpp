@@ -2151,16 +2151,16 @@ int getBasicAlternativeSubversionCostWithHQDistance(int vehicleId, int hqDistanc
 /*
 Intercept probe call to record actors.
 */
-void __cdecl wtp_mod_probe(int probeVehicleId, int targetBaseId, int targetVehicleId, int flags)
+int __cdecl wtp_mod_probe(int probeVehicleId, int targetBaseId, int targetVehicleId, int flags)
 {
 	probe_probeVehicleId = probeVehicleId;
 	probe_targetBaseId = targetBaseId;
 	probe_targetVehicleId = targetVehicleId;
-	
+
 	// execute original function
-	
-	probe(probeVehicleId, targetBaseId, targetVehicleId, flags);
-	
+
+	return probe(probeVehicleId, targetBaseId, targetVehicleId, flags);
+
 }
 
 /*
