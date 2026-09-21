@@ -206,7 +206,7 @@ int wtp_mod_probe_veh_skip(int vehicleId);
 int __cdecl wtp_mod_action_terraform(int vehicleId, int action, int execute);
 void __thiscall wtp_mod_Console_go_to(Console *This, int a1, int a2, int a3);
 void __cdecl wtp_mod_tech_achieved(int factionId, int techId, int targetFactionId, int steal);
-int __cdecl mod_popb(char const *label, int flags, int sound_id, char const *pcx_filename, Sprite *a5);
+int __cdecl wtp_mod_popb(char const *label, int flags, int sound_id, char const *pcx_filename, Sprite *a5);
 int __cdecl wtp_mod_alien_veh_init(int unitId, int factionId, int x, int y);
 void wtp_mod_allocate_energy(int factionId);
 void __cdecl wtp_mod_capture_base(int base_id, int faction, int is_probe);

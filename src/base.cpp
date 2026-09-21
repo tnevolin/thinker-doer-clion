@@ -3636,10 +3636,15 @@ int __cdecl mod_base_production() {
                 }
             }
             base->minerals_accumulated -= mineral_cost;
+            // [WTP]
+            // disable cutting carry over minerals
+            if (!conf.carry_over_minerals) {
             int cap = min(Rules->retool_exemption, base->mineral_surplus);
             if (base->minerals_accumulated > cap && is_human(faction_id)) {
                 base->minerals_accumulated = max(0, cap);
             }
+            }
+            //
             base->minerals_accumulated_2 = base->minerals_accumulated;
             if (*dword_90EA40) {
                 return 0;
@@ -3689,7 +3694,13 @@ int __cdecl mod_base_production() {
             } else {
                 morale_val = breed_mod(*CurrentBaseID, faction_id);
             }
+            // [WTP]
+            // default morale = 0
+            /*
             veh->morale = clamp(morale_val + 1, 0, 6);
+            */
+            veh->morale = clamp(morale_val + (conf.default_morale_very_green ? 0 : 1), 0, 6);
+            //
             veh->state |= VSTATE_UNK_2000;
             if (faction_id == player_id) {
                 veh->flags |= VFLAG_UNK_1000;
@@ -3781,7 +3792,13 @@ int __cdecl mod_base_production() {
                         image = "native_sm.pcx";
                     }
                 }
+                // [WTP]
+                // respect the "don't show this warning" flag
+                /*
                 popb(StrBuffer, warn_flags, -1, image, 0);
+                */
+                wtp_mod_popb(StrBuffer, warn_flags, -1, image, 0);
+                //
                 if (!has_queue && gov_manage_production()) {
                     mod_base_reset(*CurrentBaseID, 0);
                 }
@@ -3831,7 +3848,13 @@ int __cdecl mod_base_production() {
         facility_cost = Facility[facility_id].cost * mod_cost_factor(faction_id, RSC_MINERAL, -1);
         if (base->minerals_accumulated >= facility_cost && facility_id == FAC_ASCENT_TO_TRANSCENDENCE) {
             if (!voice_of_planet()) {
+                // [WTP]
+                // respect the "don't show this warning" flag
+                /*
                 popb("ASCENTNOTYET", 4096, -1, "asctran_sm.pcx", 0);
+                */
+                wtp_mod_popb("ASCENTNOTYET", 4096, -1, "asctran_sm.pcx", 0);
+                //
                 return 0;
             }
         }
@@ -3857,7 +3880,13 @@ int __cdecl mod_base_production() {
                             strcat(StrBuffer, "2");
                         }
                     }
+                    // [WTP]
+                    // respect the "don't show this warning" flag
+                    /*
                     popb(StrBuffer, 512, -1, "secproj_sm.pcx", 0);
+                    */
+                    wtp_mod_popb(StrBuffer, 512, -1, "secproj_sm.pcx", 0);
+                    //
                 }
                 return 0;
             }
@@ -3871,10 +3900,19 @@ int __cdecl mod_base_production() {
                 mod_base_reset(*CurrentBaseID, 0);
             } else {
                 parse_says(1, Facility[facility_id].name, -1, -1);
+                // [WTP]
+                // respect the "don't show this warning" flag
+                /*
                 if (!plr_alien) {
                     popb("ALREADYFACILITY", 512, -1, "facblt_sm.pcx", 0);
                 } else {
                     popb("ALREADYFACILITY", 512, -1, "alfacblt_sm.pcx", 0);
+                }
+                */
+                if (!plr_alien) {
+                    wtp_mod_popb("ALREADYFACILITY", 512, -1, "facblt_sm.pcx", 0);
+                } else {
+                    wtp_mod_popb("ALREADYFACILITY", 512, -1, "alfacblt_sm.pcx", 0);
                 }
             }
             return 0;
@@ -3909,10 +3947,15 @@ int __cdecl mod_base_production() {
         }
     }
     base->minerals_accumulated -= facility_cost;
+    // [WTP]
+    // disable cutting carry over minerals
+    if (!conf.carry_over_minerals) {
     int cap = min(Rules->retool_exemption, base->mineral_surplus);
     if (base->minerals_accumulated > cap && is_human(faction_id)) {
         base->minerals_accumulated = max(0, cap);
     }
+    }
+    //
     base->minerals_accumulated_2 = base->minerals_accumulated;
     base->state_flags |= BSTATE_PRODUCTION_DONE;
     base->state_flags &= ~BSTATE_UNK_80000000;
@@ -4022,11 +4065,21 @@ int __cdecl mod_base_production() {
                 } else if (gov_manage_production()) {
                     strcat(StrBuffer, "G");
                 }
+                // [WTP]
+                // respect the "don't show this warning" flag
+                /*
                 if (!plr_alien) {
                     popb(StrBuffer, 1, -1, "facblt_sm.pcx", 0);
                 } else {
                     popb(StrBuffer, 1, -1, "alfacblt_sm.pcx", 0);
                 }
+                */
+                if (!plr_alien) {
+                    wtp_mod_popb(StrBuffer, 1, -1, "facblt_sm.pcx", 0);
+                } else {
+                    wtp_mod_popb(StrBuffer, 1, -1, "alfacblt_sm.pcx", 0);
+                }
+                //
                 if (*GameMorePreferences & MPREF_AV_VOLUME_VOICE_TOGGLE
                 && *GameMorePreferences & MPREF_AV_VOICEOVER_STOP_CLOSE_POPUP) {
                      Sound_fade_2(WaveState, 2000);
@@ -4054,7 +4107,13 @@ int __cdecl mod_base_production() {
                 } else {
                     warn_flag = 1;
                 }
+                // [WTP]
+                // respect the "don't show this warning" flag
+                /*
                 popb(StrBuffer, warn_flag, -1, icon, 0);
+                */
+                wtp_mod_popb(StrBuffer, warn_flag, -1, icon, 0);
+                //
             }
         } else if (item_id < 0) {
             if (facility_id == FAC_SUBSPACE_GENERATOR) {

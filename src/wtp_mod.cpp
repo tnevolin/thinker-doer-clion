@@ -3740,7 +3740,7 @@ void __cdecl wtp_mod_tech_achieved(int factionId, int techId, int targetFactionI
 /*
 Does not initialize disabled popup.
 */
-int __cdecl mod_popb(char const *label, int flags, int sound_id, char const *pcx_filename, Sprite *a5)
+int __cdecl wtp_mod_popb(char const *label, int flags, int sound_id, char const *pcx_filename, Sprite *a5)
 {
 	if ((*GameWarnings & flags) == 0)
 	{

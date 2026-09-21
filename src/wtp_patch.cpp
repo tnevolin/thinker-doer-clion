@@ -2824,36 +2824,36 @@ void patch_drone_riot_does_not_intensify()
 
 void patch_disable_popb()
 {
-	write_call(0x004EF2D9, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004EF64C, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004EF667, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004EF9A0, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004EF9BF, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004EF9FB, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004EFA25, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004EFA44, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004EFA99, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004EFAB8, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004EFAF4, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004EFB1E, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004EFB3D, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F1825, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F1A12, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F1B95, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F1C8D, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F1CA8, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F261C, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F2747, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F4A43, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F50D0, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F5400, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F541D, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F5D4A, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F5DBE, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F5EDD, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F642B, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F6448, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
-	write_call(0x004F67B2, static_cast<int>(reinterpret_cast<uintptr_t>(mod_popb)));
+	write_call(0x004EF2D9, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004EF64C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004EF667, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004EF9A0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004EF9BF, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004EF9FB, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004EFA25, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004EFA44, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004EFA99, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004EFAB8, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004EFAF4, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004EFB1E, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004EFB3D, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F1825, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F1A12, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F1B95, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F1C8D, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F1CA8, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F261C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F2747, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F4A43, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F50D0, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F5400, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F541D, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F5D4A, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F5DBE, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F5EDD, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F642B, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F6448, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
+	write_call(0x004F67B2, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_popb)));
 	
 }
 
