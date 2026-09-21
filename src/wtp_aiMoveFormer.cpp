@@ -760,6 +760,8 @@ void populateTerraformingData()
 
 	// base gain values
 
+	// TODO do not use current worker gains
+	// instead, use population count + future population and try to allocate best scrore from top down and see the marginal improvement
 	debug("\tworker gains\n");
 	for (int baseId : aiData.baseIds)
 	{
@@ -1117,8 +1119,11 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 		for (TERRAFORMING_OPTION *option : BASE_TERRAFORMING_OPTIONS[tileInfo.ocean])
 		{
 			// rocky option requires rocky tile
-
 			if (option->rocky && !tileTerraformingInfo.landRocky)
+				continue;
+
+			// main action is available
+			if (!isTerraformingAvailable(tile, option->requiredAction, false))
 				continue;
 
 			// 1. collect option actions not yet present on the tile (road is always attempted alongside the option)
@@ -1345,9 +1350,9 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 		if (matchedIndex == -1)
 			break;
 
+		debug("\t\t%s %-16s matchedIndex=%2d gain=%5.2f workerGain=%5.2f replacementGain=%5.2f\n", getLocationString(baseTerraformingOptionScore.tile), baseTerraformingOptionScore.option->name, matchedIndex, baseTerraformingOptionScore.incomeGain, baseTerraformingInfo.workerGains[matchedIndex].gain, baseTerraformingOptionScore.incomeGain - baseTerraformingInfo.workerGains[matchedIndex].gain);
 		matched[matchedIndex] = true;
 		baseTerraformingOptionScore.incomeGain -= baseTerraformingInfo.workerGains[matchedIndex].gain;
-		debug("\t\t%5.2f %s %-16s matchedIndex=%2d replacementGain=%5.2f\n", baseTerraformingOptionScore.incomeGain, getLocationString(baseTerraformingOptionScore.tile), baseTerraformingOptionScore.option->name, matchedIndex, baseTerraformingOptionScore.incomeGain);
 
 		// gain is not positive - exit
 

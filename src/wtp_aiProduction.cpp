@@ -554,14 +554,20 @@ Checks whether WTP's production evaluators cover this production item, unit or f
 */
 bool isManaged(int item)
 {
+	// units
 	if (item >= 0)
 	{
 		return isManagedUnit(item);
 	}
-	else if (-item < FAC_STOCKPILE_ENERGY)
+	// projects are managed
+	if (-item >= SP_ID_First && -item <= SP_ID_Last)
 	{
-		static robin_hood::unordered_flat_set<int> const MANAGED_FACILITIES
-		{
+		return true;
+	}
+	// facilities
+	if (-item >= Fac_ID_First && -item <= Fac_All_ID_Last)
+	{
+		static robin_hood::unordered_flat_set<int> const MANAGED_FACILITIES{
 			FAC_HEADQUARTERS,
 			FAC_CHILDREN_CRECHE,
 			FAC_RECYCLING_TANKS,
@@ -594,31 +600,28 @@ bool isManaged(int item)
 			FAC_BIOENHANCEMENT_CENTER,
 			FAC_CENTAURI_PRESERVE,
 			FAC_TEMPLE_OF_PLANET,
-	//		FAC_PSI_GATE,
-	//		FAC_COVERT_OPS_CENTER,
-	//		FAC_BROOD_PIT,
+			//		FAC_PSI_GATE,
+			//		FAC_COVERT_OPS_CENTER,
+			//		FAC_BROOD_PIT,
 			FAC_AQUAFARM,
 			FAC_SUBSEA_TRUNKLINE,
 			FAC_THERMOCLINE_TRANSDUCER,
-	//		FAC_FLECHETTE_DEFENSE_SYS,
-	//		FAC_SUBSPACE_GENERATOR,
-	//		FAC_GEOSYNC_SURVEY_POD,
-	//		FAC_SKY_HYDRO_LAB,
-	//		FAC_NESSUS_MINING_STATION,
-	//		FAC_ORBITAL_POWER_TRANS,
-	//		FAC_ORBITAL_DEFENSE_POD,
+			//		FAC_FLECHETTE_DEFENSE_SYS,
+			//		FAC_SUBSPACE_GENERATOR,
+			//		FAC_GEOSYNC_SURVEY_POD,
+			//		FAC_SKY_HYDRO_LAB,
+			//		FAC_NESSUS_MINING_STATION,
+			//		FAC_ORBITAL_POWER_TRANS,
+			//		FAC_ORBITAL_DEFENSE_POD,
 			FAC_STOCKPILE_ENERGY,
-		}
-		;
+		};
 
 		return MANAGED_FACILITIES.count(-item) != 0;
 	}
-	else
-	{
-		// project or other special item - not managed
 
-		return false;
-	}
+	// anything else is unmanaged by default
+
+	return false;
 
 }
 
@@ -2570,7 +2573,7 @@ void evaluatePodPoppingUnits()
 		
 		// there are insufficient number of scouts in the area
 
-		if (surfacePodData.scoutCount > surfacePodData.podCount / 2)
+		if (surfacePodData.scoutCount > surfacePodData.podCount / 3)
 			continue;
 
 		// speed
