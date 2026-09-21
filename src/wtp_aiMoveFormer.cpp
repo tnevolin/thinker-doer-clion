@@ -740,35 +740,44 @@ void populateTerraformingData()
 		{
 			TileTerraformingInfo &baseRadiusTileTerraformingInfo = getTileTerraformingInfo(baseRadiusTile);
 
-			// conventional terraforming site
-
-			if (!baseRadiusTileTerraformingInfo.availableBaseTerraformingSite)
-				continue;
-
 			// not worked by other base
 
 			if (!(baseRadiusTileTerraformingInfo.workedBaseId == -1 || baseRadiusTileTerraformingInfo.workedBaseId == baseId))
 				continue;
 
-			// add to base tiles
+			// workable (includes tiles that cannot be terraformed, e.g. monolith, but are still a real
+			// allocation option for a citizen)
 
-			baseTerraformingInfo.terraformingSites.push_back(baseRadiusTile);
+			if (baseRadiusTileTerraformingInfo.workable)
+			{
+				baseTerraformingInfo.workableTiles.push_back(baseRadiusTile);
+			}
+
+			// conventional terraforming site
+
+			if (baseRadiusTileTerraformingInfo.availableBaseTerraformingSite)
+			{
+				baseTerraformingInfo.terraformingSites.push_back(baseRadiusTile);
+			}
 
 		}
 
 	}
 
-	// base gain values
+	// citizen allocation pool
+	// models what this base's available citizens (current non-doctor population plus a configured number
+	// of anticipated future ones) could produce: either work a tile at its current, unimproved yield, or
+	// become an advanced specialist. generateBaseConventionalTerraformingRequests values a terraforming
+	// option by the change it makes to this pool's top-N sum, so a brand new tile and an upgrade to an
+	// already-worked tile are judged the same way - both are only worth what they add over the next best
+	// alternative, not their raw absolute yield.
 
-	// TODO do not use current worker gains
-	// instead, use population count + future population and try to allocate best scrore from top down and see the marginal improvement
-	debug("\tworker gains\n");
+	debug("\tallocation pool\n");
 	for (int baseId : aiData.baseIds)
 	{
 		debug("\t\t%s\n", Bases[baseId].name);
 		BASE &base = Bases[baseId];
 		BaseTerraformingInfo &baseTerraformingInfo = getBaseTerraformingInfo(baseId);
-		std::vector<MAP *> baseWorkedTiles = getBaseWorkedTiles(baseId);
 
 		baseTerraformingInfo.popSzie = static_cast<unsigned char>(base.pop_size);
 		baseTerraformingInfo.nutrientCost = mod_cost_factor(base.faction_id, RSC_NUTRIENT, baseId);
@@ -778,115 +787,49 @@ void populateTerraformingData()
 		baseTerraformingInfo.economyValue = getBaseEconomyMultiplier(baseId);
 		baseTerraformingInfo.labsValue = getBaseLabsMultiplier(baseId);
 
-		debug("\t\t\tfarmer gains\n");
-		baseTerraformingInfo.workerGains.reserve(base.pop_size);
-		for (MAP *workedTile : baseWorkedTiles)
-		{
-			ResourceYield workedTileResourceYield = getTileResourceYield(workedTile, baseId);
-			double farmerGain = baseTerraformingInfo.getIntakeGain(workedTileResourceYield, 0, 0);
-			baseTerraformingInfo.workerGains.push_back({farmerGain, workedTile});
-			debug("\t\t\t\t%s %5.2f {%d-%d-%d}\n", getLocationString(workedTile), farmerGain, workedTileResourceYield.nutrient, workedTileResourceYield.mineral, workedTileResourceYield.energy);
-		}
+		// N: current non-doctor population + configured future citizen slots
 
-		// do not account for extra specialists
-		debug("\t\t\tspecialist gains\n");
+		int doctorCount = 0;
 		for (int specialistIndex = 0; specialistIndex < std::min(MaxBaseSpecNum, base.specialist_total); ++specialistIndex)
 		{
-			int specialistType = base.specialist_type(specialistIndex);
+			if (Citizen[base.specialist_type(specialistIndex)].psych_bonus > 0)
+			{
+				doctorCount++;
+			}
+		}
+		baseTerraformingInfo.availableCitizenCount = std::max(0, static_cast<int>(base.pop_size) - doctorCount) + conf.ai_terraforming_futureCitizenSlotCount;
+		debug("\t\t\tavailableCitizenCount=%d (pop=%d doctors=%d future=%d)\n", baseTerraformingInfo.availableCitizenCount, base.pop_size, doctorCount, conf.ai_terraforming_futureCitizenSlotCount);
+
+		// tile options: current, unimproved yield of every workable tile around the base
+
+		debug("\t\t\ttile options\n");
+		baseTerraformingInfo.allocationPool.reserve(baseTerraformingInfo.workableTiles.size());
+		for (MAP *tile : baseTerraformingInfo.workableTiles)
+		{
+			ResourceYield tileResourceYield = getTileResourceYield(tile, baseId);
+			double tileGain = baseTerraformingInfo.getIntakeGain(tileResourceYield, 0, 0);
+			baseTerraformingInfo.allocationPool.push_back({tileGain, tile});
+			debug("\t\t\t\t%s %5.2f {%d-%d-%d}\n", getLocationString(tile), tileGain, tileResourceYield.nutrient, tileResourceYield.mineral, tileResourceYield.energy);
+		}
+
+		// specialist options: each available advanced (non-doctor) specialist type, once per available citizen
+
+		debug("\t\t\tspecialist options\n");
+		for (int specialistType : getAvailableSpecialistTypes(base.faction_id, base.pop_size))
+		{
 			CCitizen citizen = Citizen[specialistType];
 
-			// do not remove psych specialist
+			// doctors are not part of the swappable allocation
 
 			if (citizen.psych_bonus > 0)
 				continue;
 
 			double specialistGain = baseTerraformingInfo.getIntakeGain({0, 0, 0}, citizen.econ_bonus, citizen.labs_bonus);
-			baseTerraformingInfo.workerGains.push_back({specialistGain, nullptr});
-			debug("\t\t\t\t%s %5.2f\n", citizen.singular_name, specialistGain);
-
-		}
-
-		// virtual future citizen slots
-		// growth-matching below caps how many terraforming requests survive at roughly one per worker slot,
-		// so a base that is currently growing (positive nutrient surplus) gets a few zero-cost slots added
-		// to let it prepare tiles no current citizen can work yet, without displacing a real worker's gain
-		if (base.nutrient_surplus > 0)
-		{
-			debug("\t\t\tfuture citizen slots\n");
-			for (int i = 0; i < conf.ai_terraforming_futureCitizenSlotCount; i++)
+			for (int i = 0; i < baseTerraformingInfo.availableCitizenCount; i++)
 			{
-				baseTerraformingInfo.workerGains.push_back({0.0, nullptr});
-				debug("\t\t\t\t(future) %5.2f\n", 0.0);
+				baseTerraformingInfo.allocationPool.push_back({specialistGain, nullptr});
 			}
-		}
-
-		// sort gains ascending
-		std::sort(baseTerraformingInfo.workerGains.begin(), baseTerraformingInfo.workerGains.end(), [](WorkerGain const &o1, WorkerGain const &o2) { return o1.gain < o2.gain; });
-
-	}
-
-	// base unworked tile yields
-
-	debug("\tunworked tile yields\n");
-	for (int baseId : aiData.baseIds)
-	{
-		debug("\t\t%s\n", Bases[baseId].name);
-		BaseTerraformingInfo &baseTerraformingInfo = getBaseTerraformingInfo(baseId);
-		std::vector<ResourceYield> &unworkedTileYields = baseTerraformingInfo.unworkedTileYields;
-
-		// process available unworked tiles
-
-		std::vector<MAP *> availableTiles = baseTerraformingInfo.terraformingSites;
-		std::vector<MAP *> workedTiles = getBaseWorkedTiles(baseId);
-		robin_hood::unordered_flat_set<MAP *> workedTileSet(workedTiles.begin(), workedTiles.end());
-
-		for (MAP *availableTile : availableTiles)
-		{
-			// unworked
-
-			if (workedTileSet.contains(availableTile))
-				continue;
-
-			unworkedTileYields.push_back(getTileResourceYield(availableTile, baseId));
-
-		}
-
-		// remove all yields from there those are equal or inferior to any remaining yield there
-
-		for (auto it = unworkedTileYields.begin(); it != unworkedTileYields.end(); )
-		{
-			bool remove = false;
-
-			for (auto it2 = unworkedTileYields.begin(); it2 != unworkedTileYields.end(); ++it2)
-			{
-				if (it == it2)
-					continue;
-
-				if (ResourceYield::isEqualOrSuperior(*it2, *it))
-				{
-					remove = true;
-					break;
-				}
-
-			}
-
-			if (remove)
-			{
-				it = unworkedTileYields.erase(it);
-			}
-			else
-			{
-				++it;
-			}
-
-		}
-
-	 	if constexpr (DEBUG)
-		{
-			for (ResourceYield unworkedTileYeild : unworkedTileYields)
-			{
-				debug("\t\t\t{%2d-%2d-%2d}\n", unworkedTileYeild.nutrient, unworkedTileYeild.mineral, unworkedTileYeild.energy);
-			}
+			debug("\t\t\t\t%s %5.2f x%d\n", citizen.singular_name, specialistGain, baseTerraformingInfo.availableCitizenCount);
 
 		}
 
@@ -1161,20 +1104,6 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			ResourceYield improvedTileYield = getTileResourceYield(tile, baseId);
 			*tile = savedTile;
 
-			// discard option if it is no better than already unworked tile yield
-
-			bool noBetter = false;
-			for (ResourceYield unworkedTileYield : baseTerraformingInfo.unworkedTileYields)
-			{
-				if (ResourceYield::isEqualOrInferior(improvedTileYield, unworkedTileYield))
-				{
-					noBetter = true;
-					break;
-				}
-			}
-			if (noBetter)
-				continue;
-
 			// calculate option score
 
 			double improvedTileGain = computeWorkerGain(baseId, improvedTileYield);
@@ -1265,7 +1194,7 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 
 			// 7. record the final currently-available actions and their gain
 
-			terraformingOptionScores.push_back({tile, option, actions, improvedTileGain});
+			terraformingOptionScores.emplace_back(tile, option, actions, improvedTileGain);
 
 		}
 
@@ -1308,58 +1237,91 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 
 	}
 
-	// sort baseTerraformingOptionScores by incomeGain descending
+	// sort baseTerraformingOptionScores by incomeGain descending; break ties by proximity to base
+	// (lower terraformingSites index first)
 
-	std::sort(baseTerraformingOptionScores.begin(), baseTerraformingOptionScores.end(), [](const TerraformingOptionScore &a, const TerraformingOptionScore &b) { return a.incomeGain > b.incomeGain; });
+	robin_hood::unordered_flat_map<MAP *, int> tileOrderIndex;
+	for (int i = 0; i < static_cast<int>(baseTerraformingInfo.terraformingSites.size()); i++)
+	{
+		tileOrderIndex[baseTerraformingInfo.terraformingSites[i]] = i;
+	}
 
-	// match them with the worst worker to get the improvement gain
+	std::stable_sort
+	(
+		baseTerraformingOptionScores.begin(), baseTerraformingOptionScores.end(),
+		[&tileOrderIndex](const TerraformingOptionScore &a, const TerraformingOptionScore &b)
+		{
+			if (a.incomeGain != b.incomeGain)
+				return a.incomeGain > b.incomeGain;
 
-	debug("\treplacement gain\n");
-	std::vector<bool> matched(baseTerraformingInfo.workerGains.size(), false);
+			return tileOrderIndex.at(a.tile) < tileOrderIndex.at(b.tile);
+		}
+	);
+
+	// value each candidate by its marginal effect on the citizen allocation pool: swap the tile's current
+	// (unimproved) pool entry for its improved value, then compare the pool's new top-N sum against its
+	// previous top-N sum. this treats a brand new tile and an upgrade to an already-worked tile the same
+	// way - both are only worth what they add over the next best alternative (another tile or an advanced
+	// specialist slot), not their raw absolute yield. process candidates best-first and stop at the first
+	// one that does not crack the top N - nothing further down the list should fare better either.
+
+	debug("\tmarginal gain\n");
+
+	std::vector<WorkerGain> pool = baseTerraformingInfo.allocationPool;
+	int n = std::min(baseTerraformingInfo.availableCitizenCount, static_cast<int>(pool.size()));
+
+	// stable: ties keep their relative order from whatever they had going into this sort. since each
+	// iteration below only mutates one entry before re-sorting, that composes back to allocationPool's
+	// original construction order (tiles nearest the base first, then specialists) - a principled,
+	// reproducible tie-break instead of introsort's implementation-defined tie placement
+	auto sortPoolDescending = [](std::vector<WorkerGain> &p)
+	{
+		std::stable_sort(p.begin(), p.end(), [](WorkerGain const &o1, WorkerGain const &o2) { return o1.gain > o2.gain; });
+	};
+	auto poolTopNSum = [n](std::vector<WorkerGain> const &p)
+	{
+		double sum = 0.0;
+		for (int i = 0; i < n && i < static_cast<int>(p.size()); i++)
+		{
+			sum += p[i].gain;
+		}
+		return sum;
+	};
+
+	sortPoolDescending(pool);
+	double baselineSum = poolTopNSum(pool);
+
 	for (TerraformingOptionScore &baseTerraformingOptionScore : baseTerraformingOptionScores)
 	{
-		int matchedIndex = -1;
+		auto it = std::find_if(pool.begin(), pool.end(), [&](WorkerGain const &entry) { return entry.tile == baseTerraformingOptionScore.tile; });
 
-		// 1. Find workerGains that has same tile as current baseTerraformingOptionScore.
+		if (it == pool.end())
+			continue;
 
-		for (int i = 0; i < static_cast<int>(baseTerraformingInfo.workerGains.size()); i++)
-		{
-			if (!matched[i] && baseTerraformingInfo.workerGains[i].tile == baseTerraformingOptionScore.tile)
-			{
-				matchedIndex = i;
-				break;
-			}
-		}
+		it->gain = baseTerraformingOptionScore.incomeGain;
+		sortPoolDescending(pool);
 
-		// 2. If none found, then pick not yet matched workerGains with the minimal gain.
+		// locate the tile's new sorted position directly, rather than inferring top-N membership from
+		// a summed-float sign check, which summation-order rounding alone can flip near the boundary
 
-		if (matchedIndex == -1)
-		{
-			for (int i = 0; i < static_cast<int>(baseTerraformingInfo.workerGains.size()); i++)
-			{
-				if (!matched[i])
-				{
-					matchedIndex = i;
-					break;
-				}
-			}
-		}
+		auto sortedIt = std::find_if(pool.begin(), pool.end(), [&](WorkerGain const &entry) { return entry.tile == baseTerraformingOptionScore.tile; });
+		int position = sortedIt - pool.begin();
 
-		// no available worker found - exit
+		double newSum = poolTopNSum(pool);
+		double marginalGain = newSum - baselineSum;
 
-		if (matchedIndex == -1)
+		debug("\t\t%s %-16s absoluteGain=%5.2f position=%2d marginalGain=%5.2f\n", getLocationString(baseTerraformingOptionScore.tile), baseTerraformingOptionScore.option->name, baseTerraformingOptionScore.incomeGain, position, marginalGain);
+
+		// improved tile does not make the top N - exit
+
+		if (position >= n)
 			break;
 
-		debug("\t\t%s %-16s matchedIndex=%2d gain=%5.2f workerGain=%5.2f replacementGain=%5.2f\n", getLocationString(baseTerraformingOptionScore.tile), baseTerraformingOptionScore.option->name, matchedIndex, baseTerraformingOptionScore.incomeGain, baseTerraformingInfo.workerGains[matchedIndex].gain, baseTerraformingOptionScore.incomeGain - baseTerraformingInfo.workerGains[matchedIndex].gain);
-		matched[matchedIndex] = true;
-		baseTerraformingOptionScore.incomeGain -= baseTerraformingInfo.workerGains[matchedIndex].gain;
+		insertActionTerraformingRequests(baseTerraformingOptionScore.tile, baseTerraformingOptionScore.option, baseTerraformingOptionScore.actions, marginalGain);
 
-		// gain is not positive - exit
+		// lock in the improvement and the new baseline for the next candidate
 
-		if (baseTerraformingOptionScore.incomeGain <= 0)
-			break;
-
-		insertActionTerraformingRequests(baseTerraformingOptionScore.tile, baseTerraformingOptionScore.option, baseTerraformingOptionScore.actions, baseTerraformingOptionScore.incomeGain);
+		baselineSum = newSum;
 
 	}
 

@@ -83,6 +83,9 @@ struct WorkerGain
 struct BaseTerraformingInfo
 {
 	std::vector<MAP *> terraformingSites;
+	// all workable tiles around the base, including ones that cannot be terraformed (e.g. monolith) -
+	// used for the citizen allocation pool below, which must see every real allocation option
+	std::vector<MAP *> workableTiles;
 	int landRockyTileCount;
 	int popSzie;
 	int nutrientCost;
@@ -91,8 +94,12 @@ struct BaseTerraformingInfo
 	double energyValue;
 	double economyValue;
 	double labsValue;
-	std::vector<WorkerGain> workerGains;
-	std::vector<ResourceYield> unworkedTileYields;
+	// citizen allocation pool: one entry per available workable tile (current, unimproved yield) plus
+	// one entry per available advanced specialist type for each available citizen slot. Used to value a
+	// terraforming option by its effect on the pool's top-N sum rather than its raw absolute yield.
+	std::vector<WorkerGain> allocationPool;
+	// N: current non-doctor population + configured future citizen slots
+	int availableCitizenCount = 0;
 
 	double getIntakeGain(ResourceYield const& yield, int economy, int labs) const;
 
