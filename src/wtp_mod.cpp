@@ -19,9 +19,6 @@
 int alphax_tgl_probe_steal_tech_value;
 
 // probe subversion parameters
-int probe_probeVehicleId;
-int probe_targetBaseId;
-int probe_targetVehicleId;
 int probe_probeMovesSpent = -1;
 
 /*
@@ -2148,60 +2145,9 @@ int getBasicAlternativeSubversionCostWithHQDistance(int vehicleId, int hqDistanc
 
 }
 
-/*
-Intercept probe call to record actors.
-*/
 int __cdecl wtp_mod_probe(int probeVehicleId, int targetBaseId, int targetVehicleId, int flags)
 {
-	probe_probeVehicleId = probeVehicleId;
-	probe_targetBaseId = targetBaseId;
-	probe_targetVehicleId = targetVehicleId;
-
-	// execute original function
-
 	return probe(probeVehicleId, targetBaseId, targetVehicleId, flags);
-
-}
-
-/*
-Moves subverted vehicle on probe tile.
-*/
-// TODO MERGE: sole caller is probe.cpp (PRB_MIND_CONTROL_UNIT); no more raw callers
-// via write_call. Has multi-branch logic and side effects (veh_put, probe_probeMovesSpent),
-// so left as a standalone function rather than inlined.
-void __cdecl modifiedSubveredVehicleDrawTile(int x, int y, int radius)
-{
-	// vehicle targeted
-	if (probe_targetVehicleId >= 0)
-	{
-		// get vehicles
-		
-		VEH *probeVehicle = getVehicle(probe_probeVehicleId);
-		VEH *targetVehicle = getVehicle(probe_targetVehicleId);
-		
-		// vehicle subverted
-
-		// only needed when subverting a unit out of a multi-unit stack: otherwise
-		// it would remain stacked with enemy units of a different faction
-		if (conf.subversion_allow_stacked_units && targetVehicle->faction_id == probeVehicle->faction_id)
-		{
-			// move subverted vehicle to probe tile
-			
-			veh_put(probe_targetVehicleId, probeVehicle->x, probeVehicle->y);
-			
-			// stop probe
-			
-			probe_probeMovesSpent = probeVehicle->moves_spent + Rules->move_rate_roads;
-			probeVehicle->moves_spent = veh_speed(probe_probeVehicleId, false);
-			
-		}
-		
-	}
-	
-	// execute original function
-	
-	draw_tile(x, y, radius);
-	
 }
 
 void __cdecl modifiedTurnUpkeep()

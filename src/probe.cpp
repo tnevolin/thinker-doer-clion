@@ -1576,6 +1576,17 @@ MOV_DEFEND:
         plr->mind_control_total++;
         tgt->diplo_mind_control[veh_fc_id]++;
         // [WTP]
+        // move subverted vehicle to probe tile and stop the probe (needed when
+        // subverting a unit within a multi-unit stack; otherwise it would remain
+        // stacked with enemy units of a different faction); merged from
+        // modifiedSubveredVehicleDrawTile, which had no other callers left
+        if (conf.subversion_allow_stacked_units) {
+            veh_put(tgt_veh_id, Vehs[veh_id].x, Vehs[veh_id].y);
+            probe_probeMovesSpent = Vehs[veh_id].moves_spent + Rules->move_rate_roads;
+            Vehs[veh_id].moves_spent = veh_speed(veh_id, false);
+        }
+        //
+        // [WTP]
         // don't change tile ownership when subverting a unit within a stack
         // (the other, un-subverted units may still belong to the original owner)
         if (!conf.subversion_allow_stacked_units)
@@ -1589,13 +1600,7 @@ MOV_DEFEND:
         Vehs[tgt_veh_id].order = ORDER_NONE;
         Vehs[tgt_veh_id].state &= ~(VSTATE_UNK_2000000|VSTATE_UNK_1000000|VSTATE_EXPLORE|VSTATE_ON_ALERT);
         spot_stack(tgt_veh_id, tgt_fc_id);
-        // [WTP]
-        // route through WTP's subverted-vehicle draw_tile wrapper
-        /*
         draw_tile(Vehs[tgt_veh_id].x, Vehs[tgt_veh_id].y, 2);
-        */
-        modifiedSubveredVehicleDrawTile(Vehs[tgt_veh_id].x, Vehs[tgt_veh_id].y, 2);
-        //
         if (tgt_fc_id == MapWin->cOwner) {
             Console_focus(MapWin, Vehs[tgt_veh_id].x, Vehs[tgt_veh_id].y, veh_fc_id);
             parse_says(1, get_noun(veh_fc_id), -1, -1);
