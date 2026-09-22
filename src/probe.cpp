@@ -723,9 +723,15 @@ MOV_START:
             }
             return 0;
         case PRB_MIND_CONTROL_UNIT:
+            // [WTP]
+            // allow subverting a unit within a multi-unit stack when configured
+        	if (!conf.subversion_allow_stacked_units)
+        	{
             if (mod_stack_check(tgt_veh_id, 1, -1, -1, -1) > 1) {
                 return 0;
             }
+            }
+            //
             // [WTP]
             // route through WTP's has_abil wrapper (needlejet-in-flight interception rule)
             /*
@@ -1569,7 +1575,14 @@ MOV_DEFEND:
         plr->units_active[Vehs[tgt_veh_id].unit_id]++;
         plr->mind_control_total++;
         tgt->diplo_mind_control[veh_fc_id]++;
+        // [WTP]
+        // don't change tile ownership when subverting a unit within a stack
+        // (the other, un-subverted units may still belong to the original owner)
+        if (!conf.subversion_allow_stacked_units)
+        {
         owner_set(Vehs[tgt_veh_id].x, Vehs[tgt_veh_id].y, veh_fc_id);
+        }
+        //
         Vehs[tgt_veh_id].home_base_id = base_find_2(
             Vehs[tgt_veh_id].x, Vehs[tgt_veh_id].y, veh_fc_id);
         Vehs[tgt_veh_id].moves_spent = 0;

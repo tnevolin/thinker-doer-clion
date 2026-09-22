@@ -1885,28 +1885,11 @@ void patch_carry_over_minerals()
 
 void patch_subversion_allow_stacked_units()
 {
-	// ignore stack count in probe
-	
-	int ignore_stack_count_probe_bytes_length = 0x2;
-	
-	/*
-	0:  3b c6                   cmp    eax,esi
-	*/
-	byte ignore_stack_count_probe_bytes_old[] = { 0x3B, 0xC6 };
-	
-	/*
-	0:  39 f6                   cmp    esi,esi
-	*/
-	byte ignore_stack_count_probe_bytes_new[] = { 0x39, 0xF6 };
-	
-	write_bytes
-	(
-		0x005A1262,
-		ignore_stack_count_probe_bytes_old,
-		ignore_stack_count_probe_bytes_new,
-		ignore_stack_count_probe_bytes_length
-	);
-	
+	// [WTP] "ignore stack count in probe" is now handled directly in probe.cpp
+	// (PRB_MIND_CONTROL_UNIT case), gated by conf.subversion_allow_stacked_units,
+	// since probe() is fully decompiled and this write_bytes patch would target
+	// unreachable bytes.
+
 	// ignore stack count in enemy_move
 	
 	int ignore_stack_count_enemy_move_bytes_length = 0x3;
@@ -1930,28 +1913,10 @@ void patch_subversion_allow_stacked_units()
 		ignore_stack_count_enemy_move_bytes_length
 	);
 	
-	// disable target tile ownership change
-	
-	int disable_tile_ownership_change_bytes_length = 0x5;
-	
-	/*
-	0:  e8 18 d9 fe ff          call   0xfffed91d
-	*/
-	byte disable_tile_ownership_change_bytes_old[] = { 0xE8, 0x18, 0xD9, 0xFE, 0xFF };
-	
-	/*
-	...
-	*/
-	byte disable_tile_ownership_change_bytes_new[] = { 0x90, 0x90, 0x90, 0x90, 0x90 };
-	
-	write_bytes
-	(
-		0x005A41F3,
-		disable_tile_ownership_change_bytes_old,
-		disable_tile_ownership_change_bytes_new,
-		disable_tile_ownership_change_bytes_length
-	);
-	
+	// [WTP] "disable target tile ownership change" (the owner_set call after a
+	// successful PRB_MIND_CONTROL_UNIT) is now handled directly in probe.cpp,
+	// gated by conf.subversion_allow_stacked_units, for the same reason as above.
+
 	// move subverted unit to probe tile
 	
     write_call(0x0056E19C, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe)));

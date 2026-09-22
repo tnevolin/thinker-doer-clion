@@ -2180,8 +2180,10 @@ void __cdecl modifiedSubveredVehicleDrawTile(int x, int y, int radius)
 		VEH *targetVehicle = getVehicle(probe_targetVehicleId);
 		
 		// vehicle subverted
-		
-		if (targetVehicle->faction_id == probeVehicle->faction_id)
+
+		// only needed when subverting a unit out of a multi-unit stack: otherwise
+		// it would remain stacked with enemy units of a different faction
+		if (conf.subversion_allow_stacked_units && targetVehicle->faction_id == probeVehicle->faction_id)
 		{
 			// move subverted vehicle to probe tile
 			
