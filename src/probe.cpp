@@ -1,6 +1,7 @@
 
 #include "probe.h"
 #include "wtp_mod.h"
+#include "wtp_game.h"
 
 static void popup_init_image(Popup* popup, const char* image, int* bx, int* by) {
     if (!Buffer_get_pcx_dimensions(image, bx, by)) {
@@ -1364,12 +1365,11 @@ MOV_DEFEND:
         return 1;
     case PRB_DRAIN_ENERGY_RESERVES:
         int steal_val, mor_val;
-        // [WTP]
-        // route through WTP's steal_energy wrapper
-        /*
         steal_val = steal_energy(tgt_base_id);
-        */
-        steal_val = wtp_mod_steal_energy(tgt_base_id);
+        // [WTP]
+        // set energy stolen flag (merged from wtp_mod_steal_energy, which had no
+        // other callers left once probe() was fully decompiled)
+        Bases[tgt_base_id].state_flags |= BSTATE_ENERGY_RESERVES_DRAINED;
         //
         mor_val = steal_val * mod_morale_veh(veh_id, 1, 0) / 6;
         steal_val = max(0, min(mor_val + game_randv(steal_val - mor_val) / 2, tgt->energy_credits));
@@ -1651,15 +1651,19 @@ MOV_DEFEND:
             draw_tile(Bases[ret_base_id].x, Bases[ret_base_id].y, 2);
             parse_says(1, Bases[ret_base_id].name, -1, -1);
             morale = mod_morale_veh(veh_id, 1, 0);
-            Vehs[veh_id].morale = clamp(Vehs[veh_id].morale + 1, 0, 6);
             // [WTP]
-            // route through WTP's probe-specific veh_skip wrapper (disables promotion
-            // on infiltrate datalinks with no direct theft)
+            // disable probe promotion on infiltrate datalinks with no direct theft
+            // (merged from wtp_mod_probe_veh_skip; withholding the promotion here
+            // instead of granting then reverting it avoids a morale-clamp asymmetry
+            // when morale is already at its max)
             /*
-            veh_skip(veh_id);
+            Vehs[veh_id].morale = clamp(Vehs[veh_id].morale + 1, 0, 6);
             */
-            wtp_mod_probe_veh_skip(veh_id);
+            if (!(isProbeVehicle(veh_id) && Vehs[veh_id].probe_action == 0)) {
+                Vehs[veh_id].morale = clamp(Vehs[veh_id].morale + 1, 0, 6);
+            }
             //
+            mod_veh_skip(veh_id);
             if (veh_fc_id == MapWin->cOwner) {
                 parse_says(0, Units[Vehs[veh_id].unit_id].name, -1, -1);
                 parse_says(2, Morale[mod_morale_veh(veh_id, 1, 0)].name, -1, -1);

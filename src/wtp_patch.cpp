@@ -2839,12 +2839,6 @@ void patch_diplomacy_caption_display_numeric_mood()
 	
 }
 
-void patch_infiltrate_datalinks_no_promotion()
-{
-	write_call(0x005A4688, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_probe_veh_skip)));
-	
-}
-
 void patch_tidal_harness_terraform_rate()
 {
 	write_call(0x0040E216, static_cast<int>(reinterpret_cast<uintptr_t>(wtp_mod_action_terraform)));
@@ -3430,8 +3424,6 @@ void patch_setup_wtp(Config* cf)
 	{
 		patch_diplomacy_caption_display_numeric_mood();
 	}
-	
-	patch_infiltrate_datalinks_no_promotion();
 	
 	patch_tidal_harness_terraform_rate();
 	

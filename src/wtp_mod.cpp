@@ -2166,6 +2166,9 @@ int __cdecl wtp_mod_probe(int probeVehicleId, int targetBaseId, int targetVehicl
 /*
 Moves subverted vehicle on probe tile.
 */
+// TODO MERGE: sole caller is probe.cpp (PRB_MIND_CONTROL_UNIT); no more raw callers
+// via write_call. Has multi-branch logic and side effects (veh_put, probe_probeMovesSpent),
+// so left as a standalone function rather than inlined.
 void __cdecl modifiedSubveredVehicleDrawTile(int x, int y, int radius)
 {
 	// vehicle targeted
@@ -3384,6 +3387,9 @@ int __cdecl wtp_mod_action_terraform_set_treaty(int /*a1*/, int /*a2*/, int /*a3
 /*
 Patches enemy diplomacy.
 */
+// TODO MERGE: sole caller is faction_upkeep (gameturn.cpp); no more raw callers via
+// write_call. Has loops and config-driven interval logic, so left as a standalone
+// function rather than inlined.
 void __cdecl wtp_mod_enemy_diplomacy(int factionId)
 {
 	MFaction *mFaction = getMFaction(factionId);
@@ -3517,6 +3523,9 @@ void __cdecl wtp_mod_enemy_diplomacy(int factionId)
 /*
 Increases global friction as a probe actions consequence.
 */
+// TODO MERGE: all 6 callers are in probe.cpp; no more raw callers via write_call.
+// Has loops and randomized friction logic, and is called from 6 distinct sites,
+// so left as a standalone function rather than duplicated inline.
 void __cdecl wtp_mod_probe_treaty_on(int faction1Id, int faction2Id, int treaty)
 {
 	debug("wtp_mod_probe_treaty_on\n");
@@ -3623,25 +3632,6 @@ int __cdecl wtp_mod_enemy_move(int vehicleId)
 }
 
 /*
-Set energy stolen flag.
-*/
-int __cdecl wtp_mod_steal_energy(int baseId)
-{
-	// execute original function
-	
-	int returnValue = steal_energy(baseId);
-	
-	// set energy stolen flag
-	
-	Bases[baseId].state_flags |= BSTATE_ENERGY_RESERVES_DRAINED;
-	
-	// return value
-	
-	return returnValue;
-	
-}
-
-/*
 Intercepts diplomacy_caption -> say_fac_special to display the mood.
 */
 void __cdecl wtp_mod_diplomacy_caption_say_fac_special(char *dst, char *src, int factionId)
@@ -3658,30 +3648,6 @@ void __cdecl wtp_mod_diplomacy_caption_say_fac_special(char *dst, char *src, int
 		sprintf(numericFriction, " <%d>", *DiploFriction);
 		strcat(dst, numericFriction);
 	}
-	
-}
-
-/*
-Intercepts probe -> veh_skip to disable promotion on infiltrate datalinks.
-*/
-int wtp_mod_probe_veh_skip(int vehicleId)
-{
-	int value = mod_veh_skip(vehicleId);
-	
-	// disable probe promotion on infiltrate datalinks by reducing morale
-	
-	if (isProbeVehicle(vehicleId))
-	{
-		VEH &vehicle = Vehs[vehicleId];
-		
-		if (vehicle.probe_action == 0)
-		{
-			vehicle.morale--;
-		}
-		
-	}
-	
-	return value;
 	
 }
 
@@ -3862,6 +3828,9 @@ void wtp_mod_allocate_energy(int factionId)
 /*
 Destroys terrain improvements on lost territory.
 */
+// TODO MERGE: callers are action_airdrop, order_veh and probe (3 sites); no more
+// raw callers via write_call. Allocates a map-sized array and loops over all tiles,
+// so left as a standalone function rather than duplicated inline.
 void __cdecl wtp_mod_capture_base(int base_id, int faction, int is_probe)
 {
 	BASE &base = Bases[base_id];
@@ -3950,22 +3919,6 @@ void __cdecl wtp_mod_retire_proto(int unitId, int factionId)
 		return;
 	
 	retire_proto(unitId, factionId);
-	
-}
-
-/*
-Intercepts has_abil call to disallow land air superiority vehicle attacking needlejet at sea.
-*/
-int __cdecl wtp_mod_has_abil_land_air_superiority_attack_needlejet_at_sea(int unit_id, VehAblFlag ability)
-{
-	if (ability == ABL_AIR_SUPERIORITY)
-	{
-		return 0;
-	}
-	
-	// execute original code
-	
-	return has_abil(unit_id, ability);
 	
 }
 

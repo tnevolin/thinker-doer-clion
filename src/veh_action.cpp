@@ -2221,8 +2221,10 @@ int __cdecl order_veh(int veh_id, int offset, int flag) {
                 }
             } else {
                 // [WTP]
-                // route through WTP's has_abil wrapper (disallows land air-superiority
-                // vehicle attacking needlejet at sea)
+                // land units never have effective air superiority against a needlejet
+                // at sea here (merged from wtp_mod_has_abil_land_air_superiority_attack_needlejet_at_sea,
+                // which always returned false for ABL_AIR_SUPERIORITY - its only call
+                // site always passed that ability, so has_abil is never actually reached)
                 /*
                 if (stack_veh_id < 0
                 || !has_abil(Vehs[veh_id].unit_id, ABL_AIR_SUPERIORITY)
@@ -2230,7 +2232,7 @@ int __cdecl order_veh(int veh_id, int offset, int flag) {
                 || mod_stack_check(stack_veh_id, 6, ABL_CARRIER, -1, -1)) {
                 */
                 if (stack_veh_id < 0
-                || !wtp_mod_has_abil_land_air_superiority_attack_needlejet_at_sea(Vehs[veh_id].unit_id, ABL_AIR_SUPERIORITY)
+                || true
                 || !mod_stack_check(stack_veh_id, 18, -1, -1, -1)
                 || mod_stack_check(stack_veh_id, 6, ABL_CARRIER, -1, -1)) {
                 //
