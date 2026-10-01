@@ -6,6 +6,7 @@ It is built on top of Thinker mod. (Thinker mod info: Thinker_Readme.md, Thinker
 ##### Links
 
 * [This readme](https://github.com/tnevolin/thinker-doer-clion/blob/master/README.md)
+* [Installation](https://github.com/tnevolin/thinker-doer-clion/blob/master/installation.md)
 * [Changelog](https://github.com/tnevolin/thinker-doer-clion/blob/master/changelog.md)
 * [Strategy tips](https://github.com/tnevolin/thinker-doer-clion/blob/master/strategy.md)
 * [Issue submission](https://github.com/tnevolin/thinker-doer-clion/issues)
