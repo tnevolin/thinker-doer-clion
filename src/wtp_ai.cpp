@@ -3,7 +3,7 @@
 #include "wtp_ai.h"
 
 #include <cfloat>
-#include "robin_hood.h"
+#include "wtp_robin_hood.h"
 
 #include "wtp_ai_game.h"
 #include "wtp_aiRoute.h"
@@ -335,35 +335,22 @@ void populateTileInfos()
 			tileInfo.fungus = tile->is_fungus();
 		}
 
-		int adjacentTileCount = 0;
-		int adjacentLandTileCount = 0;
-		int adjacentSeaTileCount = 0;
-		for (int adjacentTileIndex : getAdjacentTileIndexes(tileIndex))
+		tileInfo.adjacentSeaRegions.clear();
+		for (MAP *adjacentTile : getAdjacentTiles(tile))
 		{
-			if (adjacentTileIndex == -1)
+			// sea
+			if (!adjacentTile->is_sea())
 				continue;
 
-			// ReSharper disable once CppTooWideScopeInitStatement
-			MAP *adjacentTile = *MapTiles + adjacentTileIndex;
+			// not polar
+			if (adjacentTile->is_pole_tile())
+				continue;
 
-			if (is_ocean(adjacentTile))
-			{
-				adjacentSeaTileCount++;
-			}
-			else
-			{
-				adjacentLandTileCount++;
-			}
-
-			adjacentTileCount++;
+			tileInfo.adjacentSeaRegions.insert(adjacentTile->region);
 
 		}
 
-		tileInfo.adjacentLand = adjacentLandTileCount > 0;
-		tileInfo.adjacentSea = adjacentSeaTileCount > 0;
-		tileInfo.coast = tileInfo.land && tileInfo.adjacentSea;
-		tileInfo.adjacentLandRatio = adjacentTileCount <= 0 ? 0.0 : static_cast<double>(adjacentLandTileCount) / static_cast<double>(adjacentTileCount);
-		tileInfo.adjacentSeaRatio = adjacentTileCount <= 0 ? 0.0 : static_cast<double>(adjacentSeaTileCount) / static_cast<double>(adjacentTileCount);
+		tileInfo.coast = tileInfo.land && !tileInfo.adjacentSeaRegions.empty();
 
 	}
 	
@@ -871,21 +858,21 @@ void populateTileInfos()
 
 		if (tileInfo.base)
 		{
-			for (AttackTriad attackTriad : ATTACK_TRIADS)
+			for (ExtendedTriad attackTriad : ATTACK_TRIADS)
 			{
 				tileInfo.terrainDefenseMultipliers.at(attackTriad)		= getBaseDefenseMultiplier(tileInfo.baseId, attackTriad);
 			}
 		}
 		else if (tileInfo.bunker)
 		{
-			tileInfo.terrainDefenseMultipliers.at(ATTACK_TRIAD_LAND)	= getPercentageBonusMultiplier(conf.bunker_bonus_surface);
-			tileInfo.terrainDefenseMultipliers.at(ATTACK_TRIAD_SEA)		= getPercentageBonusMultiplier(conf.bunker_bonus_surface);
-			tileInfo.terrainDefenseMultipliers.at(ATTACK_TRIAD_AIR)		= getPercentageBonusMultiplier(conf.bunker_bonus_aerial);
-			tileInfo.terrainDefenseMultipliers.at(ATTACK_TRIAD_PSI)		= 1.0;
+			tileInfo.terrainDefenseMultipliers.at(EXTENDED_TRIAD_LAND)	= getPercentageBonusMultiplier(conf.bunker_bonus_surface);
+			tileInfo.terrainDefenseMultipliers.at(EXTENDED_TRIAD_SEA)		= getPercentageBonusMultiplier(conf.bunker_bonus_surface);
+			tileInfo.terrainDefenseMultipliers.at(EXTENDED_TRIAD_AIR)		= getPercentageBonusMultiplier(conf.bunker_bonus_aerial);
+			tileInfo.terrainDefenseMultipliers.at(EXTENDED_TRIAD_PSI)		= 1.0;
 		}
 		else
 		{
-			for (AttackTriad attackTriad : ATTACK_TRIADS)
+			for (ExtendedTriad attackTriad : ATTACK_TRIADS)
 			{
 				tileInfo.terrainDefenseMultipliers.at(attackTriad)		= 1.0;
 			}
@@ -1016,37 +1003,16 @@ void populateRegionAreas()
 	
 	for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
 	{
-		// not polar region
-		
-		if (isPolarRegion(tile))
+		// not polar
+		if (tile->is_pole_tile())
 			continue;
 		
 		// accumulate region area
-		
-		if (regionAreas.find(tile->region) == regionAreas.end())
+		if (!regionAreas.contains(tile->region))
 		{
-			regionAreas.insert({tile->region, 0});
+			regionAreas.emplace(tile->region, 0);
 		}
 		regionAreas.at(tile->region)++;
-		
-		// populate adjacent sea regions
-		
-		if (is_ocean(tile))
-		{
-			for (MAP *adjacentTile : getAdjacentTiles(tile))
-			{
-				// land region, not polar
-				
-				if (!isLandRegion(adjacentTile))
-					continue;
-				
-				// accumulate adjacent sea regions
-				
-				aiData.tileInfos.at(adjacentTile - *MapTiles).adjacentSeaRegions.insert(tile->region);
-				
-			}
-			
-		}
 		
 	}
 	
@@ -1717,9 +1683,9 @@ void populateBaseInfos()
 		
 		// morale
 		
-		for (int extendedTriad = 0; extendedTriad < 4; extendedTriad++)
+		for (int extendedTriad = 0; extendedTriad <= 4; extendedTriad++)
 		{
-			baseInfo.moraleMultipliers.at(extendedTriad) = getMoraleMultiplier(2 + getBaseMoraleModifier(baseId, extendedTriad));
+			baseInfo.moraleMultipliers.at(extendedTriad) = getMoraleMultiplier(getBaseMoraleModifier(baseId, static_cast<ExtendedTriad>(extendedTriad)));
 		}
 
 		// gain
@@ -4274,7 +4240,7 @@ void evaluateBaseProbeDefense()
 			
 			// defense multiplier
 			
-			double defenseMultiplier = 1.0 / (getBaseDefenseMultiplier(baseId, static_cast<AttackTriad>(4)) * getSensorDefenseMultiplier(aiFactionId, baseTile));
+			double defenseMultiplier = 1.0 / (getBaseDefenseMultiplier(baseId, static_cast<ExtendedTriad>(4)) * getSensorDefenseMultiplier(aiFactionId, baseTile));
 			
 			if (defenseMultiplier <= 0.0)
 			{
@@ -4362,6 +4328,7 @@ void designUnits()
 	
 	VehWeapon bestWeapon = getFactionBestWeapon(aiFactionId);
 	VehArmor bestArmor = getFactionBestArmor(aiFactionId);
+	VehArmor bestPrototypedArmor = getFactionBestPrototypedArmor(aiFactionId);
 	VehArmor attackerArmor = getFactionBestArmor(aiFactionId, bestWeapon);
 	VehWeapon defenderWeapon = getFactionBestWeapon(aiFactionId, (bestArmor + 1) / 2);
 	VehChassis fastLandChassis = (has_chassis(aiFactionId, CHS_HOVERTANK) ? CHS_HOVERTANK : CHS_SPEEDER);
@@ -4381,7 +4348,7 @@ void designUnits()
 		},
 		bestReactor,
 		PLAN_COLONY,
-		NULL
+		nullptr
 	);
 	
 	// former
@@ -4414,7 +4381,7 @@ void designUnits()
 		},
 		bestReactor,
 		PLAN_SUPPLY,
-		NULL
+		nullptr
 	);
 	
 	// police defender
@@ -4430,7 +4397,7 @@ void designUnits()
 		},
 		bestReactor,
 		PLAN_DEFENSE,
-		NULL
+		nullptr
 	);
 	
 	// regular defender
@@ -4448,7 +4415,7 @@ void designUnits()
 		},
 		bestReactor,
 		PLAN_DEFENSE,
-		NULL
+		nullptr
 	);
 	
 	// land armored infantry attackers
@@ -4472,7 +4439,7 @@ void designUnits()
 		},
 		bestReactor,
 		PLAN_COMBAT,
-		NULL
+		nullptr
 	);
 	
 	// land fast attackers
@@ -4501,7 +4468,7 @@ void designUnits()
 		},
 		bestReactor,
 		PLAN_OFFENSE,
-		NULL
+		nullptr
 	);
 	
 	// land artillery
@@ -4517,7 +4484,7 @@ void designUnits()
 		},
 		bestReactor,
 		PLAN_OFFENSE,
-		NULL
+		nullptr
 	);
 	
 	// land paratroopers
@@ -4533,7 +4500,7 @@ void designUnits()
 		},
 		bestReactor,
 		PLAN_COMBAT,
-		NULL
+		nullptr
 	);
 	
 	// ships
@@ -4558,7 +4525,7 @@ void designUnits()
 		},
 		bestReactor,
 		PLAN_COMBAT,
-		NULL
+		nullptr
 	);
 	
 	// armored transport
@@ -4577,7 +4544,7 @@ void designUnits()
 		},
 		bestReactor,
 		PLAN_COMBAT,
-		NULL
+		nullptr
 	);
 	
 	// defensive probe
@@ -4603,14 +4570,14 @@ void designUnits()
 		aiFactionId,
 		{fastLandChassis},
 		{WPN_PROBE_TEAM},
-		{bestArmor},
+		{bestPrototypedArmor},
 		{
 			// air protected
 			{ABL_ID_AAA, ABL_ID_ANTIGRAV_STRUTS, },
 		},
 		bestReactor,
 		PLAN_COMBAT,
-		NULL
+		nullptr
 	);
 	
 	// armored sea probe
@@ -4620,14 +4587,14 @@ void designUnits()
 		aiFactionId,
 		{fastSeaChassis},
 		{WPN_PROBE_TEAM},
-		{bestArmor},
+		{bestPrototypedArmor},
 		{
 			// air protected
 			{ABL_ID_AAA, ABL_ID_ANTIGRAV_STRUTS, },
 		},
 		bestReactor,
 		PLAN_COMBAT,
-		NULL
+		nullptr
 	);
 	
 	// --------------------------------------------------

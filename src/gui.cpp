@@ -1066,7 +1066,7 @@ void __cdecl mod_turn_timer()
 
 void popup_homepage()
 {
-    ShellExecute(NULL, "open", "https://github.com/induktio/thinker", NULL, NULL, SW_SHOWNORMAL);
+    ShellExecute(NULL, "open", "https://github.com/tnevolin/thinker-doer-clion", NULL, NULL, SW_SHOWNORMAL);
 }
 
 void show_mod_stats()

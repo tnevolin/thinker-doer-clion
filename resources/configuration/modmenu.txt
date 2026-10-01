@@ -1,12 +1,13 @@
 ;
-; *****************************************
-; *  SMACX Thinker Mod by Induktio        *
-; *  https://github.com/induktio/thinker  *
-; *****************************************
+; ****************************************************
+; *  SMACX The Will to Power mod                     *
+; *  (based on Thinker Mod by Induktio)              *
+; *  https://github.com/tnevolin/thinker-doer-clion  *
+; ****************************************************
 ;
 #MAINMENU
 #xs 400
-#caption Thinker Mod
+#caption The Will to Power mod
 ^^Mod Version: {$MSG0}
 ^^Mod Build Date: {$MSG1}
 
@@ -17,7 +18,7 @@ Open Project Homepage
 
 #GAMEMENU
 #xs 400
-#caption Thinker Mod
+#caption The Will to Power mod
 ^^Mod Version: {$MSG0}
 ^^Mod Build Date: {$MSG1}
 ^^Game Time Spent: {$NUM0} hours, {$NUM1} minutes, {$NUM2} seconds.
@@ -29,7 +30,7 @@ Open Project Homepage
 
 #STATS
 #xs 400
-#caption Thinker Mod Statistics
+#caption The Will to Power mod Statistics
 ^^Total bases: $NUM0
 ^^Total units: $NUM1
 ^^Total population: $NUM2
@@ -43,7 +44,7 @@ Open Project Homepage
 
 #OPTIONS
 #xs 480
-#caption Thinker Mod Options
+#caption The Will to Power mod Options
 #itemlist
 Use new random map generator.
 __Set map generator emphasis on larger continents.
@@ -51,8 +52,8 @@ __Add modified landmarks on random maps.
 __Add polar caps on random maps.
 __Mirror maps along X axis.
 __Mirror maps along Y axis.
-Thinker manages player base governors.
-Thinker manages player automated units.
+AI manages player base governors.
+AI manages player automated units.
 Warn when manually replacing tile improvements.
 Show additional base details on world map.
 Show foreign treaty changes on popup window.
@@ -118,14 +119,14 @@ EXIT GAME
 
 #ASKNUMBER
 #xs 400
-#caption Thinker Mod Options
+#caption The Will to Power mod Options
 Enter a new value for {$MSG0}.
 
 Value:
 
 #MAPGEN
 #xs 400
-#caption Thinker Mod
+#caption The Will to Power mod
 Enter a new value for random map generator.
 
 Value:

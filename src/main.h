@@ -24,7 +24,7 @@
 #pragma once
 
 // [WTP] compressed into one and pulled from CMakeList
-#define MOD_VERSION "Thinker Mod v5.1 - The Will to Power mod v." WTP_VERSION
+#define MOD_VERSION "The Will to Power mod v" WTP_VERSION
 
 #ifdef BUILD_DEBUG
     #define MOD_DATE __DATE__ " " __TIME__
@@ -524,7 +524,6 @@ struct Config {
 	double ai_terraforming_land_rocky_tile_threshold;
 	int ai_terraforming_travel_time_multiplier;
 	double ai_terraforming_networkValueIncomeImprovement;
-	double ai_terraforming_networkValueTravelTimeDenominator;
 	double ai_terraforming_networkDensityThreshold;
 	double ai_terraforming_nearbyForestKelpPenalty;
 	double ai_terraforming_fitnessMultiplier;

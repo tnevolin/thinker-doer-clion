@@ -1395,10 +1395,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_terraforming_networkValueIncomeImprovement = atof(value);
     }
-    else if (MATCH("ai_terraforming_networkValueTravelTimeDenominator"))
-    {
-        cf->ai_terraforming_networkValueTravelTimeDenominator = atof(value);
-    }
     else if (MATCH("ai_terraforming_networkDensityThreshold"))
     {
         cf->ai_terraforming_networkDensityThreshold = atof(value);

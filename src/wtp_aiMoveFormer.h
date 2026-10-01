@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "robin_hood.h"
+#include "wtp_robin_hood.h"
 
 #include "engine.h"
 #include "wtp_ai_game.h"

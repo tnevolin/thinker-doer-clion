@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <vector>
 #include <set>
-#include "robin_hood.h"
+#include "wtp_robin_hood.h"
 
 #include "main.h"
 #include "engine.h"

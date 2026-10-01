@@ -233,9 +233,6 @@ fp_3int tx_zoc_move = (fp_3int)0x005C8D40;
 // propose base production
 fp_4int base_prod_choice = (fp_4int)0x004F81A0;
 
-// updates base production
-fp_2void base_prod_change = (fp_2void)0x004E5A60;
-
 // energy compute
 //fp_2void energy_compute = (fp_2void)0x00445130;
 

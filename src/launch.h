@@ -23,7 +23,7 @@
 
 #pragma once
 
-#define MOD_VERSION "Thinker Mod"
+#define MOD_VERSION "The Will to Power mod"
 
 #ifdef BUILD_DEBUG
 #define MOD_DATE __DATE__ " " __TIME__

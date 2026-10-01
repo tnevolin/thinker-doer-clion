@@ -1,6 +1,6 @@
 #pragma once
 
-#include "robin_hood.h"
+#include "wtp_robin_hood.h"
 #include "wtp_game.h"
 
 #include "main.h"

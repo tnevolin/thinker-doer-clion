@@ -1,6 +1,6 @@
 #pragma once
 
-#include "robin_hood.h"
+#include "wtp_robin_hood.h"
 
 #include "main.h"
 #include "engine.h"
@@ -83,6 +83,7 @@ void populateFactionProductionData();
 void evaluateGlobalColonyDemand();
 void evaluateNavalInvasionTransportDemand();
 void evaluateGlobalSeaTransportDemand();
+void populateWarRegions();
 void initializeProductionDemands();
 void suggestGlobalProduction();
 void suggestBaseProductions();
@@ -128,9 +129,7 @@ int getRegionBasesMaxMineralSurplus(int factionId, int region);
 int getRegionBasesMaxPopulationSize(int factionId, int region);
 int calculateUnitTypeCount(int baseId, int weaponType, int triad, int excludedBaseId);
 bool isMilitaryItem(int item);
-bool isBaseCanBuildUnit(int baseId, int unitId);
-bool isBaseCanBuildFacility(int baseId, FacilityId facilityId);
-int getFirstAvailableFacility(int baseId, std::vector<FacilityId> facilityIds);
+int getFirstAvailableFacility(int baseId, const std::vector<FacilityId>& facilityIds);
 double getUnitPriorityCoefficient(int baseId, int unitId);
 int findInfantryPoliceUnit(bool first);
 void hurryProtectiveUnit();

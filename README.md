@@ -5,12 +5,12 @@ It is built on top of Thinker mod. (Thinker mod info: Thinker_Readme.md, Thinker
 
 ##### Links
 
-* [This readme](https://github.com/tnevolin/thinker-doer/blob/master/README.md)
-* [Changelog](https://github.com/tnevolin/thinker-doer/blob/master/changelog.md)
-* [Strategy tips](https://github.com/tnevolin/thinker-doer/blob/master/strategy.md)
-* [Issue submission](https://github.com/tnevolin/thinker-doer/issues)
+* [This readme](https://github.com/tnevolin/thinker-doer-clion/blob/master/README.md)
+* [Changelog](https://github.com/tnevolin/thinker-doer-clion/blob/master/changelog.md)
+* [Strategy tips](https://github.com/tnevolin/thinker-doer-clion/blob/master/strategy.md)
+* [Issue submission](https://github.com/tnevolin/thinker-doer-clion/issues)
 * [An awesome tutorial playlist by Loladarules !](https://www.youtube.com/playlist?list=PLDGozj3_2wdF5niSbkbuPrsrgL5LO-KMr)
-* [Technology tree browser](https://tnevolin.github.io/thinker-doer/smacx-tech-tree-wtp.html)
+* [Technology tree browser](https://tnevolin.github.io/thinker-doer-clion/smacx-tech-tree-wtp.html)
 
 ## Special thanks and acknowledgements
 
@@ -1047,7 +1047,7 @@ Colony production is tuned as well to take available spaces, game stage, existin
 
 ## Terraforming
 
-New AI terraforming algorithm replacing Thinker's. These are few notable changes among many.
+AI terraforming algorithm.
 
 * Works best tiles first.
 * Properly selects best basic improvement option between rocky mine, farm-mine, farm-collector, forest.
@@ -1073,4 +1073,12 @@ This was the most difficult task ever. It is still not perfect but, at least, AI
 * AI builds assault units to capture enemy bases when it has economical advantage.
 * AI tries to coordinate attach by adjusting assembled units approach time.
 * AI tries to repair units based on their damage.
+
+## License
+
+This software is licensed under the MIT License, same as Thinker mod it is based on. Check [License.md](License.md) for detailed conditions.
+
+The original game assets are not covered by this license and remain property of Firaxis Games Inc and Electronic Arts Inc.
+
+Sid Meier's Alpha Centauri and Sid Meier's Alien Crossfire is Copyright © 1997, 1998 by Firaxis Games Inc and Electronic Arts Inc.
 

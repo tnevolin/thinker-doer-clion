@@ -1,4 +1,10 @@
 ;
+; ****************************************************
+; *  SMACX The Will to Power mod                     *
+; *  (based on Thinker Mod by Induktio)              *
+; *  https://github.com/tnevolin/thinker-doer-clion  *
+; ****************************************************
+;
 ; Sid Meier's ALPHA CENTAURI
 ;
 ; Alpha Centauri User-Configurable Rules

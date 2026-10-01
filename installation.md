@@ -12,7 +12,7 @@ This is fan made mod that goes without warranty of any kind! Use it on your own 
 
 Take latest release package from here (TheWillToPower-###.zip) and unpack its content to game directory.
 
-https://github.com/tnevolin/thinker-doer/releases
+https://github.com/tnevolin/thinker-doer-clion/releases
 
 # Optional factions modifications
 
@@ -24,5 +24,7 @@ Download faction release and unpack its content to game directory.
 
 # Run
 
-Run thinker.exe or terranx_mod.exe. They both do the same thing. Although thinker.exe should be more modern and supporting resolution better.
+Run wtp.exe. It starts the original terranx.exe from the game directory and loads the mod into it. The game must be official Alien Crossfire version 2.0 (GOG version is fine).
+
+DDrawCompat.ini included in the package makes the game window follow Windows display scaling on GOG installs (which ship DDrawCompat as ddraw.dll).
 

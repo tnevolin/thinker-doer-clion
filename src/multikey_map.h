@@ -2,7 +2,7 @@
 
 #include <tuple>
 #include <type_traits>
-#include "robin_hood.h"
+#include "wtp_robin_hood.h"
 
 /**
  * A map that supports multiple keys by using a std::tuple as the internal key.

@@ -3,7 +3,7 @@
 #include <vector>
 #include <set>
 
-#include "robin_hood.h"
+#include "wtp_robin_hood.h"
 #include "multikey_map.h"
 
 #include "main.h"
@@ -278,15 +278,11 @@ struct TileInfo
 	bool land;
 	bool ocean;
 	SurfaceType surfaceType;
-	bool coast;
 	bool rough;
 	bool fungus;
 	std::set<int> adjacentSeaRegions;
-	bool adjacentLand;
-	bool adjacentSea;
-	double adjacentLandRatio;
-	double adjacentSeaRatio;
-	
+	bool coast;
+
 	// items
 	int baseId = -1;
 	bool base = false;
@@ -314,6 +310,7 @@ struct TileInfo
 	// range tiles
 	StaticVector<TileInfo*, RANGE2_TILE_COUNT> range2CenterTileInfos;
 	StaticVector<TileInfo*, RANGE2_TILE_COUNT> range2NoCenterTileInfos;
+
 
 	// blocks
 	std::array<bool, MaxPlayerNum> blocks;
@@ -422,7 +419,7 @@ struct BaseInfo
 	BasePoliceData policeData;
 	
 	// combat data
-	std::array<double, 4> moraleMultipliers;
+	std::array<double, 5> moraleMultipliers;
 	bool artillery;
 	CombatData combatData;
 	BaseProbeData probeData;

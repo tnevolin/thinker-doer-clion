@@ -173,7 +173,6 @@ extern fp_3void tx_action_move;
 extern fp_1int tx_veh_cargo;
 extern fp_3int tx_zoc_move;
 extern fp_4int base_prod_choice;
-extern fp_2void base_prod_change;
 extern fp_1int unit_speed;
 //extern fp_2void energy_compute;
 extern fp_2int tx_can_arty;

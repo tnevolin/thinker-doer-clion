@@ -82,15 +82,46 @@ void Profile::stop()
 	}
 }
 
+/*
+Returns {nodeIndex, depth} for all profiles in depth-first pre-order.
+*/
+std::vector<std::pair<int, int>> Profiling::getOrderedNodes()
+{
+	std::vector<std::pair<int, int>> orderedNodes;
+	std::vector<std::pair<int, int>> stack;
+
+	for (std::vector<int>::const_reverse_iterator iterator = topIndexes.rbegin(); iterator != topIndexes.rend(); iterator++)
+	{
+		stack.push_back({*iterator, 0});
+	}
+
+	while (!stack.empty())
+	{
+		std::pair<int, int> node = stack.back();
+		stack.pop_back();
+		orderedNodes.push_back(node);
+
+		std::vector<int> const &childIndexes = profiles.at(node.first).childIndexes;
+		for (std::vector<int>::const_reverse_iterator iterator = childIndexes.rbegin(); iterator != childIndexes.rend(); iterator++)
+		{
+			stack.push_back({*iterator, node.second + 1});
+		}
+
+	}
+
+	return orderedNodes;
+
+}
 Profile *Profiling::getProfile(std::string name)
 {
 	Profile *profile = nullptr;
 
-	for (tree<ProfileName>::iterator iterator = profiles.begin(); iterator != profiles.end(); iterator++)
+	for (std::pair<int, int> const &orderedNode : getOrderedNodes())
 	{
-		if (iterator->name == name)
+		ProfileNode &profileNode = profiles.at(orderedNode.first);
+		if (profileNode.name == name)
 		{
-			profile = &(iterator->profile);
+			profile = &(profileNode.profile);
 			break;
 		}
 	}
@@ -107,18 +138,21 @@ Profile *Profiling::addTopProfile(std::string name)
 {
 	Profile *profile = nullptr;
 
-	for (tree<ProfileName>::sibling_iterator iterator = profiles.begin(); iterator != profiles.end(); iterator++)
+	for (int topIndex : topIndexes)
 	{
-		if (iterator->name == name)
+		ProfileNode &profileNode = profiles.at(topIndex);
+		if (profileNode.name == name)
 		{
-			profile = &(iterator->profile);
+			profile = &(profileNode.profile);
 			break;
 		}
 	}
 
 	if (profile == nullptr)
 	{
-		profile = &(profiles.insert(profiles.end(), {name, {}})->profile);
+		topIndexes.push_back(static_cast<int>(profiles.size()));
+		profiles.push_back({name, {}, {}});
+		profile = &(profiles.back().profile);
 		profile->name = name;
 	}
 
@@ -127,36 +161,39 @@ Profile *Profiling::addTopProfile(std::string name)
 }
 Profile *Profiling::addChildProfile(std::string name, std::string parentName)
 {
-	// find parent iterator
+	// find parent index
 
-	tree<ProfileName>::iterator parentIterator = nullptr;
+	int parentIndex = -1;
 
-	for (tree<ProfileName>::iterator iterator = profiles.begin(); iterator != profiles.end(); iterator++)
+	for (std::pair<int, int> const &orderedNode : getOrderedNodes())
 	{
-		if (iterator->name == parentName)
+		if (profiles.at(orderedNode.first).name == parentName)
 		{
-			parentIterator = iterator;
+			parentIndex = orderedNode.first;
 			break;
 		}
 	}
-	assert(parentIterator != nullptr);
+	assert(parentIndex != -1);
 
 	// find child profile
 
 	Profile *profile = nullptr;
 
-	for (tree<ProfileName>::sibling_iterator iterator = profiles.begin(parentIterator); iterator != profiles.end(parentIterator); iterator++)
+	for (int childIndex : profiles.at(parentIndex).childIndexes)
 	{
-		if (iterator->name == name)
+		ProfileNode &profileNode = profiles.at(childIndex);
+		if (profileNode.name == name)
 		{
-			profile = &(iterator->profile);
+			profile = &(profileNode.profile);
 			break;
 		}
 	}
 
 	if (profile == nullptr)
 	{
-		profile = &(profiles.append_child(parentIterator, {name, {}})->profile);
+		profiles.at(parentIndex).childIndexes.push_back(static_cast<int>(profiles.size()));
+		profiles.push_back({name, {}, {}});
+		profile = &(profiles.back().profile);
 		profile->name = name;
 	}
 
@@ -166,6 +203,7 @@ Profile *Profiling::addChildProfile(std::string name, std::string parentName)
 void Profiling::reset()
 {
 	profiles.clear();
+	topIndexes.clear();
 }
 void Profiling::start(std::string name)
 {
@@ -173,7 +211,7 @@ void Profiling::start(std::string name)
 	{
 		if (profiles.empty())
 		{
-			profiles.insert(profiles.end(), {"", {}});
+			addTopProfile("");
 		}
 
 //			debug("Profiling(%s) - start\n", name.c_str());flushlog();
@@ -188,7 +226,7 @@ void Profiling::start(std::string name, std::string parentName)
 	{
 		if (profiles.empty())
 		{
-			profiles.insert(profiles.end(), {"", {}});
+			addTopProfile("");
 		}
 
 //			debug("Profiling(%s) - start\n", name.c_str());flushlog();
@@ -225,11 +263,11 @@ void Profiling::print()
 {
 	debug("executionProfiles\n");
 
-	for (tree<ProfileName>::iterator iterator = profiles.begin(); iterator != profiles.end(); iterator++)
+	for (std::pair<int, int> const &orderedNode : getOrderedNodes())
 	{
-		int depth = profiles.depth(iterator);
-		std::string name = iterator->name;
-		Profile &profile = iterator->profile;
+		int depth = orderedNode.second;
+		std::string name = profiles.at(orderedNode.first).name;
+		Profile &profile = profiles.at(orderedNode.first).profile;
 
 		std::string prefixedName = std::string(4 * depth, ' ') + name;
 		std::string displayName = prefixedName + " " + std::string(std::max(0, NAME_LENGTH - 1 - static_cast<int>(prefixedName.length())), '.');
@@ -256,7 +294,8 @@ void Profiling::print()
 
 }
 
-tree<ProfileName> Profiling::profiles;
+std::deque<ProfileNode> Profiling::profiles;
+std::vector<int> Profiling::topIndexes;
 
 // FactionUnit
 
@@ -812,13 +851,13 @@ std::array<int, RANGE2_TILE_COUNT> getRange2TileIndexes(int tileIndex)
 /**
 Returns valid adjacent tiles.
 */
-std::vector<MAP *> const getAdjacentTiles(MAP const* tile)
+StaticVector<MAP *, ANGLE_COUNT> getAdjacentTiles(MAP const *tile)
 {
 	Location location = getLocation(tile);
 	int x = location.x;
 	int y = location.y;
 
-	std::vector<MAP *> adjacentTiles;
+	StaticVector<MAP *, ANGLE_COUNT> adjacentTiles;
 
 	for (int angle = 0; angle < TABLE_next_cell_count; angle++)
 	{
@@ -2374,21 +2413,21 @@ double evaluateUnitPsiOffenseEffectiveness(int id)
 /*
 extendedTriad: 0 = land, 1 = sea, 2 = air, 3 = psi, 4 = probe
 */
-double getBaseDefenseMultiplier(int baseId, AttackTriad attackTriad)
+double getBaseDefenseMultiplier(int baseId, ExtendedTriad attackTriad)
 {
 	int defenseBonus = 0;
 
 	switch (attackTriad)
 	{
-	case ATTACK_TRIAD_PROBE:
+	case EXTENDED_TRIAD_PROBE:
 		defenseBonus = conf.probe_combat_uses_bonuses ? Rules->combat_bonus_intrinsic_base_def : 0;
 		break;
-	case ATTACK_TRIAD_PSI:
+	case EXTENDED_TRIAD_PSI:
 		defenseBonus = Rules->combat_bonus_intrinsic_base_def;
 		break;
-	case ATTACK_TRIAD_AIR:
-	case ATTACK_TRIAD_SEA:
-	case ATTACK_TRIAD_LAND:
+	case EXTENDED_TRIAD_AIR:
+	case EXTENDED_TRIAD_SEA:
+	case EXTENDED_TRIAD_LAND:
 		{
 			// ReSharper disable once CppTooWideScopeInitStatement
 			bool firstLevelDefense = has_facility(TRIAD_DEFENSIVE_FACILITIES[attackTriad], baseId);
@@ -2426,26 +2465,7 @@ double getBaseDefenseMultiplier(int baseId, int attackerUnitId, int defenderUnit
 	UNIT *attackerUnit = getUnit(attackerUnitId);
 	int attackerUnitTriad = attackerUnit->triad();
 
-	return getBaseDefenseMultiplier(baseId, static_cast<AttackTriad>(isPsiCombat(attackerUnitId, defenderUnitId) ? 3 : attackerUnitTriad));
-
-}
-
-int estimateBaseItemProductionTime(int baseId, int item)
-{
-	BASE *base = getBase(baseId);
-
-	return divideIntegerRoundUp(getBaseMineralCost(baseId, item), base->mineral_surplus);
-
-}
-
-/*
-Estimates turns to complete current base production assuming all parameters stays as is.
-*/
-int estimateBaseProductionTurnsToComplete(int id)
-{
-	BASE *base = &(Bases[id]);
-
-	return ((getBaseMineralCost(id, base->queue_items[0]) - base->minerals_accumulated) + (base->mineral_surplus - 1)) / base->mineral_surplus;
+	return getBaseDefenseMultiplier(baseId, static_cast<ExtendedTriad>(isPsiCombat(attackerUnitId, defenderUnitId) ? 3 : attackerUnitTriad));
 
 }
 
@@ -4266,14 +4286,14 @@ VehArmor getFactionBestArmor(int factionId)
 			if (Armor[armorId].defense_value > bestArmorDefenseValue)
 			{
 				bestArmor = armorId;
-				bestArmorDefenseValue = Armor[armorId].defense_value;
+				bestArmorDefenseValue = static_cast<unsigned char>(Armor[armorId].defense_value);
 			}
 
 		}
 
 	}
 
-	return (VehArmor)bestArmor;
+	return static_cast<VehArmor>(bestArmor);
 
 }
 
@@ -4295,14 +4315,61 @@ VehArmor getFactionBestArmor(int factionId, int limit)
 			if (Armor[armorId].defense_value > bestArmorDefenseValue)
 			{
 				bestArmor = armorId;
-				bestArmorDefenseValue = Armor[armorId].defense_value;
+				bestArmorDefenseValue = static_cast<unsigned char>(Armor[armorId].defense_value);
 			}
 
 		}
 
 	}
 
-	return (VehArmor)bestArmor;
+	return static_cast<VehArmor>(bestArmor);
+
+}
+
+VehArmor getFactionBestPrototypedArmor(int factionId)
+{
+	int bestArmorId = ARM_NO_ARMOR;
+	int bestArmorDefenseValue = 1;
+
+	for (int unitId = 0; unitId < MaxProtoFactionNum; ++unitId)
+	{
+		UNIT &unit = Units[unitId];
+		int defenseValue = unit.defense_value();
+
+		// discovered
+		if (!has_tech(unit.preq_tech, factionId))
+			continue;
+
+		if (defenseValue > bestArmorDefenseValue)
+		{
+			bestArmorId = unit.armor_id;
+			bestArmorDefenseValue = defenseValue;
+		}
+
+	}
+
+	for (int unitId = MaxProtoFactionNum * factionId; unitId < MaxProtoFactionNum * (factionId + 1); ++unitId)
+	{
+		UNIT &unit = Units[unitId];
+		int defenseValue = unit.defense_value();
+
+		// active
+		if (!unit.is_active())
+			continue;
+
+		// prototyped
+		if (!unit.is_prototyped())
+			continue;
+
+		if (defenseValue > bestArmorDefenseValue)
+		{
+			bestArmorId = unit.armor_id;
+			bestArmorDefenseValue = defenseValue;
+		}
+
+	}
+
+	return static_cast<VehArmor>(bestArmorId);
 
 }
 
@@ -7603,13 +7670,88 @@ bool isBaseCanBuildShip(int baseId)
 
 	// no tech
 
-	if (!has_tech(getChassis(CHS_FOIL)->preq_tech, factionId))
+	if (!has_tech(getChassis(CHS_FOIL)->preq_tech, factionId) && !has_tech(getChassis(CHS_CRUISER)->preq_tech, factionId))
 		return false;
 
 	// can build if accesses water
 
 	return isBaseAccessesWater(baseId);
 
+}
+
+bool isBaseCanBuildUnit(int baseId, int unitId)
+{
+	assert(baseId >= 0 && baseId < MaxBaseNum);
+	assert(unitId >= 0 && unitId < MaxProtoNum);
+
+	BASE &base = Bases[baseId];
+	UNIT &unit = Units[unitId];
+
+	if (unitId < MaxProtoFactionNum)
+	{
+		// predefined
+
+		// require technology
+		if (unitId < MaxProtoFactionNum && !has_tech(unit.preq_tech, base.faction_id))
+			return false;
+
+	}
+	else
+	{
+		// custom
+
+		// should be faction unit
+		if (unitId / MaxProtoFactionNum != base.faction_id)
+			return false;
+
+		// should be active
+		if (!unit.is_active())
+			return false;
+
+		// should be not obsolete
+		if (unit.is_obsolete(base.faction_id))
+			return false;
+
+	}
+
+	// no sea unit without access to water
+	if (unit.triad() == TRIAD_SEA && !isBaseAccessesWater(baseId))
+		return false;
+
+	// all checks passed
+
+	return true;
+
+}
+
+// TODO complete this function
+bool isBaseCanBuildFacility(int baseId, FacilityId facilityId)
+{
+	assert(baseId >= 0 && baseId < MaxBaseNum);
+	assert((facilityId >= Fac_ID_First && facilityId <= Fac_All_ID_Last) || (facilityId >= SP_ID_First && facilityId <= SP_ID_Last));
+
+	BASE &base = Bases[baseId];
+	CFacility &facility = Facility[facilityId];
+
+	// require technology
+	if (!has_tech(facility.preq_tech, base.faction_id))
+		return false;
+
+	// generic game restrictions
+	if (!mod_facility_avail(facilityId, base.faction_id, baseId, 0))
+		return false;
+
+	// no sea facility without access to water
+	if ((facilityId == FAC_NAVAL_YARD || facilityId == FAC_AQUAFARM || facilityId == FAC_SUBSEA_TRUNKLINE || facilityId == FAC_THERMOCLINE_TRANSDUCER) && !isBaseAccessesWater(baseId))
+		return false;
+
+	return true;
+
+}
+
+bool isBaseCanBuildItem(int baseId, int itemId)
+{
+	return itemId >= 0 ? isBaseCanBuildUnit(baseId, itemId) : isBaseCanBuildFacility(baseId, static_cast<FacilityId>(-itemId));
 }
 
 bool isUnitZocRestricted(int unitId)
@@ -7842,53 +7984,33 @@ int getBaseNextUnitSupport(int baseId, int unitId)
 
 }
 
-int getBaseMoraleModifier(int baseId, int extendedTriad)
+int getBaseMoraleModifier(int baseId, ExtendedTriad extendedTriad)
 {
 	BASE *base = getBase(baseId);
 
 	int moraleModifier = 0;
 
-	if (extendedTriad == 3)
+	switch (extendedTriad)
 	{
-		if (isFactionHasProject(base->faction_id, FAC_XENOEMPATHY_DOME))
-		{
-			moraleModifier++;
-		}
-
-		if (isFactionHasProject(base->faction_id, FAC_PHOLUS_MUTAGEN))
-		{
-			moraleModifier++;
-		}
-
-		if (isFactionHasProject(base->faction_id, FAC_VOICE_OF_PLANET))
-		{
-			moraleModifier++;
-		}
-
-		if (isBaseHasFacility(baseId, FAC_CENTAURI_PRESERVE))
-		{
-			moraleModifier++;
-		}
-
-		if (isBaseHasFacility(baseId, FAC_TEMPLE_OF_PLANET))
-		{
-			moraleModifier++;
-		}
-
-		if (isBaseHasFacility(baseId, FAC_BIOLOGY_LAB))
-		{
-			moraleModifier++;
-		}
-
-		if (isBaseHasFacility(baseId, FAC_BIOENHANCEMENT_CENTER))
-		{
-			moraleModifier++;
-		}
-
-	}
-	else
-	{
+	case EXTENDED_TRIAD_LAND:
+	case EXTENDED_TRIAD_SEA:
+	case EXTENDED_TRIAD_AIR:
 		moraleModifier = morale_mod(baseId, base->faction_id, extendedTriad);
+		break;
+	case EXTENDED_TRIAD_PSI:
+		moraleModifier = breed_mod(baseId, base->faction_id);
+		break;
+	case EXTENDED_TRIAD_PROBE:
+//		morale_val = morale_mod(*CurrentBaseID, faction_id, veh->triad());
+//		if (veh->weapon_type() == WPN_PROBE_TEAM) {
+//			if (has_fac_built(FAC_COVERT_OPS_CENTER, *CurrentBaseID)) {
+//				morale_val += 2;
+//			}
+//			if (has_project(FAC_NETHACK_TERMINUS, faction_id)) {
+//				++morale_val;
+//			}
+//		}
+		break;
 	}
 
 	return moraleModifier;
@@ -8135,9 +8257,9 @@ int getClosestNotOwnedOrSeaTileRange(int factionId, MAP *tile, int minRadius, in
 
 }
 
-AttackTriad getAttackTriad(int attackUnitId, int defendUnitId)
+ExtendedTriad getAttackTriad(int attackUnitId, int defendUnitId)
 {
-	return isPsiCombat(attackUnitId, defendUnitId) ? ATTACK_TRIAD_PSI : static_cast<AttackTriad>(Units[attackUnitId].triad());
+	return isPsiCombat(attackUnitId, defendUnitId) ? EXTENDED_TRIAD_PSI : static_cast<ExtendedTriad>(Units[attackUnitId].triad());
 }
 
 bool isUnitObsolete(int unitId, int factionId)

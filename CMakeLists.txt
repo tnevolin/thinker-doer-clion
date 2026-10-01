@@ -17,7 +17,7 @@ endif()
 project(thinker)
 
 # Mod version — update this for each release
-set(WTP_VERSION "431")
+set(WTP_VERSION "433")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -82,7 +82,6 @@ set(THINKER_SOURCES
     src/lib/FastNoiseLite.h
     src/lib/ini.c
     src/lib/ini.h
-    src/lib/tree.hh
     src/main.cpp
     src/main.h
     src/multikey_map.h
@@ -156,6 +155,7 @@ set(THINKER_SOURCES
     src/wtp_mod.h
     src/wtp_patch.cpp
     src/wtp_patch.h
+    src/wtp_robin_hood.h
     src/wtp_terranx.cpp
     src/wtp_terranx.h
     src/wtp_terranx_enum.h
@@ -189,7 +189,7 @@ set(LAUNCH_SOURCES
 )
 
 add_executable(thinkerlaunch ${LAUNCH_SOURCES})
-set_target_properties(thinkerlaunch PROPERTIES OUTPUT_NAME "thinker")
+set_target_properties(thinkerlaunch PROPERTIES OUTPUT_NAME "wtp")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	target_compile_definitions(thinkerlaunch PRIVATE BUILD_DEBUG)
@@ -221,18 +221,15 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
 	set(RELEASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/releases/TheWillToPower")
 	add_custom_command(TARGET thinker POST_BUILD
+		# Start from an empty directory so files dropped from the release are not packaged
+		COMMAND ${CMAKE_COMMAND} -E remove_directory ${RELEASE_DIR}
+		COMMAND ${CMAKE_COMMAND} -E make_directory ${RELEASE_DIR}
 		# Documentation
 		COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/README.md ${RELEASE_DIR}/
 		COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/changelog.md ${RELEASE_DIR}/
 		COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/installation.md ${RELEASE_DIR}/
-		COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/strategy.md ${RELEASE_DIR}/
+		COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/License.md ${RELEASE_DIR}/
 		# Core binaries and config
-#		COMMAND ${CMAKE_COMMAND} -E make_directory ${RELEASE_DIR}/core
-#		COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/resources/exe/terranx_mod.exe ${RELEASE_DIR}/core/
-#		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:thinkerlaunch> ${RELEASE_DIR}/core/
-#		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:thinker> ${RELEASE_DIR}/core/
-#		COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/resources/configuration ${RELEASE_DIR}/core/
-		COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/resources/exe/terranx_mod.exe ${RELEASE_DIR}/
 		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:thinkerlaunch> ${RELEASE_DIR}/
 		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:thinker> ${RELEASE_DIR}/
 		COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/resources/configuration ${RELEASE_DIR}/

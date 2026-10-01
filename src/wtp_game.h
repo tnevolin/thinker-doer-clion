@@ -3,8 +3,9 @@
 #include <vector>
 #include <set>
 #include <map>
-#include "robin_hood.h"
-#include "lib/tree.hh"
+#include <deque>
+#include <string>
+#include "wtp_robin_hood.h"
 
 #include "main.h"
 
@@ -76,10 +77,11 @@ struct Profile
 	void stop();
 
 };
-struct ProfileName
+struct ProfileNode
 {
 	std::string name;
 	Profile profile;
+	std::vector<int> childIndexes;
 };
 class Profiling
 {
@@ -87,8 +89,11 @@ private:
 
 	static constexpr int NAME_LENGTH = 120;
 
-	static tree<ProfileName> profiles;
+	// deque keeps Profile pointers valid when nodes are appended
+	static std::deque<ProfileNode> profiles;
+	static std::vector<int> topIndexes;
 
+	static std::vector<std::pair<int, int>> getOrderedNodes();
 	static Profile *getProfile(std::string name);
 	static Profile *addTopProfile(std::string name);
 	static Profile *addChildProfile(std::string name, std::string parentName);
@@ -242,19 +247,19 @@ int const MAX_RANGE = 40;
 int const MAX_REACHABLE_LOCATION_RANGE = 40;
 int const MAX_REACHABLE_LOCATION_COUNT = (1 + 2 * MAX_REACHABLE_LOCATION_RANGE) * (1 + 2 * MAX_REACHABLE_LOCATION_RANGE);
 
-/*
-Applies terrain/base/bunker defensive bonuses against attack triad.
-*/
-enum AttackTriad
+// extended triad
+// - terrain/base/bunker defensive bonuses
+// - base new unit morale
+enum ExtendedTriad
 {
-	ATTACK_TRIAD_LAND	= 0,
-	ATTACK_TRIAD_SEA	= 1,
-	ATTACK_TRIAD_AIR	= 2,
-	ATTACK_TRIAD_PSI	= 3,
-	ATTACK_TRIAD_PROBE	= 4,
+	EXTENDED_TRIAD_LAND		= 0,
+	EXTENDED_TRIAD_SEA		= 1,
+	EXTENDED_TRIAD_AIR		= 2,
+	EXTENDED_TRIAD_PSI		= 3,
+	EXTENDED_TRIAD_PROBE	= 4,
 };
-constexpr size_t ATTACK_TRIAD_COUNT = ATTACK_TRIAD_PSI + 1;
-constexpr std::array<AttackTriad, ATTACK_TRIAD_COUNT> ATTACK_TRIADS = {ATTACK_TRIAD_LAND, ATTACK_TRIAD_SEA, ATTACK_TRIAD_AIR, ATTACK_TRIAD_PSI, };
+constexpr size_t ATTACK_TRIAD_COUNT = EXTENDED_TRIAD_PSI + 1;
+constexpr std::array<ExtendedTriad, ATTACK_TRIAD_COUNT> ATTACK_TRIADS = {EXTENDED_TRIAD_LAND, EXTENDED_TRIAD_SEA, EXTENDED_TRIAD_AIR, EXTENDED_TRIAD_PSI, };
 
 /// alien units
 const std::vector<int> ALIEN_UNITS
@@ -996,7 +1001,7 @@ Location getDiagonalCoordinates(Location rectangular);
 std::vector<MapAngle> const getAdjacentMapAngles(MAP *tile);
 std::array<int, ANGLE_COUNT> getAdjacentTileIndexes(int tileIndex);
 std::array<int, RANGE2_TILE_COUNT> getRange2TileIndexes(int tileIndex);
-std::vector<MAP *> const getAdjacentTiles(MAP const* tile);
+StaticVector<MAP *, 8> getAdjacentTiles(MAP const *tile);
 std::vector<MAP *> getSideTiles(MAP const* tile);
 
 std::vector<MAP *> getSquareOffsetTiles(MAP const* center, int beginIndex, int endIndex);
@@ -1120,10 +1125,8 @@ double evaluateUnitConDefenseEffectiveness(int id);
 double evaluateUnitConOffenseEffectiveness(int id);
 double evaluateUnitPsiDefenseEffectiveness(int id);
 double evaluateUnitPsiOffenseEffectiveness(int id);
-double getBaseDefenseMultiplier(int baseId, AttackTriad attackTriad);
+double getBaseDefenseMultiplier(int baseId, ExtendedTriad attackTriad);
 double getBaseDefenseMultiplier(int baseId, int attackerUnitId, int defenderUnitId);
-int estimateBaseItemProductionTime(int baseId, int item);
-int estimateBaseProductionTurnsToComplete(int id);
 MAP *getBaseWorkerTile(int baseId, int workerNumber);
 std::vector<MAP *> getBaseWorkableTiles(int baseId, bool startWithCenter);
 std::vector<MAP *> getBaseWorkedTiles(int baseId);
@@ -1213,6 +1216,7 @@ VehWeapon getFactionBestWeapon(int factionId);
 VehWeapon getFactionBestWeapon(int factionId, int limit);
 VehArmor getFactionBestArmor(int factionId);
 VehArmor getFactionBestArmor(int factionId, int limit);
+VehArmor getFactionBestPrototypedArmor(int factionId);
 int getBaseIdAt(int x, int y);
 bool isNativeUnit(int unitId);
 bool isNativeVehicle(int vehicleId);
@@ -1444,6 +1448,9 @@ int getVehicleSpeed(int vehicleId);
 bool isTileAccessesWater(MAP *tile);
 bool isBaseAccessesWater(int baseId);
 bool isBaseCanBuildShip(int baseId);
+bool isBaseCanBuildUnit(int baseId, int unitId);
+bool isBaseCanBuildFacility(int baseId, FacilityId facilityId);
+bool isBaseCanBuildItem(int baseId, int itemId);
 bool isUnitZocRestricted(int unitId);
 bool isVehicleZocRestricted(int vehicleId);
 std::vector<int> getBaseFacilities(int baseId);
@@ -1454,7 +1461,7 @@ bool isLandRegion(MAP *tile, bool includePolar = false);
 bool isSeaRegion(MAP *tile, bool includePolar = false);
 bool isPolarRegion(MAP *tile);
 int getBaseNextUnitSupport(int baseId, int unitId);
-int getBaseMoraleModifier(int baseId, int extendedTriad);
+int getBaseMoraleModifier(int baseId, ExtendedTriad extendedTriad);
 bool isFactionCanBuildAirOffense(int factionId);
 bool isFactionCanBuildAirDefense(int factionId);
 bool isFactionCanBuildMelee(int factionId, int type, int triad);
@@ -1463,7 +1470,7 @@ bool isOpenTerrain(MAP *tile);
 std::set<int> getBaseSeaRegions(int baseId);
 int getClosestNotOwnedTileRange(int factionId, MAP *tile, int minRadius, int maxRadius);
 int getClosestNotOwnedOrSeaTileRange(int factionId, MAP *tile, int minRadius, int maxRadius);
-AttackTriad getAttackTriad(int attackUnitId, int defendUnitId);
+ExtendedTriad getAttackTriad(int attackUnitId, int defendUnitId);
 bool isUnitObsolete(int unitId, int factionId);
 bool isUnitAvailable(int unitId, int factionId);
 bool isUnitPsiOffense(int unitId);

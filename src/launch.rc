@@ -26,14 +26,14 @@ BEGIN
     BEGIN
       VALUE "Comments", ""
       VALUE "CompanyName", ""
-      VALUE "FileDescription", "Thinker Mod Launcher"
+      VALUE "FileDescription", "The Will to Power mod Launcher"
       VALUE "FileVersion", "1, 0, 0, 0"
       VALUE "InternalName", ""
       VALUE "LegalCopyright", ""
       VALUE "LegalTrademarks", ""
       VALUE "OriginalFilename", ""
       VALUE "PrivateBuild", ""
-      VALUE "ProductName", "Thinker Mod"
+      VALUE "ProductName", "The Will to Power mod"
       VALUE "ProductVersion", "1, 0, 0, 0"
       VALUE "SpecialBuild", ""
     END

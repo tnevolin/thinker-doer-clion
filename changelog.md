@@ -1,3 +1,17 @@
+# Version 433
+
+* License matched to Thinker.
+* Simplified release directory structure to match Thinker one. Now extract everything to game directory.
+* Updated all UI components to mention WTP instead of Thinker.
+* Updated text files to mention WTP instead of Thinker.
+* Created a deducated launcher: wtp.exe. Similar way to the Thinker.
+
+# Version 431
+
+* AI tuning.
+  * AI builds scouts for pods even when more advanced units are available.
+  * AI keeps building free supported units without restriction.
+
 # Version 431
 
 * Some more post-merge fixes.
@@ -437,7 +451,7 @@ Post merge fixes.
 
 # Version 353
 
-* Updated facility costs: https://github.com/tnevolin/thinker-doer/blob/master/README.md#facilities.
+* Updated facility costs: https://github.com/tnevolin/thinker-doer-clion/blob/master/README.md#facilities.
 * Thermocline Transducer is unlocked by Advanced Subatomic Theory.
 * Subsea Trunkline is unlocked by Fusion Power.
 * Aquafarm is unlocked by Centauri Meditation.
@@ -550,7 +564,7 @@ Post merge fixes.
 
 # Version 337
 
-* SE models modifications: https://github.com/tnevolin/thinker-doer/blob/master/articles/social-engineering-mod.md#se-models-analysis-and-proposed-changes
+* SE models modifications: https://github.com/tnevolin/thinker-doer-clion/blob/master/articles/social-engineering-mod.md#se-models-analysis-and-proposed-changes
 * Disabled base popup do not play sound. Resolves confusion when popup is associated with wrong sound.
 * Replaced Talend SE icon to star.
 * Supply Transport is unlocked by Retroviral Engineering, costs 12, requires support.
@@ -559,7 +573,7 @@ Post merge fixes.
 
 # Version 336
 
-* SE models modifications: https://github.com/tnevolin/thinker-doer/blob/master/articles/social-engineering-mod.md#se-models-analysis-and-proposed-changes
+* SE models modifications: https://github.com/tnevolin/thinker-doer-clion/blob/master/articles/social-engineering-mod.md#se-models-analysis-and-proposed-changes
 * Datalinks for facilities are updated for previous changes.
 
 # Version 335
@@ -590,7 +604,7 @@ Post merge fixes.
 
 # Version 331
 
-* Alternative inefficiency formula: https://github.com/tnevolin/thinker-doer/blob/master/README.md#inefficiency
+* Alternative inefficiency formula: https://github.com/tnevolin/thinker-doer-clion/blob/master/README.md#inefficiency
 * Reduced base economy to psych conversion ratio to 2:1 for the purpose of maintaining specialists in superdrone bases.
 * AI/governor does not allow base starvation even at the cost of drone riot.
 * Drone riot does not destroy facilities.
@@ -660,16 +674,16 @@ Temple of Planet	180/4, +25% economy +25% psych
   * Specialists does not reduce number of talents/drones at psych computation stages and they are not shown at stage computation results.
   * Specialists are added to population after psych computation taking place of talents and workers.
 * Additionally, all drone removal effects are now exact and do not ignore superdrones. Superdrones are twice as tough to pacify. This is to streamline all computations. Otherwise, they can be messed up at times.
-* Combined all psych related changes: https://github.com/tnevolin/thinker-doer/blob/master/README.md#base-psych
+* Combined all psych related changes: https://github.com/tnevolin/thinker-doer-clion/blob/master/README.md#base-psych
 
 # Version 319
 
-* QoL: Added psych effect indicator next to total base psych amount. https://github.com/tnevolin/thinker-doer/blob/master/README.md#qol-addition
+* QoL: Added psych effect indicator next to total base psych amount. https://github.com/tnevolin/thinker-doer-clion/blob/master/README.md#qol-addition
 * Reduced base psych cost to 4 to better match average vanilla experience.
 
 # Version 318
 
-* Base psych improved fine tuning. https://github.com/tnevolin/thinker-doer/blob/master/README.md#base-psych-improved
+* Base psych improved fine tuning. https://github.com/tnevolin/thinker-doer-clion/blob/master/README.md#base-psych-improved
   * Psych is applied after other effects.
   * Psych generally improves happiness all over the base removing drones/superdrones first and then generating talents when no more drones left.
   * Psych effect is **NOT** limited. This is different from vanilla 2 x population limit.
@@ -682,7 +696,7 @@ Temple of Planet	180/4, +25% economy +25% psych
 
 # Version 317
 
-* Base psych simplified: https://github.com/tnevolin/thinker-doer/blob/master/README.md#base-psych-simplified.
+* Base psych simplified: https://github.com/tnevolin/thinker-doer-clion/blob/master/README.md#base-psych-simplified.
 
 # Version 316
 
@@ -693,7 +707,7 @@ Temple of Planet	180/4, +25% economy +25% psych
 
 # Version 315
 
-* Removed RISK explanation from probe menu. They look ugly. Interested players can learn corresponding risks from here: https://github.com/tnevolin/thinker-doer/blob/master/game-mechanics.md#probe-actions-success-probability.
+* Removed RISK explanation from probe menu. They look ugly. Interested players can learn corresponding risks from here: https://github.com/tnevolin/thinker-doer-clion/blob/master/articles/game-mechanics.md#probe-actions-success-probability.
 * Reverted air-to-air combat to Thinker computation. Interceptor gets AS bonus.
 * Reverted conventional artillery duel to using weapon only.
 * Base screen nutrient box displays "stagnant" and "pop boom" label instead of number of grow turns for corresponding events.
@@ -704,7 +718,7 @@ Temple of Planet	180/4, +25% economy +25% psych
 * Removed flat extra prototype cost.
 * Removed RISK 1 for stealing tech.
 * Fixed population limit facilities GROWTH bonus.
-* Simplified base nutrient box title and added explanation in readme: https://github.com/tnevolin/thinker-doer/blob/master/README.md#base-nutrient-box-information.
+* Simplified base nutrient box title and added explanation in readme: https://github.com/tnevolin/thinker-doer-clion/blob/master/README.md#base-nutrient-box-information.
 
 
 # Version 313
@@ -972,7 +986,7 @@ Super update mainly targeting AI but includes some other changes as well.
 # Version 275
 
 * Clean minerals are reverted to vanilla default: 16.
-* Reworked eco damage industry effect reduction formula (https://github.com/tnevolin/thinker-doer#alternative-eco-damage-industry-effect-reduction-formula).
+* Reworked eco damage industry effect reduction formula (https://github.com/tnevolin/thinker-doer-clion#alternative-eco-damage-industry-effect-reduction-formula).
 
 # Version 274
 
@@ -1002,7 +1016,7 @@ Super update mainly targeting AI but includes some other changes as well.
 
 # Version 270
 
-* Removed "mobile in open" bonus. Introduced "faster unit" bonus that consistently applies to any faster unit attacking slower one on any terrain. Experimental. https://github.com/tnevolin/thinker-doer/blob/master/README.md#mobilie-attack-bonus
+* Removed "mobile in open" bonus. Introduced "faster unit" bonus that consistently applies to any faster unit attacking slower one on any terrain. Experimental. https://github.com/tnevolin/thinker-doer-clion/blob/master/README.md#mobilie-attack-bonus
 * Fine grained terrain defensive bonuses. Rocks keep their hefty 50% bonus due to its rarity and impossibility to create with terraforming. Other more often and creatable rough terrains have 25%.
 * Allowed disengagement from stack. Never understood that vanilla restriction. Not that victor is going to step on the battle tile anyway.
 
@@ -1300,13 +1314,13 @@ People say they are very strong with their +2 PLANET and double police power for
 
 # Version 237
 
-* [Alternative subversion and mind control formulas and mechanics](https://github.com/tnevolin/thinker-doer#alternative-mind-control-and-subversion-mechanics).
+* [Alternative subversion and mind control formulas and mechanics](https://github.com/tnevolin/thinker-doer-clion#alternative-mind-control-and-subversion-mechanics).
 	* Made happiness effect exponential to cover more dynamic range. All talents/drones increase/reduce cost four times.
 	* Added help description for subversion and mind control.
 
 # Version 236
 
-* [Alternative subversion and mind control formulas and mechanics](https://github.com/tnevolin/thinker-doer#alternative-mind-control-and-subversion-mechanics).
+* [Alternative subversion and mind control formulas and mechanics](https://github.com/tnevolin/thinker-doer-clion#alternative-mind-control-and-subversion-mechanics).
 	* Can subvert unit from stack.
 	* Extended effect of Polymorphic Encryption.
 	* Base MC cost is based on its value and citizen happiness.
@@ -1422,7 +1436,7 @@ AI military production is not very well tested yet but it is endless iterative p
 
 # Version 216
 
-* Fixed interceptor scrambling. https://github.com/tnevolin/thinker-doer#scrambling-interceptor-fix
+* Fixed interceptor scrambling. https://github.com/tnevolin/thinker-doer-clion#scrambling-interceptor-fix
 
 # Version 215
 
@@ -1798,7 +1812,7 @@ Cancelled.
 
 *Original functionality is scattered across the code and is heavily hardcoded. This modification may make game crash or display incorrect results.*
 
-* [Flat extra prototype cost](https://github.com/tnevolin/thinker-doer#flat-extra-prototype-cost) formula is enabled by flat_extra_prototype_cost parameter in thinker.ini.
+* [Flat extra prototype cost](https://github.com/tnevolin/thinker-doer-clion#flat-extra-prototype-cost) formula is enabled by flat_extra_prototype_cost parameter in thinker.ini.
 
 # Version 148
 
@@ -2014,7 +2028,7 @@ http://alphacentauri2.info/wiki/Social_Engineering_Mod
 
 # Version 113
 
-* Simplification in PTS functionality: https://github.com/tnevolin/thinker-doer#the-planetary-transit-system.
+* Simplification in PTS functionality: https://github.com/tnevolin/thinker-doer-clion#the-planetary-transit-system.
 
 # Version 112
 
@@ -2037,7 +2051,7 @@ Should not be too dificult for sea bases to pay it.
 # Version 108
 
 * Alternative inefficiency formula.\
-https://github.com/tnevolin/thinker-doer#inefficiency
+https://github.com/tnevolin/thinker-doer-clion#inefficiency
 
 # Version 107
 

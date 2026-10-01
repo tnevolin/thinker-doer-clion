@@ -479,7 +479,10 @@ struct UNIT {
     }
     
     // [WTP]
-    bool is_air() {
+	bool is_obsolete(int faction_id) {
+    	return (obsolete_factions & (0x1 << faction_id)) != 0;
+    }
+	bool is_air() {
         return Chassis[chassis_id].triad == TRIAD_AIR;
     }
     bool is_needlejet() {

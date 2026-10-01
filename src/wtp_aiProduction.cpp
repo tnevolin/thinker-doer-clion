@@ -2,7 +2,7 @@
 
 #include "wtp_aiProduction.h"
 
-#include <math.h>
+#include <cmath>
 #include <set>
 #include <map>
 #include <numeric>
@@ -30,9 +30,10 @@ int bestFormerChassisIds[3];
 int bestFormerSpeeds[3];
 robin_hood::unordered_flat_map<int, BaseProductionInfo> baseProductionInfos;
 robin_hood::unordered_flat_map<int, double> weakestEnemyBaseProtection;
+robin_hood::unordered_flat_set<int> warRegions;
 
-double const LAND_ARTILLERY_SATURATION_RATIO = 0.20;
-double const INFANTRY_DEFENSIVE_SATURATION_RATIO = 0.75;
+constexpr double LAND_ARTILLERY_SATURATION_RATIO = 0.20;
+constexpr double INFANTRY_DEFENSIVE_SATURATION_RATIO = 0.75;
 
 double techStealGain;
 
@@ -114,7 +115,8 @@ void productionStrategy()
 	evaluateGlobalColonyDemand();
 	evaluateNavalInvasionTransportDemand();
 	evaluateGlobalSeaTransportDemand();
-	
+	evaluateGlobalSeaTransportDemand();
+
 	// set production
 	
 	initializeProductionDemands();
@@ -445,6 +447,42 @@ void evaluateGlobalSeaTransportDemand()
 	
 }
 
+void populateWarRegions()
+{
+	Profiling::start("populateWarRegions", "productionStrategy");
+
+	debug("populateWarRegions - %s\n", getMFaction(aiFactionId)->noun_faction);
+
+	warRegions.clear();
+
+	// iterate bases
+	for (int baseId = 0; baseId < *BaseCount; ++baseId)
+	{
+		BASE &base = Bases[baseId];
+		MAP *baseTile = getBaseMapTile(baseId);
+		TileInfo &baseTileInfo = aiData.getTileInfo(baseTile);
+
+		// vendetta
+		if (!isHostile(aiFactionId, base.faction_id))
+			continue;
+
+		if (baseTile->is_land())
+		{
+			// land region
+			warRegions.insert(baseTile->region);
+		}
+		else
+		{
+			// sea regions
+			warRegions.insert(baseTileInfo.adjacentSeaRegions.begin(), baseTileInfo.adjacentSeaRegions.end());
+		}
+
+	}
+
+	Profiling::stop("populateWarRegions");
+
+}
+
 void initializeProductionDemands()
 {
 	Profiling::start("initializeProductionDemands", "productionStrategy");
@@ -506,6 +544,7 @@ default, with two carve-outs for weapon types no evaluator actually prices:
 - probes are only evaluated in their defensive (infantry chassis) role so far;
   offensive probes (any other chassis) are not managed yet
 */
+// TODO add supply transport
 bool isManagedUnit(int unitId)
 {
 	// colony / former / transport ship - identified by their module weapon
@@ -517,15 +556,12 @@ bool isManagedUnit(int unitId)
 		WPN_COLONY_MODULE,
 		WPN_TERRAFORMING_UNIT,
 		WPN_TROOP_TRANSPORT,
+//		WPN_SUPPLY_TRANSPORT,
+		WPN_PROBE_TEAM,
 	}
 	;
 
 	if (MANAGED_UNIT_TYPES.count(Units[unitId].weapon_id) != 0)
-		return true;
-
-	// probe - only the defensive (infantry) role is evaluated so far
-
-	if (isProbeUnit(unitId) && isInfantryUnit(unitId))
 		return true;
 
 	// superweapon payloads - not yet evaluated
@@ -644,17 +680,37 @@ void applyBaseProductions()
 
 		int currentChoice = base->queue_items[0];
 		int choice = currentChoice;
-
 		debug("(%s)\n", prod_name(choice));
+
+    	// determine if currentChoice should be WTP overrided
+
+    	bool override = false;
+
+    	// discard unavailable item
+   		if (!isBaseCanBuildItem(baseId, currentChoice))
+   		{
+   			override = true;
+    	}
+
+    	// discard current choice if it takes long production time
+    	int currentChoiceBuildTime = getBaseItemBuildTime(baseId, currentChoice, false);
+    	if (currentChoiceBuildTime > aiData.developmentScale)
+    	{
+    		override = true;
+    	}
 
 		// determine whether WTP manages this category of choice
 		// managed: WTP's own priority list decides, among WTP's own alternatives only
 		// not managed: defer unconditionally to the pre-WTP choice - no comparison, since WTP's
 		// economical priorities and vanilla's/Thinker's internal scoring are not on a comparable scale
 
-		bool managed = isManaged(choice);
+		// ReSharper disable once CppTooWideScopeInitStatement
+		if (isManaged(choice))
+		{
+			override = true;
+		}
 
-		if (managed)
+		if (override)
 		{
 			if constexpr (DEBUG)
 			{
@@ -682,7 +738,7 @@ void applyBaseProductions()
 
 		if (choice != currentChoice)
 		{
-			base_prod_change(baseId, choice);
+			mod_base_change(baseId, choice);
 		}
 
 		debug("\n");
@@ -1834,6 +1890,132 @@ void evaluateDefensiveProbeUnits()
 	
 }
 
+/*
+Simple proportion to current combat units.
+*/
+void evaluateOffensiveProbeUnits()
+{
+	Profiling::start("evaluateOffensiveProbeUnits", "suggestBaseProduction");
+
+	debug("evaluateOffensiveProbeUnits\n");
+
+	ProductionDemand &productionDemand = *currentBaseProductionDemand;
+	int baseId = productionDemand.baseId;
+	MAP *baseTile = getBaseMapTile(baseId);
+
+	// base new probe morale multiplier
+	double newProbeMoraleMultiplier = has_facility(FAC_COVERT_OPS_CENTER, baseId) ? 1.25 : 1.00;
+
+	// scan combat units for protection
+	for (int unitId : aiFactionInfo->buildableUnitIds)
+	{
+		UNIT *unit = getUnit(unitId);
+
+		// defensive probe
+
+		if (!(isInfantryUnit(unitId) && isProbeUnit(unitId)))
+			continue;
+
+		// exclude those base cannot produce
+
+		if (!isBaseCanBuildUnit(baseId, unitId))
+			continue;
+
+		// seek for best target base gain
+
+		double bestGain = 0.0;
+
+		for (int targetBaseId : aiData.baseIds)
+		{
+			MAP *targetBaseTile = getBaseMapTile(targetBaseId);
+			BaseInfo &targetBaseInfo = aiData.getBaseInfo(targetBaseId);
+			BaseProbeData &targetBaseProbeData = targetBaseInfo.probeData;
+
+			if (targetBaseProbeData.isSatisfied(false))
+				continue;
+
+			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, targetBaseTile);
+			double travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, travelTime);
+
+			// probe
+
+			double combatEffect = newProbeMoraleMultiplier;
+			double winningProbability = getWinningProbability(combatEffect);
+			double unitProbeGain = techStealGain * winningProbability;
+			double probeGain = unitProbeGain * travelTimeCoefficient;
+
+			double upkeep = getResourceScore(-getUnitSupport(unitId), 0.0);
+			double upkeepGain = getGainIncome(upkeep);
+
+			// combined
+
+			double gain =
+				+ probeGain
+				+ upkeepGain
+			;
+
+			bestGain = std::max(bestGain, gain);
+
+			debug
+			(
+				"\t\t%-32s"
+				" %-25s"
+				" travelTime=%7.2f"
+				" travelTimeCoefficient=%5.2f"
+				" combatEffect=%5.2f"
+				" winningProbability=%5.2f"
+				" unitProbeGain=%5.2f"
+				" probeGain=%5.2f"
+				" upkeepGain=%5.2f"
+				" gain=%7.2f"
+				"\n"
+				, unit->name
+				, Bases[targetBaseId].name
+				, travelTime
+				, travelTimeCoefficient
+				, combatEffect
+				, winningProbability
+				, unitProbeGain
+				, probeGain
+				, upkeepGain
+				, gain
+			);
+
+		}
+
+		// priority
+
+		double rawPriority = getItemPriority(unitId, bestGain);
+		double priority =
+			conf.ai_production_base_probe_priority
+			* rawPriority
+		;
+
+		// add production
+
+		productionDemand.addItemPriority(unitId, priority);
+
+		debug
+		(
+			"\t%-32s"
+			" priority=%5.2f   |"
+			" ai_production_base_probe_priority=%5.2f"
+			" bestGain=%5.2f"
+			" rawPriority=%5.2f"
+			"\n"
+			, Units[unitId].name
+			, priority
+			, conf.ai_production_base_probe_priority
+			, bestGain
+			, rawPriority
+		);
+
+	}
+
+	Profiling::stop("evaluateOffensiveProbeUnits");
+
+}
+
 void evaluateExpansionUnits()
 {
 	Profiling::start("evaluateExpansionUnits", "suggestBaseProduction");
@@ -2528,9 +2710,7 @@ void evaluatePodPoppingUnits()
 		UNIT *unit = getUnit(unitId);
 		int triad = unit->triad();
 		int surface = triad;
-		int offenseValue = unit->offense_value();
-		int defenseValue = unit->defense_value();
-		
+
 		// producible
 
 		if (!isBaseCanBuildUnit(baseId, unitId))
@@ -2557,11 +2737,6 @@ void evaluatePodPoppingUnits()
 		if (unit->speed() < aiFactionInfo->fastestTriadChassisIds.at(triad))
 			continue;
 		
-		// best weapon and armor or psi
-		
-		if (!((offenseValue < 0 || offenseValue >= aiFactionInfo->maxConOffenseValue) && (defenseValue < 0 || defenseValue >= std::min(aiFactionInfo->maxConOffenseValue, aiFactionInfo->maxConDefenseValue))))
-			continue;
-		
 		// pod data
 		
 		SurfacePodData &surfacePodData = surfacePodDatas.at(triad);
@@ -2573,7 +2748,7 @@ void evaluatePodPoppingUnits()
 		
 		// there are insufficient number of scouts in the area
 
-		if (surfacePodData.scoutCount > surfacePodData.podCount / 3)
+		if (surfacePodData.scoutCount > surfacePodData.podCount / 2)
 			continue;
 
 		// speed
@@ -3566,63 +3741,9 @@ bool isMilitaryItem(int item)
 }
 
 /*
-Checks if base can build unit.
-*/
-bool isBaseCanBuildUnit(int baseId, int unitId)
-{
-	BASE *base = getBase(baseId);
-	UNIT *unit = getUnit(unitId);
-	
-	MAP *baseTile = getBaseMapTile(baseId);
-	int baseSeaCluster = getBaseSeaCluster(baseTile);
-	
-	// no sea unit without access to water
-	
-	if (baseSeaCluster == -1 && unit->triad() == TRIAD_SEA)
-		return false;
-	
-	// require technology for predefined
-	
-	if (unitId < MaxProtoFactionNum)
- 	return has_tech(unit->preq_tech, base->faction_id);
-	
-	// no restrictions
-	
-	return true;
-	
-}
-
-/*
-Checks if base can build facility.
-*/
-bool isBaseCanBuildFacility(int baseId, FacilityId facilityId)
-{
-	BASE *base = getBase(baseId);
-	CFacility *facility = getFacility(facilityId);
-	
-	MAP *baseTile = getBaseMapTile(baseId);
-	int baseSeaCluster = getBaseSeaCluster(baseTile);
-
-	// generic game restrictions
-
-	if (!mod_facility_avail(facilityId, base->faction_id, baseSeaCluster, 0))
-		return false;
-
-	// no sea facility without access to water
-	
-	if (baseSeaCluster == -1 && (facilityId == FAC_NAVAL_YARD || facilityId == FAC_AQUAFARM || facilityId == FAC_SUBSEA_TRUNKLINE || facilityId == FAC_THERMOCLINE_TRANSDUCER))
-		return false;
-	
-	// require technology and facility should not exist
-	
-	return has_tech(facility->preq_tech, base->faction_id) && !isBaseHasFacility(baseId, facilityId);
-	
-}
-
-/*
 Returns first available but unbuilt facility from list.
 */
-int getFirstAvailableFacility(int baseId, std::vector<FacilityId> facilityIds)
+int getFirstAvailableFacility(int baseId, const std::vector<FacilityId> &facilityIds)
 {
 	for (FacilityId facilityId : facilityIds)
 	{
@@ -3644,34 +3765,26 @@ Calculates unit priority reduction based on existing support.
 */
 double getUnitPriorityCoefficient(int baseId, int unitId)
 {
-	BASE *base = &(Bases[baseId]);
+	constexpr double maxSupportRatio = 0.5;
+	BASE *base = &Bases[baseId];
 	
 	// at max
-	
 	if (*VehCount >= MaxVehNum)
 		return 0.0;
 	
 	// baseNextUnitSupport
-	
 	int nextUnitSupport = getBaseNextUnitSupport(baseId, unitId);
-	
 	if (nextUnitSupport == 0)
 		return 1.0;
 	
-	// reserved mineral surplus
-	
-	int reservedMineralSurplus = isFormerUnit(unitId) ? 1 : 2;
-	
-	if (base->mineral_surplus <= reservedMineralSurplus)
+	// unit intake support ratio
+	int nextUnitTotalSupport = base->mineral_intake_2 - base->mineral_surplus + nextUnitSupport;
+	double nextUnitTotalSupportRatio = static_cast<double>(nextUnitTotalSupport) / static_cast<double>(base->mineral_intake_2);
+
+	if (nextUnitTotalSupportRatio >= maxSupportRatio)
 		return 0.0;
 	
-	// reduce priority quadratic proportional to remained surplus below reserved
-	
-	int maxSurplus = base->mineral_intake_2 - reservedMineralSurplus;
-	int newSurplus = base->mineral_surplus - reservedMineralSurplus - nextUnitSupport;
-	double suprlusRatio = static_cast<double>(newSurplus) / static_cast<double>(maxSurplus);
-	
-	return suprlusRatio * suprlusRatio;
+	return 1.0 - nextUnitTotalSupportRatio / maxSupportRatio;
 	
 }
 

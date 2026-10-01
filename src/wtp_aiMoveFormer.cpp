@@ -1048,6 +1048,8 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 {
 	debug("generateConventionalTerraformingRequests - %s\n", Bases[baseId].name);
 
+	static double const MINERAL_BONUS_PENALTY = getResourceScore(1, 0);
+
 	BaseTerraformingInfo &baseTerraformingInfo = getBaseTerraformingInfo(baseId);
 
 	std::vector<TerraformingOptionScore> baseTerraformingOptionScores;
@@ -1055,6 +1057,7 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 	{
 		TileInfo &tileInfo = aiData.getTileInfo(tile);
 		TileTerraformingInfo &tileTerraformingInfo = getTileTerraformingInfo(tile);
+		bool landMineralBonus = tile->is_land() && getMineralBonus(tile) > 0;
 
 		debug("\t%s\n", getLocationString(tile));
 
@@ -1135,15 +1138,19 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			improvedTileGain = getGainDelay(improvedTileGain, averageTerraformingTime);
 
 			// adjust score to preserve land rocky tiles
-
 			if (tileTerraformingInfo.landRocky && !option->rocky && tileTerraformingInfo.landRockyTileCount < PRESERVED_LAND_ROCKY_TILE_COUNT)
 			{
 				double landRockyPreservationCoefficient = std::min(1.0, static_cast<double>(tileTerraformingInfo.landRockyTileCount) / static_cast<double>(PRESERVED_LAND_ROCKY_TILE_COUNT));
 				improvedTileGain *= landRockyPreservationCoefficient; // NOLINT
 			}
 
-			// penalize improvement destruction
+			// penalize not mine in mineral bonus
+			if (landMineralBonus && option->requiredAction != FORMER_MINE)
+			{
+				improvedTileGain -= MINERAL_BONUS_PENALTY;
+			}
 
+			// penalize improvement destruction
 			uint32_t incompatibleFormerItemBits = 0;
 			for (FormerItem const &actionFormerItem : actions)
 			{
@@ -1537,6 +1544,13 @@ void generateNetworkTerraformingRequest(MAP *tile)
 	}
 
 	insertActionTerraformingRequests(tile, nullptr, actions, gain);
+
+	debug
+	(
+		"\t%5.2f %s\n"
+		, gain
+		, getLocationString(tile)
+	);
 
 }
 
@@ -2654,6 +2668,29 @@ double getNetworkGain(MAP *tile, MAP const &originalTile, MAP const &improvedTil
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, double>> improvedTravelTimes = getCrossBaseTravelTimes(baseIds);
 	*tile = originalTile;
 
+	if (DEBUG)
+	{
+		debug("%s\n", getLocationString(tile));
+		debug("\toriginalTravelTimes:\n");
+		for (auto const &[orgBaseId, dstTravelTimesPair] : originalTravelTimes)
+		{
+			debug("\t\t%-24s\n", Bases[orgBaseId].name);
+			for (auto const &[dstBaseId, travelTime] : dstTravelTimesPair)
+			{
+				debug("\t\t\t-> %5.2f %-24s\n", travelTime, Bases[dstBaseId].name);
+			}
+		}
+		debug("\timprovedTravelTimes:\n");
+		for (auto const &[orgBaseId, dstTravelTimesPair] : improvedTravelTimes)
+		{
+			debug("\t\t%-24s\n", Bases[orgBaseId].name);
+			for (auto const &[dstBaseId, travelTime] : dstTravelTimesPair)
+			{
+				debug("\t\t\t-> %5.2f %-24s\n", travelTime, Bases[dstBaseId].name);
+			}
+		}
+	}
+
 	// find travel time improvement
 
 	double totalTravelTimeImprovement = 0.0;
@@ -2669,9 +2706,9 @@ double getNetworkGain(MAP *tile, MAP const &originalTile, MAP const &improvedTil
 
 			if
 			(
-				originalTravelTimes.find(orgBaseId) != originalTravelTimes.end() && originalTravelTimes.at(orgBaseId).find(dstBaseId) != originalTravelTimes.at(orgBaseId).end()
+				originalTravelTimes.contains(orgBaseId) && originalTravelTimes.at(orgBaseId).contains(dstBaseId)
 				&&
-				improvedTravelTimes.find(orgBaseId) != improvedTravelTimes.end() && improvedTravelTimes.at(orgBaseId).find(dstBaseId) != improvedTravelTimes.at(orgBaseId).end()
+				improvedTravelTimes.contains(orgBaseId) && improvedTravelTimes.at(orgBaseId).contains(dstBaseId)
 			)
 			{
 				double travelTimeImprovement = originalTravelTimes.at(orgBaseId).at(dstBaseId) - improvedTravelTimes.at(orgBaseId).at(dstBaseId);
@@ -2692,7 +2729,7 @@ double getNetworkGain(MAP *tile, MAP const &originalTile, MAP const &improvedTil
 	// compute network gain
 
 	double resourceScore = getResourceScore(conf.ai_terraforming_networkValueIncomeImprovement, 0.0);
-	double improvementIncomeGrowh = resourceScore * totalTravelTimeImprovement / conf.ai_terraforming_networkValueTravelTimeDenominator;
+	double improvementIncomeGrowh = resourceScore * totalTravelTimeImprovement;
 	double networkGain = getGainIncome(improvementIncomeGrowh);
 
 	return networkGain;
@@ -2701,7 +2738,7 @@ double getNetworkGain(MAP *tile, MAP const &originalTile, MAP const &improvedTil
 
 robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, double>> getCrossBaseTravelTimes(std::set<int> const& baseIds)
 {
-	debug("getCrossBaseTravelTimes\n");
+//	debug("getCrossBaseTravelTimes\n");
 
 	// set tile -> base mapping
 
