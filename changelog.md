@@ -1,3 +1,7 @@
+# Version 434
+
+* Synchronized some Datalinks articles to match WTP features.
+
 # Version 433
 
 * License matched to Thinker.

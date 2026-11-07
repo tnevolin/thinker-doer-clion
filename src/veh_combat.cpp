@@ -103,19 +103,7 @@ void __cdecl mod_say_morale2(char* output, int veh_id, int faction_id_vs_native)
             bool has_creche = has_fac_built(FAC_CHILDREN_CRECHE, base_id);
             bool has_brood_pit = native_unit && has_fac_built(FAC_BROOD_PIT, base_id);
             if (has_fac_built(FAC_HEADQUARTERS, base_id)) {
-				
-				// [WTP]
-				// disable HQ morale effect
-				if (conf.disable_current_base_morale_effect)
-				{
-					// no morale change from current base
-				}
-				else
-				{
                 morale_modifier++;
-				}
-				//
-				
             }
             
 			// [WTP]

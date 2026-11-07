@@ -197,14 +197,17 @@ Terraform
 
 #; Headquarters
 #HELPFAC1
-Administrative center of your colony. $LINK<+1 ENERGY=10059>. No
-$LINK<inefficiency=10041>.
+Administrative center of your colony.
+$LINK<+1 ENERGY=43>. No $LINK<inefficiency=25>.
+Units defending here will receive a $LINK<+1 MORALE=11> modifier.
+^
 Enemy $LINK<probe teams=30006> may not attempt mind control here.
 
 #; Children's Creche
 #HELPFAC2
 Base receives +2 on $LINK<GROWTH=130006> scale and +2 on
-$LINK<EFFICIENCY=130001> scale.
+$LINK<EFFICIENCY=130001> scale when determining the $LINK<inefficiency=25>.
+^
 Reduces base's vulnerability to enemy mind control.
 
 #; Recycling Tanks
@@ -221,9 +224,8 @@ Increases $LINK<NUTRIENT=10057>, $LINK<MINERALS=10058>, and $LINK<ENERGY=10059> 
 
 #; Perimeter Defense
 #HELPFAC4
-Primary defensive structure.
-^Units at base receive 100% defense bonus against [conventional] ground attacks.
-^$LINK<Psi Attacks=10054> ignores this and other defensive facilities.
+Unit defending at base receives 100% defense bonus against [conventional land] attack.
+^$LINK<Psi Attack=10054> ignores this and other defensive facilities.
 ^
 ^Prevents population loss if the last defender is destroyed.
 
@@ -350,16 +352,19 @@ Repairs damaged ground units quickly.
 
 #; Naval Yard
 #HELPFAC28
-Repairs damaged naval units quickly.
-^Naval units built here receive two $LINK<morale=10027> upgrades.
-^Units at base receive 100% defense bonus against conventional naval attacks.
+Unit defending at base receives 100% defense bonus against [conventional sea] attack.
+^$LINK<Psi Attack=10054> ignores this and other defensive facilities.
+^
+^Repairs damaged naval units quickly.
+^Naval units built here receive two $LINK<morale=11> upgrades.
 
 #; Aerospace Complex
 #HELPFAC29
-Repairs damaged air units quickly.
-^Air units built here receive two $LINK<morale=10027> upgrades.
-^Units at base receive 100% defense bonus against [conventional] air attacks.
+Unit defending at base receives 100% defense bonus against [conventional air] attack.
+^$LINK<Psi Attack=10054> ignores this and other defensive facilities.
 ^
+^Repairs damaged air units quickly.
+^Air units built here receive two $LINK<morale=11> upgrades.
 ^Base must have an Aerospace complex before it can produce space-based improvements.
 
 #; Bioenhancement Center
@@ -461,15 +466,16 @@ two and increase $LINK<PSYCH=10054> output of base by 50%.
 
 #; The Planetary Transit System
 #HELPPROJ7
-Any new bases you found begin at population level 3. One less $LINK<drone=10052>
-at all bases of population level 3 and under.
+New base begins at population level 2 less than the faction average base size rounded down.
+^One less $LINK<drone=10052> at all bases of population level 3 and under.
 
 #; The Xenoempathy Dome
 #HELPPROJ8
-All $LINK<Xenofungus=10030> squares are treated as $LINK<roads=90005>, and the
+All $LINK<Xenofungus=14> squares are treated as $LINK<roads=90005>, and the
 rate at which your $LINK<Formers=30001> $LINK<remove=90010> and/or
 $LINK<plant fungus=90011> is doubled.
-Any alien lifeforms you breed gain a $LINK<+1 lifecycle=10027> bonus.
+^Any alien lifeforms you breed gain a $LINK<+1 lifecycle=11> bonus.
+Any units stationed in fungus heal faster and completely.
 
 #; The Neural Amplifier
 #HELPPROJ9
@@ -477,7 +483,7 @@ Any alien lifeforms you breed gain a $LINK<+1 lifecycle=10027> bonus.
 
 #; The Maritime Control Center
 #HELPPROJ10
-Increases the movement rate of all non-native naval units by two, and
+Increases the movement rate of all [conventional naval units] by two, and
 counts as a $LINK<Naval Yard=100028> at every one of your bases.
 
 #; The Planetary Datalinks
@@ -588,7 +594,8 @@ $LINK<ecological effects=10042> of mineral production.
 
 #; The Bulk Matter Transmitter
 #HELPPROJ29
-$LINK<+2 MINERALS=10058> at every base.
+Increases $LINK<MINERALS=10058> output at every base by 50%. Cumulative with
+all other facilities of this type.
 
 #; The Telepathic Matrix
 #HELPPROJ30
@@ -1698,13 +1705,14 @@ depending on your overall $LINK<PLANET=130007> rating, as follows:
 
 #; The Nethack Terminus
 #HELPPROJ34
-+1 $LINK<morale=10027> to all $LINK<Probe Teams=30006> built. -25% cost of probe team 
-actions. All Probe teams with a $LINK<Fusion Reactor=50002> or higher have equivalent 
-of $LINK<Algorithmic Enhancement=80028>.
++1 $LINK<morale=10027> to all $LINK<Probe Teams=30006> built. -25% cost of probe team
+actions. All probe teams are considered to have $LINK<Algorithmic Enhancement=80028>.
+
 
 #; The Cloudbase Academy
 #HELPPROJ35
-Free $LINK<Aerospace Complex=100029> in every base.
+Free $LINK<Aerospace Complex=100029> in every base. Increases the movement
+rate of all aircraft units by two.
 
 #; The Planetary Energy Grid
 #HELPPROJ36
