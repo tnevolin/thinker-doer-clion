@@ -494,6 +494,7 @@ void __cdecl wtp_mod_base_yield()
 					}
 
 				}
+				
 			}
 
 			// no improvement found - exit
@@ -1688,7 +1689,7 @@ int isBetterBase(BASE const &newBase, BASE const &oldBase, double &maxGainImprov
 	{
 		return false;
 	}
-	if (!oldNutritionSufficient && !newNutritionSufficient)
+	if (!oldNutritionSufficient && !newNutritionSufficient) // NOLINT
 	{
 		return newBase.nutrient_surplus > oldBase.nutrient_surplus;
 	}
@@ -1705,7 +1706,7 @@ int isBetterBase(BASE const &newBase, BASE const &oldBase, double &maxGainImprov
 	{
 		return false;
 	}
-	if (!oldSupportSufficient && !newSupportSufficient)
+	if (!oldSupportSufficient && !newSupportSufficient) // NOLINT
 	{
 		return newBase.mineral_surplus > oldBase.mineral_surplus;
 	}
@@ -1722,7 +1723,7 @@ int isBetterBase(BASE const &newBase, BASE const &oldBase, double &maxGainImprov
 	{
 		return false;
 	}
-	if (oldBaseRioting && newBaseRioting)
+	if (oldBaseRioting && newBaseRioting) // NOLINT
 	{
 		return newBase.psych_total > oldBase.psych_total;
 	}
@@ -1738,6 +1739,7 @@ int isBetterBase(BASE const &newBase, BASE const &oldBase, double &maxGainImprov
 	double oldBaseGain = getBaseSurplusGain(oldBase);
 	double newBaseGain = getBaseSurplusGain(newBase);
 	double improvement = newBaseGain - oldBaseGain;
+	trace_flush("oldBaseGain = %5.2f newBaseGain = %5.2f improvement = %5.2f\n", oldBaseGain, newBaseGain, improvement);
 
 	// maxGainImprovement is seeded with a tiny floor and only ever grows (see where it is
 	// declared in wtp_mod_base_yield), so no floor needs to be reapplied here.
@@ -1765,10 +1767,14 @@ double getBaseSurplusGain(BASE const &base)
 	double relativePopulationGrowth = populationGrowth / static_cast<double>(base.pop_size);
 	double incomeGrowth = income * relativePopulationGrowth;
 
+	double incomeGain = income;
+	double incomeGrowthGain = incomeGrowth * conf.worker_algorithm_growth_multiplier;
 	double gain =
-		+ income
-		+ incomeGrowth * conf.worker_algorithm_growth_multiplier
+		+ incomeGain
+		+ incomeGrowthGain
 	;
+
+	trace_flush("income = %5.2f incomeGain = %5.2f populationGrowth = %7.4f relativePopulationGrowth = %7.4f incomeGrowth = %7.4f incomeGrowthGain = %7.4f gain = %5.2f\n", income, incomeGain, populationGrowth, relativePopulationGrowth, incomeGrowth, incomeGrowthGain, gain);
 
 	return gain;
 
@@ -2078,20 +2084,25 @@ char *getBaseAllocationString()
 	// farmers
 
 	int farmerCount = __builtin_popcount(base.worked_tiles & ~1);
-	sprintf(baseAllocationString + strlen(baseAllocationString), "farmers {%2d} ", farmerCount);
+	sprintf(baseAllocationString + strlen(baseAllocationString), "farmers [%2d]: ", farmerCount);
 
 	for (int workTileIndex = 1; workTileIndex < 21; workTileIndex++)
 	{
 		int32_t workTileBit = 1 << workTileIndex;
 
+		if (workTileIndex > 1)
+		{
+			sprintf(baseAllocationString + strlen(baseAllocationString), ",");
+		}
+
 		bool worked = base.worked_tiles & workTileBit;
 		if (worked)
 		{
-			sprintf(baseAllocationString + strlen(baseAllocationString), " %2d", workTileIndex);
+			sprintf(baseAllocationString + strlen(baseAllocationString), "%2d", workTileIndex);
 		}
 		else
 		{
-			sprintf(baseAllocationString + strlen(baseAllocationString), "   ");
+			sprintf(baseAllocationString + strlen(baseAllocationString), "  ");
 		}
 
 	}
@@ -2128,7 +2139,7 @@ char *getBaseAllocationString()
 	sprintf
 	(
 		baseAllocationString + strlen(baseAllocationString)
-		, " |  food: %c  support: %c  psych: %c"
+		, " |  food:%c support:%c psych:%c"
 		, base.nutrient_surplus > 0 ? '+' : '-'
 		, base.mineral_surplus > 0 ? '+' : '-'
 		, !base.drone_riots() ? '+' : '-'
