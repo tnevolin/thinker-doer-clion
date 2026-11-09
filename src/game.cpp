@@ -1,6 +1,7 @@
 
 #include "game.h"
 #include "wtp_mod.h"
+#include "wtp_autoplay.h"
 
 int * const dword_945818 = (int*)0x945818;
 int* const dword_945820 = (int*)0x945820;
@@ -344,6 +345,18 @@ void __cdecl control_game() {
                     for (int i = 1; i < MaxPlayerNum; ++i) {
                         load_faction_art(i);
                     }
+                    // [WTP]
+                    // autoplay takes over the loaded game
+                    if (autoplay.active) {
+                        autoplay_after_load();
+                    }
+                    //
+                } else if (autoplay.active) {
+                    // [WTP]
+                    // nothing to play without a game
+                    autoplay_log("cannot load %s", startup_load_path.c_str());
+                    break;
+                    //
                 }
                 startup_load_path = "";
             } else if (top_menu(0)) {
@@ -1839,7 +1852,7 @@ int __cdecl end_of_game(int flag) {
             }
         }
     }
-    if (flag && !(*GameState & STATE_GAME_DONE)) {
+    if (flag && !(*GameState & STATE_GAME_DONE) && !autoplay.active) {
         if (!(*GameState & STATE_IS_SCENARIO) && *CurrentMissionYear == *EndingMissionYear - 20) {
             parse_num(0, *EndingMissionYear);
             snprintf(StrBuffer, StrBufLen, "%d", *EndingMissionYear);
@@ -1858,6 +1871,15 @@ int __cdecl end_of_game(int flag) {
     if (!(*GameState & STATE_GAME_DONE) || (*GameState & STATE_FINAL_SCORE_DONE)) {
         return 0;
     }
+    // [WTP]
+    // autoplay: no victory popups, movies, credits or replay screens
+    if (autoplay.active) {
+        autoplay_game_over();
+        *GameState |= STATE_FINAL_SCORE_DONE;
+        *ControlTurnA = 1;
+        return 1;
+    }
+    //
     int victor_id = 0;
     for (int i = 1; i < MaxPlayerNum; i++) {
         if (Factions[i].player_flags & PFLAG_UNK_20000) {

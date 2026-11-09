@@ -3,6 +3,7 @@
 
 #include "wtp_mod.h"
 #include "wtp_ai.h"
+#include "wtp_autoplay.h"
 
 void exit_fail_over()
 {
@@ -3431,6 +3432,12 @@ void patch_setup_wtp(Config* cf)
 
 	// INDUSTRY rating accumulated minerals scaling
 	patch_industry_accumulated_minerals_scaling();
+
+	// autoplay quiet mode
+	if (autoplay.active)
+	{
+		autoplay_install_hooks();
+	}
 
 }
 

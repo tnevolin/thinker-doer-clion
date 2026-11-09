@@ -63,11 +63,19 @@ int main(int argc, char* argv[]) {
     char cmdline[StrBufSize] = GameExeFile;
 
     for (int i = 1; i < argc; i++) {
-        if (strlen(cmdline) + strlen(argv[i]) >= sizeof(cmdline)-4) {
+        // arguments with spaces (e.g. save file paths) must stay a single argument
+        bool quote = strchr(argv[i], ' ') != NULL;
+        if (strlen(cmdline) + strlen(argv[i]) + (quote ? 2 : 0) >= sizeof(cmdline)-4) {
             break;
         }
         strncat(cmdline, " ", 2);
+        if (quote) {
+            strncat(cmdline, "\"", 2);
+        }
         strncat(cmdline, argv[i], sizeof(cmdline)-4);
+        if (quote) {
+            strncat(cmdline, "\"", 2);
+        }
     }
     debug("CommandLine: %s\n", cmdline);
 

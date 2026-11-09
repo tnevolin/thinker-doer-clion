@@ -1,6 +1,7 @@
 #include "gui.h"
 
 #include "wtp_ai_game.h"
+#include "wtp_autoplay.h"
 
 int32_t const MainWinHandle = (int32_t)(&MapWin->oMainWin.field_4); // 0x939444
 
@@ -861,6 +862,12 @@ int __cdecl mod_Win_init_class(const char* lpWindowName)
 
 void __cdecl mod_amovie_project(const char* name)
 {
+    // [WTP]
+    // autoplay never plays movies
+    if (autoplay.active) {
+        return;
+    }
+    //
     if (!strlen(name) || !conf.video_player) {
         return;
     } else if (conf.video_player == 1) {

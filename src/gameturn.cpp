@@ -3,6 +3,7 @@
 
 #include "wtp_mod.h"
 #include "wtp_ai.h"
+#include "wtp_autoplay.h"
 
 fp_1int sub_51E530 = (fp_1int)0x51E530;
 
@@ -37,9 +38,17 @@ void __cdecl control_turn() {
         draw_map(1);
     }
     *dword_93A940 = 1;
+    // [WTP]
+    // autoplay has no human turn to wait for
+    /*
     if (*ControlTurnMove && !is_human(MapWin->cOwner)) {
         Console_human_turn(MapWin);
     }
+    */
+    if (*ControlTurnMove && !is_human(MapWin->cOwner) && !autoplay.active) {
+        Console_human_turn(MapWin);
+    }
+    //
     bool run_upkeep = true;
     while (1) {
         debug("control_turn %d %d %d\n", *CurrentTurn, current_id, MapWin->cOwner);
@@ -315,6 +324,12 @@ void __cdecl control_turn() {
                 }
             } else {
                 // [WTP]
+                // autoplay: pump messages, honor the stop request
+                if (autoplay.active) {
+                    autoplay_poll();
+                }
+                //
+                // [WTP]
                 // intercept mod_enemy_turn
                 /*
                 mod_enemy_turn(current_id);
@@ -330,9 +345,19 @@ void __cdecl control_turn() {
             }
         }
         if (++current_id >= 8) {
+            // [WTP]
+            // autoplay replaces the human end-of-round phase
+            /*
             if (!skip_human_turn) {
                 Console_human_turn(MapWin);
             }
+            */
+            if (autoplay.active) {
+                autoplay_end_of_round();
+            } else if (!skip_human_turn) {
+                Console_human_turn(MapWin);
+            }
+            //
             if (*ControlTurnA) {
                 return;
             }

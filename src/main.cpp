@@ -1,6 +1,7 @@
 
 #include "main.h"
 #include "lib/ini.h"
+#include "wtp_autoplay.h"
 
 FILE* debug_log = NULL;
 Config conf;
@@ -1649,6 +1650,17 @@ int cmd_parse(Config* cf) {
             cf->video_mode = VM_Custom;
         } else if (wcscmp(argv[i], L"-windowed") == 0) {
             cf->video_mode = VM_Window;
+        } else if (wcscmp(argv[i], L"-autoplay") == 0) {
+            autoplay.active = true;
+        } else if (wcscmp(argv[i], L"-keepdraw") == 0) {
+            autoplay.stubDraws = false;
+        } else if (wcscmp(argv[i], L"-turns") == 0 && i + 1 < argc) {
+            autoplay.turns = std::max(1, _wtoi(argv[++i]));
+        } else if (wcscmp(argv[i], L"-stats") == 0 && i + 1 < argc) {
+            char path[MAX_PATH] = {};
+            if (WideCharToMultiByte(CP_ACP, 0, argv[++i], -1, path, sizeof(path), NULL, NULL)) {
+                autoplay.statsPath = path;
+            }
         } else if (strlen(buf)) {
             if (is_save_file(buf) && FileExists(buf)) {
                 startup_load_path = buf;
