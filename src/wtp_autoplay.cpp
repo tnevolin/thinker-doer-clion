@@ -99,6 +99,17 @@ static int __thiscall autoplayPopupExec(void* UNUSED(This), int UNUSED(a2), int 
 	return 0;
 }
 
+/*
+The new-technology window of the faction that is shown on screen (MapWin->cOwner) is a separate modal window
+that does not go through BasePop::exec. In autoplay the faction that was human in the save keeps that role on screen,
+and its window waits for a click on OK, which nobody gives.
+*/
+static void __thiscall autoplayNewTechExec(void* UNUSED(This), int UNUSED(a2), int UNUSED(a3))
+{
+	suppressedPopups++;
+	autoplay_log("new technology window suppressed, turn %d", *CurrentTurn);
+}
+
 void autoplay_install_hooks()
 {
 	if (autoplay.stubDraws)
@@ -111,6 +122,7 @@ void autoplay_install_hooks()
 		write_jump(0x46B190, reinterpret_cast<int32_t>(autoplayNoopDraw)); // draw_map
 	}
 	write_jump(0x602600, reinterpret_cast<int32_t>(autoplayPopupExec)); // BasePop::exec
+	write_jump(0x483F90, reinterpret_cast<int32_t>(autoplayNewTechExec)); // NewTechWin::exec
 }
 
 /*
