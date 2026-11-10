@@ -3898,11 +3898,14 @@ void evaluateDefendLocations()
 			double weight = threatCoefficient * moraleCoefficient * healthCoefficient * approachTimeCoefficient * attractionCoefficient;
 			defendLocationAttackerWeights[defendData.tile][vehicle.faction_id][vehicle.unit_id] += weight;
 
-			debug
-			(
-				"\t\t%s weight=%5.2f threatCoefficient=%5.2f moraleCoefficient=%5.2f healthCoefficient=%5.2f approachTime=%5.2f approachTimeCoefficient=%5.2f attractionCoefficient=%5.2f\n"
-				, getLocationString(defendData.tile), weight, threatCoefficient, moraleCoefficient, healthCoefficient, approachTime, approachTimeCoefficient, attractionCoefficient
-			);
+			if constexpr (TRACE)
+			{
+				debug
+				(
+					"\t\t%s weight=%5.2f threatCoefficient=%5.2f moraleCoefficient=%5.2f healthCoefficient=%5.2f approachTime=%5.2f approachTimeCoefficient=%5.2f attractionCoefficient=%5.2f\n"
+					, getLocationString(defendData.tile), weight, threatCoefficient, moraleCoefficient, healthCoefficient, approachTime, approachTimeCoefficient, attractionCoefficient
+				);
+			}
 
 		}
 

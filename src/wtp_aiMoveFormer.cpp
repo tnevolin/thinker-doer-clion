@@ -1190,7 +1190,10 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			// update gain with preservation coefficient
 			double preservationCoefficient = static_cast<double>(builtItemTotalTerraformingRate) / static_cast<double>(builtItemTotalTerraformingRate + destroyedItemTotalTerraformingRate);
 			improvedTileGain *= preservationCoefficient; // NOLINT(clang-diagnostic-unused-variable)
-			debug("\t\t%5.2f %-16s improvedTileYield={%d-%d-%d} preservationCoefficient=%5.2f\n", improvedTileGain, option->name, improvedTileYield.nutrient, improvedTileYield.mineral, improvedTileYield.energy, preservationCoefficient);
+			if constexpr (TRACE)
+			{
+				debug("\t\t%5.2f %-16s improvedTileYield={%d-%d-%d} preservationCoefficient=%5.2f\n", improvedTileGain, option->name, improvedTileYield.nutrient, improvedTileYield.mineral, improvedTileYield.energy, preservationCoefficient);
+			}
 
 			// 6. drop actions still blocked on a prerequisite - only what's actually doable now goes into the request
 

@@ -400,24 +400,27 @@ void analyzeBasePlacementSites()
 			
 			double buildSiteScore = travelTimeCoefficient * tileExpansionInfo.buildSiteScore;
 			
-			debug
-			(
-				"\t\t%s"
-				" buildSiteScore=%5.2f"
-				" tileExpansionInfo.buildSiteScore=%5.2f"
-				" enemyColonyRange=%2d"
-				" expantionTravelTimeScale=%5.2f"
-				" travelTime=%7.2f"
-				" travelTimeCoefficient=%5.2f"
-				"\n"
-				, getLocationString(tile)
-				, buildSiteScore
-				, tileExpansionInfo.buildSiteScore
-				, enemyColonyRange
-				, expantionTravelTimeScale
-				, travelTime
-				, travelTimeCoefficient
-			);
+			if constexpr (TRACE)
+			{
+				debug
+				(
+					"\t\t%s"
+					" buildSiteScore=%5.2f"
+					" tileExpansionInfo.buildSiteScore=%5.2f"
+					" enemyColonyRange=%2d"
+					" expantionTravelTimeScale=%5.2f"
+					" travelTime=%7.2f"
+					" travelTimeCoefficient=%5.2f"
+					"\n"
+					, getLocationString(tile)
+					, buildSiteScore
+					, tileExpansionInfo.buildSiteScore
+					, enemyColonyRange
+					, expantionTravelTimeScale
+					, travelTime
+					, travelTimeCoefficient
+				);
+			}
 			
 			// update best
 			
@@ -586,7 +589,10 @@ double getBuildSiteBaseGain(MAP *buildSite)
 {
 	Profiling::start("summarize tile yield scores", "moveColonyStrategy");
 	
-	debug("getBuildSiteBaseGain %s\n", getLocationString(buildSite));
+	if constexpr (TRACE)
+	{
+		debug("getBuildSiteBaseGain %s\n", getLocationString(buildSite));
+	}
 	
 	// tile yieldInfos
 	
@@ -755,7 +761,10 @@ Computes build location placement score.
 */
 double getBuildSitePlacementScore(MAP *tile)
 {
-	debug("getBuildSitePlacementScore %s\n", getLocationString(tile));
+	if constexpr (TRACE)
+	{
+		debug("getBuildSitePlacementScore %s\n", getLocationString(tile));
+	}
 	
 	int x = getX(tile);
 	int y = getY(tile);
@@ -766,7 +775,10 @@ double getBuildSitePlacementScore(MAP *tile)
 	Profiling::start("radius overlap", "moveColonyStrategy");
 	
 	double overlapScore = getBuildSiteOverlapScore(tile);
-	debug("\t%-20s%+5.2f\n", "overlapScore", overlapScore);
+	if constexpr (TRACE)
+	{
+		debug("\t%-20s%+5.2f\n", "overlapScore", overlapScore);
+	}
 	
 	Profiling::stop("radius overlap");
 	
@@ -775,7 +787,10 @@ double getBuildSitePlacementScore(MAP *tile)
 	Profiling::start("border connection", "moveColonyStrategy");
 	
 	double connectionScore = getBuildSiteConnectionScore(tile);
-	debug("\t%-20s%+5.2f\n", "connectionScore", connectionScore);
+	if constexpr (TRACE)
+	{
+		debug("\t%-20s%+5.2f\n", "connectionScore", connectionScore);
+	}
 	
 	Profiling::stop("border connection");
 	
@@ -784,7 +799,10 @@ double getBuildSitePlacementScore(MAP *tile)
 	Profiling::start("land use", "moveColonyStrategy");
 	
 	double landUseScore = getBuildSiteLandUseScore(tile);
-	debug("\t%-20s%+5.2f\n", "landUseScore", landUseScore);
+	if constexpr (TRACE)
+	{
+		debug("\t%-20s%+5.2f\n", "landUseScore", landUseScore);
+	}
 	
 	Profiling::stop("land use");
 	
@@ -833,7 +851,10 @@ double getBuildSitePlacementScore(MAP *tile)
 		
 	}
 	
-	debug("\t%-20s%+5.2f\n", "coastScore", coastScore);
+	if constexpr (TRACE)
+	{
+		debug("\t%-20s%+5.2f\n", "coastScore", coastScore);
+	}
 	
 	Profiling::stop("coastScore");
 	
@@ -842,7 +863,10 @@ double getBuildSitePlacementScore(MAP *tile)
 	Profiling::start("landmarkScore", "moveColonyStrategy");
 	
 	double landmarkScore = (map_has_landmark(tile, LM_CRATER) || map_has_landmark(tile, LM_VOLCANO)) ? -0.50 : 0.0;
-	debug("\t%-20s%+5.2f\n", "landmarkScore", landmarkScore);
+	if constexpr (TRACE)
+	{
+		debug("\t%-20s%+5.2f\n", "landmarkScore", landmarkScore);
+	}
 	
 	Profiling::stop("landmarkScore");
 	
@@ -867,14 +891,20 @@ double getBuildSitePlacementScore(MAP *tile)
 		
 	}
 	landmarkBonusScore = std::min(0.10, landmarkBonusScore);
-	debug("\t%-20s%+5.2f\n", "landmarkBonusScore", landmarkBonusScore);
+	if constexpr (TRACE)
+	{
+		debug("\t%-20s%+5.2f\n", "landmarkBonusScore", landmarkBonusScore);
+	}
 	
 	Profiling::stop("landmarkBonusScore");
 	
 	// discourage land fungus for faction having difficulties to enter it (just because it spawns worms)
 	
 	double fungusScore = (!is_ocean(tile) && map_has_item(tile, BIT_FUNGUS) && aiFaction->SE_planet < 1 ? -0.1 : 0.0);
-	debug("\t%-20s%+5.2f\n", "fungusScore", fungusScore);
+	if constexpr (TRACE)
+	{
+		debug("\t%-20s%+5.2f\n", "fungusScore", fungusScore);
+	}
 	
 	// discourage near edge placement
 	
@@ -884,7 +914,10 @@ double getBuildSitePlacementScore(MAP *tile)
 		edgeMargin = std::min(edgeMargin, std::min(x, *MapAreaX - 1 - x));
 	}
 	double edgeScore = edgeMargin >= 3 ? 0.0 : -0.2 * (3.0 - static_cast<double>(edgeMargin));
-	debug("\t%-20s%+5.2f\n", "edgeScore", edgeScore);
+	if constexpr (TRACE)
+	{
+		debug("\t%-20s%+5.2f\n", "edgeScore", edgeScore);
+	}
 	
 	// return score
 	
@@ -1253,24 +1286,27 @@ double getBuildSiteOverlapScore(MAP *buildSite)
 			conf.ai_expansion_radius_overlap_coefficient * static_cast<double>(std::max(0, overlapCountAdjusted - conf.ai_expansion_radius_overlap_ignored))
 	;
 
-	debug
-	(
-		"getOverlapScore%s"
-		" overlapCount=%d"
-		" minOverlapTile=%s"
-		" minOverlapCount=%d"
-		" overlapCountAdjusted=%d"
-		" ai_expansion_radius_overlap_coefficient=%5.2f"
-		" overlapScore=%5.2f"
-		"\n"
-		, getLocationString(buildSite)
-		, overlapCount
-		, getLocationString(minOverlapTile)
-		, minOverlapCount
-		, overlapCountAdjusted
-		, conf.ai_expansion_radius_overlap_coefficient
-		, overlapScore
-	);
+	if constexpr (TRACE)
+	{
+		debug
+		(
+			"getOverlapScore%s"
+			" overlapCount=%d"
+			" minOverlapTile=%s"
+			" minOverlapCount=%d"
+			" overlapCountAdjusted=%d"
+			" ai_expansion_radius_overlap_coefficient=%5.2f"
+			" overlapScore=%5.2f"
+			"\n"
+			, getLocationString(buildSite)
+			, overlapCount
+			, getLocationString(minOverlapTile)
+			, minOverlapCount
+			, overlapCountAdjusted
+			, conf.ai_expansion_radius_overlap_coefficient
+			, overlapScore
+		);
+	}
 
 	return overlapScore;
 
@@ -1334,22 +1370,25 @@ double getBuildSiteConnectionScore(MAP *buildSite)
 		+ conf.ai_expansion_external_border_connection_coefficient * externalConnectionCongestion
 	;
 
-	debug
-	(
-		"getConnectionScore%s"
-		" ai_expansion_internal_border_connection_coefficient=%5.2f"
-		" internalConnectionCongestion=%5.2f"
-		" ai_expansion_external_border_connection_coefficient=%5.2f"
-		" externalConnectionCongestion=%5.2f"
-		" connectionScore=%5.2f"
-		"\n"
-		, getLocationString(buildSite)
-		, conf.ai_expansion_internal_border_connection_coefficient
-		, internalConnectionCongestion
-		, conf.ai_expansion_external_border_connection_coefficient
-		, externalConnectionCongestion
-		, connectionScore
-	);
+	if constexpr (TRACE)
+	{
+		debug
+		(
+			"getConnectionScore%s"
+			" ai_expansion_internal_border_connection_coefficient=%5.2f"
+			" internalConnectionCongestion=%5.2f"
+			" ai_expansion_external_border_connection_coefficient=%5.2f"
+			" externalConnectionCongestion=%5.2f"
+			" connectionScore=%5.2f"
+			"\n"
+			, getLocationString(buildSite)
+			, conf.ai_expansion_internal_border_connection_coefficient
+			, internalConnectionCongestion
+			, conf.ai_expansion_external_border_connection_coefficient
+			, externalConnectionCongestion
+			, connectionScore
+		);
+	}
 
 	return connectionScore;
 
@@ -1382,18 +1421,21 @@ double getBuildSiteLandUseScore(MAP *buildSite)
 
 	double landUseScore = conf.ai_expansion_land_use_coefficient * landCongestion;
 
-	debug
-	(
-		"getBuildSiteLandUseScore%s"
-		" landCongestion=%5.2f"
-		" ai_expansion_land_use_coefficient=%5.2f"
-		" landUseScore=%5.2f"
-		"\n"
-		, getLocationString(buildSite)
-		, landCongestion
-		, conf.ai_expansion_land_use_coefficient
-		, landUseScore
-	);
+	if constexpr (TRACE)
+	{
+		debug
+		(
+			"getBuildSiteLandUseScore%s"
+			" landCongestion=%5.2f"
+			" ai_expansion_land_use_coefficient=%5.2f"
+			" landUseScore=%5.2f"
+			"\n"
+			, getLocationString(buildSite)
+			, landCongestion
+			, conf.ai_expansion_land_use_coefficient
+			, landUseScore
+		);
+	}
 
 	return landUseScore;
 
@@ -1469,7 +1511,10 @@ Resource getEstimatedTileYield(MAP *tile)
 
 	}
 
-	debug("getTileYield%s = (%5.2f,%5.2f,%5.2f)\n", getLocationString(tile), averageYield.nutrient, averageYield.mineral, averageYield.energy);
+	if constexpr (TRACE)
+	{
+		debug("getTileYield%s = (%5.2f,%5.2f,%5.2f)\n", getLocationString(tile), averageYield.nutrient, averageYield.mineral, averageYield.energy);
+	}
 
 	return averageYield;
 
