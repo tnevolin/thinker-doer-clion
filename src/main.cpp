@@ -1661,6 +1661,17 @@ int cmd_parse(Config* cf) {
             if (WideCharToMultiByte(CP_ACP, 0, argv[++i], -1, path, sizeof(path), NULL, NULL)) {
                 autoplay.statsPath = path;
             }
+        } else if (wcscmp(argv[i], L"-set") == 0 && i + 1 < argc) {
+            // overrides one thinker.ini option for this run: -set name=value
+            char setting[INI_MAX_LINE] = {};
+            if (WideCharToMultiByte(CP_ACP, 0, argv[++i], -1, setting, sizeof(setting), NULL, NULL)) {
+                autoplay.overrides.push_back(setting);
+                char* separator = strchr(setting, '=');
+                if (separator) {
+                    *separator = 0;
+                    option_handler(cf, "thinker", setting, separator + 1);
+                }
+            }
         } else if (strlen(buf)) {
             if (is_save_file(buf) && FileExists(buf)) {
                 startup_load_path = buf;

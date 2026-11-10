@@ -1,12 +1,13 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include "main.h"
 
 /*
 Autoplay (programmatic) mode.
 
-Started from the command line: terranx_mod.exe -autoplay [-turns N] [-stats file.csv] [-keepdraw] save.sav
+Started from the command line: terranx_mod.exe -autoplay [-turns N] [-stats file.csv] [-keepdraw] [-set name=value ...] save.sav
 The save is loaded as usual, then every faction (including the one that was human in the save)
 is played by the AI. No human input is requested. After the requested number of turns
 the game exits.
@@ -14,6 +15,10 @@ the game exits.
 Statistics are collected in memory (FactionStats) and converted to a single number (positionScore).
 The score of every faction is appended to autoplay.log after each round.
 A CSV with all collected values is written only when -stats is given.
+
+-set overrides any thinker.ini option for this run only (e.g. -set ai_terraforming_mineralWeight=2.0).
+The yield of the AI factions (nutrient surplus, mineral surplus, economy plus labs) is logged after each round,
+together with a score that uses fixed reference weights, so no scanned parameter can move the yardstick.
 
 Stop early: hold Ctrl+Pause or create an empty file named autoplay.stop in the game folder.
 */
@@ -61,6 +66,18 @@ struct ScoreWeights
 	double energySurplus = 1.0;
 };
 
+/*
+Reference weights of the yield score (mean nutrient surplus, mineral surplus and economy plus labs per faction).
+They are deliberately independent of thinker.ini: the AI parameters that are scanned must not change the yardstick.
+The raw means are logged too, so any other weights can be applied afterwards.
+*/
+struct YieldWeights
+{
+	double nutrient = 1.0;
+	double mineral = 1.5;
+	double energy = 0.5;
+};
+
 struct AutoplayState
 {
 	bool active = false;
@@ -71,6 +88,9 @@ struct AutoplayState
 	// optional CSV with every collected value; empty = not written
 	std::string statsPath;
 	ScoreWeights weights;
+	YieldWeights yieldWeights;
+	// "name=value" strings given with -set, already applied on top of the ini files
+	std::vector<std::string> overrides;
 };
 
 extern AutoplayState autoplay;

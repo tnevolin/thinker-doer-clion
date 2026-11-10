@@ -110,6 +110,23 @@ static void __thiscall autoplayNewTechExec(void* UNUSED(This), int UNUSED(a2), i
 	autoplay_log("new technology window suppressed, turn %d", *CurrentTurn);
 }
 
+/*
+The faction that was human in the save keeps the player role on screen, so the engine shows it full-screen windows
+that wait for a click: the Datalinks page of a secret project it completes and the story interludes.
+Nobody gives that click in autoplay.
+*/
+static void __cdecl autoplayNoopHelpProject(int UNUSED(item_id))
+{
+	suppressedPopups++;
+	autoplay_log("project help window suppressed, turn %d", *CurrentTurn);
+}
+
+static void __cdecl autoplayNoopInterlude(int event_id, const char* UNUSED(text), int UNUSED(a3), int UNUSED(a4))
+{
+	suppressedPopups++;
+	autoplay_log("interlude %d suppressed, turn %d", event_id, *CurrentTurn);
+}
+
 void autoplay_install_hooks()
 {
 	if (autoplay.stubDraws)
@@ -123,6 +140,8 @@ void autoplay_install_hooks()
 	}
 	write_jump(0x602600, reinterpret_cast<int32_t>(autoplayPopupExec)); // BasePop::exec
 	write_jump(0x483F90, reinterpret_cast<int32_t>(autoplayNewTechExec)); // NewTechWin::exec
+	write_jump(0x44C9E0, reinterpret_cast<int32_t>(autoplayNoopHelpProject)); // help_project
+	write_jump(0x5230E0, reinterpret_cast<int32_t>(autoplayNoopInterlude)); // interlude
 }
 
 /*
@@ -216,11 +235,24 @@ Collects all factions, logs the position scores and writes the optional CSV.
 static void recordStats(const char* phase)
 {
 	char scores[256] = {};
+	double nutrientSum = 0.0;
+	double mineralSum = 0.0;
+	double energySum = 0.0;
+	int yieldCount = 0;
 
 	for (int factionId = 1; factionId < MaxPlayerNum; factionId++)
 	{
 		FactionStats stats = collectFactionStats(factionId);
 		double score = positionScore(stats, autoplay.weights);
+
+		if (stats.alive)
+		{
+			// same resources the AI counts as base income: nutrient and mineral surplus, economy and labs
+			nutrientSum += stats.nutrientSurplus;
+			mineralSum += stats.mineralSurplus;
+			energySum += stats.economy + stats.labs;
+			yieldCount++;
+		}
 
 		size_t length = strlen(scores);
 		snprintf(scores + length, sizeof(scores) - length, " %d=%.1f", factionId, score);
@@ -260,6 +292,16 @@ static void recordStats(const char* phase)
 		fflush(statsFile);
 	}
 	autoplay_log("position score %s, turn %d:%s", phase, *CurrentTurn, scores);
+	if (yieldCount > 0)
+	{
+		double nutrient = nutrientSum / yieldCount;
+		double mineral = mineralSum / yieldCount;
+		double energy = energySum / yieldCount;
+		const YieldWeights& yieldWeights = autoplay.yieldWeights;
+		double yieldScore = yieldWeights.nutrient * nutrient + yieldWeights.mineral * mineral + yieldWeights.energy * energy;
+		autoplay_log("yield %s, turn %d: nutrient %.3f mineral %.3f energy %.3f score %.3f (means per faction over %d factions, weights %.2f/%.2f/%.2f)",
+			phase, *CurrentTurn, nutrient, mineral, energy, yieldScore, yieldCount, yieldWeights.nutrient, yieldWeights.mineral, yieldWeights.energy);
+	}
 }
 
 void autoplay_after_load()
@@ -288,6 +330,10 @@ void autoplay_after_load()
 	autoplay_log("autoplay start: turn %d, human mask was 0x%02X, playing %d turns, stats csv: %s",
 		*CurrentTurn, FactionStatus[0], autoplay.turns, statsFile ? autoplay.statsPath.c_str() : "none");
 	FactionStatus[0] = 0;
+	for (const std::string& override : autoplay.overrides)
+	{
+		autoplay_log("option override: %s", override.c_str());
+	}
 
 	applyQuietPreferences();
 	recordStats("load");
