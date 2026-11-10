@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "patch.h"
+#include "savegame.h"
 #include "wtp_ai_game.h"
 
 AutoplayState autoplay;
@@ -14,6 +15,9 @@ static FILE* logFile = nullptr;
 static FILE* statsFile = nullptr;
 static DWORD startTick = 0;
 static int startTurn = 0;
+// human control and watched faction of the loaded save, restored in the save written at the end
+static int startHumanMask = 0;
+static int startWatchedFaction = 0;
 static int suppressedPopups = 0;
 
 // animations skipped: explosions and unit slides
@@ -207,6 +211,47 @@ static void applyQuietPreferences()
 	conf.autosave_interval = 0;
 }
 
+/*
+Formers that travel have ORDER_MOVE_TO with the destination in the first waypoint (set by the former AI every turn).
+The destination of the previous round is remembered per vehicle to see formers that give up a trip.
+*/
+struct FormerTrip
+{
+	int turn;
+	int x;
+	int y;
+	bool traveling;
+};
+static std::map<int, FormerTrip> formerTrips;
+
+static void collectFormerActivity(int vehicleId, FactionStats& stats)
+{
+	VEH* vehicle = &Vehs[vehicleId];
+	bool terraforming = isVehicleTerraforming(vehicle);
+	bool traveling = vehicle->order == ORDER_MOVE_TO && isOnMap(vehicle->waypoint_x[0], vehicle->waypoint_y[0]);
+
+	if (terraforming)
+		stats.formerWorking++;
+	else if (traveling)
+		stats.formerMoving++;
+	else
+		stats.formerIdle++;
+
+	FormerTrip& trip = formerTrips[vehicleId];
+	if (trip.turn == *CurrentTurn)
+		return;
+	// previous trip not completed and not continued: the former was redirected, or dropped the trip
+	if (trip.turn != 0 && trip.traveling && !(vehicle->x == trip.x && vehicle->y == trip.y)
+		&& !(traveling && vehicle->waypoint_x[0] == trip.x && vehicle->waypoint_y[0] == trip.y))
+	{
+		stats.formerRetargets++;
+	}
+	trip.turn = *CurrentTurn;
+	trip.traveling = traveling;
+	trip.x = traveling ? vehicle->waypoint_x[0] : -1;
+	trip.y = traveling ? vehicle->waypoint_y[0] : -1;
+}
+
 FactionStats collectFactionStats(int factionId)
 {
 	FactionStats stats;
@@ -261,7 +306,10 @@ FactionStats collectFactionStats(int factionId)
 		if (isColonyVehicle(vehicleId))
 			stats.unitsColony++;
 		else if (isFormerVehicle(vehicleId))
+		{
 			stats.unitsFormer++;
+			collectFormerActivity(vehicleId, stats);
+		}
 		else if (isSupplyVehicle(vehicleId))
 			stats.unitsSupply++;
 		else if (isProbeVehicle(vehicleId))
@@ -343,6 +391,7 @@ static void recordStats(const char* phase)
 	int tileSum[5] = {};
 	int rockinessSum = 0;
 	int baseSum = 0;
+	int formerActivitySum[4] = {};
 	int yieldCount = 0;
 
 	for (int factionId = 1; factionId < MaxPlayerNum; factionId++)
@@ -378,6 +427,10 @@ static void recordStats(const char* phase)
 			tileSum[3] += stats.tileForest;
 			tileSum[4] += stats.tileRoad;
 			rockinessSum += stats.baseRockiness;
+			formerActivitySum[0] += stats.formerWorking;
+			formerActivitySum[1] += stats.formerMoving;
+			formerActivitySum[2] += stats.formerIdle;
+			formerActivitySum[3] += stats.formerRetargets;
 			baseSum += stats.bases;
 			yieldCount++;
 		}
@@ -387,7 +440,7 @@ static void recordStats(const char* phase)
 
 		if (statsFile)
 		{
-			fprintf(statsFile, "%s,%d,%d,%lu,%d,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+			fprintf(statsFile, "%s,%d,%d,%lu,%d,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
 				phase,
 				*CurrentTurn,
 				*CurrentMissionYear,
@@ -431,7 +484,11 @@ static void recordStats(const char* phase)
 				stats.tileSolar,
 				stats.tileForest,
 				stats.tileRoad,
-				stats.baseRockiness
+				stats.baseRockiness,
+				stats.formerWorking,
+				stats.formerMoving,
+				stats.formerIdle,
+				stats.formerRetargets
 			);
 		}
 	}
@@ -460,6 +517,9 @@ static void recordStats(const char* phase)
 		autoplay_log("tiles %s, turn %d: farm %.3f mine %.3f solar %.3f forest %.3f road %.3f, base rockiness %.3f (means per faction, rockiness per base)",
 			phase, *CurrentTurn, (double)tileSum[0] / yieldCount, (double)tileSum[1] / yieldCount, (double)tileSum[2] / yieldCount,
 			(double)tileSum[3] / yieldCount, (double)tileSum[4] / yieldCount, baseSum > 0 ? (double)rockinessSum / baseSum : 0.0);
+		autoplay_log("formers %s, turn %d: working %.3f moving %.3f idle %.3f retargets %.3f (means per faction)",
+			phase, *CurrentTurn, (double)formerActivitySum[0] / yieldCount, (double)formerActivitySum[1] / yieldCount,
+			(double)formerActivitySum[2] / yieldCount, (double)formerActivitySum[3] / yieldCount);
 	}
 }
 
@@ -479,7 +539,8 @@ void autoplay_after_load()
 				"energy_credits,nutrient_surplus,mineral_surplus,mineral_intake,energy_surplus,economy,psych,labs,"
 				"game_score,game_score_other,position_score,"
 				"build_colony,build_former,build_combat,build_supply,build_probe,build_other_unit,build_facility,build_project,"
-				"tile_farm,tile_mine,tile_solar,tile_forest,tile_road,base_rockiness\n");
+				"tile_farm,tile_mine,tile_solar,tile_forest,tile_road,base_rockiness,"
+					"former_working,former_moving,former_idle,former_retargets\n");
 		}
 		else
 		{
@@ -490,6 +551,8 @@ void autoplay_after_load()
 	// every faction becomes AI, including the one that was human in the save
 	autoplay_log("autoplay start: turn %d, human mask was 0x%02X, playing %d turns, stats csv: %s",
 		*CurrentTurn, FactionStatus[0], autoplay.turns, statsFile ? autoplay.statsPath.c_str() : "none");
+	startHumanMask = FactionStatus[0];
+	startWatchedFaction = *CurrentPlayerFaction;
 	FactionStatus[0] = 0;
 	// The watched faction (MapWin->cOwner) is the one the engine shows windows to, whatever its control.
 	// Faction 0 is the natives, which no window is meant for. -1 is not an option: range checks assert on it.
@@ -570,6 +633,18 @@ static void finish(const char* reason)
 	{
 		fclose(statsFile);
 		statsFile = nullptr;
+	}
+	if (!autoplay.savePath.empty())
+	{
+		// the save is opened later as a normal game, so it gets the human faction back
+		int autoplayHumanMask = FactionStatus[0];
+		int autoplayWatchedFaction = *CurrentPlayerFaction;
+		FactionStatus[0] = startHumanMask;
+		*CurrentPlayerFaction = startWatchedFaction;
+		int status = mod_save_daemon(autoplay.savePath.c_str());
+		FactionStatus[0] = autoplayHumanMask;
+		*CurrentPlayerFaction = autoplayWatchedFaction;
+		autoplay_log("game saved to %s, status %d", autoplay.savePath.c_str(), status);
 	}
 	*ControlTurnA = 1;
 }

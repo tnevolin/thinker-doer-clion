@@ -7,7 +7,7 @@
 /*
 Autoplay (programmatic) mode.
 
-Started from the command line: terranx_mod.exe -autoplay [-turns N] [-stats file.csv] [-keepdraw] [-set name=value ...] save.sav
+Started from the command line: terranx_mod.exe -autoplay [-turns N] [-stats file.csv] [-savegame file.sav] [-keepdraw] [-set name=value ...] save.sav
 The save is loaded as usual, then every faction (including the one that was human in the save)
 is played by the AI. No human input is requested. After the requested number of turns
 the game exits.
@@ -56,6 +56,12 @@ struct FactionStats
 	int tileSolar = 0;
 	int tileForest = 0;
 	int tileRoad = 0;
+	// what the formers are doing at the end of the round: terraforming, traveling to a tile, or neither
+	int formerWorking = 0;
+	int formerMoving = 0;
+	int formerIdle = 0;
+	// formers that were traveling to a tile last round, did not arrive, and are not going there now
+	int formerRetargets = 0;
 	// rockiness of the base tiles: 0 flat, 1 rolling, 2 rocky, summed over the bases
 	int baseRockiness = 0;
 	int techs = 0;
@@ -113,6 +119,8 @@ struct AutoplayState
 	int turns = 10;
 	// optional CSV with every collected value; empty = not written
 	std::string statsPath;
+	// optional save written when autoplay ends, with the human control and watched faction of the loaded save; empty = none
+	std::string savePath;
 	ScoreWeights weights;
 	YieldWeights yieldWeights;
 	// "name=value" strings given with -set, already applied on top of the ini files

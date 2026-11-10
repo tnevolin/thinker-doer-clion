@@ -522,7 +522,7 @@ struct Config {
 	double ai_terraforming_energyWeight;
 	double ai_terraforming_completion_bonus;
 	double ai_terraforming_land_rocky_tile_threshold;
-	int ai_terraforming_travel_time_multiplier;
+	double ai_terraforming_travel_time_multiplier;
 	double ai_terraforming_networkValueIncomeImprovement;
 	double ai_terraforming_networkDensityThreshold;
 	double ai_terraforming_nearbyForestKelpPenalty;

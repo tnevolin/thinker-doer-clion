@@ -1390,7 +1390,7 @@ int option_handler(void* user, const char* section, const char* name, const char
     }
     else if (MATCH("ai_terraforming_travel_time_multiplier"))
     {
-        cf->ai_terraforming_travel_time_multiplier = atoi(value);
+        cf->ai_terraforming_travel_time_multiplier = atof(value);
     }
     else if (MATCH("ai_terraforming_networkValueIncomeImprovement"))
     {
@@ -1660,6 +1660,11 @@ int cmd_parse(Config* cf) {
             char path[MAX_PATH] = {};
             if (WideCharToMultiByte(CP_ACP, 0, argv[++i], -1, path, sizeof(path), NULL, NULL)) {
                 autoplay.statsPath = path;
+            }
+        } else if (wcscmp(argv[i], L"-savegame") == 0 && i + 1 < argc) {
+            char path[MAX_PATH] = {};
+            if (WideCharToMultiByte(CP_ACP, 0, argv[++i], -1, path, sizeof(path), NULL, NULL)) {
+                autoplay.savePath = path;
             }
         } else if (wcscmp(argv[i], L"-set") == 0 && i + 1 < argc) {
             // overrides one thinker.ini option for this run: -set name=value
