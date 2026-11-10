@@ -2378,20 +2378,20 @@ void computeUnitDestructionGains()
 		
 	}
 	
-	if constexpr (DEBUG)
-	{
-		for (int unitId = 0; unitId < MaxProtoNum; unitId++)
-		{
-			UNIT *unit = getUnit(unitId);
-			
-			if (!unit->is_active())
-				continue;
-			
-			debug("\t%-32s %7.2f\n", unit->name, aiData.unitDestructionGains.at(unitId));
-			
-		}
-		
-	}
+//	if constexpr (DEBUG)
+//	{
+//		for (int unitId = 0; unitId < MaxProtoNum; unitId++)
+//		{
+//			UNIT *unit = getUnit(unitId);
+//			
+//			if (!unit->is_active())
+//				continue;
+//			
+//			debug("\t%-32s %7.2f\n", unit->name, aiData.unitDestructionGains.at(unitId));
+//			
+//		}
+//		
+//	}
 	
 }
 

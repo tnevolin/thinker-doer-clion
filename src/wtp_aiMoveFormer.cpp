@@ -2664,28 +2664,28 @@ double getNetworkGain(MAP *tile, MAP const &originalTile, MAP const &improvedTil
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, double>> improvedTravelTimes = getCrossBaseTravelTimes(baseIds);
 	*tile = originalTile;
 
-	if (DEBUG)
-	{
-		debug("%s\n", getLocationString(tile));
-		debug("\toriginalTravelTimes:\n");
-		for (auto const &[orgBaseId, dstTravelTimesPair] : originalTravelTimes)
-		{
-			debug("\t\t%-24s\n", Bases[orgBaseId].name);
-			for (auto const &[dstBaseId, travelTime] : dstTravelTimesPair)
-			{
-				debug("\t\t\t-> %5.2f %-24s\n", travelTime, Bases[dstBaseId].name);
-			}
-		}
-		debug("\timprovedTravelTimes:\n");
-		for (auto const &[orgBaseId, dstTravelTimesPair] : improvedTravelTimes)
-		{
-			debug("\t\t%-24s\n", Bases[orgBaseId].name);
-			for (auto const &[dstBaseId, travelTime] : dstTravelTimesPair)
-			{
-				debug("\t\t\t-> %5.2f %-24s\n", travelTime, Bases[dstBaseId].name);
-			}
-		}
-	}
+//	if (DEBUG)
+//	{
+//		debug("%s\n", getLocationString(tile));
+//		debug("\toriginalTravelTimes:\n");
+//		for (auto const &[orgBaseId, dstTravelTimesPair] : originalTravelTimes)
+//		{
+//			debug("\t\t%-24s\n", Bases[orgBaseId].name);
+//			for (auto const &[dstBaseId, travelTime] : dstTravelTimesPair)
+//			{
+//				debug("\t\t\t-> %5.2f %-24s\n", travelTime, Bases[dstBaseId].name);
+//			}
+//		}
+//		debug("\timprovedTravelTimes:\n");
+//		for (auto const &[orgBaseId, dstTravelTimesPair] : improvedTravelTimes)
+//		{
+//			debug("\t\t%-24s\n", Bases[orgBaseId].name);
+//			for (auto const &[dstBaseId, travelTime] : dstTravelTimesPair)
+//			{
+//				debug("\t\t\t-> %5.2f %-24s\n", travelTime, Bases[dstBaseId].name);
+//			}
+//		}
+//	}
 
 	// find travel time improvement
 

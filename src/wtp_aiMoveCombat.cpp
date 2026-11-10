@@ -747,26 +747,26 @@ void moveBaseProtectors()
 	
 	std::vector<TaskPriority> taskPriorities;
 
-	if constexpr (DEBUG)
-	{
-		debug("\tsortedTasks\n");
-
-		for (TaskPriority &taskPriority : taskPriorities)
-		{
-			debug
-			(
-				"\t\t%5.2f:"
-				" [%4d] %s -> %s"
-				"\n"
-				, taskPriority.priority
-				, taskPriority.vehicleId
-				, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
-				, getLocationString(taskPriority.destination)
-			);
-
-		}
-
-	}
+//	if constexpr (DEBUG)
+//	{
+//		debug("\tsortedTasks\n");
+//
+//		for (TaskPriority &taskPriority : taskPriorities)
+//		{
+//			debug
+//			(
+//				"\t\t%5.2f:"
+//				" [%4d] %s -> %s"
+//				"\n"
+//				, taskPriority.priority
+//				, taskPriority.vehicleId
+//				, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
+//				, getLocationString(taskPriority.destination)
+//			);
+//
+//		}
+//
+//	}
 	
 	// select tasks
 	
@@ -907,26 +907,26 @@ void moveBunkerProtectors()
 	
 	std::vector<TaskPriority> taskPriorities;
 
-	if constexpr (DEBUG)
-	{
-		debug("\tsortedTasks\n");
-
-		for (TaskPriority &taskPriority : taskPriorities)
-		{
-			debug
-			(
-				"\t\t%5.2f:"
-				" [%4d] %s -> %s"
-				"\n"
-				, taskPriority.priority
-				, taskPriority.vehicleId
-				, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
-				, getLocationString(taskPriority.destination)
-			);
-
-		}
-
-	}
+//	if constexpr (DEBUG)
+//	{
+//		debug("\tsortedTasks\n");
+//
+//		for (TaskPriority &taskPriority : taskPriorities)
+//		{
+//			debug
+//			(
+//				"\t\t%5.2f:"
+//				" [%4d] %s -> %s"
+//				"\n"
+//				, taskPriority.priority
+//				, taskPriority.vehicleId
+//				, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
+//				, getLocationString(taskPriority.destination)
+//			);
+//
+//		}
+//
+//	}
 	
 	// select tasks
 	
@@ -1085,29 +1085,29 @@ void moveCombat()
 	
 	std::sort(taskPriorities.begin(), taskPriorities.end(), compareTaskPriorityDescending);
 	
-	if constexpr (DEBUG)
-	{
-		debug("\tsortedTasks\n");
-
-		for (TaskPriority &taskPriority : taskPriorities)
-		{
-			debug
-			(
-				"\t\t%5.2f:"
-				" [%4d] %s"
-				" -> %s"
-				" / %s"
-				"\n"
-				, taskPriority.priority
-				, taskPriority.vehicleId
-				, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
-				, getLocationString(taskPriority.destination)
-				, getLocationString(taskPriority.attackTarget)
-			);
-
-		}
-
-	}
+//	if constexpr (DEBUG)
+//	{
+//		debug("\tsortedTasks\n");
+//
+//		for (TaskPriority &taskPriority : taskPriorities)
+//		{
+//			debug
+//			(
+//				"\t\t%5.2f:"
+//				" [%4d] %s"
+//				" -> %s"
+//				" / %s"
+//				"\n"
+//				, taskPriority.priority
+//				, taskPriority.vehicleId
+//				, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
+//				, getLocationString(taskPriority.destination)
+//				, getLocationString(taskPriority.attackTarget)
+//			);
+//
+//		}
+//
+//	}
 	
 	// select tasks
 	
@@ -1208,29 +1208,29 @@ void moveCombat()
 				
 			}
 			
-  	if constexpr (DEBUG)
-			{
-				debug
-				(
-					"\t\t[%4d]"
-					" %s"
-					" %s"
-					" -> %s"
-					" / %s"
-					" combatMode=%d"
-					" destructive=%d"
-					" effect=%5.2f"
-					"\n"
-					, taskPriority.vehicleId
-					, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
-					, Task::getTaskTypeName(taskPriority.taskType)
-					, getLocationString(taskPriority.destination)
-					, getLocationString(taskPriority.attackTarget)
-					, taskPriority.combatMode
-					, taskPriority.destructive
-					, taskPriority.effect
-				);
-			}
+//  	if constexpr (DEBUG)
+//			{
+//				debug
+//				(
+//					"\t\t[%4d]"
+//					" %s"
+//					" %s"
+//					" -> %s"
+//					" / %s"
+//					" combatMode=%d"
+//					" destructive=%d"
+//					" effect=%5.2f"
+//					"\n"
+//					, taskPriority.vehicleId
+//					, getLocationString(getVehicleMapTile(taskPriority.vehicleId))
+//					, Task::getTaskTypeName(taskPriority.taskType)
+//					, getLocationString(taskPriority.destination)
+//					, getLocationString(taskPriority.attackTarget)
+//					, taskPriority.combatMode
+//					, taskPriority.destructive
+//					, taskPriority.effect
+//				);
+//			}
 			
 		}
 		
@@ -1436,20 +1436,20 @@ void moveCombat()
 			debug("ERROR: transitVehicle failed.");
 		}
 
-	if constexpr (DEBUG)
-		{
-			debug
-			(
-				"\t\t[%4d] %s"
-				" -> %s"
-				" / %s"
-				"\n"
-				, vehicleId, getLocationString(getVehicleMapTile(vehicleId))
-				, getLocationString(taskPriority.destination)
-				, getLocationString(taskPriority.attackTarget)
-			);
-			
-		}
+//	if constexpr (DEBUG)
+//		{
+//			debug
+//			(
+//				"\t\t[%4d] %s"
+//				" -> %s"
+//				" / %s"
+//				"\n"
+//				, vehicleId, getLocationString(getVehicleMapTile(vehicleId))
+//				, getLocationString(taskPriority.destination)
+//				, getLocationString(taskPriority.attackTarget)
+//			);
+//			
+//		}
 		
 	}
 	

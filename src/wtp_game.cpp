@@ -2622,14 +2622,14 @@ std::vector<int> getDesignedFactionUnitIds(int factionId, bool includeObsolete, 
 
 	}
 
-	if constexpr (DEBUG)
-	{
-		debug("getDesignedFactionUnitIds(%d, %d, %d) - %s\n", factionId, includeObsolete, includeNotPrototyped, aiMFaction->noun_faction);
-		for (int unitId : designedFactionUnitIds)
-		{
-			debug("[%3d] %s\n", unitId, Units[unitId].name);
-		}
-	}
+//	if constexpr (DEBUG)
+//	{
+//		debug("getDesignedFactionUnitIds(%d, %d, %d) - %s\n", factionId, includeObsolete, includeNotPrototyped, aiMFaction->noun_faction);
+//		for (int unitId : designedFactionUnitIds)
+//		{
+//			debug("[%3d] %s\n", unitId, Units[unitId].name);
+//		}
+//	}
 
 	return designedFactionUnitIds;
 

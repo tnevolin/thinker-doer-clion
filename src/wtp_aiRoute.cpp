@@ -421,17 +421,17 @@ void populateImpediments(int factionId)
 		
 	}
 
-	 if constexpr (DEBUG)
-	{
-		for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
-		{
-			int tileIndex = tile - *MapTiles;
-
-			debug("\t%s %5.2f\n", getLocationString(tile), impediments.at(tileIndex));
-			
-		}
-
-	}
+//	 if constexpr (DEBUG)
+//	{
+//		for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
+//		{
+//			int tileIndex = tile - *MapTiles;
+//
+//			debug("\t%s %5.2f\n", getLocationString(tile), impediments.at(tileIndex));
+//			
+//		}
+//
+//	}
 	
 	Profiling::stop("populateImpediments");
 	
@@ -786,32 +786,32 @@ void populateAirClusters(int factionId)
 
 	}
 
-	if constexpr (DEBUG)
-	{
-		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusterEntry : airClusters)
-		{
-			int chassisId = airClusterEntry.first;
-			robin_hood::unordered_flat_map<int, std::vector<int>> const &chassisAirClusters = airClusterEntry.second;
-
-			debug("\tchassisId=%2d\n", chassisId);
-
-			for (robin_hood::pair<int, std::vector<int>> const &chassisAirClusterEntry : chassisAirClusters)
-			{
-				int speed = chassisAirClusterEntry.first;
-				std::vector<int> const &chassisAirSpeedAirClusters = chassisAirClusterEntry.second;
-
-				debug("\t\tspeed=%2d\n", speed);
-
-				for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
-				{
-					debug("\t\t\t%s %2d\n", getLocationString(*MapTiles + tileIndex), chassisAirSpeedAirClusters.at(tileIndex));
-				}
-
-			}
-
-		}
-
-	}
+//	if constexpr (DEBUG)
+//	{
+//		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusterEntry : airClusters)
+//		{
+//			int chassisId = airClusterEntry.first;
+//			robin_hood::unordered_flat_map<int, std::vector<int>> const &chassisAirClusters = airClusterEntry.second;
+//
+//			debug("\tchassisId=%2d\n", chassisId);
+//
+//			for (robin_hood::pair<int, std::vector<int>> const &chassisAirClusterEntry : chassisAirClusters)
+//			{
+//				int speed = chassisAirClusterEntry.first;
+//				std::vector<int> const &chassisAirSpeedAirClusters = chassisAirClusterEntry.second;
+//
+//				debug("\t\tspeed=%2d\n", speed);
+//
+//				for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
+//				{
+//					debug("\t\t\t%s %2d\n", getLocationString(*MapTiles + tileIndex), chassisAirSpeedAirClusters.at(tileIndex));
+//				}
+//
+//			}
+//
+//		}
+//
+//	}
 
 	Profiling::stop("populateAirClusters");
 
@@ -922,32 +922,32 @@ void populateAirCluster(int factionId, int chassisId, int speed)
 
 	}
 
-	if constexpr (DEBUG)
-	{
-		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusterEntry : airClusters)
-		{
-			int chassisId = airClusterEntry.first;
-			robin_hood::unordered_flat_map<int, std::vector<int>> &chassisAirClusters = airClusterEntry.second;
-
-			debug("\tchassisId=%2d\n", chassisId);
-
-			for (robin_hood::pair<int, std::vector<int>> &chassisAirClusterEntry : chassisAirClusters)
-			{
-				int speed = chassisAirClusterEntry.first;
-				std::vector<int> &chassisAirSpeedAirClusters = chassisAirClusterEntry.second;
-
-				debug("\t\tspeed=%2d\n", speed);
-
-				for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
-				{
-					debug("\t\t\t%s %2d\n", getLocationString(*MapTiles + tileIndex), chassisAirSpeedAirClusters.at(tileIndex));
-				}
-
-			}
-
-		}
-
-	}
+//	if constexpr (DEBUG)
+//	{
+//		for (robin_hood::pair<int, robin_hood::unordered_flat_map<int, std::vector<int>>> &airClusterEntry : airClusters)
+//		{
+//			int chassisId = airClusterEntry.first;
+//			robin_hood::unordered_flat_map<int, std::vector<int>> &chassisAirClusters = airClusterEntry.second;
+//
+//			debug("\tchassisId=%2d\n", chassisId);
+//
+//			for (robin_hood::pair<int, std::vector<int>> &chassisAirClusterEntry : chassisAirClusters)
+//			{
+//				int speed = chassisAirClusterEntry.first;
+//				std::vector<int> &chassisAirSpeedAirClusters = chassisAirClusterEntry.second;
+//
+//				debug("\t\tspeed=%2d\n", speed);
+//
+//				for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
+//				{
+//					debug("\t\t\t%s %2d\n", getLocationString(*MapTiles + tileIndex), chassisAirSpeedAirClusters.at(tileIndex));
+//				}
+//
+//			}
+//
+//		}
+//
+//	}
 
 	Profiling::stop("populateAirCluster");
 
@@ -2076,21 +2076,21 @@ void populateSeaClusters(int  factionId)
 		
 	}
 	
-	if constexpr (DEBUG)
-	{
-		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
-		{
-			debug("\t%s %2d\n", getLocationString(*MapTiles + tileIndex), seaClusters.at(tileIndex));
-		}
-
-		for (std::pair<int const, int> &seaClusterAreaEntry : seaClusterAreas)
-		{
-			int seaCluster = seaClusterAreaEntry.first;
-			int seaClusterArea = seaClusterAreaEntry.second;
-			debug("\t%3d %3d\n", seaCluster, seaClusterArea);
-		}
-
-	}
+//	if constexpr (DEBUG)
+//	{
+//		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
+//		{
+//			debug("\t%s %2d\n", getLocationString(*MapTiles + tileIndex), seaClusters.at(tileIndex));
+//		}
+//
+//		for (std::pair<int const, int> &seaClusterAreaEntry : seaClusterAreas)
+//		{
+//			int seaCluster = seaClusterAreaEntry.first;
+//			int seaClusterArea = seaClusterAreaEntry.second;
+//			debug("\t%3d %3d\n", seaCluster, seaClusterArea);
+//		}
+//
+//	}
 	
 	Profiling::stop("populateSeaClusters");
 	
@@ -2208,14 +2208,14 @@ void populateLandClusters()
 		
 	}
 	
-	if constexpr (DEBUG)
-	{
-		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
-		{
-			debug("\t%s %2d\n", getLocationString(*MapTiles + tileIndex), landClusters.at(tileIndex));
-		}
-
-	}
+//	if constexpr (DEBUG)
+//	{
+//		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
+//		{
+//			debug("\t%s %2d\n", getLocationString(*MapTiles + tileIndex), landClusters.at(tileIndex));
+//		}
+//
+//	}
 	
 	Profiling::stop("populateLandClusters");
 	
@@ -2325,15 +2325,15 @@ void populateLandTransportedClusters()
 			
 	}
 	
-	if constexpr (DEBUG)
-	{
-		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
-		{
-			debug("\t%s %2d\n", getLocationString(*MapTiles + tileIndex), landTransportedClusters.at(tileIndex));
-
-		}
-
-	}
+//	if constexpr (DEBUG)
+//	{
+//		for (int tileIndex = 0; tileIndex < *MapAreaTiles; tileIndex++)
+//		{
+//			debug("\t%s %2d\n", getLocationString(*MapTiles + tileIndex), landTransportedClusters.at(tileIndex));
+//
+//		}
+//
+//	}
 	
 	Profiling::stop("populateLandTransportedClusters");
 	

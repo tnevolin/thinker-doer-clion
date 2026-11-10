@@ -164,21 +164,21 @@ void strategy()
 	
 	productionStrategy();
 	
-	if constexpr (DEBUG)
-	{
-		debug("Tasks - %s\n", MFactions[aiFactionId].noun_faction);
-		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
-		{
-			Task *task = getTask(vehicleId);
-			if (task == nullptr)
-				continue;
-
-			debug("\t%s\n", task->toString());
-
-		}
-		debug("\n");
-
-	}
+//	if constexpr (DEBUG)
+//	{
+//		debug("Tasks - %s\n", MFactions[aiFactionId].noun_faction);
+//		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
+//		{
+//			Task *task = getTask(vehicleId);
+//			if (task == nullptr)
+//				continue;
+//
+//			debug("\t%s\n", task->toString());
+//
+//		}
+//		debug("\n");
+//
+//	}
 
 //	// execute tasks
 //
@@ -1266,19 +1266,19 @@ void populatePlayerBaseRanges()
 		
 	}
 	
-	if constexpr (DEBUG)
-	{
-		for (TileInfo &tileInfo : aiData.tileInfos)
-		{
-			debug("\t%s", getLocationString(tileInfo.tile));
-			int range;
-			if ((range = tileInfo.baseRanges.at(TRIAD_AIR))		== INT_MAX) { debug(" INF"); } else { debug(" %3d", range); }
-			if ((range = tileInfo.baseRanges.at(TRIAD_SEA))		== INT_MAX) { debug(" INF"); } else { debug(" %3d", range); }
-			if ((range = tileInfo.baseRanges.at(TRIAD_LAND))	== INT_MAX) { debug(" INF"); } else { debug(" %3d", range); }
-			debug("\n");
-		}
-
-	}
+//	if constexpr (DEBUG)
+//	{
+//		for (TileInfo &tileInfo : aiData.tileInfos)
+//		{
+//			debug("\t%s", getLocationString(tileInfo.tile));
+//			int range;
+//			if ((range = tileInfo.baseRanges.at(TRIAD_AIR))		== INT_MAX) { debug(" INF"); } else { debug(" %3d", range); }
+//			if ((range = tileInfo.baseRanges.at(TRIAD_SEA))		== INT_MAX) { debug(" INF"); } else { debug(" %3d", range); }
+//			if ((range = tileInfo.baseRanges.at(TRIAD_LAND))	== INT_MAX) { debug(" INF"); } else { debug(" %3d", range); }
+//			debug("\n");
+//		}
+//
+//	}
 
 	Profiling::stop("populatePlayerBaseRanges");
 	
@@ -1552,21 +1552,21 @@ void populateFactionInfos()
 
 		}
 
-		if constexpr (DEBUG)
-		{
-			debug("\tavailableUnitIds\n");
-			for (int unitId : factionInfo.availableUnitIds)
-			{
-				debug("\t\t[%4d] %-32s\n", unitId, Units[unitId].name);
-			}
-
-			debug("\tbuildableUnitIds\n");
-			for (int unitId : factionInfo.buildableUnitIds)
-			{
-				debug("\t\t[%4d] %-32s\n", unitId, Units[unitId].name);
-			}
-
-		}
+//		if constexpr (DEBUG)
+//		{
+//			debug("\tavailableUnitIds\n");
+//			for (int unitId : factionInfo.availableUnitIds)
+//			{
+//				debug("\t\t[%4d] %-32s\n", unitId, Units[unitId].name);
+//			}
+//
+//			debug("\tbuildableUnitIds\n");
+//			for (int unitId : factionInfo.buildableUnitIds)
+//			{
+//				debug("\t\t[%4d] %-32s\n", unitId, Units[unitId].name);
+//			}
+//
+//		}
 
 	}
 	
@@ -4063,21 +4063,21 @@ void evaluateDefendLocations()
 	
 	Profiling::stop("evaluateDefendLocation");
 
-	if constexpr (DEBUG)
-	{
-		debug("defend locations\n");
-		for (auto const &[tile, defendData] : aiData.defendLocations)
-		{
-			debug("\t%s\n", getLocationString(defendData.tile));
-
-			for (DefendDataAttacker const &attacker : defendData.attackers)
-			{
-				debug("\t\t%-24s %-32s %5.2f\n", MFactions[attacker.factionId].noun_faction, Units[attacker.unitId].name, attacker.health);
-			}
-
-		}
-
-	}
+//	if constexpr (DEBUG)
+//	{
+//		debug("defend locations\n");
+//		for (auto const &[tile, defendData] : aiData.defendLocations)
+//		{
+//			debug("\t%s\n", getLocationString(defendData.tile));
+//
+//			for (DefendDataAttacker const &attacker : defendData.attackers)
+//			{
+//				debug("\t\t%-24s %-32s %5.2f\n", MFactions[attacker.factionId].noun_faction, Units[attacker.unitId].name, attacker.health);
+//			}
+//
+//		}
+//
+//	}
 	
 }
 

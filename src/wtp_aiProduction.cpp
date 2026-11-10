@@ -710,17 +710,17 @@ void applyBaseProductions()
 
 		if (override)
 		{
-			if constexpr (DEBUG)
-			{
-				std::vector<robin_hood::pair<int, double>> sortedItemPriorities(productionDemand.itemPriorities.begin(), productionDemand.itemPriorities.end());
-				std::sort(sortedItemPriorities.begin(), sortedItemPriorities.end(), [](const robin_hood::pair<int, double>& a, const robin_hood::pair<int, double>& b) { return a.second > b.second; });
-
-				for (const auto& itemPriority : sortedItemPriorities)
-				{
-					debug("\t%5.2f %-24s\n", itemPriority.second, prod_name(itemPriority.first));
-				}
-
-			}
+//			if constexpr (DEBUG)
+//			{
+//				std::vector<robin_hood::pair<int, double>> sortedItemPriorities(productionDemand.itemPriorities.begin(), productionDemand.itemPriorities.end());
+//				std::sort(sortedItemPriorities.begin(), sortedItemPriorities.end(), [](const robin_hood::pair<int, double>& a, const robin_hood::pair<int, double>& b) { return a.second > b.second; });
+//
+//				for (const auto& itemPriority : sortedItemPriorities)
+//				{
+//					debug("\t%5.2f %-24s\n", itemPriority.second, prod_name(itemPriority.first));
+//				}
+//
+//			}
 
 			choice = productionDemand.item;
 

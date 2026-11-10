@@ -220,7 +220,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # Release specific deployment
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
+# -DWTP_PACKAGE_RELEASE=OFF builds the optimized DLL (copied to patch/) without rewriting releases/ and zipping
+option(WTP_PACKAGE_RELEASE "Package release artifacts into releases/ after a Release build" ON)
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND WTP_PACKAGE_RELEASE)
 	set(RELEASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/releases/TheWillToPower")
 	add_custom_command(TARGET thinker POST_BUILD
 		# Start from an empty directory so files dropped from the release are not packaged
