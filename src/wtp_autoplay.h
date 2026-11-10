@@ -34,11 +34,20 @@ struct FactionStats
 	int bases = 0;
 	int population = 0;
 	int units = 0;
+	// split of the units by purpose, every unit is counted in exactly one group
+	int unitsCombat = 0;
+	int unitsColony = 0;
+	int unitsFormer = 0;
+	int unitsSupply = 0;
+	int unitsProbe = 0;
+	int unitsOther = 0;
 	int techs = 0;
 	int secretProjects = 0;
 	int energyCredits = 0;
 	int nutrientSurplus = 0;
 	int mineralSurplus = 0;
+	// mineral intake after multipliers and before unit support is subtracted
+	int mineralIntake = 0;
 	// energy has no consumption so surplus equals intake
 	int energySurplus = 0;
 	// split of the energy surplus

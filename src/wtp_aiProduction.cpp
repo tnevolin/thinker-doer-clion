@@ -250,7 +250,6 @@ void evaluateGlobalColonyDemand()
 	// averages
 	
 	int sumPopulation = 0.0;
-	double sumBaseIncome = 0.0;
 	double sumPsychMultiplier = 0.0;
 	
 	for (int baseId : aiData.baseIds)
@@ -258,7 +257,6 @@ void evaluateGlobalColonyDemand()
 		BASE *base = getBase(baseId);
 		
 		sumPopulation += base->pop_size;
-		sumBaseIncome += getBaseIncome(baseId);
 		sumPsychMultiplier += getBasePsychMultiplier(baseId);
 		
 	}
@@ -4155,22 +4153,6 @@ double getMoraleProportionalMineralBonus(std::array<int,4> levels)
 	// proportional bonus on average base production
 
 	return (aiData.totalMineralIntake2 <= 0 ? 0.0 : std::min(1.0, mineralReduction / static_cast<double>(aiData.totalMineralIntake2)));
-
-}
-
-BaseMetric getBaseMetric(int baseId)
-{
-	BASE *base = getBase(baseId);
-
-	BaseMetric baseMetric;
-
-	baseMetric.nutrient = base->nutrient_surplus;
-	baseMetric.mineral = base->mineral_surplus;
-	baseMetric.economy = base->economy_total;
-	baseMetric.psych = base->economy_total;
-	baseMetric.labs = base->labs_total;
-
-	return baseMetric;
 
 }
 

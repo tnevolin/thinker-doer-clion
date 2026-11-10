@@ -47,15 +47,6 @@ struct PRODUCTION_CHOICE
 	bool urgent;
 };
 
-struct BaseMetric
-{
-	int nutrient = 0;
-	int mineral = 0;
-	int economy = 0;
-	int psych = 0;
-	int labs = 0;
-};
-
 struct Interval
 {
 	int min = 0;
@@ -147,7 +138,6 @@ double getProductionPriority(double gain, double cost);
 double getProductionConstantIncomeGain(double score, double buildTime, double bonusDelay);
 double getProductionLinearIncomeGain(double score, double buildTime, double bonusDelay);
 double getMoraleProportionalMineralBonus(std::array<int,4> levels);
-BaseMetric getBaseMetric(int baseId);
 double getDemand(double required, double provided);
 
 //=======================================================

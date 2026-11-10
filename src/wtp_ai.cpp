@@ -1469,7 +1469,7 @@ void populateFactionInfos()
 			
 			// base production power
 			
-			double baseProductionPower = getResourceScore(base->mineral_surplus, base->economy_total);
+			double baseProductionPower = getResourceScore(base->mineral_intake_2, base->economy_total);
 			
 			factionInfo.productionPower += baseProductionPower;
 			
@@ -2201,7 +2201,6 @@ void populateMaxMineralSurplus()
 	Profiling::start("populateMaxMineralSurplus", "populateAIData");
 	
 	aiData.totalMineralIntake2 = 0;
-	aiData.maxMineralSurplus = 1;
 	aiData.maxMineralIntake2 = 1;
 	
 	for (int baseId : aiData.baseIds)
@@ -2210,8 +2209,7 @@ void populateMaxMineralSurplus()
 		
 		aiData.totalMineralIntake2 += base->mineral_intake_2;
 		
-		aiData.maxMineralSurplus = std::max(aiData.maxMineralSurplus, base->mineral_surplus);
-		aiData.maxMineralIntake2 = std::max(aiData.maxMineralSurplus, base->mineral_intake_2);
+		aiData.maxMineralIntake2 = std::max(aiData.maxMineralIntake2, base->mineral_intake_2);
 		
 	}
 	

@@ -177,6 +177,7 @@ FactionStats collectFactionStats(int factionId)
 		stats.population += base->pop_size;
 		stats.nutrientSurplus += base->nutrient_surplus;
 		stats.mineralSurplus += base->mineral_surplus;
+		stats.mineralIntake += base->mineral_intake_2;
 		stats.energySurplus += base->energy_surplus;
 		stats.economy += base->economy_total;
 		stats.psych += base->psych_total;
@@ -184,8 +185,21 @@ FactionStats collectFactionStats(int factionId)
 	}
 	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
 	{
-		if (Vehs[vehicleId].faction_id == factionId)
-			stats.units++;
+		if (Vehs[vehicleId].faction_id != factionId)
+			continue;
+		stats.units++;
+		if (isColonyVehicle(vehicleId))
+			stats.unitsColony++;
+		else if (isFormerVehicle(vehicleId))
+			stats.unitsFormer++;
+		else if (isSupplyVehicle(vehicleId))
+			stats.unitsSupply++;
+		else if (isProbeVehicle(vehicleId))
+			stats.unitsProbe++;
+		else if (isCombatVehicle(vehicleId))
+			stats.unitsCombat++;
+		else
+			stats.unitsOther++;
 	}
 	for (int techId = 0; techId < MaxTechnologyNum; techId++)
 	{
@@ -238,6 +252,7 @@ static void recordStats(const char* phase)
 	double nutrientSum = 0.0;
 	double mineralSum = 0.0;
 	double energySum = 0.0;
+	int combatSum = 0, colonySum = 0, formerSum = 0, supplySum = 0, probeSum = 0, otherSum = 0;
 	int yieldCount = 0;
 
 	for (int factionId = 1; factionId < MaxPlayerNum; factionId++)
@@ -247,10 +262,18 @@ static void recordStats(const char* phase)
 
 		if (stats.alive)
 		{
-			// same resources the AI counts as base income: nutrient and mineral surplus, economy and labs
+			// Yield of the bases before spending: gross mineral intake (unit support is a decision of its own),
+			// economy and labs (facility maintenance is the same), and the nutrient surplus (feeding citizens is
+			// not a choice, and every citizen brings a tile).
 			nutrientSum += stats.nutrientSurplus;
-			mineralSum += stats.mineralSurplus;
+			mineralSum += stats.mineralIntake;
 			energySum += stats.economy + stats.labs;
+			combatSum += stats.unitsCombat;
+			colonySum += stats.unitsColony;
+			formerSum += stats.unitsFormer;
+			supplySum += stats.unitsSupply;
+			probeSum += stats.unitsProbe;
+			otherSum += stats.unitsOther;
 			yieldCount++;
 		}
 
@@ -259,7 +282,7 @@ static void recordStats(const char* phase)
 
 		if (statsFile)
 		{
-			fprintf(statsFile, "%s,%d,%d,%lu,%d,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f\n",
+			fprintf(statsFile, "%s,%d,%d,%lu,%d,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f\n",
 				phase,
 				*CurrentTurn,
 				*CurrentMissionYear,
@@ -271,11 +294,18 @@ static void recordStats(const char* phase)
 				stats.bases,
 				stats.population,
 				stats.units,
+				stats.unitsCombat,
+				stats.unitsColony,
+				stats.unitsFormer,
+				stats.unitsSupply,
+				stats.unitsProbe,
+				stats.unitsOther,
 				stats.techs,
 				stats.secretProjects,
 				stats.energyCredits,
 				stats.nutrientSurplus,
 				stats.mineralSurplus,
+				stats.mineralIntake,
 				stats.energySurplus,
 				stats.economy,
 				stats.psych,
@@ -301,6 +331,9 @@ static void recordStats(const char* phase)
 		double yieldScore = yieldWeights.nutrient * nutrient + yieldWeights.mineral * mineral + yieldWeights.energy * energy;
 		autoplay_log("yield %s, turn %d: nutrient %.3f mineral %.3f energy %.3f score %.3f (means per faction over %d factions, weights %.2f/%.2f/%.2f)",
 			phase, *CurrentTurn, nutrient, mineral, energy, yieldScore, yieldCount, yieldWeights.nutrient, yieldWeights.mineral, yieldWeights.energy);
+		autoplay_log("units %s, turn %d: combat %.3f colony %.3f former %.3f supply %.3f probe %.3f other %.3f (means per faction over %d factions)",
+			phase, *CurrentTurn, (double)combatSum / yieldCount, (double)colonySum / yieldCount, (double)formerSum / yieldCount,
+			(double)supplySum / yieldCount, (double)probeSum / yieldCount, (double)otherSum / yieldCount, yieldCount);
 	}
 }
 
@@ -316,8 +349,8 @@ void autoplay_after_load()
 		statsFile = fopen(autoplay.statsPath.c_str(), "w");
 		if (statsFile)
 		{
-			fprintf(statsFile, "phase,turn,year,elapsed_ms,faction,name,alive,wtp,bases,pop,units,techs,projects,"
-				"energy_credits,nutrient_surplus,mineral_surplus,energy_surplus,economy,psych,labs,"
+			fprintf(statsFile, "phase,turn,year,elapsed_ms,faction,name,alive,wtp,bases,pop,units,combat,colony,former,supply,probe,other,techs,projects,"
+				"energy_credits,nutrient_surplus,mineral_surplus,mineral_intake,energy_surplus,economy,psych,labs,"
 				"game_score,game_score_other,position_score\n");
 		}
 		else
@@ -330,6 +363,9 @@ void autoplay_after_load()
 	autoplay_log("autoplay start: turn %d, human mask was 0x%02X, playing %d turns, stats csv: %s",
 		*CurrentTurn, FactionStatus[0], autoplay.turns, statsFile ? autoplay.statsPath.c_str() : "none");
 	FactionStatus[0] = 0;
+	// The watched faction (MapWin->cOwner) is the one the engine shows windows to, whatever its control.
+	// Faction 0 is the natives, which no window is meant for.
+	*CurrentPlayerFaction = 0;
 	for (const std::string& override : autoplay.overrides)
 	{
 		autoplay_log("option override: %s", override.c_str());

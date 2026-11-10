@@ -901,7 +901,6 @@ struct Data
 	robin_hood::unordered_flat_map<int, std::vector<int>> regionSurfaceCombatVehicleIds;
 	robin_hood::unordered_flat_map<int, std::vector<int>> regionSurfaceScoutVehicleIds;
 	int totalMineralIntake2;
-	int maxMineralSurplus;
 	int maxMineralIntake2;
 	int bestLandUnitId;
 	int bestSeaUnitId;
@@ -1026,8 +1025,7 @@ double getGainBonus(double bonus);
 double getGainIncome(double income);
 double getGainIncomeGrowth(double incomeGrowth);
 double getGainIncomeGrowth2(double incomeGrowth2);
-double getBaseIncome(int baseId, bool withNutrients = false);
-double getAverageBaseIncome();
+double getBaseIncome(int baseId);
 double getBaseCitizenIncome(int baseId);
 double getMeanBaseIncome(double age);
 double getMeanBaseGain(double age);

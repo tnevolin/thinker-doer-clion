@@ -781,7 +781,7 @@ void populateTerraformingData()
 
 		baseTerraformingInfo.popSzie = static_cast<unsigned char>(base.pop_size);
 		baseTerraformingInfo.nutrientCost = mod_cost_factor(base.faction_id, RSC_NUTRIENT, baseId);
-		baseTerraformingInfo.income = getBaseIncome(baseId, false);
+		baseTerraformingInfo.income = getBaseIncome(baseId);
 		baseTerraformingInfo.mineralValue = getBaseMineralMultiplier(baseId);
 		baseTerraformingInfo.energyValue = getBaseEnergyMultiplier(baseId) * (1.0 - static_cast<double>(wtp_mod_black_market(baseId, 100)) / 100.0);
 		baseTerraformingInfo.economyValue = getBaseEconomyMultiplier(baseId);

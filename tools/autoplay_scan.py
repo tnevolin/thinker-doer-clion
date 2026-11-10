@@ -4,7 +4,7 @@ Scans one AI parameter (or several parameters tied to the same value) in autopla
 for every value.
 
 Every run starts the game from the same save with  -autoplay -set name=value  and reads the "yield round" lines
-from autoplay.log. Each of them holds the mean over the AI factions of the nutrient surplus, the mineral surplus and
+from autoplay.log. Each of them holds the mean over the AI factions of the nutrient surplus, the gross mineral intake (before unit support) and
 economy + labs. The result of a run is the mean of the last --tail rounds of
     score = wn * nutrient + wm * mineral + we * energy
 with the reference weights given by --weights (default 1.0,1.5,0.5, the thinker.ini defaults). The weights are the

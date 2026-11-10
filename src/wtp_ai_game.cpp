@@ -3705,29 +3705,17 @@ double getGainIncomeGrowth2(double incomeGrowth)
 }
 
 /**
-Computes base summary resource score.
+Computes base summary resource score before unit support is subtracted.
+Citizens produce the whole mineral intake. Unit support is paid whatever they do, so it is not part of what they are worth.
 */
-double getBaseIncome(int baseId, bool withNutrients)
+double getBaseIncome(int baseId)
 {
 	BASE *base = getBase(baseId);
-	
-	double income;
-	
-	if (!withNutrients)
-	{
-		income = getResourceScore(base->mineral_surplus, base->economy_total + base->labs_total);
-	}
-	else
-	{
-		income = getResourceScore(base->nutrient_surplus, base->mineral_surplus, base->economy_total + base->labs_total);
-	}
-	
-	return income;
-	
+	return getResourceScore(base->mineral_intake_2, base->economy_total + base->labs_total);
 }
 
 /**
-Computes average base citizen income.
+Computes average base citizen income before unit support is subtracted.
 */
 double getBaseCitizenIncome(int baseId)
 {
@@ -3788,25 +3776,6 @@ Estimates expected colony gain accounting for travel time and colony maintenance
 double getLandColonyGain()
 {
 	return getGainDelay(getNewBaseGain(), AVERAGE_LAND_COLONY_TRAVEL_TIME) + getGainTimeInterval(getGainIncome(getResourceScore(-1.0, 0.0)), 0.0, AVERAGE_LAND_COLONY_TRAVEL_TIME);
-}
-
-/**
-Computes average base income.
-*/
-double getAverageBaseIncome()
-{
-	if (aiData.baseIds.size() == 0)
-		return 0.0;
-	
-	double sumBaseIncome = 0.0;
-	
-	for (int baseId : aiData.baseIds)
-	{
-		sumBaseIncome += getBaseIncome(baseId);
-	}
-	
-	return sumBaseIncome / static_cast<double>(aiData.baseIds.size());
-	
 }
 
 /**
@@ -5080,7 +5049,7 @@ int getOptimalPsychAllocation(int factionId)
 		double currentDoctorPsychTotal = static_cast<double>(currentDoctorCount) * averageDoctorPsychBonus;
 		double nonDoctorCount = static_cast<double>(std::max(1, static_cast<int>(base.pop_size) - currentDoctorCount));
 
-		double averageMineralPerWorker = static_cast<double>(base.mineral_surplus) / nonDoctorCount;
+		double averageMineralPerWorker = static_cast<double>(base.mineral_intake_2) / nonDoctorCount;
 		double averageNutrientPerWorker = static_cast<double>(base.nutrient_surplus) / nonDoctorCount;
 
 		// tile-derived psych (psych_total minus doctors' own flat bonus) currently generated
@@ -5141,7 +5110,7 @@ int getOptimalPsychAllocation(int factionId)
 			double deltaDoctorCount = clamp(-deltaSuppressionFromPsych / doctorNetSuppression, static_cast<double>(-currentDoctorCount), nonDoctorCount);
 
 			double newNutrient = static_cast<double>(base.nutrient_surplus) - deltaDoctorCount * averageNutrientPerWorker;
-			double newMineral = static_cast<double>(base.mineral_surplus) - deltaDoctorCount * averageMineralPerWorker;
+			double newMineral = static_cast<double>(base.mineral_intake_2) - deltaDoctorCount * averageMineralPerWorker;
 			double newEnergy = newEconLabs - deltaDoctorCount * newAverageEnergyPerWorker;
 
 			baseIntakeGainByPsychAllocation[psychAllocation] += getResourceScore(newNutrient, newMineral, newEnergy);
@@ -5284,7 +5253,7 @@ int getOptimalLabsAllocation(int factionId)
 
 			double energyEquivalent = newEconomyTotal + newLabsTotal * researchMultiplier;
 
-			baseIntakeGainByLabsAllocation[labsAllocation] += getResourceScore(static_cast<double>(base.nutrient_surplus), static_cast<double>(base.mineral_surplus), energyEquivalent);
+			baseIntakeGainByLabsAllocation[labsAllocation] += getResourceScore(static_cast<double>(base.nutrient_surplus), static_cast<double>(base.mineral_intake_2), energyEquivalent);
 			totalEconomyByLabsAllocation[labsAllocation] += newEconomyTotal;
 
 		}
