@@ -92,7 +92,7 @@ double BaseTerraformingInfo::getIntakeGain(ResourceYield const &yield, int econo
 {
 	// resource gain
 
-	double income = getResourceScore(this->mineralValue * yield.mineral, this->energyValue * yield.energy + this->economyValue * economy + this-> labsValue * labs);
+	double income = getResourceScore(getTerraformingResourceWeights(), this->mineralValue * yield.mineral, this->energyValue * yield.energy + this->economyValue * economy + this-> labsValue * labs);
 	double incomeGain = getGainIncome(income);
 
 	// nutrient gain
@@ -781,7 +781,7 @@ void populateTerraformingData()
 
 		baseTerraformingInfo.popSzie = static_cast<unsigned char>(base.pop_size);
 		baseTerraformingInfo.nutrientCost = mod_cost_factor(base.faction_id, RSC_NUTRIENT, baseId);
-		baseTerraformingInfo.income = getBaseIncome(baseId);
+		baseTerraformingInfo.income = getBaseIncome(baseId, getTerraformingResourceWeights());
 		baseTerraformingInfo.mineralValue = getBaseMineralMultiplier(baseId);
 		baseTerraformingInfo.energyValue = getBaseEnergyMultiplier(baseId) * (1.0 - static_cast<double>(wtp_mod_black_market(baseId, 100)) / 100.0);
 		baseTerraformingInfo.economyValue = getBaseEconomyMultiplier(baseId);
@@ -1048,7 +1048,7 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 {
 	debug("generateConventionalTerraformingRequests - %s\n", Bases[baseId].name);
 
-	static double const MINERAL_BONUS_PENALTY = getResourceScore(1, 0);
+	static double const MINERAL_BONUS_PENALTY = getResourceScore(getTerraformingResourceWeights(), 1, 0);
 
 	BaseTerraformingInfo &baseTerraformingInfo = getBaseTerraformingInfo(baseId);
 
@@ -2311,11 +2311,7 @@ bool isValidTerraformingSite(MAP *tile)
 
 double getTerraformingResourceScore(double nutrient, double mineral, double energy)
 {
-	return
-		+ conf.ai_terraforming_nutrientWeight * nutrient
-		+ conf.ai_terraforming_mineralWeight * mineral
-		+ conf.ai_terraforming_energyWeight * energy
-	;
+	return getResourceScore(getTerraformingResourceWeights(), nutrient, mineral, energy);
 }
 
 double getTerraformingResourceScore(ResourceYield const &resourceYield)
@@ -2433,7 +2429,7 @@ double getCondenserGain(MAP *tile)
 
 		// accumulate improvementGain
 
-		double improvementGain = getBaseImprovementGain(baseId, oldResourceIntake2, newResourceIntake2);
+		double improvementGain = getBaseImprovementGain(baseId, oldResourceIntake2, newResourceIntake2, getTerraformingResourceWeights());
 		improvementEffect += improvementGain;
 
 	}
@@ -2473,7 +2469,7 @@ double getEchelonMirrorGain(MAP *tile)
 
 		// accumulate improvementGain
 
-		double improvementGain = getBaseImprovementGain(baseId, oldResourceIntake2, newResourceIntake2);
+		double improvementGain = getBaseImprovementGain(baseId, oldResourceIntake2, newResourceIntake2, getTerraformingResourceWeights());
 		improvementEffect += improvementGain;
 
 	}
@@ -2527,7 +2523,7 @@ double getAquiferGain(MAP *tile)
 
 			// accumulate improvementGain
 
-			double improvementGain = getBaseImprovementGain(baseId, oldResourceIntake2, newResourceIntake2);
+			double improvementGain = getBaseImprovementGain(baseId, oldResourceIntake2, newResourceIntake2, getTerraformingResourceWeights());
 			radiusImprovementEffect += improvementGain;
 
 		}
@@ -2625,7 +2621,7 @@ double getRaiseLandGain(MAP *tile)
 
 		// accumulate improvementGain
 
-		double improvementGain = getBaseImprovementGain(baseId, oldResourceIntake2, newResourceIntake2);
+		double improvementGain = getBaseImprovementGain(baseId, oldResourceIntake2, newResourceIntake2, getTerraformingResourceWeights());
 		improvementEffect += improvementGain;
 
 	}
@@ -2728,7 +2724,7 @@ double getNetworkGain(MAP *tile, MAP const &originalTile, MAP const &improvedTil
 
 	// compute network gain
 
-	double resourceScore = getResourceScore(conf.ai_terraforming_networkValueIncomeImprovement, 0.0);
+	double resourceScore = getResourceScore(getTerraformingResourceWeights(), conf.ai_terraforming_networkValueIncomeImprovement, 0.0);
 	double improvementIncomeGrowh = resourceScore * totalTravelTimeImprovement;
 	double networkGain = getGainIncome(improvementIncomeGrowh);
 

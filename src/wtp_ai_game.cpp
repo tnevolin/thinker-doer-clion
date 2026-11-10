@@ -2705,15 +2705,44 @@ int getBaseGrowthTime(int baseId, int targetSize)
 }
 
 /**
+Generic resource weights: general AI decision making.
+*/
+ResourceWeights getResourceWeights()
+{
+	return {conf.ai_resource_score_nutrient, conf.ai_resource_score_mineral, conf.ai_resource_score_energy};
+}
+
+/**
+Terraforming resource weights: the value of former work only.
+*/
+ResourceWeights getTerraformingResourceWeights()
+{
+	return {conf.ai_terraforming_nutrientWeight, conf.ai_terraforming_mineralWeight, conf.ai_terraforming_energyWeight};
+}
+
+/**
+Calculates nutrient + minerals + energy resource score with given weights.
+*/
+double getResourceScore(ResourceWeights const &weights, double nutrient, double mineral, double energy)
+{
+	return
+		+ weights.nutrient * nutrient
+		+ weights.mineral * mineral
+		+ weights.energy * energy
+	;
+}
+
+double getResourceScore(ResourceWeights const &weights, double mineral, double energy)
+{
+	return getResourceScore(weights, 0, mineral, energy);
+}
+
+/**
 Calculates nutrient + minerals + energy resource score.
 */
 double getResourceScore(double nutrient, double mineral, double energy)
 {
-	return
-		+ conf.ai_resource_score_nutrient * nutrient
-		+ conf.ai_resource_score_mineral * mineral
-		+ conf.ai_resource_score_energy * energy
-	;
+	return getResourceScore(getResourceWeights(), nutrient, mineral, energy);
 }
 
 /**
@@ -3710,8 +3739,16 @@ Citizens produce the whole mineral intake. Unit support is paid whatever they do
 */
 double getBaseIncome(int baseId)
 {
+	return getBaseIncome(baseId, getResourceWeights());
+}
+
+/**
+Computes base summary resource score with given weights.
+*/
+double getBaseIncome(int baseId, ResourceWeights const &weights)
+{
 	BASE *base = getBase(baseId);
-	return getResourceScore(base->mineral_intake_2, base->economy_total + base->labs_total);
+	return getResourceScore(weights, base->mineral_intake_2, base->economy_total + base->labs_total);
 }
 
 /**
@@ -3783,13 +3820,22 @@ Computes expected base gain adjusting for current base income.
 */
 double getBaseGain(int  popSize, int  nutrientCostFactor, Resource  &baseIntake2)
 {
+	return getBaseGain(popSize, nutrientCostFactor, baseIntake2, getResourceWeights());
+}
+
+/**
+Computes expected base gain adjusting for current base income with given resource weights.
+*/
+double getBaseGain(int  popSize, int  nutrientCostFactor, Resource  &baseIntake2, ResourceWeights const &weights)
+{
 	// gain
-	
-	double income = getResourceScore(baseIntake2.mineral, baseIntake2.energy);
+
+	double income = getResourceScore(weights, baseIntake2.mineral, baseIntake2.energy);
 	double incomeGain = getGainIncome(income);
-	
+
+	double averageCitizenIncome = getResourceScore(weights, aiData.averageCitizenMineralIntake2, aiData.averageCitizenEconomyIntake2 + aiData.averageCitizenLabsIntake2);
 	double popualtionGrowth = baseIntake2.nutrient / static_cast<double>(nutrientCostFactor * (1 + popSize));
-	double incomeGrowth = aiData.averageCitizenResourceIncome * popualtionGrowth;
+	double incomeGrowth = averageCitizenIncome * popualtionGrowth;
 	double incomeGrowthGain = getGainIncomeGrowth(incomeGrowth);
 	
 	double gain =
@@ -3832,11 +3878,16 @@ double getBaseGain(int  popSize, int  nutrientCostFactor, Resource  &baseIntake2
 
 double getBaseGain(int  baseId, Resource baseIntake2)
 {
+	return getBaseGain(baseId, baseIntake2, getResourceWeights());
+}
+
+double getBaseGain(int  baseId, Resource baseIntake2, ResourceWeights const &weights)
+{
 	BASE *base = getBase(baseId);
 	int nutrientCostFactor = mod_cost_factor(aiFactionId, RSC_NUTRIENT, baseId);
-	
-	return getBaseGain(base->pop_size, nutrientCostFactor, baseIntake2);
-	
+
+	return getBaseGain(base->pop_size, nutrientCostFactor, baseIntake2, weights);
+
 }
 
 /**
@@ -3886,8 +3937,13 @@ Compares the mean base gain adjusted for current age with same but with improved
 */
 double getBaseImprovementGain(int baseId, Resource const &oldBaseIntake2, Resource const &newBaseIntake2)
 {
-	double oldGain = getBaseGain(baseId, oldBaseIntake2);
-	double newGain = getBaseGain(baseId, newBaseIntake2);
+	return getBaseImprovementGain(baseId, oldBaseIntake2, newBaseIntake2, getResourceWeights());
+}
+
+double getBaseImprovementGain(int baseId, Resource const &oldBaseIntake2, Resource const &newBaseIntake2, ResourceWeights const &weights)
+{
+	double oldGain = getBaseGain(baseId, oldBaseIntake2, weights);
+	double newGain = getBaseGain(baseId, newBaseIntake2, weights);
 	
 	double improvementGain = newGain - oldGain;
 	

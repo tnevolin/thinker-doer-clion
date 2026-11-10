@@ -1,6 +1,9 @@
 #include "wtp_autoplay.h"
 
 #include <cstdarg>
+#include <map>
+#include <algorithm>
+#include <vector>
 
 #include "patch.h"
 #include "wtp_ai_game.h"
@@ -12,6 +15,13 @@ static FILE* statsFile = nullptr;
 static DWORD startTick = 0;
 static int startTurn = 0;
 static int suppressedPopups = 0;
+
+// animations skipped: explosions and unit slides
+static int skippedBooms = 0;
+static int skippedScoots = 0;
+
+// pacing delays the game asked for through clock_wait, by the address that asked: calls and milliseconds
+static std::map<uintptr_t, std::pair<int, long long>> requestedDelays;
 static bool stopRequested = false;
 static bool finished = false;
 
@@ -127,6 +137,40 @@ static void __cdecl autoplayNoopInterlude(int event_id, const char* UNUSED(text)
 	autoplay_log("interlude %d suppressed, turn %d", event_id, *CurrentTurn);
 }
 
+/*
+The Planetary Council session (CouncWin::init) shows the vote screen to the watched faction and waits for a click
+on VOTE. Autoplay skips the session, so no resolution is passed. Only the voting itself is skipped:
+the call announcement and the convened flag are set by the caller.
+*/
+static void __thiscall autoplayNoopCouncil(void* UNUSED(This), int UNUSED(proposal), int UNUSED(faction))
+{
+	suppressedPopups++;
+	autoplay_log("planetary council session suppressed, turn %d", *CurrentTurn);
+}
+
+/*
+clock_wait(ms) is the game's pacing delay: it redraws and pumps messages until the time has passed. Animations,
+random event effects and the visible moves of other factions use it. Autoplay never waits, and the requested
+time is summed per caller to report how much real time the delays would have taken.
+*/
+static void __cdecl autoplayClockWait(int milliseconds)
+{
+	std::pair<int, long long>& entry = requestedDelays[reinterpret_cast<uintptr_t>(__builtin_return_address(0))];
+	entry.first++;
+	entry.second += milliseconds;
+}
+
+static int __cdecl autoplayBoom(int UNUSED(x), int UNUSED(y), int UNUSED(type))
+{
+	skippedBooms++;
+	return 0;
+}
+
+static void __cdecl autoplayVehScoot(int UNUSED(vehicleId), int UNUSED(x), int UNUSED(y), int UNUSED(offset), int UNUSED(flag))
+{
+	skippedScoots++;
+}
+
 void autoplay_install_hooks()
 {
 	if (autoplay.stubDraws)
@@ -140,8 +184,12 @@ void autoplay_install_hooks()
 	}
 	write_jump(0x602600, reinterpret_cast<int32_t>(autoplayPopupExec)); // BasePop::exec
 	write_jump(0x483F90, reinterpret_cast<int32_t>(autoplayNewTechExec)); // NewTechWin::exec
+	write_jump(0x50DD90, reinterpret_cast<int32_t>(autoplayClockWait)); // clock_wait
+	write_jump(0x504AA0, reinterpret_cast<int32_t>(autoplayBoom)); // boom
+	write_jump(0x55A150, reinterpret_cast<int32_t>(autoplayVehScoot)); // veh_scoot
 	write_jump(0x44C9E0, reinterpret_cast<int32_t>(autoplayNoopHelpProject)); // help_project
 	write_jump(0x5230E0, reinterpret_cast<int32_t>(autoplayNoopInterlude)); // interlude
+	write_jump(0x427230, reinterpret_cast<int32_t>(autoplayNoopCouncil)); // CouncWin::init
 }
 
 /*
@@ -178,6 +226,28 @@ FactionStats collectFactionStats(int factionId)
 		stats.nutrientSurplus += base->nutrient_surplus;
 		stats.mineralSurplus += base->mineral_surplus;
 		stats.mineralIntake += base->mineral_intake_2;
+		stats.baseRockiness += map_rockiness(getBaseMapTile(baseId));
+
+		int item = base->item();
+		if (item >= 0)
+		{
+			if (isColonyUnit(item))
+				stats.buildColony++;
+			else if (isFormerUnit(item))
+				stats.buildFormer++;
+			else if (isSupplyUnit(item))
+				stats.buildSupply++;
+			else if (isProbeUnit(item))
+				stats.buildProbe++;
+			else if (isCombatUnit(item))
+				stats.buildCombat++;
+			else
+				stats.buildOtherUnit++;
+		}
+		else if (-item >= SP_ID_First && -item <= SP_ID_Last)
+			stats.buildProject++;
+		else
+			stats.buildFacility++;
 		stats.energySurplus += base->energy_surplus;
 		stats.economy += base->economy_total;
 		stats.psych += base->psych_total;
@@ -200,6 +270,22 @@ FactionStats collectFactionStats(int factionId)
 			stats.unitsCombat++;
 		else
 			stats.unitsOther++;
+	}
+	for (int mapIndex = 0; mapIndex < *MapAreaTiles; mapIndex++)
+	{
+		MAP *tile = *MapTiles + mapIndex;
+		if (tile->owner != factionId)
+			continue;
+		if (tile->items & BIT_FARM)
+			stats.tileFarm++;
+		if (tile->items & BIT_MINE)
+			stats.tileMine++;
+		if (tile->items & BIT_SOLAR)
+			stats.tileSolar++;
+		if (tile->items & BIT_FOREST)
+			stats.tileForest++;
+		if (tile->items & BIT_ROAD)
+			stats.tileRoad++;
 	}
 	for (int techId = 0; techId < MaxTechnologyNum; techId++)
 	{
@@ -253,6 +339,10 @@ static void recordStats(const char* phase)
 	double mineralSum = 0.0;
 	double energySum = 0.0;
 	int combatSum = 0, colonySum = 0, formerSum = 0, supplySum = 0, probeSum = 0, otherSum = 0;
+	int buildSum[8] = {};
+	int tileSum[5] = {};
+	int rockinessSum = 0;
+	int baseSum = 0;
 	int yieldCount = 0;
 
 	for (int factionId = 1; factionId < MaxPlayerNum; factionId++)
@@ -274,6 +364,21 @@ static void recordStats(const char* phase)
 			supplySum += stats.unitsSupply;
 			probeSum += stats.unitsProbe;
 			otherSum += stats.unitsOther;
+			buildSum[0] += stats.buildColony;
+			buildSum[1] += stats.buildFormer;
+			buildSum[2] += stats.buildCombat;
+			buildSum[3] += stats.buildSupply;
+			buildSum[4] += stats.buildProbe;
+			buildSum[5] += stats.buildOtherUnit;
+			buildSum[6] += stats.buildFacility;
+			buildSum[7] += stats.buildProject;
+			tileSum[0] += stats.tileFarm;
+			tileSum[1] += stats.tileMine;
+			tileSum[2] += stats.tileSolar;
+			tileSum[3] += stats.tileForest;
+			tileSum[4] += stats.tileRoad;
+			rockinessSum += stats.baseRockiness;
+			baseSum += stats.bases;
 			yieldCount++;
 		}
 
@@ -282,7 +387,7 @@ static void recordStats(const char* phase)
 
 		if (statsFile)
 		{
-			fprintf(statsFile, "%s,%d,%d,%lu,%d,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f\n",
+			fprintf(statsFile, "%s,%d,%d,%lu,%d,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
 				phase,
 				*CurrentTurn,
 				*CurrentMissionYear,
@@ -312,7 +417,21 @@ static void recordStats(const char* phase)
 				stats.labs,
 				stats.gameScore,
 				stats.gameScoreOther,
-				score
+				score,
+				stats.buildColony,
+				stats.buildFormer,
+				stats.buildCombat,
+				stats.buildSupply,
+				stats.buildProbe,
+				stats.buildOtherUnit,
+				stats.buildFacility,
+				stats.buildProject,
+				stats.tileFarm,
+				stats.tileMine,
+				stats.tileSolar,
+				stats.tileForest,
+				stats.tileRoad,
+				stats.baseRockiness
 			);
 		}
 	}
@@ -334,6 +453,13 @@ static void recordStats(const char* phase)
 		autoplay_log("units %s, turn %d: combat %.3f colony %.3f former %.3f supply %.3f probe %.3f other %.3f (means per faction over %d factions)",
 			phase, *CurrentTurn, (double)combatSum / yieldCount, (double)colonySum / yieldCount, (double)formerSum / yieldCount,
 			(double)supplySum / yieldCount, (double)probeSum / yieldCount, (double)otherSum / yieldCount, yieldCount);
+		autoplay_log("builds %s, turn %d: colony %.3f former %.3f combat %.3f supply %.3f probe %.3f other %.3f facility %.3f project %.3f (bases building, means per faction)",
+			phase, *CurrentTurn, (double)buildSum[0] / yieldCount, (double)buildSum[1] / yieldCount, (double)buildSum[2] / yieldCount,
+			(double)buildSum[3] / yieldCount, (double)buildSum[4] / yieldCount, (double)buildSum[5] / yieldCount,
+			(double)buildSum[6] / yieldCount, (double)buildSum[7] / yieldCount);
+		autoplay_log("tiles %s, turn %d: farm %.3f mine %.3f solar %.3f forest %.3f road %.3f, base rockiness %.3f (means per faction, rockiness per base)",
+			phase, *CurrentTurn, (double)tileSum[0] / yieldCount, (double)tileSum[1] / yieldCount, (double)tileSum[2] / yieldCount,
+			(double)tileSum[3] / yieldCount, (double)tileSum[4] / yieldCount, baseSum > 0 ? (double)rockinessSum / baseSum : 0.0);
 	}
 }
 
@@ -351,7 +477,9 @@ void autoplay_after_load()
 		{
 			fprintf(statsFile, "phase,turn,year,elapsed_ms,faction,name,alive,wtp,bases,pop,units,combat,colony,former,supply,probe,other,techs,projects,"
 				"energy_credits,nutrient_surplus,mineral_surplus,mineral_intake,energy_surplus,economy,psych,labs,"
-				"game_score,game_score_other,position_score\n");
+				"game_score,game_score_other,position_score,"
+				"build_colony,build_former,build_combat,build_supply,build_probe,build_other_unit,build_facility,build_project,"
+				"tile_farm,tile_mine,tile_solar,tile_forest,tile_road,base_rockiness\n");
 		}
 		else
 		{
@@ -364,7 +492,8 @@ void autoplay_after_load()
 		*CurrentTurn, FactionStatus[0], autoplay.turns, statsFile ? autoplay.statsPath.c_str() : "none");
 	FactionStatus[0] = 0;
 	// The watched faction (MapWin->cOwner) is the one the engine shows windows to, whatever its control.
-	// Faction 0 is the natives, which no window is meant for.
+	// Faction 0 is the natives, which no window is meant for. -1 is not an option: range checks assert on it.
+	// The animations of native combat and moves are skipped by their own stubs.
 	*CurrentPlayerFaction = 0;
 	for (const std::string& override : autoplay.overrides)
 	{
@@ -420,6 +549,23 @@ static void finish(const char* reason)
 		return;
 	finished = true;
 	autoplay_log("autoplay finished (%s): turn %d, %d popups suppressed", reason, *CurrentTurn, suppressedPopups);
+	{
+		long long totalMilliseconds = 0;
+		std::vector<std::pair<long long, uintptr_t>> byTime;
+		for (const auto& item : requestedDelays)
+		{
+			totalMilliseconds += item.second.second;
+			byTime.push_back(std::make_pair(item.second.second, item.first));
+		}
+		std::sort(byTime.rbegin(), byTime.rend());
+		autoplay_log("pacing delays skipped: %lld ms over %d callers; %d explosions and %d unit slides skipped",
+			totalMilliseconds, static_cast<int>(byTime.size()), skippedBooms, skippedScoots);
+		for (size_t i = 0; i < byTime.size() && i < 12; i++)
+		{
+			const std::pair<int, long long>& entry = requestedDelays[byTime[i].second];
+			autoplay_log("	caller %p: %d calls, %lld ms", reinterpret_cast<void*>(byTime[i].second), entry.first, entry.second);
+		}
+	}
 	if (statsFile)
 	{
 		fclose(statsFile);

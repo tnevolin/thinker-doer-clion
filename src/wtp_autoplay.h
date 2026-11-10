@@ -41,6 +41,23 @@ struct FactionStats
 	int unitsSupply = 0;
 	int unitsProbe = 0;
 	int unitsOther = 0;
+	// what the bases are building, one base counts once
+	int buildColony = 0;
+	int buildFormer = 0;
+	int buildCombat = 0;
+	int buildSupply = 0;
+	int buildProbe = 0;
+	int buildOtherUnit = 0;
+	int buildFacility = 0;
+	int buildProject = 0;
+	// improvements on the tiles in the faction territory
+	int tileFarm = 0;
+	int tileMine = 0;
+	int tileSolar = 0;
+	int tileForest = 0;
+	int tileRoad = 0;
+	// rockiness of the base tiles: 0 flat, 1 rolling, 2 rocky, summed over the bases
+	int baseRockiness = 0;
 	int techs = 0;
 	int secretProjects = 0;
 	int energyCredits = 0;
