@@ -2934,8 +2934,22 @@ std::vector<MoveAction> getMoveActions(MovementType movementType, MAP *origin, i
 		
 	}
 	
+	// The search fills the vector in container order. Sort it, so that the first of equally good actions is the same
+	// in every build and the log reads in the same order: most movement points left first, then by tile index.
+
+	std::sort
+	(
+		moveActions.begin(), moveActions.end(),
+		[](MoveAction const &a, MoveAction const &b)
+		{
+			if (a.remainingMovementPoints != b.remainingMovementPoints)
+				return a.remainingMovementPoints > b.remainingMovementPoints;
+			return a.destination < b.destination;
+		}
+	);
+
 	return moveActions;
-	
+
 }
 
 /*

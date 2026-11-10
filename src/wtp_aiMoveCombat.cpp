@@ -2609,15 +2609,6 @@ CombatAction selectVehicleCombatAction(int vehicleId)
 
 	debug("\tmove\n");
 	std::vector<MoveAction> moveActions = getVehicleMoveActions(vehicleId, true);
-	if constexpr (DEBUG)
-	{
-		// sort for debug purposes
-		std::sort
-		(
-			moveActions.begin(), moveActions.end(),
-			[](MoveAction  &a, MoveAction  &b) { return a.remainingMovementPoints > b.remainingMovementPoints; }
-		);
-	}
 	for (MoveAction &moveAction : moveActions)
 	{
 		MAP *destination = moveAction.destination;
