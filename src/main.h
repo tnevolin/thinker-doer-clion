@@ -520,7 +520,6 @@ struct Config {
     double ai_terraforming_nutrientWeight;
     double ai_terraforming_mineralWeight;
 	double ai_terraforming_energyWeight;
-	double ai_terraforming_completion_bonus;
 	double ai_terraforming_land_rocky_tile_threshold;
 	double ai_terraforming_travel_time_multiplier;
 	double ai_terraforming_networkValueIncomeImprovement;

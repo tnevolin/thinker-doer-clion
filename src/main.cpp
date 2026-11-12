@@ -1380,10 +1380,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_terraforming_energyWeight = atof(value);
     }
-    else if (MATCH("ai_terraforming_completion_bonus"))
-    {
-        cf->ai_terraforming_completion_bonus = atof(value);
-    }
     else if (MATCH("ai_terraforming_land_rocky_tile_threshold"))
     {
         cf->ai_terraforming_land_rocky_tile_threshold = atof(value);
