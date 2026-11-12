@@ -1068,20 +1068,21 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			if (option->rocky && !tileTerraformingInfo.landRocky)
 				continue;
 
-			// main action is available
-			if (!isTerraformingAvailable(tile, option->requiredAction, false))
+			// main action is available or already built
+			// built main action leaves only the rest of the option to complete (e.g. soil enricher on farm-solar)
+			bool mainActionBuilt = map_has_item(tile, Terraform[option->requiredAction].bit);
+			if (!mainActionBuilt && !isTerraformingAvailable(tile, option->requiredAction, false))
 				continue;
 
-			// 1. collect option actions not yet present on the tile (road is always attempted alongside the option)
+			// completing built option would level a rocky tile
+			if (mainActionBuilt && tileTerraformingInfo.landRocky)
+				continue;
+
+			// 1. collect option actions not yet present on the tile
 			// isTerraformingAvailable validates each action's full prerequisite chain (see its own recursive check),
 			// so anything collected here is guaranteed completable on this tile - no separate validation pass needed
 
 			robin_hood::unordered_flat_set<FormerItem> actions;
-
-			if (isTerraformingAvailable(tile, FORMER_ROAD, false))
-			{
-				actions.insert(FORMER_ROAD);
-			}
 
 			for (FormerItem action : option->actions)
 			{
@@ -1091,8 +1092,15 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 				}
 			}
 
+			// nothing left to build for this option
 			if (actions.empty())
 				continue;
+
+			// road is always attempted alongside the option
+			if (isTerraformingAvailable(tile, FORMER_ROAD, false))
+			{
+				actions.insert(FORMER_ROAD);
+			}
 
 			// 2. add prerequisite actions needed to complete the collected actions (e.g. remove fungus before road)
 			// 3. no separate check needed - step 1 already confirmed the full prerequisite chain is available
@@ -1112,16 +1120,20 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			double improvedTileGain = computeWorkerGain(baseId, improvedTileYield);
 
 			// factor in area effect
+			// built area improvement already has its effect in place
 
-			switch (option->requiredAction)
+			if (!mainActionBuilt)
 			{
-			case FORMER_CONDENSER:
-				improvedTileGain += getCondenserGain(tile);
-				break;
-			case FORMER_ECH_MIRROR:
-				improvedTileGain += getEchelonMirrorGain(tile);
-				break;
-			default: ;
+				switch (option->requiredAction)
+				{
+				case FORMER_CONDENSER:
+					improvedTileGain += getCondenserGain(tile);
+					break;
+				case FORMER_ECH_MIRROR:
+					improvedTileGain += getEchelonMirrorGain(tile);
+					break;
+				default: ;
+				}
 			}
 
 			if (improvedTileGain < 0.0)
@@ -1138,9 +1150,9 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			improvedTileGain = getGainDelay(improvedTileGain, averageTerraformingTime);
 
 			// adjust score to preserve land rocky tiles
-			if (tileTerraformingInfo.landRocky && !option->rocky && tileTerraformingInfo.landRockyTileCount < PRESERVED_LAND_ROCKY_TILE_COUNT)
+			if (tileTerraformingInfo.landRocky && !option->rocky && static_cast<double>(tileTerraformingInfo.landRockyTileCount) < conf.ai_terraforming_land_rocky_tile_threshold)
 			{
-				double landRockyPreservationCoefficient = std::min(1.0, static_cast<double>(tileTerraformingInfo.landRockyTileCount) / static_cast<double>(PRESERVED_LAND_ROCKY_TILE_COUNT));
+				double landRockyPreservationCoefficient = static_cast<double>(tileTerraformingInfo.landRockyTileCount) / conf.ai_terraforming_land_rocky_tile_threshold;
 				improvedTileGain *= landRockyPreservationCoefficient; // NOLINT
 			}
 
@@ -1148,6 +1160,22 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 			if (landMineralBonus && option->requiredAction != FORMER_MINE)
 			{
 				improvedTileGain -= MINERAL_BONUS_PENALTY;
+			}
+
+			// penalize planting forest/kelp and removing fungus (except on rocky) next to existing forest/kelp as they spread by themselves
+
+			{
+				int spreadingItemActionCount =
+					(actions.find(tileInfo.ocean ? FORMER_FARM : FORMER_FOREST) != actions.end() ? 1 : 0)
+					+
+					(!tileTerraformingInfo.landRocky && actions.find(FORMER_REMOVE_FUNGUS) != actions.end() ? 1 : 0)
+				;
+
+				if (spreadingItemActionCount > 0)
+				{
+					int spreadingItemCount = nearby_items(getX(tile), getY(tile), 1, 9, tileInfo.ocean ? BIT_FARM : BIT_FOREST);
+					improvedTileGain -= conf.ai_terraforming_nearbyForestKelpPenalty * spreadingItemActionCount * spreadingItemCount;
+				}
 			}
 
 			// penalize improvement destruction
@@ -1306,6 +1334,11 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 		auto it = std::find_if(pool.begin(), pool.end(), [&](WorkerGain const &entry) { return entry.tile == baseTerraformingOptionScore.tile; });
 
 		if (it == pool.end())
+			continue;
+
+		// a candidate that does not beat the tile's current value is no improvement - keep the pool as is
+
+		if (baseTerraformingOptionScore.incomeGain <= it->gain)
 			continue;
 
 		it->gain = baseTerraformingOptionScore.incomeGain;
@@ -2169,9 +2202,9 @@ robin_hood::unordered_flat_set<FormerItem> getTerraformingPrerequisites(MAP *til
 		prerequisites.insert(FORMER_LEVEL_TERRAIN);
 	}
 
-	// soil enricher requires farm
+	// soil enricher requires farm (unless it is already built)
 
-	if (action == FORMER_SOIL_ENR)
+	if (action == FORMER_SOIL_ENR && !map_has_item(tile, BIT_FARM))
 	{
 		prerequisites.insert(FORMER_FARM);
 	}

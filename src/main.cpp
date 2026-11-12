@@ -1404,22 +1404,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_terraforming_fitnessMultiplier = atof(value);
     }
-    else if (MATCH("ai_terraforming_baseNutrientThresholdRatio"))
-    {
-        cf->ai_terraforming_baseNutrientThresholdRatio = atof(value);
-    }
-    else if (MATCH("ai_terraforming_baseNutrientCostMultiplier"))
-    {
-        cf->ai_terraforming_baseNutrientCostMultiplier = atof(value);
-    }
-    else if (MATCH("ai_terraforming_baseMineralThresholdRatio"))
-    {
-        cf->ai_terraforming_baseMineralThresholdRatio = atof(value);
-    }
-    else if (MATCH("ai_terraforming_baseMineralCostMultiplier"))
-    {
-        cf->ai_terraforming_baseMineralCostMultiplier = atof(value);
-    }
     else if (MATCH("ai_terraforming_raiseLandPayoffTime"))
     {
         cf->ai_terraforming_raiseLandPayoffTime = atof(value);

@@ -8,7 +8,6 @@
 
 constexpr int NETWORK_BASE_RANGE = 5;
 
-constexpr int PRESERVED_LAND_ROCKY_TILE_COUNT = 4;
 constexpr int BUNKER_ENEMY_BASE_RANGE_MIN = 2;
 constexpr int BUNKER_ENEMY_BASE_RANGE_MAX = 5;
 constexpr int BUNKER_PLAYER_BASE_RANGE_MIN = 2;

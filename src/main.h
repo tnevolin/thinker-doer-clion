@@ -526,10 +526,6 @@ struct Config {
 	double ai_terraforming_networkDensityThreshold;
 	double ai_terraforming_nearbyForestKelpPenalty;
 	double ai_terraforming_fitnessMultiplier;
-	double ai_terraforming_baseNutrientThresholdRatio;
-	double ai_terraforming_baseNutrientCostMultiplier;
-	double ai_terraforming_baseMineralThresholdRatio;
-	double ai_terraforming_baseMineralCostMultiplier;
     double ai_terraforming_raiseLandPayoffTime;
     double ai_terraforming_sensorValue;
     double ai_terraforming_sensorBorderRange;
