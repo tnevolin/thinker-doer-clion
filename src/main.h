@@ -525,7 +525,7 @@ struct Config {
 	double ai_terraforming_networkValueIncomeImprovement;
 	double ai_terraforming_networkDensityThreshold;
 	double ai_terraforming_nearbyForestKelpPenalty;
-	double ai_terraforming_fitnessMultiplier;
+	double ai_terraforming_siteOpportunityCost;
     double ai_terraforming_raiseLandPayoffTime;
     double ai_terraforming_sensorValue;
     double ai_terraforming_sensorBorderRange;

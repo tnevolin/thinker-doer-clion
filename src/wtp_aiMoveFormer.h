@@ -153,6 +153,8 @@ struct TerraformingOptionScore
 	TERRAFORMING_OPTION const *option;
 	robin_hood::unordered_flat_set<FormerItem> actions;
 	double incomeGain;
+	// orders candidate sites only; never used as a value
+	double siteScore = 0.0;
 	int terraformingTime;
 
 	TerraformingOptionScore(MAP *_tile, TERRAFORMING_OPTION const *_option, robin_hood::unordered_flat_set<FormerItem> const& _actions, double _incomeGain);

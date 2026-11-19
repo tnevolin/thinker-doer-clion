@@ -1247,61 +1247,33 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 		TerraformingOptionScore bestTerraformingOptionScore = std::move(*iterator);
 		terraformingOptionScores.erase(iterator);
 
-		// compute fitScore and adjusted score for flat output improvements
+		// site score: best option gain less a share of the second best option gain
+		// the tile's gain stays exact - the score only orders sites, so the improvement that wastes the least
+		// of its tile's alternative potential (fixed or partially fixed improvement in a tile poor for anything else)
+		// is considered first. the alternative is forfeited permanently, hence the opportunity cost.
 
-		if (bestTerraformingOptionScore.option->requiredAction == FORMER_FOREST || bestTerraformingOptionScore.option->requiredAction == FORMER_THERMAL_BORE)
+		double secondBestOptionGain = 0.0;
+		if (!terraformingOptionScores.empty())
 		{
-			// find second best option gain
-
-			double secondBestOptionGain = 0.0;
-			if (!terraformingOptionScores.empty())
-			{
-				secondBestOptionGain = std::max_element(terraformingOptionScores.begin(), terraformingOptionScores.end(), [](TerraformingOptionScore const &a, TerraformingOptionScore const &b) { return a.incomeGain < b.incomeGain; })->incomeGain;
-			}
-
-			// compute fitScore and adjusted score
-			// 0.75 when best option is same as second best option
-			// 1.25 when best option is 2x better than second best option
-
-			double fitScoreMultiplier = 1.00 + (-0.25 + (0.25 + 0.25) * 2.00 * std::min(0.5, 1.0 - secondBestOptionGain / bestTerraformingOptionScore.incomeGain));
-			bestTerraformingOptionScore.incomeGain *= fitScoreMultiplier;
-
+			secondBestOptionGain = std::max(0.0, std::max_element(terraformingOptionScores.begin(), terraformingOptionScores.end(), [](TerraformingOptionScore const &a, TerraformingOptionScore const &b) { return a.incomeGain < b.incomeGain; })->incomeGain);
 		}
+		bestTerraformingOptionScore.siteScore = bestTerraformingOptionScore.incomeGain - conf.ai_terraforming_siteOpportunityCost * secondBestOptionGain;
 
 		// store baseTerraformingOptionScore
 
 		baseTerraformingOptionScores.push_back(bestTerraformingOptionScore);
-		debug("\t\t%5.2f %s\n", bestTerraformingOptionScore.incomeGain, bestTerraformingOptionScore.option->name);
+		debug("\t\t%5.2f (site %5.2f) %s\n", bestTerraformingOptionScore.incomeGain, bestTerraformingOptionScore.siteScore, bestTerraformingOptionScore.option->name);
 
 	}
-
-	// sort baseTerraformingOptionScores by incomeGain descending; break ties by proximity to base
-	// (lower terraformingSites index first)
-
-	robin_hood::unordered_flat_map<MAP *, int> tileOrderIndex;
-	for (int i = 0; i < static_cast<int>(baseTerraformingInfo.terraformingSites.size()); i++)
-	{
-		tileOrderIndex[baseTerraformingInfo.terraformingSites[i]] = i;
-	}
-
-	std::stable_sort
-	(
-		baseTerraformingOptionScores.begin(), baseTerraformingOptionScores.end(),
-		[&tileOrderIndex](const TerraformingOptionScore &a, const TerraformingOptionScore &b)
-		{
-			if (a.incomeGain != b.incomeGain)
-				return a.incomeGain > b.incomeGain;
-
-			return tileOrderIndex.at(a.tile) < tileOrderIndex.at(b.tile);
-		}
-	);
 
 	// value each candidate by its marginal effect on the citizen allocation pool: swap the tile's current
-	// (unimproved) pool entry for its improved value, then compare the pool's new top-N sum against its
-	// previous top-N sum. this treats a brand new tile and an upgrade to an already-worked tile the same
-	// way - both are only worth what they add over the next best alternative (another tile or an advanced
-	// specialist slot), not their raw absolute yield. process candidates best-first and stop at the first
-	// one that does not crack the top N - nothing further down the list should fare better either.
+	// pool entry (its present yield, whether or not it is worked now) for its improved value, then compare
+	// the pool's new top-N sum against its previous top-N sum. this treats a brand new tile and an upgrade
+	// to an already-worked tile the same way - both are only worth what they add over the next best
+	// alternative (another tile or an advanced specialist slot), not their raw absolute yield.
+	// candidates are processed in site score order and the loop stops at the first one that does not crack
+	// the top N: the easiest, best sited improvements get built first and the base demand adapts before the
+	// rest are decided.
 
 	debug("\tmarginal gain\n");
 
@@ -1329,17 +1301,46 @@ void generateBaseConventionalTerraformingRequests(int baseId)
 	sortPoolDescending(pool);
 	double baselineSum = poolTopNSum(pool);
 
+	// drop candidates that do not beat their tile's present value - the base would keep working the tile as is
+
+	baseTerraformingOptionScores.erase
+	(
+		std::remove_if
+		(
+			baseTerraformingOptionScores.begin(), baseTerraformingOptionScores.end(),
+			[&pool](TerraformingOptionScore const &candidate)
+			{
+				auto it = std::find_if(pool.begin(), pool.end(), [&](WorkerGain const &entry) { return entry.tile == candidate.tile; });
+				assert(it != pool.end());
+				return candidate.incomeGain <= it->gain;
+			}
+		),
+		baseTerraformingOptionScores.end()
+	);
+
+	// order candidates by site score descending; break ties by proximity to base (lower terraformingSites index first)
+
+	robin_hood::unordered_flat_map<MAP *, int> tileOrderIndex;
+	for (int i = 0; i < static_cast<int>(baseTerraformingInfo.terraformingSites.size()); i++)
+	{
+		tileOrderIndex[baseTerraformingInfo.terraformingSites[i]] = i;
+	}
+
+	std::stable_sort
+	(
+		baseTerraformingOptionScores.begin(), baseTerraformingOptionScores.end(),
+		[&tileOrderIndex](const TerraformingOptionScore &a, const TerraformingOptionScore &b)
+		{
+			if (a.siteScore != b.siteScore)
+				return a.siteScore > b.siteScore;
+
+			return tileOrderIndex.at(a.tile) < tileOrderIndex.at(b.tile);
+		}
+	);
+
 	for (TerraformingOptionScore &baseTerraformingOptionScore : baseTerraformingOptionScores)
 	{
 		auto it = std::find_if(pool.begin(), pool.end(), [&](WorkerGain const &entry) { return entry.tile == baseTerraformingOptionScore.tile; });
-
-		if (it == pool.end())
-			continue;
-
-		// a candidate that does not beat the tile's current value is no improvement - keep the pool as is
-
-		if (baseTerraformingOptionScore.incomeGain <= it->gain)
-			continue;
 
 		it->gain = baseTerraformingOptionScore.incomeGain;
 		sortPoolDescending(pool);

@@ -1400,9 +1400,9 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_terraforming_nearbyForestKelpPenalty = atof(value);
     }
-    else if (MATCH("ai_terraforming_fitnessMultiplier"))
+    else if (MATCH("ai_terraforming_siteOpportunityCost"))
     {
-        cf->ai_terraforming_fitnessMultiplier = atof(value);
+        cf->ai_terraforming_siteOpportunityCost = atof(value);
     }
     else if (MATCH("ai_terraforming_raiseLandPayoffTime"))
     {
