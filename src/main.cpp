@@ -1250,6 +1250,14 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_production_transport_priority = atof(value);
     }
+    else if (MATCH("ai_production_expansion_coverage_full"))
+    {
+        cf->ai_production_expansion_coverage_full = atof(value);
+    }
+    else if (MATCH("ai_production_expansion_coverage_stop"))
+    {
+        cf->ai_production_expansion_coverage_stop = atof(value);
+    }
     else if (MATCH("ai_production_transport_seats_per_sea_base"))
     {
         cf->ai_production_transport_seats_per_sea_base = atof(value);
@@ -1468,6 +1476,14 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_base_threat_travel_time_scale = atof(value);
     }
+    else if (MATCH("ai_base_threat_multiplier"))
+    {
+        cf->ai_base_threat_multiplier = atof(value);
+    }
+    else if (MATCH("ai_base_threat_bombardment_rounds"))
+    {
+        cf->ai_base_threat_bombardment_rounds = atof(value);
+    }
     else if (MATCH("ai_combat_travel_time_scale"))
     {
         cf->ai_combat_travel_time_scale = atof(value);
@@ -1645,6 +1661,13 @@ int cmd_parse(Config* cf) {
             char path[MAX_PATH] = {};
             if (WideCharToMultiByte(CP_ACP, 0, argv[++i], -1, path, sizeof(path), NULL, NULL)) {
                 autoplay.savePath = path;
+            }
+        } else if (wcscmp(argv[i], L"-defenseexperiment") == 0) {
+            autoplay.defenseExperiment = true;
+        } else if (wcscmp(argv[i], L"-journal") == 0 && i + 1 < argc) {
+            char path[MAX_PATH] = {};
+            if (WideCharToMultiByte(CP_ACP, 0, argv[++i], -1, path, sizeof(path), NULL, NULL)) {
+                autoplay.journalPath = path;
             }
         } else if (wcscmp(argv[i], L"-set") == 0 && i + 1 < argc) {
             // overrides one thinker.ini option for this run: -set name=value

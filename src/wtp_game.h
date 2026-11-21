@@ -1430,6 +1430,8 @@ bool isInfantryDefensivePolice2xVehicle(int vehicleId);
 bool isBaseDefenderVehicle(int vehicleId);
 bool isInterceptorUnit(int unitId);
 bool isInterceptorVehicle(int vehicleId);
+bool isDefenseCandidateUnit(int unitId);
+bool isDefenseCandidateVehicle(int vehicleId);
 int getUnitSupport(int unitId);
 bool getVehicleSupport(int vehicleId);
 bool isUnitRequiresSupport(int unitId);

@@ -7,7 +7,7 @@
 /*
 Autoplay (programmatic) mode.
 
-Started from the command line: terranx_mod.exe -autoplay [-turns N] [-stats file.csv] [-savegame file.sav] [-keepdraw] [-set name=value ...] save.sav
+Started from the command line: terranx_mod.exe -autoplay [-turns N] [-stats file.csv] [-savegame file.sav] [-journal file.tsv] [-keepdraw] [-set name=value ...] save.sav
 The save is loaded as usual, then every faction (including the one that was human in the save)
 is played by the AI. No human input is requested. After the requested number of turns
 the game exits.
@@ -15,6 +15,9 @@ the game exits.
 Statistics are collected in memory (FactionStats) and converted to a single number (positionScore).
 The score of every faction is appended to autoplay.log after each round.
 A CSV with all collected values is written only when -stats is given.
+-journal writes what the factions did, for reviewing AI decisions: one tab-separated record per faction (F: social engineering,
+energy allocation, research, treaties), base (B: what it builds), vehicle (V: order and destination) after every round,
+and a map of the land tiles (M) at the start, every 50 rounds and at the end.
 
 -set overrides any thinker.ini option for this run only (e.g. -set ai_terraforming_mineralWeight=2.0).
 The yield of the AI factions (nutrient surplus, mineral surplus, economy plus labs) is logged after each round,
@@ -121,6 +124,10 @@ struct AutoplayState
 	std::string statsPath;
 	// optional save written when autoplay ends, with the human control and watched faction of the loaded save; empty = none
 	std::string savePath;
+	// optional tab-separated journal of faction, base and vehicle states after every round; empty = not written
+	std::string journalPath;
+	// write the defense experiment to the journal (E records)
+	bool defenseExperiment = false;
 	ScoreWeights weights;
 	YieldWeights yieldWeights;
 	// "name=value" strings given with -set, already applied on top of the ini files
@@ -144,6 +151,15 @@ void autoplay_poll();
 void autoplay_end_of_round();
 // victory conditions are met
 void autoplay_game_over();
+// journal: records written during the faction turn; no-op without -journal
+bool autoplay_journal_wanted();
+// what the production strategy considered for one base (candidates sorted best first)
+void autoplay_journal_production(int baseId, int currentChoice, int currentBuildTime, int developmentScale, bool override, int choice,
+	const int* items, const double* priorities, int count);
+// the threat evaluation of one base (defense computation check)
+void autoplay_journal_defend(int baseId, int attackerKinds, double attackerPower, int defenders, bool sufficient, int probeUnitId, double probeEfficiency);
+// one row of the defense experiment: candidate efficiency for the given attacker artillery share, bombardment rounds and defenders
+void autoplay_journal_experiment(int factionId, double rounds, double artilleryShare, int defenders, bool sufficient, char const* role, char const* unitName, double efficiency);
 // append a line to autoplay.log
 void autoplay_log(const char* format, ...);
 

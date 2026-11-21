@@ -8,6 +8,7 @@
 #include <numeric>
 #include <deque>
 
+#include "wtp_autoplay.h"
 #include "wtp_terranx.h"
 #include "wtp_mod.h"
 #include "wtp_game.h"
@@ -26,6 +27,20 @@ double landColonyGain;
 
 double globalColonyDemand;
 double baseColonyDemandMultiplier;
+
+// territory coverage by colonies: all colonies on the map, map tiles not owned by anyone by region, and the average territory of a base
+
+struct RegionTerritory
+{
+	MAP *tile;
+	bool ocean;
+	int unownedTileCount;
+};
+
+std::vector<int> colonyVehicleIds;
+robin_hood::unordered_flat_map<int, RegionTerritory> regionTerritories;
+double averageBaseTerritory = 0.0;
+
 int bestFormerChassisIds[3];
 int bestFormerSpeeds[3];
 robin_hood::unordered_flat_map<int, BaseProductionInfo> baseProductionInfos;
@@ -40,7 +55,6 @@ double techStealGain;
 // sea transport parameters by sea cluster
 
 robin_hood::unordered_flat_map<int, double> seaTransportDemands;
-robin_hood::unordered_flat_map<int, int> bestSeaTransportProductionBaseId;
 
 // military power in count of existing and potential military units cost
 robin_hood::unordered_flat_map<int, double> militaryPowers;
@@ -113,6 +127,7 @@ void productionStrategy()
 	
 	populateFactionProductionData();
 	evaluateGlobalColonyDemand();
+	populateColonyCoverageData();
 	evaluateNavalInvasionTransportDemand();
 	evaluateGlobalSeaTransportDemand();
 	evaluateGlobalSeaTransportDemand();
@@ -242,10 +257,16 @@ void evaluateGlobalColonyDemand()
 	// --------------------------------------------------
 	
 	// how many b-drones new base generates
+	// the engine adds efficiency drones to different bases once the base count is above the base limit L:
+	// a new base creates about (2 * N - L) / L of them: 2 per base between L and 2 * L, 4 between 2 * L and 3 * L, etc.
+	// so that approaching k * L every base has k - 1 extra drones
+	// this is a corrective coefficient: it grows linearly from zero at the limit with the same slope 2 / L
+	// and ignores the single drone the engine adds right above the limit
 	
 	int contentPop, baseLimit;
 	mod_psych_check(aiFactionId, &contentPop, &baseLimit);
-	int newBaseBDrones = faction->base_count / baseLimit;
+	int newBaseCount = faction->base_count + 1;
+	double newBaseBDrones = (baseLimit > 0 ? 2.0 * static_cast<double>(std::max(0, newBaseCount - baseLimit)) / static_cast<double>(baseLimit) : 0.0);
 	
 	// averages
 	
@@ -267,7 +288,7 @@ void evaluateGlobalColonyDemand()
 	// average efficiency loss
 	
 	double doctorsPerDrone = 1.0 / averagePsychMultiplier;
-	double doctorsPerNewBase = doctorsPerDrone * static_cast<double>(newBaseBDrones);
+	double doctorsPerNewBase = doctorsPerDrone * newBaseBDrones;
 	globalColonyDemand = 1.0 - doctorsPerNewBase / averageBaseSize;
 	
 	// reduce colony demand proportionally
@@ -277,7 +298,7 @@ void evaluateGlobalColonyDemand()
 	(
 		"\tglobalColonyDemand=%5.2f"
 		" baseLimit=%4d"
-		" newBaseBDrones=%2d"
+		" newBaseBDrones=%5.2f"
 		" averagePsychMultiplier=%5.2f"
 		" doctorsPerDrone=%5.2f"
 		" doctorsPerNewBase=%5.2f"
@@ -291,7 +312,67 @@ void evaluateGlobalColonyDemand()
 	);
 	
 	Profiling::stop("evaluateGlobalColonyDemand");
-	
+
+}
+
+/**
+Collects data to estimate how much of the remaining territory the colonies on the map are going to cover:
+all colonies of all factions, map tiles not owned by anyone and the average territory of a base.
+Exact destinations of colonies are not needed for that.
+*/
+void populateColonyCoverageData()
+{
+	colonyVehicleIds.clear();
+
+	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
+	{
+		VEH *vehicle = getVehicle(vehicleId);
+
+		if (vehicle->faction_id <= 0)
+			continue;
+		if (!isColonyVehicle(vehicleId))
+			continue;
+
+		colonyVehicleIds.push_back(vehicleId);
+
+	}
+
+	// remaining territory: tiles not owned by anyone, by region
+	// average base territory: owned tiles per base of any faction
+
+	regionTerritories.clear();
+	int ownedTileCount = 0;
+
+	for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
+	{
+		if (tile->is_pole_tile())
+			continue;
+
+		RegionTerritory &regionTerritory = regionTerritories.emplace(tile->region, RegionTerritory{tile, is_ocean(tile), 0}).first->second;
+
+		if (tile->is_owned())
+		{
+			ownedTileCount++;
+		}
+		else
+		{
+			regionTerritory.unownedTileCount++;
+		}
+
+	}
+
+	int baseCount = 0;
+
+	for (int baseId = 0; baseId < *BaseCount; baseId++)
+	{
+		if (getBase(baseId)->faction_id > 0)
+		{
+			baseCount++;
+		}
+	}
+
+	averageBaseTerritory = (baseCount > 0 ? static_cast<double>(ownedTileCount) / static_cast<double>(baseCount) : 0.0);
+
 }
 
 /*
@@ -394,37 +475,6 @@ void evaluateGlobalSeaTransportDemand()
 		}
 		
 		seaTransportDemands[seaCluster] = std::max(0.0, static_cast<double>(seaTransportRequestCount) - transportationCoverage);
-		
-		// best base
-		
-		int bestBaseId = -1;
-		int bestBaseMineralSurplus = 0;
-		
-		for (int baseId : aiData.baseIds)
-		{
-			MAP *baseTile = getBaseMapTile(baseId);
-			int baseSeaCluster = getBaseSeaCluster(baseTile);
-			
-			// same seaCluster
-			
-			if (baseSeaCluster != seaCluster)
-				continue;
-			
-			// compute coefficient
-			
-			int mineralSurplus = Bases[baseId].mineral_surplus;
-			
-			// update the best
-			
-			if (mineralSurplus > bestBaseMineralSurplus)
-			{
-				bestBaseId = baseId;
-				bestBaseMineralSurplus = mineralSurplus;
-			}
-			
-		}
-		
-		bestSeaTransportProductionBaseId[seaCluster] = bestBaseId;
 		
 	}
 	
@@ -732,6 +782,30 @@ void applyBaseProductions()
 			debug("=> %-25s (pre-WTP, unmanaged)\n", prod_name(choice));
 		}
 
+		// autoplay journal: the best candidates this base considered
+
+		if (autoplay_journal_wanted())
+		{
+			std::vector<std::pair<int, double>> candidates;
+			for (const robin_hood::pair<int, double> &itemPriority : productionDemand.itemPriorities)
+			{
+				candidates.emplace_back(itemPriority.first, itemPriority.second);
+			}
+			std::sort(candidates.begin(), candidates.end(), [](const std::pair<int, double> &a, const std::pair<int, double> &b) { return a.second > b.second; });
+
+			const int count = std::min<int>(6, candidates.size());
+			int items[6];
+			double priorities[6];
+			for (int i = 0; i < count; i++)
+			{
+				items[i] = candidates[i].first;
+				priorities[i] = candidates[i].second;
+			}
+
+			autoplay_journal_production(baseId, currentChoice, currentChoiceBuildTime, aiData.developmentScale, override, choice, items, priorities, count);
+
+		}
+
 		// set base production if changed
 
 		if (choice != currentChoice)
@@ -860,6 +934,17 @@ void evaluateHeadquarters()
 	
 }
 
+/*
+Total power of the attackers expected at the base.
+*/
+static double getBaseAttackerPower(int baseId)
+{
+	auto defendDataIterator = aiData.defendLocations.find(getBaseMapTile(baseId));
+
+	return defendDataIterator == aiData.defendLocations.end() ? 0.0 : defendDataIterator->second.getAttackerPower();
+
+}
+
 void evaluateProject()
 {
 	debug("evaluateProject - %s\n", getMFaction(aiFactionId)->noun_faction);
@@ -904,9 +989,7 @@ void evaluateProject()
 	double maxThreat = 2.0;
 	for (ProductionDemand &productionDemand : productionDemands)
 	{
-		BaseInfo &baseInfo = aiData.getBaseInfo(productionDemand.baseId);
-		
-		double threat = baseInfo.combatData.getAssailantWeightSum();
+		double threat = getBaseAttackerPower(productionDemand.baseId);
 		maxThreat = std::max(maxThreat, threat);
 		
 	}
@@ -920,7 +1003,6 @@ void evaluateProject()
 	for (ProductionDemand &productionDemand : productionDemands)
 	{
 		int baseId = productionDemand.baseId;
-		BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
 		
 		// turns to completion
 		
@@ -929,7 +1011,7 @@ void evaluateProject()
 		
 		// threat coefficient
 		
-		double threat = baseInfo.combatData.getAssailantWeightSum();
+		double threat = getBaseAttackerPower(baseId);
 		double threatCoefficient = 1.0 - threat / maxThreat;
 		
 		// value
@@ -2035,18 +2117,17 @@ void evaluateExpansionUnits()
 	}
 	
 	// population limit coefficient
+	// a base that cannot grow loses little by building a colony:
+	// 2.0 at the population limit, 0.25 less for each citizen below it, not below 1.0
+	// no limit (both population facilities built) gives 1.0
+	// it applies only while the base cannot build the facility that raises the limit:
+	// otherwise the base would keep building colonies at the limit instead of the facility that lets it grow
 	
-	int populationLimit = getBasePopulationLimit(baseId);
-	double populationLimitCoefficient = 1.00;
+	int populationFacilityId = (!isBaseHasFacility(baseId, FAC_HAB_COMPLEX) ? FAC_HAB_COMPLEX : (!isBaseHasFacility(baseId, FAC_HABITATION_DOME) ? FAC_HABITATION_DOME : -1));
+	bool populationFacilityAvailable = (populationFacilityId != -1 && isBaseCanBuildFacility(baseId, static_cast<FacilityId>(populationFacilityId)));
 	
-	if (base->pop_size >= populationLimit)
-	{
-		populationLimitCoefficient = 1.50;
-	}
-	else if (base->pop_size >= populationLimit - 1)
-	{
-		populationLimitCoefficient = 1.25;
-	}
+	double populationHeadroom = static_cast<double>(getBasePopulationLimit(baseId)) - static_cast<double>(base->pop_size);
+	double populationLimitCoefficient = (populationFacilityAvailable ? 1.0 : std::clamp(2.0 - 0.25 * populationHeadroom, 1.0, 2.0));
 	
 	// citizen loss gain
 	
@@ -2083,7 +2164,7 @@ void evaluateExpansionUnits()
 		
 		MAP *bestBuildSite = nullptr;
 		double bestBuildSiteGain = 0.0;
-		
+
 		for (MAP *tile : availableBuildSites)
 		{
 			TileExpansionInfo &expansionTileInfo = getTileExpansionInfo(tile);
@@ -2105,7 +2186,7 @@ void evaluateExpansionUnits()
 				continue;
 			
 			// travel time
-			
+
 			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, tile);
 			
 			// yield score
@@ -2147,23 +2228,64 @@ void evaluateExpansionUnits()
 			
 		}
 		
+		// territory coverage coefficient
+		// the colonies of all factions heading to the same remaining territory cover a part of it, each with the average base territory
+		// the more of the territory they cover, the less a new colony is worth:
+		// no effect at or below the "full" coverage, the expansion stops at or above the "stop" coverage, linear between
+
+		int colonyCount = 0;
+
+		for (int colonyVehicleId : colonyVehicleIds)
+		{
+			if ((getUnit(getVehicle(colonyVehicleId)->unit_id)->triad() == TRIAD_SEA) != (triad == TRIAD_SEA))
+				continue;
+			if (!isUnitDestinationReachable(unitId, baseTile, getVehicleMapTile(colonyVehicleId)))
+				continue;
+
+			colonyCount++;
+
+		}
+
+		int remainingTileCount = 0;
+
+		for (auto const &regionTerritoryEntry : regionTerritories)
+		{
+			RegionTerritory const &regionTerritory = regionTerritoryEntry.second;
+
+			if (regionTerritory.ocean != (triad == TRIAD_SEA))
+				continue;
+			if (!isUnitDestinationReachable(unitId, baseTile, regionTerritory.tile))
+				continue;
+
+			remainingTileCount += regionTerritory.unownedTileCount;
+
+		}
+
+		double territoryCoverage = (remainingTileCount > 0 ? static_cast<double>(colonyCount) * averageBaseTerritory / static_cast<double>(remainingTileCount) : 1.0);
+		double coverageFull = conf.ai_production_expansion_coverage_full;
+		double coverageStop = conf.ai_production_expansion_coverage_stop;
+		double territoryCoverageCoefficient = (coverageStop > coverageFull ? std::clamp((coverageStop - territoryCoverage) / (coverageStop - coverageFull), 0.0, 1.0) : 1.0);
+
 		// combine with citizen loss gain
-		
+
 		double gain = bestBuildSiteGain + citizenLossGain;
-		
+
 		// priority
-		
+
 		double rawPriority = getItemPriority(unitId, gain);
 		double priority =
 			conf.ai_production_expansion_priority
 			* globalColonyDemand
 			* populationLimitCoefficient
+			* territoryCoverageCoefficient
 			* rawPriority
 		;
 		
 		// set base demand
 		
 		productionDemand.addItemPriority(unitId, priority);
+		
+
 		
 		debug
 		(
@@ -2176,6 +2298,10 @@ void evaluateExpansionUnits()
 			" ai_production_expansion_priority=%5.2f"
 			" globalColonyDemand=%5.2f"
 			" populationLimitCoefficient=%5.2f"
+			" territoryCoverageCoefficient=%5.2f"
+			" territoryCoverage=%5.2f"
+			" colonyCount=%d"
+			" remainingTileCount=%d"
 			" rawPriority=%5.2f"
 			"\n"
 			, unit->name
@@ -2187,6 +2313,10 @@ void evaluateExpansionUnits()
 			, conf.ai_production_expansion_priority
 			, globalColonyDemand
 			, populationLimitCoefficient
+			, territoryCoverageCoefficient
+			, territoryCoverage
+			, colonyCount
+			, remainingTileCount
 			, rawPriority
 		);
 		
@@ -2822,6 +2952,87 @@ void evaluatePodPoppingUnits()
 	
 }
 
+/*
+Units the base can produce to defend locations:
+- infantry defenders with the best armor or psi
+- land artillery and interceptors with the best weapon or psi
+*/
+static std::vector<int> getDefenseCandidateUnitIds(int baseId)
+{
+	std::vector<int> candidateUnitIds;
+	
+	for (int unitId : aiData.combatUnitIds)
+	{
+		UNIT *unit = getUnit(unitId);
+		int offenseValue = unit->offense_value();
+		int defenseValue = unit->defense_value();
+		
+		if (!isDefenseCandidateUnit(unitId))
+			continue;
+		
+		bool bestArmor = (defenseValue < 0 || defenseValue >= aiFactionInfo->maxConDefenseValue);
+		bool bestWeapon = (offenseValue < 0 || offenseValue >= aiFactionInfo->maxConOffenseValue);
+		
+		// armor matters for infantry, weapon matters for artillery and interceptors
+		
+		bool best = (isInfantryDefensiveUnit(unitId) ? bestArmor : bestWeapon);
+		
+		if (!best)
+			continue;
+		
+		if (!isBaseCanBuildUnit(baseId, unitId))
+			continue;
+		
+		candidateUnitIds.push_back(unitId);
+		
+	}
+	
+	return candidateUnitIds;
+	
+}
+
+/*
+Defended location a unit built at the base can protect: the unit can reach it.
+*/
+static bool isDefenseLocationServed(int baseId, int unitId, MAP const *tile)
+{
+	return getUnitApproachTime(aiFactionId, unitId, getBaseMapTile(baseId), tile) != INF;
+}
+
+/*
+Efficiency of the unit built at the base at the defended location.
+The unit is built with the morale of the base.
+*/
+static double getDefenseUnitEfficiency(DefendData &defendData, int baseId, int unitId)
+{
+	return defendData.getUnitEfficiency(aiFactionId, unitId, aiData.getBaseInfo(baseId).moraleMultipliers.at(getUnit(unitId)->triad()));
+}
+
+/*
+Best efficiency of the candidate units built at the base over all defended locations the base can protect.
+Efficiencies are divided by it: the best unit at the best location gets 1.0, the others get less.
+So the absolute efficiency does not change the appeal of defenders, and the difference between units and between locations is kept.
+*/
+static double getBestDefenseEfficiency(int baseId, std::vector<int> const &candidateUnitIds)
+{
+	double bestEfficiency = 0.0;
+	
+	for (auto &[tile, defendData] : aiData.defendLocations)
+	{
+		for (int unitId : candidateUnitIds)
+		{
+			if (!isDefenseLocationServed(baseId, unitId, tile))
+				continue;
+			
+			bestEfficiency = std::max(bestEfficiency, getDefenseUnitEfficiency(defendData, baseId, unitId));
+		}
+		
+	}
+	
+	return bestEfficiency;
+	
+}
+
 void evaluateBaseDefenseUnits()
 {
 	Profiling::start("evaluateBaseDefenseUnits", "suggestBaseProduction");
@@ -2829,39 +3040,21 @@ void evaluateBaseDefenseUnits()
 	ProductionDemand &productionDemand = *currentBaseProductionDemand;
 	int baseId = productionDemand.baseId;
 	MAP *baseTile = getBaseMapTile(baseId);
-	TileInfo &baseTileInfo = aiData.getBaseTileInfo(baseId);
-	
+
 	debug("evaluateBaseDefenseUnits\n");
 	
-	// scan combat units for protection
+	// candidate units: best armor or psi defenders the base can produce
 	
-	for (int unitId : aiData.combatUnitIds)
+	std::vector<int> candidateUnitIds = getDefenseCandidateUnitIds(baseId);
+	
+	double bestEfficiency = getBestDefenseEfficiency(baseId, candidateUnitIds);
+	
+	// scan candidate units for protection
+	
+	for (int unitId : candidateUnitIds)
 	{
 		UNIT *unit = getUnit(unitId);
-		int defenseValue = unit->defense_value();
 		
-		// defensive
-		
-		if (!isInfantryDefensiveUnit(unitId))
-			continue;
-		
-		// best armor or psi
-		
-		if (baseTileInfo.playerVehicleIds.size() == 0)
-		{
-			if (unitId != BSC_SCOUT_PATROL)
-				continue;
-		}
-		else
-		{
-			if (!(defenseValue < 0 || unit->defense_value() >= aiFactionInfo->maxConDefenseValue))
-				continue;
-		}
-			
-		// exclude those base cannot produce
-		
-		if (!isBaseCanBuildUnit(baseId, unitId))
-			continue;
 
 		// seek for best target base gain
 		
@@ -2872,7 +3065,10 @@ void evaluateBaseDefenseUnits()
 			MAP *targetBaseTile = getBaseMapTile(targetBaseId);
 			BaseInfo &targetBaseInfo = aiData.baseInfos.at(targetBaseId);
 			BasePoliceData &targetBasePoliceData = targetBaseInfo.policeData;
-			CombatData &targetCombatData = targetBaseInfo.combatData;
+			auto targetDefendDataIterator = aiData.defendLocations.find(targetBaseTile);
+			if (targetDefendDataIterator == aiData.defendLocations.end())
+				continue;
+			DefendData &targetDefendData = targetDefendDataIterator->second;
 			
 			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, targetBaseTile);
 			double travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, travelTime);
@@ -2884,15 +3080,17 @@ void evaluateBaseDefenseUnits()
 			
 			// protection
 			
-			double unitContribution = targetCombatData.getProtectorUnitContribution(aiFactionId, unitId);
-			double unitProtectionGain = aiFactionInfo->averageBaseGain * unitContribution;
+			// efficiency of the unit at the location relative to the best of all candidate units at all locations the base can protect:
+			// the unit types and the locations are compared with each other, the appeal of defenders does not depend on the absolute efficiency
+			double unitRelativeEfficiency = (isDefenseLocationServed(baseId, unitId, targetBaseTile) && bestEfficiency > 0.0 ? getDefenseUnitEfficiency(targetDefendData, baseId, unitId) / bestEfficiency : 0.0);
+			double unitProtectionGain = targetDefendData.targetGain * unitRelativeEfficiency;
 			double protectionGain = unitProtectionGain * travelTimeCoefficient;
-			
+
 			double upkeep = getResourceScore(-getBaseNextUnitSupport(baseId, unitId), 0);
 			double upkeepGain = getGainIncome(upkeep);
-			
+
 			// combined
-			
+
 			double gain =
 				+ policeGain
 				+ protectionGain
@@ -2911,7 +3109,7 @@ void evaluateBaseDefenseUnits()
 				" unitPoliceGain=%5.2f"
 				" policeGain=%5.2f"
 				" ai_production_base_protection_priority=%5.2f"
-				" unitContribution=%5.2f"
+				" unitRelativeEfficiency=%5.2f"
 				" unitProtectionGain=%5.2f"
 				" protectionGain=%5.2f"
 				" upkeepGain=%5.2f"
@@ -2925,7 +3123,7 @@ void evaluateBaseDefenseUnits()
 				, unitPoliceGain
 				, policeGain
 				, conf.ai_production_base_protection_priority
-				, unitContribution
+				, unitRelativeEfficiency
 				, unitProtectionGain
 				, protectionGain
 				, upkeepGain
@@ -2976,37 +3174,16 @@ void evaluateBunkerDefenseUnits()
 	ProductionDemand &productionDemand = *currentBaseProductionDemand;
 	int baseId = productionDemand.baseId;
 	MAP *baseTile = getBaseMapTile(baseId);
-	TileInfo &baseTileInfo = aiData.getBaseTileInfo(baseId);
+
+	// scan candidate units for protection
 	
-	// scan combat units for protection
+	std::vector<int> candidateUnitIds = getDefenseCandidateUnitIds(baseId);
 	
-	for (int unitId : aiData.combatUnitIds)
+	double bestEfficiency = getBestDefenseEfficiency(baseId, candidateUnitIds);
+	
+	for (int unitId : candidateUnitIds)
 	{
-		UNIT *unit = getUnit(unitId);
-		int defenseValue = unit->defense_value();
 		
-		// defensive
-		
-		if (!isInfantryDefensiveUnit(unitId))
-			continue;
-		
-		// best armor or psi
-		
-		if (baseTileInfo.playerVehicleIds.size() == 0)
-		{
-			if (unitId != BSC_SCOUT_PATROL)
-				continue;
-		}
-		else
-		{
-			if (!(defenseValue < 0 || unit->defense_value() >= aiFactionInfo->maxConDefenseValue))
-				continue;
-		}
-			
-		// exclude those base cannot produce
-		
-		if (!isBaseCanBuildUnit(baseId, unitId))
-			continue;
 
 		// seek for best target base gain
 		
@@ -3015,8 +3192,10 @@ void evaluateBunkerDefenseUnits()
 		for (robin_hood::pair<MAP const*, BunkerInfo> &bunkerInfoEntry : aiData.bunkerInfos)
 		{
 			MAP const *targetBunkerTile = bunkerInfoEntry.first;
-			BunkerInfo &targetBunkerInfo = bunkerInfoEntry.second;
-			CombatData &targetBunkerCombatData = targetBunkerInfo.combatData;
+			auto targetDefendDataIterator = aiData.defendLocations.find(targetBunkerTile);
+			if (targetDefendDataIterator == aiData.defendLocations.end())
+				continue;
+			DefendData &targetDefendData = targetDefendDataIterator->second;
 			
 			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, targetBunkerTile);
 			if (travelTime == INF)
@@ -3024,10 +3203,10 @@ void evaluateBunkerDefenseUnits()
 			double travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, travelTime);
 			
 			// protection
-			// 0.5 of average base gain
 
-			double unitContribution = targetBunkerCombatData.getProtectorUnitContribution(aiFactionId, unitId);
-			double unitProtectionGain = aiFactionInfo->averageBaseGain * unitContribution;
+			// efficiency of the unit at the location relative to the best of all candidate units at all locations the base can protect
+			double unitRelativeEfficiency = (isDefenseLocationServed(baseId, unitId, targetBunkerTile) && bestEfficiency > 0.0 ? getDefenseUnitEfficiency(targetDefendData, baseId, unitId) / bestEfficiency : 0.0);
+			double unitProtectionGain = targetDefendData.targetGain * unitRelativeEfficiency;
 			double protectionGain = unitProtectionGain * travelTimeCoefficient;
 			
 			double upkeep = getResourceScore(-getBaseNextUnitSupport(baseId, unitId), 0);
@@ -3488,55 +3667,34 @@ void evaluateSeaTransport()
 		return;
 	}
 	
-	// set priority to the current highest priority for best producing base
-	
-	if (bestSeaTransportProductionBaseId.find(baseSeaCluster) != bestSeaTransportProductionBaseId.end() && bestSeaTransportProductionBaseId.at(baseSeaCluster) == baseId)
-	{
-		productionDemand.item = unitId;
-		debug("\tmandatory seaTransport\n");
-		debug
-		(
-			"\t%-32s"
-			" seaTransportDemand=%5.2f"
-			"\n"
-			, getUnit(unitId)->name
-			, seaTransportDemand
-		);
-	}
-	else
-	{
-		// piority
-		
-		double unitPriorityCoefficient = getUnitPriorityCoefficient(baseId, unitId);
-		double priority =
-			conf.ai_production_transport_priority
-			* seaTransportDemand
-			* unitPriorityCoefficient
-		;
-		
-		// set priority
-		
-		productionDemand.addItemPriority(unitId, priority);
-		
-		debug
-		(
-			"\t%-32s"
-			" priority=%5.2f   |"
-			" seaTransportDemand=%5.2f"
-			" conf.ai_production_transport_priority=%5.2f"
-			" unitPriorityCoefficient=%5.2f"
-			"\n"
-			, getUnit(unitId)->name
-			, priority
-			, seaTransportDemand
-			, conf.ai_production_transport_priority
-			, unitPriorityCoefficient
-		);
-		
-	}
-	
+	// transport priority is proportional to the demand: the more cargo waits, the more urgent the transport is
+
+	double unitPriorityCoefficient = getUnitPriorityCoefficient(baseId, unitId);
+	double priority =
+		conf.ai_production_transport_priority
+		* seaTransportDemand
+		* unitPriorityCoefficient
+	;
+
+	productionDemand.addItemPriority(unitId, priority);
+
+	debug
+	(
+		"\t%-32s"
+		" priority=%5.2f   |"
+		" seaTransportDemand=%5.2f"
+		" conf.ai_production_transport_priority=%5.2f"
+		" unitPriorityCoefficient=%5.2f"
+		"\n"
+		, getUnit(unitId)->name
+		, priority
+		, seaTransportDemand
+		, conf.ai_production_transport_priority
+		, unitPriorityCoefficient
+	);
+
 	Profiling::stop("evaluateSeaTransport");
-	
+
 }
 
 int findScoutUnit(int triad)
@@ -3874,42 +4032,50 @@ int findInfantryPoliceUnit(bool first)
 
 }
 
+// assigned defenders that arrive later than this (turns) do not stop the rush of a protective unit
+constexpr double HURRY_DEFENDER_ARRIVAL_TIME = 2.0;
+
 void hurryProtectiveUnit()
 {
 	Profiling::start("hurryProtectiveUnit", "productionStrategy");
 	
 	debug("hurryProtectiveUnit - %s\n", getMFaction(aiFactionId)->noun_faction);
 
+	// the base with the highest value at risk among those that build a defender for insufficiently defended location
+	// defenders still far away do not count as defending: the base stays unprotected until they arrive
 	int mostVulnerableBaseId = -1;
-	double mostVulnerableBaseRelativeNotProvidedPresentEffect = 0.50;
+	double mostVulnerableBaseGain = 0.0;
 
 	for (int baseId : aiData.baseIds)
 	{
-		BaseInfo &baseInfo = aiData.getBaseInfo(baseId);
-
 		debug("\t%-25s\n", getBase(baseId)->name);
 
 		int item = getBaseBuildingItem(baseId);
 
 		debug("\t\titem=%3d\n", item);
 
-		if (item < 0 || !isInfantryDefensiveUnit(item))
+		if (item < 0 || !isDefenseCandidateUnit(item))
 		{
 			debug("\t\tnot infantry devensive\n");
 			continue;
 		}
 
-		if (baseInfo.combatData.getAssailantWeightSum() <= 0.0)
+		auto defendDataIterator = aiData.defendLocations.find(getBaseMapTile(baseId));
+		if (defendDataIterator == aiData.defendLocations.end())
 			continue;
 
-		double relativeNotProvidedPresentEffect = std::min(1.0, baseInfo.combatData.remainingAssailantUnitWeightSum / baseInfo.combatData.getAssailantWeightSum());
+		DefendData &defendData = defendDataIterator->second;
 
-		debug("\t\tremainingEffect=%3d\n", item);
+		// sufficiently defended soon
+		if (defendData.isSufficientWithin(HURRY_DEFENDER_ARRIVAL_TIME))
+			continue;
 
-		if (relativeNotProvidedPresentEffect > mostVulnerableBaseRelativeNotProvidedPresentEffect)
+		debug("\t\ttargetGain=%5.2f\n", defendData.targetGain);
+
+		if (defendData.targetGain > mostVulnerableBaseGain)
 		{
 			mostVulnerableBaseId = baseId;
-			mostVulnerableBaseRelativeNotProvidedPresentEffect = relativeNotProvidedPresentEffect;
+			mostVulnerableBaseGain = defendData.targetGain;
 		}
 
 	}
@@ -3923,15 +4089,15 @@ void hurryProtectiveUnit()
 	debug
 	(
 		"\tmostVulnerableBase=%-25s"
-		" mostVulnerableBaseRelativeNotProvidedPresentEffect=%5.2f"
+		" mostVulnerableBaseGain=%5.2f"
 		"\n"
 		, getBase(mostVulnerableBaseId)->name
-		, mostVulnerableBaseRelativeNotProvidedPresentEffect
+		, mostVulnerableBaseGain
 	);
 
 	int item = getBaseBuildingItem(mostVulnerableBaseId);
 
-	if (item < 0 || !isInfantryDefensiveUnit(item))
+	if (item < 0 || !isDefenseCandidateUnit(item))
 	{
 		debug("\t\tnot infantry devensive\n");
 		Profiling::stop("hurryProtectiveUnit");

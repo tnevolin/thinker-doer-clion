@@ -4,6 +4,7 @@
 
 #include "wtp_aiRoute.h"
 #include "wtp_aiMove.h"
+#include "wtp_ai.h"
 
 std::vector<CombatRequest> combatRequests;
 std::vector<CombatOrder> combatOrders;
@@ -74,6 +75,12 @@ void moveCombatStrategy()
 //
 //	assignRequests();
 //
+	// assign defenders to the defended locations
+
+	moveDefenders();
+
+	journalDefendLocations();
+
 //	// compute strategy
 //
 ////	moveCombat();
@@ -469,7 +476,7 @@ void assignRequests()
 
  						// compute effect
 
- 						double relativeContribution = defendData.getVehicleRelativeContribution(vehicleId);
+ 						double efficiency = defendData.getVehicleEfficiency(vehicleId);
 
  						// TODO gain = location gain * defender coefficient * (total threat / average threat) * (effect / average effect for this location) *
  					}
@@ -737,6 +744,173 @@ void immediateAttack()
 	
 	Profiling::stop("immediateAttack");
 	
+}
+
+/*
+Assigns defenders to the defended locations (bases and bunkers) every turn.
+Locations start with no defenders: a vehicle at the location is preferred to a distant one by the travel time coefficient.
+The gain of a vehicle at a base is protection gain plus police gain: the same vehicle serves both purposes, so they accumulate.
+The vehicle and location pair with the highest gain is assigned first; the gain of the location is recomputed after every assignment.
+Vehicles not needed anywhere are left to the other strategies.
+*/
+void moveDefenders()
+{
+	Profiling::start("moveDefenders", "moveCombatStrategy");
+
+	debug("moveDefenders - %s\n", MFactions[aiFactionId].noun_faction);
+
+	// vehicle and location pairs
+
+	struct DefenderOption
+	{
+		int vehicleId;
+		DefendData *defendData;
+		// base id for police; -1 for a bunker
+		int baseId;
+		double travelTime;
+		double travelTimeCoefficient;
+		double gain;
+	};
+
+	std::vector<DefenderOption> options;
+
+	for (int vehicleId : aiData.combatVehicleIds)
+	{
+		// available
+
+		if (!isVehicleAvailable(vehicleId))
+			continue;
+
+		// defender stationed at a location: infantry, land artillery or interceptor
+
+		if (!isDefenseCandidateVehicle(vehicleId))
+			continue;
+
+		bool air = (Vehs[vehicleId].triad() == TRIAD_AIR);
+
+		for (auto &[tile, defendData] : aiData.defendLocations)
+		{
+			// air vehicle cannot land at a bunker
+
+			if (air && !aiData.getTileInfo(tile).base)
+				continue;
+
+			// reachable
+
+			if (!isVehicleDestinationReachable(vehicleId, tile))
+				continue;
+
+			double travelTime = getVehicleTravelTime(vehicleId, tile, false);
+
+			if (travelTime == INF)
+				continue;
+
+			double travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, travelTime);
+
+			TileInfo &tileInfo = aiData.getTileInfo(tile);
+
+			options.push_back({vehicleId, &defendData, (tileInfo.base ? tileInfo.baseId : -1), travelTime, travelTimeCoefficient, 0.0});
+
+		}
+
+	}
+
+	// protection gain and, for a base, police gain as in the defender production
+	// police is not provided by ogres
+
+	auto getOptionGain = [](DefenderOption const &option)
+	{
+		double protectionGain = option.defendData->getVehicleGain(option.vehicleId) * option.travelTimeCoefficient;
+
+		double policeGain = 0.0;
+
+		if (option.baseId != -1 && !isOgreVehicle(option.vehicleId))
+		{
+			BasePoliceData &basePoliceData = aiData.getBaseInfo(option.baseId).policeData;
+
+			if (!basePoliceData.isSufficientForVehicle(option.vehicleId))
+			{
+				policeGain = conf.ai_production_priority_police * getGainDelay(basePoliceData.getVehiclePoliceGain(option.vehicleId), option.travelTime);
+			}
+
+		}
+
+		return protectionGain + policeGain;
+
+	};
+
+	for (DefenderOption &option : options)
+	{
+		option.gain = getOptionGain(option);
+	}
+
+	// assign the best pair until no vehicle is needed
+
+	robin_hood::unordered_flat_map<int, MAP const *> assignments;
+
+	while (true)
+	{
+		DefenderOption *bestOption = nullptr;
+		double bestGain = 0.0;
+
+		for (DefenderOption &option : options)
+		{
+			if (assignments.contains(option.vehicleId))
+				continue;
+
+			if (option.gain > bestGain)
+			{
+				bestOption = &option;
+				bestGain = option.gain;
+			}
+
+		}
+
+		if (bestOption == nullptr)
+			break;
+
+		DefendData *assignedDefendData = bestOption->defendData;
+
+		assignedDefendData->addDefenderVehicle(bestOption->vehicleId, bestOption->travelTime);
+		assignments.emplace(bestOption->vehicleId, assignedDefendData->tile);
+
+		// the vehicle provides police too
+		if (bestOption->baseId != -1 && !isOgreVehicle(bestOption->vehicleId))
+		{
+			aiData.getBaseInfo(bestOption->baseId).policeData.addVehicle(bestOption->vehicleId);
+		}
+
+		debug
+		(
+			"\t[%4d] %s -> %s gain=%5.2f\n"
+			, bestOption->vehicleId
+			, getLocationString(getVehicleMapTile(bestOption->vehicleId))
+			, getLocationString(assignedDefendData->tile)
+			, bestGain
+		);
+
+		// the location has changed
+
+		for (DefenderOption &option : options)
+		{
+			if (option.defendData != assignedDefendData || assignments.contains(option.vehicleId))
+				continue;
+
+			option.gain = getOptionGain(option);
+
+		}
+
+	}
+
+	// set tasks
+
+	for (robin_hood::pair<int, MAP const *> &assignment : assignments)
+	{
+		transitVehicle(Task(assignment.first, TT_HOLD, assignment.second));
+	}
+
+	Profiling::stop("moveDefenders");
+
 }
 
 void moveBaseProtectors()

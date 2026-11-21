@@ -279,6 +279,23 @@ BunkerInfo &Data::getBunkerInfo(MAP const* tile)
 // CombatEffectTable
 
 /*
+Efficiency: enemy power destroyed per unit of own power lost.
+Zero means the combattant cannot destroy anything: the engagement is impossible.
+Otherwise the value is within EFFICIENCY_MIN (useless) and EFFICIENCY_MAX (indestructible).
+*/
+double getEfficiency(double enemyPowerDestroyed, double ownPowerLost)
+{
+	if (enemyPowerDestroyed <= EFFICIENCY_EPSILON)
+		return 0.0;
+
+	if (ownPowerLost <= EFFICIENCY_EPSILON)
+		return EFFICIENCY_MAX;
+
+	return std::clamp(enemyPowerDestroyed / ownPowerLost, EFFICIENCY_MIN, EFFICIENCY_MAX);
+
+}
+
+/*
 Computes combat effect using battle_compute.
 Creates fake vehicles using units and optionally battle tile.
 */
@@ -349,8 +366,8 @@ double CombatEffectTable::computeUnitCombatEffect(int attackerFactionId, int att
 	}
 	else
 	{
-		// mutual fight combat effect
-		combatEffect = defenderStrength == 0.0 ? 10.0 : static_cast<double>(attackerStrength) / static_cast<double>(defenderStrength);
+		// mutual fight combat effect: the attacker efficiency
+		combatEffect = getEfficiency(static_cast<double>(attackerStrength), static_cast<double>(defenderStrength));
 	}
 	
 	// combattant without a tile inherits sensor bonus from the other combattant tile
@@ -1372,360 +1389,585 @@ double CombatData::getEnemyRelativeHealthBonus(std::vector<Combattant> opponentC
 	
 }
 
-// DefenseData
+// DefendData
+
+namespace
+{
+
+constexpr double DEFEND_EPSILON = 1e-9;
+
+/*
+Working copy of attacker or defender used in defense computation.
+*/
+struct DefendFighter
+{
+	int factionId;
+	int unitId;
+	Triad triad;
+	// expected number of vehicles: 1.0 for defender
+	double count;
+	// real relative health of one vehicle
+	double health;
+	double morale;
+	// bombardment cannot reduce health below this
+	double minHealth;
+	bool melee;
+	bool artillery;
+	bool bombardAir;
+
+	double getPower() const { return count * morale * health; }
+	bool isAlive() const { return getPower() > DEFEND_EPSILON; }
+	void setPower(double power) { health = (power > DEFEND_EPSILON ? power / (count * morale) : 0.0); }
+};
+
+struct DefendPair
+{
+	DefendFighter *shooter = nullptr;
+	DefendFighter *target = nullptr;
+	double effect = 0.0;
+};
+
+}
 
 DefendData::DefendData(MAP const* _tile, double _targetGain)
 	: tile(_tile), targetGain(_targetGain)
 {
 }
 
-double DefendData::getCombatEffect(int attackerFactionId, int attackerUnitId, int defenderVehicleId, EngagementMode engagementMode)
+/*
+Adds expected attacker vehicles; identical attackers are merged.
+*/
+void DefendData::addAttackerUnit(int factionId, int unitId, double count, double health, double morale)
 {
-	VEH defenderVehicle = Vehs[defenderVehicleId];
+	if (count <= 0.0 || health <= 0.0)
+		return;
 
-	double unitCombatEffect =
-		aiData.combatEffectTable.getUnitCombatEffect(attackerFactionId, attackerUnitId, defenderVehicle.faction_id, defenderVehicle.unit_id, engagementMode, nullptr, this->tile)
-		* getVehicleMoraleMultiplier(defenderVehicleId)
-	;
+	this->invalidate();
 
-	return unitCombatEffect;
+	// merge with identical attacker
+
+	for (DefendDataAttacker &attacker : this->attackers)
+	{
+		if (attacker.factionId == factionId && attacker.unitId == unitId && attacker.health == health && attacker.morale == morale)
+		{
+			attacker.count += count;
+			return;
+		}
+
+	}
+
+	auto triad = static_cast<Triad>(Units[unitId].triad());
+	bool melee = isMeleeUnit(unitId);
+	bool artillery = isArtilleryUnit(unitId);
+	bool bombardAir = isUnitCanBombardAircraftInFlight(unitId);
+
+	this->attackers.push_back({factionId, unitId, triad, count, health, morale, melee, artillery, bombardAir});
 
 }
 
-void DefendData::addAttackerUnit(int _factionId, int _unitId, double _health)
+void DefendData::addAttackerVehicle(int vehicleId, double count)
 {
-	UNIT &unit = Units[_unitId];
+	VEH &vehicle = Vehs[vehicleId];
 
-	Triad triad = static_cast<Triad>(unit.triad());
-	bool melee = isMeleeUnit(_unitId);
-	bool artillery = isArtilleryUnit(_unitId);
-	bool canBombardAircraftInFlight = isUnitCanBombardAircraftInFlight(_unitId);
-
-	this->attackers.push_back({_factionId, _unitId, triad, _health, melee, artillery, canBombardAircraftInFlight});
+	this->addAttackerUnit(vehicle.faction_id, vehicle.unit_id, count, getVehicleRelativeHealth(vehicleId), getVehicleMoraleMultiplier(vehicleId));
 
 }
 
-void DefendData::addDefenderVehicle(int vehicleId)
+/*
+Adds a hypothetical healthy defender with the given morale multiplier.
+*/
+void DefendData::addDefenderUnit(int factionId, int unitId, double morale)
+{
+	this->invalidate();
+
+	this->defenders.push_back(this->createUnitDefender(factionId, unitId, morale));
+
+}
+
+void DefendData::addDefenderVehicle(int vehicleId, double arrivalTime)
 {
 	if (this->isDefenderVehicleExist(vehicleId))
 		return;
 
-	VEH &vehicle = Vehs[vehicleId];
+	this->invalidate();
 
-	auto triad = static_cast<Triad>(vehicle.triad());
-	bool artillery = isArtilleryVehicle(vehicleId);
-	double maxBombardmentDamage = getMaxBombardmentDamage(triad, this->tile);
-	double minBombardmentHealth = 1.0 - maxBombardmentDamage;
-	double health = getVehicleRelativeHealth(vehicleId);
-
-	defenders.emplace_back(vehicleId, vehicle.faction_id, vehicle.unit_id, triad, health, artillery, minBombardmentHealth);
-	defenderVehicleIds.insert(vehicleId);
+	this->defenders.push_back(this->createVehicleDefender(vehicleId));
+	this->defenders.back().arrivalTime = arrivalTime;
+	this->defenderVehicleIds.insert(vehicleId);
 
 }
 
 bool DefendData::isDefenderVehicleExist(int vehicleId)
 {
-	return defenderVehicleIds.contains(vehicleId);
+	return this->defenderVehicleIds.contains(vehicleId);
 }
 
+/*
+Defenders are sufficient if they survive the attack or there is no attack.
+Attackers that cannot attack any defender are not a threat.
+*/
 bool DefendData::isSufficient()
 {
-	// return hashed value
-	if (this->computed)
-		return this->sufficient;
+	this->compute();
+	return this->sufficient;
+}
 
-	// set computed
-	this->computed = true;
+/*
+Same, but only defenders that are at the location or arrive within the given time defend it.
+*/
+bool DefendData::isSufficientWithin(double maxArrivalTime)
+{
+	DefendOutcome outcome = this->simulate(nullptr, -1, maxArrivalTime);
 
-	// reset defender contributions
-	std::for_each(this->defenders.begin(), this->defenders.end(), [](auto &defender) { defender.contribution = 0.0; defender.relativeContribution = 0.0; });
-
-	// no attackers = defense is sufficient
-	if (this->attackers.empty())
-		return this->sufficient = true;
-
-	// no defenders = defense is insufficient
-	if (this->defenders.empty())
-		return this->sufficient = false;
-
-	// initialize remaining healths
-
-    std::vector remainingAttackers(this->attackers);
-    std::vector remainingDefenders(this->defenders);
-
-	// seelect defender artillery vehicles
-
-	robin_hood::unordered_flat_set<int> defenderArtilleryVehicleIds;
-	for (auto &defender : this->defenders)
-	{
-		if (isArtilleryUnit(defender.vehicleId))
-			defenderArtilleryVehicleIds.insert(defender.vehicleId);
-	}
-
-    // combat cycle
-    for (int cycle = 0; cycle < 1000; cycle++)
-    {
-	    // select best attacker vs. best defender
-
-    	double bestAttackerBestDefenderEffect = 0.0;
-    	DefendDataAttacker *bestAttacker = nullptr;
-    	bool bestAttackerBombardment = false;
-    	DefendDataDefender *bestAttackerBestDefender = nullptr;
-    	robin_hood::unordered_flat_map<int, double> bestAttackerBombardmentDamages;
-
-    	for (auto &attacker : remainingAttackers)
-    	{
-    		// live attacker
-    		if (attacker.health <= 0)
-    			continue;
-
-    		// melee
-
-    		double attackerBestMeleeDefenderEffect = 0.0;
-    		DefendDataDefender *attackerBestAttackerMeleeDefender = nullptr;
-
-    		if (attacker.melee)
-    		{
-    			for (auto &defender : remainingDefenders)
-    			{
-    				// live defender
-    				if (defender.health <= 0)
-    					continue;
-
-    				// select best defender by the lowest effect
-    				if (double effect = this->getCombatEffect(attacker.factionId, attacker.unitId, defender.vehicleId, EM_MELEE); effect < attackerBestMeleeDefenderEffect)
-    				{
-    					attackerBestMeleeDefenderEffect = effect;
-    					attackerBestAttackerMeleeDefender = &defender;
-    				}
-
-    			}
-
-    		}
-
-    		// artillery
-
-    		bool attackerBombardment = false;
-    		double attackerBestArtilleryDuelDefenderEffect = 0.0;
-    		DefendDataDefender *attackerBestArtilleryDuelDefender = nullptr;
-    		double attackerTotalBombardmentEffect = 0.0;
-    		robin_hood::unordered_flat_map<int, double> attackerBombardmentDamages;
-
-    		if (attacker.artillery)
-    		{
-    			if (!defenderArtilleryVehicleIds.empty())
-    			{
-    				// artillery duel
-
-    				attackerBombardment = false;
-
-    				for (auto &defender : remainingDefenders)
-    				{
-    					// live defender
-    					if (defender.health <= 0)
-    						continue;
-
-    					// artillery defender
-    					if (!defender.artillery)
-    						continue;
-
-    					// select best defender by the lowest effect
-    					if (double effect = this->getCombatEffect(attacker.factionId, attacker.unitId, defender.vehicleId, EM_ARTILLERY); effect < attackerBestArtilleryDuelDefenderEffect)
-    					{
-    						attackerBestArtilleryDuelDefender = &defender;
-    						attackerBestArtilleryDuelDefenderEffect = effect;
-    					}
-
-    				}
-
-    			}
-    			else
-    			{
-    				// bombardment
-
-    				attackerBombardment = true;
-
-    				for (auto &defender : remainingDefenders)
-    				{
-    					// live defender
-    					if (defender.health <= 0)
-    						continue;
-
-    					// non artillery defender
-    					if (defender.artillery)
-    					{
-    						debug("ERROR: alive artillery defender found during bombardment calculation.");
-    						continue;
-    					}
-
-    					// bombardable
-    					if (!attacker.bombardAir && defender.triad == TRIAD_AIR)
-    						continue;
-
-    					// compute bombardment damage
-    					double bombardmentEffect = this->getCombatEffect(attacker.factionId, attacker.unitId, defender.vehicleId, EM_ARTILLERY);
-    					double maxBombardmentEffect = std::max(0.0, defender.health - defender.minBombardmentHealth);
-    					double effect = std::min(maxBombardmentEffect, bombardmentEffect);
-    					attackerBombardmentDamages[defender.vehicleId] = effect;
-    					attackerTotalBombardmentEffect += effect;
-
-    				}
-
-    			}
-
-    		}
-
-    		// pick best attacker effect
-
-    		double attackerBestDefenderEffect = 0.0;
-    		DefendDataDefender *attackerBestDefender = nullptr;
-
-    		if (!attackerBombardment)
-    		{
-    			if (attackerBestMeleeDefenderEffect > attackerBestArtilleryDuelDefenderEffect)
-    			{
-	   				attackerBestDefenderEffect = attackerBestMeleeDefenderEffect;
-    				attackerBestDefender = attackerBestAttackerMeleeDefender;
-    			}
-    			else
-    			{
-    				attackerBestDefenderEffect = attackerBestArtilleryDuelDefenderEffect;
-    				attackerBestDefender = attackerBestArtilleryDuelDefender;
-    			}
-
-    		}
-    		else
-    		{
-    			if (attackerBestMeleeDefenderEffect > attackerTotalBombardmentEffect)
-    			{
-    				attackerBestDefenderEffect = attackerBestMeleeDefenderEffect;
-    				attackerBestDefender = attackerBestAttackerMeleeDefender;
-    				// clear bombardment flag
-    				attackerBombardment = true;
-    			}
-    			else
-    			{
-    				attackerBestDefenderEffect = attackerTotalBombardmentEffect;
-    				attackerBestDefender = nullptr;
-    			}
-
-    		}
-
-    		// select best attacker by the highest effect
-    		if (attackerBestDefenderEffect > bestAttackerBestDefenderEffect)
-    		{
-    			bestAttackerBestDefenderEffect = attackerBestDefenderEffect;
-    			bestAttacker = &attacker;
-    			bestAttackerBombardment = attackerBombardment;
-    			bestAttackerBestDefender = attackerBestDefender;
-    			bestAttackerBombardmentDamages = attackerBombardmentDamages;
-    		}
-
-    	}
-
-    	// no more attackers can attack
-    	if (bestAttacker == nullptr)
-    		break;
-
-    	// apply best attacker-defender pair result
-
-    	if (!bestAttackerBombardment)
-    	{
-    		if (bestAttackerBestDefenderEffect < bestAttackerBestDefender->health / bestAttacker->health)
-    		{
-    			double attackerDamage = bestAttacker->health;
-    			double defenderDamage = bestAttackerBestDefenderEffect * bestAttacker->health;
-
-    			bestAttacker->health -= attackerDamage;
-    			bestAttackerBestDefender->health -= defenderDamage;
-
-    			bestAttackerBestDefender->contribution += attackerDamage;
-
-    		}
-    		else
-    		{
-    			double attackerDamage = (1.0 / bestAttackerBestDefenderEffect) * bestAttackerBestDefender->health;
-    			double defenderDamage = bestAttackerBestDefender->health;
-
-    			bestAttacker->health -= attackerDamage;
-    			bestAttackerBestDefender->health -= defenderDamage;
-
-    			bestAttackerBestDefender->contribution += attackerDamage;
-
-    		}
-
-    		// remove deceased defender from artillery list
-    		if (bestAttackerBestDefender->health <= 0.0)
-    		{
-    			defenderArtilleryVehicleIds.erase(bestAttackerBestDefender->vehicleId);
-    		}
-
-    	}
-    	else
-    	{
-    		// apply bombardment damages
-
-    		for (auto &defender : this->defenders)
-    		{
-    			if (bestAttackerBombardmentDamages.contains(defender.vehicleId))
-    			{
-    				defender.health -= bestAttackerBombardmentDamages.at(defender.vehicleId);
-    			}
-
-    		}
-
-    	}
-
-    }
-
-	// TODO think if I want to normalize it or keep as number of destroyed enemies
-	// normalize defender contributions
-
-	double totalContribution = std::accumulate(this->defenders.begin(), this->defenders.end(), 0.0, [](double accumulator, auto const &defender) { return accumulator + defender.contribution; });
-	if (totalContribution > 0.0)
-	{
-		std::for_each(this->defenders.begin(), this->defenders.end(), [totalContribution](auto &defender) { defender.relativeContribution = defender.contribution / totalContribution; });
-	}
-
-	// check alive units
-
-	bool attackerAlive = std::any_of(attackers.begin(), attackers.end(), [&](auto const &attacker) { return attacker.health > 0.0; });
-	bool defenderAlive = std::any_of(defenders.begin(), defenders.end(), [&](auto const &defender) { return defender.health > 0.0; });
-
-	if (!attackerAlive)
-		return this->sufficient = true;
-
-	if (!defenderAlive)
-		return this->sufficient = false;
-
-	debug("ERROR: both attacker and defender alive.");
-	return this->sufficient = true;
+	return outcome.finished && (outcome.defenderAlive || !outcome.attackerAlive);
 
 }
 
-double DefendData::getVehicleRelativeContribution(int vehicleId)
+/*
+Total power of all attackers.
+*/
+double DefendData::getAttackerPower() const
 {
-	bool temporary = !defenderVehicleIds.contains(vehicleId);
+	double power = 0.0;
 
-	if (temporary)
+	for (DefendDataAttacker const &attacker : this->attackers)
 	{
-		this->addDefenderVehicle(vehicleId);
-	}
-	DefendDataDefender &defender = this->defenders.back();
-
-	if (!this->computed)
-	{
-		isSufficient();
+		power += attacker.getPower();
 	}
 
-	double relativeContribution = defender.relativeContribution;
+	return power;
 
-	if (temporary)
+}
+
+/*
+Efficiency of a defender: attacker power destroyed per unit of its own power lost, within EFFICIENCY_MIN and EFFICIENCY_MAX.
+Zero if the defender destroys nothing (the engagement is impossible).
+Destroyed power is counted over what the defenders destroy without the candidate.
+It does not depend on how much of the threat is left.
+*/
+static double computeDefendEfficiency(DefendOutcome const &outcomeWith, double attackerPowerLostWithout)
+{
+	return getEfficiency(outcomeWith.attackerPowerLost - attackerPowerLostWithout, outcomeWith.candidatePowerLost);
+}
+
+/*
+Efficiency of the vehicle defending together with the other defenders.
+Zero if the location is already sufficient.
+*/
+double DefendData::getVehicleEfficiency(int vehicleId)
+{
+	if (this->isSufficient())
+		return 0.0;
+
+	// the vehicle may be already among the defenders: then it is replaced by itself in the simulation
+	bool exists = this->isDefenderVehicleExist(vehicleId);
+
+	double attackerPowerLostWithout = this->attackerPowerLost;
+
+	if (exists)
 	{
-		this->defenders.pop_back();
+		DefendOutcome outcomeWithout = this->simulate(nullptr, vehicleId);
+
+		if (!outcomeWithout.finished)
+			return 0.0;
+
+		attackerPowerLostWithout = outcomeWithout.attackerPowerLost;
+
 	}
 
-	return relativeContribution;
+	DefendDataDefender candidate = this->createVehicleDefender(vehicleId);
+	DefendOutcome outcomeWith = this->simulate(&candidate, exists ? vehicleId : -1);
+
+	return outcomeWith.finished ? computeDefendEfficiency(outcomeWith, attackerPowerLostWithout) : 0.0;
+
+}
+
+/*
+Same for a hypothetical healthy unit with the given morale multiplier.
+*/
+double DefendData::getUnitEfficiency(int factionId, int unitId, double morale)
+{
+	if (this->isSufficient())
+		return 0.0;
+
+	auto key = std::make_tuple(factionId, unitId, morale);
+
+	if (auto iterator = this->unitEfficiencies.find(key); iterator != this->unitEfficiencies.end())
+		return iterator->second;
+
+	DefendDataDefender candidate = this->createUnitDefender(factionId, unitId, morale);
+	DefendOutcome outcomeWith = this->simulate(&candidate, -1);
+
+	double efficiency = outcomeWith.finished ? computeDefendEfficiency(outcomeWith, this->attackerPowerLost) : 0.0;
+
+	this->unitEfficiencies.emplace(key, efficiency);
+
+	return efficiency;
+
+}
+
+/*
+Location value times efficiency.
+*/
+double DefendData::getVehicleGain(int vehicleId)
+{
+	return this->targetGain * this->getVehicleEfficiency(vehicleId);
+}
+
+double DefendData::getUnitGain(int factionId, int unitId, double morale)
+{
+	return this->targetGain * this->getUnitEfficiency(factionId, unitId, morale);
+}
+
+DefendDataDefender DefendData::createVehicleDefender(int vehicleId) const
+{
+	VEH &vehicle = Vehs[vehicleId];
+
+	auto triad = static_cast<Triad>(vehicle.triad());
+
+	return
+	{
+		vehicleId,
+		vehicle.faction_id,
+		vehicle.unit_id,
+		triad,
+		getVehicleRelativeHealth(vehicleId),
+		getVehicleMoraleMultiplier(vehicleId),
+		isArtilleryVehicle(vehicleId),
+		isUnitCanBombardAircraftInFlight(vehicle.unit_id),
+		1.0 - getMaxBombardmentDamage(triad, this->tile),
+	};
+
+}
+
+DefendDataDefender DefendData::createUnitDefender(int factionId, int unitId, double morale) const
+{
+	auto triad = static_cast<Triad>(Units[unitId].triad());
+
+	return
+	{
+		-1,
+		factionId,
+		unitId,
+		triad,
+		1.0,
+		morale,
+		isArtilleryUnit(unitId),
+		isUnitCanBombardAircraftInFlight(unitId),
+		1.0 - getMaxBombardmentDamage(triad, this->tile),
+	};
+
+}
+
+void DefendData::invalidate()
+{
+	this->computed = false;
+	this->unitEfficiencies.clear();
+}
+
+void DefendData::compute()
+{
+	if (this->computed)
+		return;
+
+	DefendOutcome outcome = this->simulate(nullptr, -1);
+
+	this->computed = true;
+	this->attackerPowerLost = outcome.attackerPowerLost;
+
+	if (!outcome.finished)
+	{
+		debug("ERROR: DefendData::compute did not finish.\n");
+		this->sufficient = false;
+		return;
+	}
+
+	this->sufficient = outcome.defenderAlive || !outcome.attackerAlive;
+
+}
+
+/*
+Simulates the attack on defenders, optionally with one more candidate defender or without one of the defender vehicles.
+Works on copies: attackers and defenders are not changed.
+
+Strength model: damage is linear in strength, so attacker power and defender power (count * morale * health)
+are compared directly: a shooter destroys the target if effect * shooter power >= target power.
+Bombardment works in real health because it is limited by the floor of each vehicle.
+
+Flow:
+1. artillery duels, attackers initiate
+2. attacker artillery bombards all defenders several times; defender artillery bombards all attackers once
+3. melee attackers attack; interceptors answer air attackers before any other defender
+   (the interceptor combat effect, weapon only with the air superiority bonus, comes from the combat effect table)
+An interceptor is in range when it is assigned to the location; the assigning code does not assign interceptors to bunkers.
+Every engagement is assumed to be repeatable: an interceptor fights once per turn in the game, but the attack is not split into turns here.
+*/
+DefendOutcome DefendData::simulate(DefendDataDefender const *candidate, int excludedVehicleId, double maxArrivalTime)
+{
+	MAP const *defendTile = this->tile;
+
+	// working copies
+
+	std::vector<DefendFighter> attackerFighters;
+	std::vector<DefendFighter> defenderFighters;
+
+	double initialAttackerPower = 0.0;
+
+	for (DefendDataAttacker const &attacker : this->attackers)
+	{
+		// attackers stand in the open
+		double minHealth = 1.0 - getMaxBombardmentDamage(attacker.triad, nullptr);
+
+		attackerFighters.push_back({attacker.factionId, attacker.unitId, attacker.triad, attacker.count, attacker.health, attacker.morale, minHealth, attacker.melee, attacker.artillery, attacker.bombardAir});
+		initialAttackerPower += attacker.getPower();
+
+	}
+
+	auto addDefenderFighter = [&](DefendDataDefender const &defender)
+	{
+		defenderFighters.push_back({defender.factionId, defender.unitId, defender.triad, 1.0, defender.health, defender.morale, defender.minBombardmentHealth, false, defender.artillery, defender.bombardAir});
+	};
+
+	for (DefendDataDefender const &defender : this->defenders)
+	{
+		// hypothetical defenders have no vehicle id
+		if (excludedVehicleId != -1 && defender.vehicleId == excludedVehicleId)
+			continue;
+
+		// defenders that arrive later do not defend yet
+		if (defender.arrivalTime > maxArrivalTime)
+			continue;
+
+		addDefenderFighter(defender);
+
+	}
+
+	// the candidate is the last defender fighter
+	double initialCandidatePower = 0.0;
+
+	if (candidate != nullptr)
+	{
+		addDefenderFighter(*candidate);
+		initialCandidatePower = defenderFighters.back().getPower();
+	}
+
+	// helpers
+
+	auto getEffect = [&](DefendFighter const &shooter, bool shooterAtTile, DefendFighter const &target, bool targetAtTile, EngagementMode engagementMode)
+	{
+		return aiData.combatEffectTable.getUnitCombatEffect(shooter.factionId, shooter.unitId, target.factionId, target.unitId, engagementMode, shooterAtTile ? defendTile : nullptr, targetAtTile ? defendTile : nullptr);
+	};
+
+	// attackers initiate: each attacker selects the defender with the lowest effect, the attacker with the highest of those goes first
+	// an air attacker is answered by an interceptor first when one is alive: other defenders are not considered
+	auto findBestPair = [&](auto isShooter, auto isTarget, EngagementMode engagementMode, bool interceptorsFirst)
+	{
+		DefendPair bestPair;
+
+		for (DefendFighter &attacker : attackerFighters)
+		{
+			if (!attacker.isAlive() || !isShooter(attacker))
+				continue;
+
+			bool interceptorsOnly = false;
+
+			if (interceptorsFirst && Units[attacker.unitId].is_air_not_missile())
+			{
+				for (DefendFighter const &defender : defenderFighters)
+				{
+					if (defender.isAlive() && isTarget(defender) && Units[defender.unitId].is_interceptor())
+					{
+						interceptorsOnly = true;
+						break;
+					}
+
+				}
+
+			}
+
+			DefendFighter *bestTarget = nullptr;
+			double bestTargetEffect = +DBL_MAX;
+
+			for (DefendFighter &defender : defenderFighters)
+			{
+				if (!defender.isAlive() || !isTarget(defender))
+					continue;
+
+				if (interceptorsOnly && !Units[defender.unitId].is_interceptor())
+					continue;
+
+				double effect = getEffect(attacker, false, defender, true, engagementMode);
+
+				if (effect < bestTargetEffect)
+				{
+					bestTarget = &defender;
+					bestTargetEffect = effect;
+				}
+
+			}
+
+			if (bestTarget != nullptr && bestTargetEffect > bestPair.effect)
+			{
+				bestPair = {&attacker, bestTarget, bestTargetEffect};
+			}
+
+		}
+
+		return bestPair;
+
+	};
+
+	// one side is destroyed, the other loses power proportionally
+	auto resolveExchange = [](DefendPair const &pair)
+	{
+		double shooterPower = pair.shooter->getPower();
+		double targetPower = pair.target->getPower();
+
+		if (pair.effect * shooterPower >= targetPower)
+		{
+			pair.shooter->setPower(shooterPower - targetPower / pair.effect);
+			pair.target->setPower(0.0);
+		}
+		else
+		{
+			pair.target->setPower(targetPower - pair.effect * shooterPower);
+			pair.shooter->setPower(0.0);
+		}
+
+	};
+
+	bool finished = true;
+
+	// artillery duels
+	// every exchange destroys at least one fighter
+
+	{
+		bool duelsFinished = false;
+
+		for (size_t cycle = 0; cycle <= attackerFighters.size() + defenderFighters.size(); cycle++)
+		{
+			DefendPair pair = findBestPair([](DefendFighter const &fighter) { return fighter.artillery; }, [](DefendFighter const &fighter) { return fighter.artillery; }, EM_ARTILLERY, false);
+
+			if (pair.shooter == nullptr)
+			{
+				duelsFinished = true;
+				break;
+			}
+
+			resolveExchange(pair);
+
+		}
+
+		finished = finished && duelsFinished;
+
+	}
+
+	// artillery remains on one side only after the duels
+	// attacker artillery cannot bombard while defender artillery survives, and defender artillery cannot while attacker artillery survives
+
+	bool attackerArtilleryAlive = false;
+	bool defenderArtilleryAlive = false;
+
+	for (DefendFighter const &attacker : attackerFighters)
+	{
+		attackerArtilleryAlive = attackerArtilleryAlive || (attacker.artillery && attacker.isAlive());
+	}
+
+	for (DefendFighter const &defender : defenderFighters)
+	{
+		defenderArtilleryAlive = defenderArtilleryAlive || (defender.artillery && defender.isAlive());
+	}
+
+	// attacker artillery bombards defenders
+
+	for (DefendFighter &attacker : attackerFighters)
+	{
+		if (!attacker.isAlive() || !attacker.artillery || defenderArtilleryAlive)
+			continue;
+
+		for (DefendFighter &defender : defenderFighters)
+		{
+			if (!defender.isAlive())
+				continue;
+
+			double effect = getEffect(attacker, false, defender, true, EM_ARTILLERY);
+			double damage = conf.ai_base_threat_bombardment_rounds * effect * attacker.getPower() / defender.morale;
+			double room = std::max(0.0, defender.health - defender.minHealth);
+			defender.health -= std::min(room, damage);
+
+		}
+
+	}
+
+	// defender artillery bombards attackers
+
+	for (DefendFighter &defender : defenderFighters)
+	{
+		if (!defender.isAlive() || !defender.artillery || attackerArtilleryAlive)
+			continue;
+
+		for (DefendFighter &attacker : attackerFighters)
+		{
+			if (!attacker.isAlive())
+				continue;
+
+			// air attackers are in flight
+			if (attacker.triad == TRIAD_AIR && !defender.bombardAir)
+				continue;
+
+			double effect = getEffect(defender, true, attacker, false, EM_ARTILLERY);
+			double damage = effect * defender.getPower() / attacker.morale;
+			double room = std::max(0.0, attacker.health - attacker.minHealth);
+			attacker.health -= std::min(room, damage);
+
+		}
+
+	}
+
+	// melee
+	// every exchange destroys at least one fighter
+
+	{
+		bool meleeFinished = false;
+
+		for (size_t cycle = 0; cycle <= attackerFighters.size() + defenderFighters.size(); cycle++)
+		{
+			DefendPair pair = findBestPair([](DefendFighter const &fighter) { return fighter.melee; }, [](DefendFighter const &) { return true; }, EM_MELEE, true);
+
+			if (pair.shooter == nullptr)
+			{
+				meleeFinished = true;
+				break;
+			}
+
+			resolveExchange(pair);
+
+		}
+
+		finished = finished && meleeFinished;
+
+	}
+
+	// outcome
+
+	double finalAttackerPower = 0.0;
+	bool attackerAlive = false;
+	bool defenderAlive = false;
+
+	for (DefendFighter const &attacker : attackerFighters)
+	{
+		finalAttackerPower += attacker.getPower();
+		attackerAlive = attackerAlive || attacker.isAlive();
+	}
+
+	for (DefendFighter const &defender : defenderFighters)
+	{
+		defenderAlive = defenderAlive || defender.isAlive();
+	}
+
+	double candidatePowerLost = (candidate == nullptr ? 0.0 : initialCandidatePower - defenderFighters.back().getPower());
+
+	return {finished, attackerAlive, defenderAlive, initialAttackerPower - finalAttackerPower, candidatePowerLost};
 
 }
 

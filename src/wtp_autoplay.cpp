@@ -523,6 +523,222 @@ static void recordStats(const char* phase)
 	}
 }
 
+/*
+Journal: what every faction, base and vehicle looks like after a round, one tab-separated record per line.
+It is read by scripts and by a reviewer looking for suspicious AI decisions, so values are raw and names are included.
+F	turn faction name alive | social engineering (politics economics values future) | pending choice of the same | psych labs allocation
+	| energy credits | techs | researching, accumulated, cost | bases pop | pods opened, artifacts, earthquakes, techs | atrocities
+	| treaty bits toward factions 1-7 | units lost (all kinds)
+B	turn faction base name x y pop | building, mineral cost, minerals accumulated | nutrient/mineral/energy surplus | mineral intake
+	| drones talents specialists | facilities | nutrients accumulated | founding turn | eco damage
+V	turn faction vehicle name x y | order, waypoint x y, waypoint count | damage morale | home base | moves spent
+S	turn project base faction (a secret project got a builder base)
+P	turn x y (a supply pod on the tile)
+D	turn faction base name | item in the queue before the production strategy, its build time, development scale, overridden (0/1)
+		| chosen item | number of listed candidates | candidate and priority pairs, best first (written during the faction turn)
+T	turn faction base name | attacker kinds, total attacker power | defenders assigned to the base, defense sufficient (0/1)
+		| best defensive unit the base can build, its efficiency (attacker power destroyed per own power lost) (written during the faction turn)
+E	turn faction | expected bombardment rounds, attacker artillery share, defenders (0/1), sufficient (0/1) | candidate role, unit | efficiency (-defenseexperiment)
+M	turn phase x y | altitude, rocky, moisture climate bits, owner, contour, items, landmarks
+*/
+static FILE* journalFile = nullptr;
+
+static const char* socialName(int category, int model)
+{
+	if (category < 0 || category > 3 || model < 0 || model > 3)
+		return "?";
+	const char* name = SocialField[category].soc_name[model];
+	return name ? name : "?";
+}
+
+static const char* techName(int techId)
+{
+	if (techId < 0 || techId >= MaxTechnologyNum)
+		return "-";
+	const char* name = Tech[techId].name;
+	return name ? name : "?";
+}
+
+static void writeJournalMap(const char* phase)
+{
+	if (!journalFile)
+		return;
+	for (int mapIndex = 0; mapIndex < *MapAreaTiles; mapIndex++)
+	{
+		MAP* tile = *MapTiles + mapIndex;
+		if (tile->alt_level() < ALT_SHORE_LINE)
+			continue;
+		fprintf(journalFile, "M\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%08X\t%08X\n",
+			*CurrentTurn, phase, getX(mapIndex), getY(mapIndex), tile->alt_level(), tile->rocky_level(), tile->climate & 0x18,
+			tile->owner, tile->contour, tile->items, tile->landmarks);
+	}
+}
+
+static void recordJournal()
+{
+	if (!journalFile)
+		return;
+
+	int turn = *CurrentTurn;
+
+	for (int factionId = 1; factionId < MaxPlayerNum; factionId++)
+	{
+		if (!is_alive(factionId))
+			continue;
+		Faction* faction = &Factions[factionId];
+		int bases = 0;
+		int population = 0;
+		for (int baseId = 0; baseId < *BaseCount; baseId++)
+		{
+			if (Bases[baseId].faction_id != factionId)
+				continue;
+			bases++;
+			population += Bases[baseId].pop_size;
+		}
+		int unitsLost = 0;
+		for (int unitId = 0; unitId < 512; unitId++)
+			unitsLost += faction->units_lost[unitId];
+
+		fprintf(journalFile, "F\t%d\t%d\t%s\t1\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d",
+			turn, factionId, MFactions[factionId].noun_faction,
+			socialName(0, faction->SE_Politics), socialName(1, faction->SE_Economics),
+			socialName(2, faction->SE_Values), socialName(3, faction->SE_Future),
+			socialName(0, faction->SE_Politics_pending), socialName(1, faction->SE_Economics_pending),
+			socialName(2, faction->SE_Values_pending), socialName(3, faction->SE_Future_pending),
+			faction->SE_alloc_psych, faction->SE_alloc_labs, faction->energy_credits, faction->tech_achieved,
+			techName(faction->tech_research_id), faction->tech_accumulated, faction->tech_cost,
+			bases, population,
+			faction->goody_opened, faction->goody_artifact, faction->goody_earthquake, faction->goody_tech,
+			faction->atrocities + faction->major_atrocities);
+		for (int otherId = 1; otherId < MaxPlayerNum; otherId++)
+			fprintf(journalFile, "\t%X", faction->diplo_status[otherId]);
+		fprintf(journalFile, "\t%d\n", unitsLost);
+	}
+
+	for (int baseId = 0; baseId < *BaseCount; baseId++)
+	{
+		BASE* base = &Bases[baseId];
+		if (base->faction_id <= 0 || !is_alive(base->faction_id))
+			continue;
+		int item = base->item();
+		int facilities = 0;
+		for (int facilityId = 1; facilityId <= Fac_ID_Last; facilityId++)
+		{
+			if (base->has_fac_built(static_cast<FacilityId>(facilityId)))
+				facilities++;
+		}
+		fprintf(journalFile, "B\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+			turn, base->faction_id, baseId, base->name, base->x, base->y, base->pop_size,
+			prod_name(item), getBaseMineralCost(baseId, item), base->minerals_accumulated,
+			base->nutrient_surplus, base->mineral_surplus, base->energy_surplus, base->mineral_intake_2,
+			base->drone_total, base->talent_total, base->specialist_total, facilities,
+			base->nutrients_accumulated, getBaseFoundingTurn(baseId), base->eco_damage);
+	}
+
+	for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
+	{
+		VEH* vehicle = &Vehs[vehicleId];
+		fprintf(journalFile, "V\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+			turn, vehicle->faction_id, vehicleId, vehicle->name(), vehicle->x, vehicle->y,
+			vehicle->order, vehicle->waypoint_x[0], vehicle->waypoint_y[0], vehicle->waypoint_count,
+			vehicle->damage_taken, vehicle->morale, vehicle->home_base_id, vehicle->moves_spent);
+	}
+
+	// secret projects: reported when the builder base changes (a project is built once, it can change hands with the base)
+	static int projectBases[SP_ID_Last - SP_ID_First + 1];
+	static bool projectBasesInitialized = false;
+	if (!projectBasesInitialized)
+	{
+		for (int& value : projectBases)
+			value = -2;
+		projectBasesInitialized = true;
+	}
+	for (int i = 0; i <= SP_ID_Last - SP_ID_First; i++)
+	{
+		int baseId = SecretProjects[i];
+		if (baseId == projectBases[i])
+			continue;
+		projectBases[i] = baseId;
+		if (baseId >= 0 && baseId < *BaseCount)
+			fprintf(journalFile, "S\t%d\t%s\t%d\t%d\n", turn, Facility[SP_ID_First + i].name, baseId, Bases[baseId].faction_id);
+	}
+
+	// territory: ocean and land tiles, total and not owned by any faction (what is left for colonies to claim)
+	{
+		int landTiles = 0, landFree = 0, seaTiles = 0, seaFree = 0;
+		for (int mapIndex = 0; mapIndex < *MapAreaTiles; mapIndex++)
+		{
+			MAP* tile = *MapTiles + mapIndex;
+			if (tile->is_pole_tile())
+				continue;
+			if (tile->alt_level() < ALT_SHORE_LINE)
+			{
+				seaTiles++;
+				if (!tile->is_owned())
+					seaFree++;
+			}
+			else
+			{
+				landTiles++;
+				if (!tile->is_owned())
+					landFree++;
+			}
+		}
+		fprintf(journalFile, "O\t%d\t%d\t%d\t%d\t%d\n", turn, landTiles, landFree, seaTiles, seaFree);
+	}
+
+	// supply pods that are still on the map; what a pod gives is luck, the routing of the scouts to them is the decision
+	for (int mapIndex = 0; mapIndex < *MapAreaTiles; mapIndex++)
+	{
+		MAP* tile = *MapTiles + mapIndex;
+		if (tile->alt_level() < ALT_SHORE_LINE)
+			continue;
+		if (goody_at(getX(mapIndex), getY(mapIndex)))
+			fprintf(journalFile, "P\t%d\t%d\t%d\n", turn, getX(mapIndex), getY(mapIndex));
+	}
+
+	fflush(journalFile);
+}
+
+bool autoplay_journal_wanted()
+{
+	return journalFile != nullptr;
+}
+
+void autoplay_journal_production(int baseId, int currentChoice, int currentBuildTime, int developmentScale, bool override, int choice,
+	const int* items, const double* priorities, int count)
+{
+	if (!journalFile)
+		return;
+
+	BASE* base = &Bases[baseId];
+	fprintf(journalFile, "D\t%d\t%d\t%d\t%s\t%s\t%d\t%d\t%d\t%s\t%d",
+		*CurrentTurn, base->faction_id, baseId, base->name, prod_name(currentChoice), currentBuildTime, developmentScale, override ? 1 : 0,
+		prod_name(choice), count);
+	for (int i = 0; i < count; i++)
+		fprintf(journalFile, "\t%s\t%.4f", prod_name(items[i]), priorities[i]);
+	fprintf(journalFile, "\n");
+}
+
+void autoplay_journal_defend(int baseId, int attackerKinds, double attackerPower, int defenders, bool sufficient, int probeUnitId, double probeEfficiency)
+{
+	if (!journalFile)
+		return;
+
+	BASE* base = &Bases[baseId];
+	fprintf(journalFile, "T\t%d\t%d\t%d\t%s\t%d\t%.4f\t%d\t%d\t%s\t%.4f\n",
+		*CurrentTurn, base->faction_id, baseId, base->name, attackerKinds, attackerPower, defenders, sufficient ? 1 : 0,
+		probeUnitId >= 0 ? Units[probeUnitId].name : "-", probeEfficiency);
+}
+
+void autoplay_journal_experiment(int factionId, double rounds, double artilleryShare, int defenders, bool sufficient, char const* role, char const* unitName, double efficiency)
+{
+	if (!journalFile)
+		return;
+
+	fprintf(journalFile, "E\t%d\t%d\t%.2f\t%.2f\t%d\t%d\t%s\t%s\t%.4f\n", *CurrentTurn, factionId, rounds, artilleryShare, defenders, sufficient ? 1 : 0, role, unitName, efficiency);
+}
+
 void autoplay_after_load()
 {
 	startTick = GetTickCount();
@@ -548,6 +764,13 @@ void autoplay_after_load()
 		}
 	}
 
+	if (!autoplay.journalPath.empty())
+	{
+		journalFile = fopen(autoplay.journalPath.c_str(), "w");
+		if (!journalFile)
+			autoplay_log("cannot open journal file %s", autoplay.journalPath.c_str());
+	}
+
 	// every faction becomes AI, including the one that was human in the save
 	autoplay_log("autoplay start: turn %d, human mask was 0x%02X, playing %d turns, stats csv: %s",
 		*CurrentTurn, FactionStatus[0], autoplay.turns, statsFile ? autoplay.statsPath.c_str() : "none");
@@ -565,6 +788,8 @@ void autoplay_after_load()
 
 	applyQuietPreferences();
 	recordStats("load");
+	writeJournalMap("start");
+	recordJournal();
 }
 
 static void pumpMessages()
@@ -634,6 +859,12 @@ static void finish(const char* reason)
 		fclose(statsFile);
 		statsFile = nullptr;
 	}
+	if (journalFile)
+	{
+		writeJournalMap("end");
+		fclose(journalFile);
+		journalFile = nullptr;
+	}
 	if (!autoplay.savePath.empty())
 	{
 		// the save is opened later as a normal game, so it gets the human faction back
@@ -662,6 +893,9 @@ void autoplay_end_of_round()
 	}
 
 	recordStats("round");
+	recordJournal();
+	if ((*CurrentTurn - startTurn + 1) % 50 == 0)
+		writeJournalMap("round");
 	autoplay_log("round done: turn %d", *CurrentTurn);
 
 	autoplay_poll();

@@ -7491,6 +7491,19 @@ bool isInterceptorUnit(int unitId)
 {
 	return Chassis[Units[unitId].chassis_id].triad == TRIAD_AIR && isUnitHasAbility(unitId, ABL_AIR_SUPERIORITY);
 }
+/*
+Unit that can be stationed at a defended location to defend it: infantry defender, land artillery or interceptor.
+Ships and other aircraft are not dedicated defenders: their chassis premium is wasted when they sit in a base
+and without armor or the air superiority weapon bonus they defend poorly.
+*/
+bool isDefenseCandidateUnit(int unitId)
+{
+	return isInfantryDefensiveUnit(unitId) || isLandArtilleryUnit(unitId) || isInterceptorUnit(unitId);
+}
+bool isDefenseCandidateVehicle(int vehicleId)
+{
+	return isDefenseCandidateUnit(Vehs[vehicleId].unit_id);
+}
 bool isInterceptorVehicle(int vehicleId)
 {
 	return isInterceptorUnit(Vehs[vehicleId].unit_id);

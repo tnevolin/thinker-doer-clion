@@ -72,6 +72,7 @@ struct SurfacePodData
 void productionStrategy();
 void populateFactionProductionData();
 void evaluateGlobalColonyDemand();
+void populateColonyCoverageData();
 void evaluateNavalInvasionTransportDemand();
 void evaluateGlobalSeaTransportDemand();
 void populateWarRegions();

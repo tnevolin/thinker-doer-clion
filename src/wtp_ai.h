@@ -36,6 +36,7 @@ void populateEnemyBaseProtectorWeights();
 
 void evaluateEnemyStacks();
 void evaluateDefendLocations();
+void journalDefendLocations();
 void evaluateDefendLocation(DefendData &defendData);
 void evaluateBaseProbeDefense();
 

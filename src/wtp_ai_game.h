@@ -1,7 +1,10 @@
 #pragma once
 
+#include <cfloat>
 #include <vector>
 #include <set>
+#include <map>
+#include <tuple>
 
 #include "wtp_robin_hood.h"
 #include "multikey_map.h"
@@ -32,7 +35,18 @@ constexpr double CND_APPROXIMATION_SCALE = +2.30;
 
 // minimal opponent relative health bonus to use in sufficiency computation
 static constexpr double MIN_OPPONENT_RELATIVE_HEALTH_BONUS = 0.1;
-	
+
+// attackers with smaller expected number of vehicles are dropped at the end of defend location evaluation
+constexpr double DEFEND_MIN_ATTACKER_COUNT = 0.01;
+// efficiency range: enemy power destroyed per own power lost
+// above the maximum the combattant is indestructible, below the minimum it is useless
+// zero is not in the range: it means the engagement is impossible
+constexpr double EFFICIENCY_MIN = 0.1;
+constexpr double EFFICIENCY_MAX = 10.0;
+// powers below this are zero
+constexpr double EFFICIENCY_EPSILON = 1e-9;
+double getEfficiency(double enemyPowerDestroyed, double ownPowerLost);
+
 // forward declarations
 
 struct TileInfo;
@@ -203,16 +217,28 @@ public:
 	
 };
 
+/*
+Expected attacker vehicles of the same kind.
+count is the expected number of such vehicles (presence weight); health and morale are per vehicle.
+*/
 struct DefendDataAttacker
 {
 	int factionId;
 	int unitId;
 	Triad triad;
+	double count;
 	double health;
+	double morale;
 	bool melee;
 	bool artillery;
 	bool bombardAir;
+
+	// combined strength: morale and health scale the damage linearly
+	double getPower() const { return count * morale * health; }
 };
+/*
+Defender vehicle or hypothetical unit (vehicleId = -1).
+*/
 struct DefendDataDefender
 {
 	int vehicleId;
@@ -220,37 +246,68 @@ struct DefendDataDefender
 	int unitId;
 	Triad triad;
 	double health;
+	double morale;
 	bool artillery;
+	bool bombardAir;
 	double minBombardmentHealth;
-	double contribution = 0.0;
-	double relativeContribution = 0.0;
-	DefendDataDefender(int _vehicleId, int _factionId, int _unitId, Triad _triad, double _health, bool _artillery, double _minBombardmentHealth)
-		: vehicleId(_vehicleId), factionId(_factionId), unitId(_unitId), triad(_triad), health(_health), artillery(_artillery), minBombardmentHealth(_minBombardmentHealth)
-	{
-	}
+	// turns until the defender is at the location: zero for a defender already there
+	double arrivalTime = 0.0;
+
+	double getPower() const { return morale * health; }
 };
+struct DefendOutcome
+{
+	// all combat phases came to a natural end
+	bool finished;
+	bool attackerAlive;
+	bool defenderAlive;
+	// total attacker power destroyed by defenders
+	double attackerPowerLost;
+	// power the candidate defender lost (zero without a candidate)
+	double candidatePowerLost;
+};
+/*
+Threat evaluation for one defended location.
+Attackers are expected hostile vehicles (count is a presence weight, 1.0 = one healthy vehicle next to the location).
+Defenders are the vehicles assigned to the location.
+Combat flow: artillery duels, bombardment, melee.
+*/
 struct DefendData
 {
 	MAP const *tile = nullptr;
 	double targetGain = 0.0;
 
-	bool computed = false;
-	bool sufficient = false;
 	std::vector<DefendDataAttacker> attackers;
 	std::vector<DefendDataDefender> defenders;
 	robin_hood::unordered_flat_set<int> defenderVehicleIds;
 
 	DefendData(MAP const* _tile, double _targetGain);
 
-	void addAttackerUnit(int _factionId, int _unitId, double _health);
-	void addDefenderVehicle(int vehicleId);
+	void addAttackerUnit(int factionId, int unitId, double count, double health, double morale);
+	void addAttackerVehicle(int vehicleId, double count);
+	void addDefenderVehicle(int vehicleId, double arrivalTime = 0.0);
+	void addDefenderUnit(int factionId, int unitId, double morale);
 	bool isDefenderVehicleExist(int vehicleId);
 	bool isSufficient();
-	double getVehicleRelativeContribution(int vehicleId);
+	bool isSufficientWithin(double maxArrivalTime);
+	double getAttackerPower() const;
+	double getVehicleEfficiency(int vehicleId);
+	double getUnitEfficiency(int factionId, int unitId, double morale);
+	double getVehicleGain(int vehicleId);
+	double getUnitGain(int factionId, int unitId, double morale);
 
 private:
 
-	double getCombatEffect(int attackerFactionId, int attackerUnitId, int defenderVehicleId, EngagementMode engagementMode);
+	bool computed = false;
+	bool sufficient = false;
+	double attackerPowerLost = 0.0;
+	std::map<std::tuple<int, int, double>, double> unitEfficiencies;
+
+	DefendDataDefender createVehicleDefender(int vehicleId) const;
+	DefendDataDefender createUnitDefender(int factionId, int unitId, double morale) const;
+	void invalidate();
+	void compute();
+	DefendOutcome simulate(DefendDataDefender const *candidate, int excludedVehicleId, double maxArrivalTime = DBL_MAX);
 
 };
 

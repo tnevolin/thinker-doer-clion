@@ -134,6 +134,7 @@ void generateAttackStackRequests();
 void assignRequests();
 //
 void immediateAttack();
+void moveDefenders();
 void moveBaseProtectors();
 void moveBunkerProtectors();
 void moveCombat();

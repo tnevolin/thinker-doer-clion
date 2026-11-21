@@ -10,6 +10,7 @@
 #include "wtp_aiHurry.h"
 #include "wtp_aiMove.h"
 #include "wtp_aiProduction.h"
+#include "wtp_autoplay.h"
 
 /**
 Top level AI strategy class. Contains AI methods entry points and global AI variable precomputations.
@@ -3796,8 +3797,6 @@ void evaluateDefendLocations()
 
 	Profiling::start("evaluate threat", "evaluateDefendLocation");
 
-	robin_hood::unordered_flat_map<MAP const *, robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, double>>> defendLocationAttackerWeights;
-
 	debug("vehicles\n");
 	for (int vehicleId = 0; vehicleId < *VehCount; ++vehicleId)
 	{
@@ -3818,12 +3817,6 @@ void evaluateDefendLocations()
 
 		// threat coefficient
 		double threatCoefficient = aiData.factionInfos[vehicle.faction_id].threatCoefficient;
-
-		// morale coefficient
-		double moraleCoefficient = getVehicleMoraleMultiplier(vehicleId);
-
-		// health coefficient
-		double healthCoefficient = getVehicleRelativeHealth(vehicleId);
 
 		// find approach times and attractions
 
@@ -3887,7 +3880,7 @@ void evaluateDefendLocations()
 		// collect defend location attackers
 
 		debug("\t%s %-24s %-32s\n", getLocationString(getVehicleMapTile(vehicleId)), MFactions[vehicle.faction_id].noun_faction, Units[vehicle.unit_id].name);
-		for (auto const &[tile, defendData] : aiData.defendLocations)
+		for (auto &[tile, defendData] : aiData.defendLocations)
 		{
 			if (!defendLocationApproachTimes.contains(defendData.tile) || !defendLocationApproachTimeCoefficients.contains(defendData.tile) || !defendLocationAttractionCoefficients.contains(defendData.tile))
 				continue;
@@ -3895,41 +3888,18 @@ void evaluateDefendLocations()
 			double approachTime = defendLocationApproachTimes.at(defendData.tile);
 			double approachTimeCoefficient = defendLocationApproachTimeCoefficients.at(defendData.tile);
 			double attractionCoefficient = defendLocationAttractionCoefficients.at(defendData.tile);
-			double weight = threatCoefficient * moraleCoefficient * healthCoefficient * approachTimeCoefficient * attractionCoefficient;
-			defendLocationAttackerWeights[defendData.tile][vehicle.faction_id][vehicle.unit_id] += weight;
+
+			// expected presence of the vehicle at the location; its health and morale are accounted for in the vehicle
+			double count = conf.ai_base_threat_multiplier * threatCoefficient * approachTimeCoefficient * attractionCoefficient;
+			defendData.addAttackerVehicle(vehicleId, count);
 
 			if constexpr (TRACE)
 			{
 				debug
 				(
-					"\t\t%s weight=%5.2f threatCoefficient=%5.2f moraleCoefficient=%5.2f healthCoefficient=%5.2f approachTime=%5.2f approachTimeCoefficient=%5.2f attractionCoefficient=%5.2f\n"
-					, getLocationString(defendData.tile), weight, threatCoefficient, moraleCoefficient, healthCoefficient, approachTime, approachTimeCoefficient, attractionCoefficient
+					"\t\t%s count=%5.2f threatCoefficient=%5.2f approachTime=%5.2f approachTimeCoefficient=%5.2f attractionCoefficient=%5.2f\n"
+					, getLocationString(defendData.tile), count, threatCoefficient, approachTime, approachTimeCoefficient, attractionCoefficient
 				);
-			}
-
-		}
-
-	}
-
-	// populate defend location attackers
-
-	for (auto &[tile, defendData] : aiData.defendLocations)
-	{
-		if (!defendLocationAttackerWeights.contains(defendData.tile))
-			continue;
-
-		for (auto const &attackerWeightEntry : defendLocationAttackerWeights.at(defendData.tile))
-		{
-			int factionId = attackerWeightEntry.first;
-			robin_hood::unordered_flat_map<int, double> attackerFactionWeights = attackerWeightEntry.second;
-
-			for (auto const &attackerFactionWeightEntry : attackerFactionWeights)
-			{
-				int unitId = attackerFactionWeightEntry.first;
-				double weight = attackerFactionWeightEntry.second;
-
-				defendData.addAttackerUnit(factionId, unitId, weight);
-
 			}
 
 		}
@@ -3967,19 +3937,23 @@ void evaluateDefendLocations()
 			alienCount += ((static_cast<double>(aiFaction->clean_minerals_modifier) / 3.0) * (static_cast<double>(base.eco_damage) / 20.0));
 		}
 
-		double weight = moraleMultiplier * gameTurnCoefficient * alienCount;
+		double potentialPower = moraleMultiplier * gameTurnCoefficient * alienCount;
 
-		// reduce alien weight based on accepted risk of population reduction
+		// reduce alien power based on accepted risk of population reduction
 		// full threat when alienCount >= base.pop_size and then reduced down to 0.5
 
 		if (alienCount < static_cast<double>(base.pop_size))
 		{
-			weight *= 0.5 * (1.0 + alienCount / static_cast<double>(base.pop_size));
+			potentialPower *= 0.5 * (1.0 + alienCount / static_cast<double>(base.pop_size));
 		}
 
-		// do not add potential weight more than actual one
+		// threat multiplier scales the potential alien power the same way as the expected attacker counts
 
-		double existingAlienWeight = 0.0;
+		potentialPower *= conf.ai_base_threat_multiplier;
+
+		// do not add potential power more than actual one
+
+		double existingAlienPower = 0.0;
 
 		for (DefendDataAttacker const &attacker : defendData.attackers)
 		{
@@ -3991,23 +3965,18 @@ void evaluateDefendLocations()
 			if ((tileInfo.ocean && attacker.triad == TRIAD_LAND) || (tileInfo.land && attacker.triad == TRIAD_SEA))
 				continue;
 
-			existingAlienWeight += attacker.health;
+			existingAlienPower += attacker.getPower();
 
 		}
 
-		if (weight > existingAlienWeight)
+		if (potentialPower > existingAlienPower)
 		{
-			debug("\t%s weight=%5.2f\n", getLocationString(defendData.tile), weight);
-			weight = weight - existingAlienWeight;
+			debug("\t%s potentialPower=%5.2f\n", getLocationString(defendData.tile), potentialPower);
 
-			if (auto defendAttackerIterator = std::find_if(defendData.attackers.begin(), defendData.attackers.end(), [&](DefendDataAttacker const &a) { return a.factionId == 0 && a.unitId == alienUnitId; }); defendAttackerIterator != defendData.attackers.end())
-			{
-				defendAttackerIterator->health += weight;
-			}
-			else
-			{
-				defendData.addAttackerUnit(0, alienUnitId, weight);
-			}
+			// virtual healthy alien vehicles with the alien morale
+			double additionalCount = (potentialPower - existingAlienPower) / moraleMultiplier;
+
+			defendData.addAttackerUnit(0, alienUnitId, additionalCount, 1.0, moraleMultiplier);
 
 		}
 
@@ -4027,9 +3996,13 @@ void evaluateDefendLocations()
 			if (isHostile(aiFactionId, attacker.factionId))
 				continue;
 
-			notHostileFactionThreats[attacker.factionId] += attacker.health;
+			notHostileFactionThreats[attacker.factionId] += attacker.getPower();
 
 		}
+
+		// no not hostile threats
+		if (notHostileFactionThreats.empty())
+			continue;
 
 		// select max not hostile threat
 		auto maxNotHostileFactionThreatIterator = std::max_element(notHostileFactionThreats.begin(), notHostileFactionThreats.end(), [](auto const &a, auto const &b) { return a.second < b.second; });
@@ -4062,8 +4035,20 @@ void evaluateDefendLocations()
 
 	}
 
+	// drop negligible attackers after all expected counts are accumulated and merged
+
+	for (auto &[tile, defendData] : aiData.defendLocations)
+	{
+		defendData.attackers.erase
+		(
+			std::remove_if(defendData.attackers.begin(), defendData.attackers.end(), [](DefendDataAttacker const &attacker) { return attacker.count < DEFEND_MIN_ATTACKER_COUNT; }),
+			defendData.attackers.end()
+		);
+
+	}
+
 	Profiling::stop("evaluate threat");
-	
+
 	Profiling::stop("evaluateDefendLocation");
 
 //	if constexpr (DEBUG)
@@ -4082,6 +4067,186 @@ void evaluateDefendLocations()
 //
 //	}
 	
+}
+
+/*
+Defense experiment (-defenseexperiment): how the defender efficiency depends on the share of attacker artillery
+and on the expected number of bombardment rounds.
+The location is the first base of the faction, attacked by proxies of the best melee and the best artillery unit of the faction.
+Written once per faction as E records as soon as all needed units exist.
+*/
+static void runDefenseExperiment()
+{
+	static robin_hood::unordered_flat_set<int> doneFactionIds;
+
+	if (doneFactionIds.contains(aiFactionId) || aiData.baseIds.empty())
+		return;
+
+	// find the units
+
+	int attackerMeleeUnitId = -1;
+	int attackerArtilleryUnitId = -1;
+	int infantryUnitId = -1;
+	int armoredArtilleryUnitId = -1;
+	int weakArtilleryUnitId = -1;
+
+	for (int unitId : aiData.combatUnitIds)
+	{
+		UNIT *unit = getUnit(unitId);
+		int offenseValue = unit->offense_value();
+		int defenseValue = unit->defense_value();
+
+		// conventional units only
+		if (offenseValue <= 0 || defenseValue <= 0)
+			continue;
+
+		if (isLandArtilleryUnit(unitId))
+		{
+			if (attackerArtilleryUnitId == -1 || offenseValue > getUnit(attackerArtilleryUnitId)->offense_value())
+			{
+				attackerArtilleryUnitId = unitId;
+			}
+
+			if (armoredArtilleryUnitId == -1 || defenseValue > getUnit(armoredArtilleryUnitId)->defense_value())
+			{
+				armoredArtilleryUnitId = unitId;
+			}
+
+			if (weakArtilleryUnitId == -1 || defenseValue < getUnit(weakArtilleryUnitId)->defense_value())
+			{
+				weakArtilleryUnitId = unitId;
+			}
+
+		}
+		else if (isInfantryDefensiveUnit(unitId))
+		{
+			if (infantryUnitId == -1 || defenseValue > getUnit(infantryUnitId)->defense_value())
+			{
+				infantryUnitId = unitId;
+			}
+
+		}
+		else if (isMeleeUnit(unitId) && unit->triad() == TRIAD_LAND)
+		{
+			if (attackerMeleeUnitId == -1 || offenseValue > getUnit(attackerMeleeUnitId)->offense_value())
+			{
+				attackerMeleeUnitId = unitId;
+			}
+
+		}
+
+	}
+
+	if (attackerMeleeUnitId == -1 || attackerArtilleryUnitId == -1 || infantryUnitId == -1 || armoredArtilleryUnitId == -1 || weakArtilleryUnitId == -1)
+		return;
+
+	// wait for different artillery units to compare unless the game is long
+	if (armoredArtilleryUnitId == weakArtilleryUnitId && *CurrentTurn < 150)
+		return;
+
+	doneFactionIds.insert(aiFactionId);
+
+	// list the land artillery designs: offense, defense, chassis, cost
+	for (int unitId : aiData.combatUnitIds)
+	{
+		if (isLandArtilleryUnit(unitId))
+		{
+			UNIT *unit = getUnit(unitId);
+			autoplay_journal_experiment(aiFactionId, unit->offense_value(), unit->defense_value(), unit->chassis_id, false, "design", unit->name, unit->cost);
+		}
+
+	}
+
+	MAP const *tile = getBaseMapTile(aiData.baseIds.front());
+
+	// total attacker power
+
+	constexpr double THREAT = 1.5;
+
+	std::array<std::pair<int, char const *>, 3> candidates
+	{{
+		{infantryUnitId, "infantry"},
+		{armoredArtilleryUnitId, "armored artillery"},
+		{weakArtilleryUnitId, "weak artillery"},
+	}};
+
+	double savedRounds = conf.ai_base_threat_bombardment_rounds;
+
+	for (double rounds : {1.0, 2.0, 3.0, 5.0})
+	{
+		conf.ai_base_threat_bombardment_rounds = rounds;
+
+		for (double artilleryShare : {0.0, 0.25, 0.5, 0.75, 1.0})
+		{
+			for (int defenders : {0, 1})
+			{
+				DefendData defendData(tile, 1.0);
+
+				defendData.addAttackerUnit(aiFactionId, attackerMeleeUnitId, (1.0 - artilleryShare) * THREAT, 1.0, 1.0);
+				defendData.addAttackerUnit(aiFactionId, attackerArtilleryUnitId, artilleryShare * THREAT, 1.0, 1.0);
+
+				if (defenders > 0)
+				{
+					defendData.addDefenderUnit(aiFactionId, infantryUnitId, 1.0);
+				}
+
+				bool sufficient = defendData.isSufficient();
+
+				for (auto const &[unitId, name] : candidates)
+				{
+					autoplay_journal_experiment(aiFactionId, rounds, artilleryShare, defenders, sufficient, name, getUnit(unitId)->name, defendData.getUnitEfficiency(aiFactionId, unitId, 1.0));
+				}
+
+			}
+
+		}
+
+	}
+
+	conf.ai_base_threat_bombardment_rounds = savedRounds;
+
+}
+
+/*
+Writes the defense computation of every base to the journal.
+Called after defenders are assigned.
+*/
+void journalDefendLocations()
+{
+	if (!autoplay_journal_wanted())
+		return;
+
+	for (int baseId : aiData.baseIds)
+	{
+		auto defendDataIterator = aiData.defendLocations.find(getBaseMapTile(baseId));
+		if (defendDataIterator == aiData.defendLocations.end())
+			continue;
+		DefendData &defendData = defendDataIterator->second;
+
+		double attackerPower = defendData.getAttackerPower();
+
+		int probeUnitId = -1;
+		for (int unitId : aiData.combatUnitIds)
+		{
+			if (isInfantryDefensiveUnit(unitId) && isBaseCanBuildUnit(baseId, unitId) && (probeUnitId == -1 || getUnit(unitId)->defense_value() > getUnit(probeUnitId)->defense_value()))
+			{
+				probeUnitId = unitId;
+			}
+
+		}
+
+		double probeEfficiency = probeUnitId == -1 ? 0.0 : defendData.getUnitEfficiency(aiFactionId, probeUnitId, 1.0);
+
+		autoplay_journal_defend(baseId, static_cast<int>(defendData.attackers.size()), attackerPower, static_cast<int>(defendData.defenders.size()), defendData.isSufficient(), probeUnitId, probeEfficiency);
+
+	}
+
+
+	if (autoplay.defenseExperiment)
+	{
+		runDefenseExperiment();
+	}
+
 }
 
 void evaluateBaseProbeDefense()
@@ -4473,13 +4638,15 @@ void designUnits()
 	);
 	
 	// land artillery
+	// location defenders do not need speed: the infantry chassis is the cheapest
+	// armored for counter battery and melee defense, unarmored as a cheaper counter battery specialist
 	
 	proposeMultiplePrototypes
 	(
 		aiFactionId,
-		{fastLandChassis},
+		{CHS_INFANTRY},
 		{bestWeapon},
-		{bestArmor},
+		{bestArmor, ARM_NO_ARMOR},
 		{
 			{ABL_ID_ARTILLERY, },
 		},

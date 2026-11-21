@@ -494,6 +494,8 @@ struct Config {
     double ai_production_inflation;
     double ai_production_income_interest_rate;
     double ai_production_transport_priority;
+    double ai_production_expansion_coverage_full;
+    double ai_production_expansion_coverage_stop;
     double ai_production_transport_seats_per_sea_base;
     double ai_production_support_ratio;
     double ai_production_base_probe_priority;
@@ -542,6 +544,8 @@ struct Config {
     double ai_combat_unit_value_defense_coefficient;
     double ai_combat_unit_value_speed_coefficient;
     double ai_base_threat_travel_time_scale;
+    double ai_base_threat_multiplier;
+    double ai_base_threat_bombardment_rounds;
     double ai_combat_travel_time_scale;
     double ai_combat_priority_escape;
     double ai_combat_priority_repair;

@@ -295,7 +295,11 @@ void __cdecl control_game() {
         *GameHalted = 1;
         *ControlTurnA = 0;
         *MultiplayerActive = 0;
-        int start_lobby = Net_check_for_lobby(NetState, GameCmdLine, unk_689218, 3, 9);
+        // [WTP]
+        // autoplay and a save given in the command line never start from a network lobby:
+        // the lobby check may report a lobby launch for any command line arguments
+        int start_lobby = (autoplay.active || startup_load_path.size()) ? 0 : Net_check_for_lobby(NetState, GameCmdLine, unk_689218, 3, 9);
+        //
         if (!start_lobby) {
             // Remove legacy startup code that checks whether a complete installation has been performed
             // This also skips FILEFIND_NOCD label from being displayed by filefind_init
