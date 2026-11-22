@@ -159,6 +159,7 @@ void autoplay_journal_production(int baseId, int currentChoice, int currentBuild
 // the threat evaluation of one base (defense computation check)
 void autoplay_journal_defend(int baseId, int attackerKinds, double attackerPower, int defenders, bool sufficient, int probeUnitId, double probeEfficiency);
 // one row of the defense experiment: candidate efficiency for the given attacker artillery share, bombardment rounds and defenders
+void autoplay_journal_bunker_removed(int factionId, int tileOwner, int x, int y, double gain);
 void autoplay_journal_experiment(int factionId, double rounds, double artilleryShare, int defenders, bool sufficient, char const* role, char const* unitName, double efficiency);
 // append a line to autoplay.log
 void autoplay_log(const char* format, ...);

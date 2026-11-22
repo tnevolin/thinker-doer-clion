@@ -1735,6 +1735,53 @@ void populateBaseInfos()
 	
 }
 
+/*
+Selects bunkers the faction keeps or takes as defend locations:
+bunkers in own territory and checkpoints: bunkers in hostile territory no deeper than 2 tiles from own territory.
+In both cases the bunker is empty or occupied by friendlies only.
+A bunker deeper in hostile territory cannot be supported by other forces.
+*/
+bool isDefendableBunker(MAP *tile)
+{
+	constexpr int CHECKPOINT_DEPTH_MAX = 2;
+
+	TileInfo &tileInfo = aiData.getTileInfo(tile);
+
+	// own territory or hostile territory close to own territory
+
+	if (tile->owner != aiFactionId)
+	{
+		if (tile->owner < 0 || !isHostile(aiFactionId, tile->owner))
+			return false;
+
+		bool nearOwnTerritory = false;
+
+		for (MAP *rangeTile : getRangeTiles(tile, CHECKPOINT_DEPTH_MAX, false))
+		{
+			if (rangeTile->owner == aiFactionId)
+			{
+				nearOwnTerritory = true;
+				break;
+			}
+		}
+
+		if (!nearOwnTerritory)
+			return false;
+
+	}
+
+	// empty or occupied by friendlies
+
+	for (int vehicleId : tileInfo.vehicleIds)
+	{
+		if (!isFriendly(aiFactionId, Vehs[vehicleId].faction_id))
+			return false;
+	}
+
+	return true;
+
+}
+
 void populateBunkerInfos()
 {
 	Profiling::start("populateBunkerInfos", "populateAIData");
@@ -1748,7 +1795,7 @@ void populateBunkerInfos()
 		MAP *tile = *MapTiles + tileIndex;
 		TileInfo &tileInfo = aiData.getTileInfo(tile);
 
-		if (tileInfo.bunker)
+		if (tileInfo.bunker && isDefendableBunker(tile))
 		{
 			aiData.bunkerInfos.emplace(tile, BunkerInfo());
 			aiData.getBunkerInfo(tile).tile = tile;

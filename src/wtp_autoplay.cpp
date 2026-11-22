@@ -731,6 +731,14 @@ void autoplay_journal_defend(int baseId, int attackerKinds, double attackerPower
 		probeUnitId >= 0 ? Units[probeUnitId].name : "-", probeEfficiency);
 }
 
+void autoplay_journal_bunker_removed(int factionId, int tileOwner, int x, int y, double gain)
+{
+	if (!journalFile)
+		return;
+
+	fprintf(journalFile, "X\t%d\t%d\t%d\t%d\t%d\t%.4f\n", *CurrentTurn, factionId, tileOwner, x, y, gain);
+}
+
 void autoplay_journal_experiment(int factionId, double rounds, double artilleryShare, int defenders, bool sufficient, char const* role, char const* unitName, double efficiency)
 {
 	if (!journalFile)

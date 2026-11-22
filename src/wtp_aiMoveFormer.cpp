@@ -6,6 +6,7 @@
 
 #include "main.h"
 #include "wtp_aiMoveFormer.h"
+#include "wtp_autoplay.h"
 #include "wtp_aiRoute.h"
 #include "wtp_aiMove.h"
 #include "wtp_base.h"
@@ -2365,9 +2366,17 @@ void removeUnusedBunkers()
 	{
 		MAP const *bunkerTile = bunkerInfoEntry.first;
 
-		if (getBunkerGain(const_cast<MAP *>(bunkerTile)) <= 0.0)
+		// only own bunkers: the gain is computed from the own faction's point of view
+
+		if (bunkerTile->owner != aiFactionId)
+			continue;
+
+		double bunkerGain = getBunkerGain(const_cast<MAP *>(bunkerTile));
+
+		if (bunkerGain <= 0.0)
 		{
 			unusedBunkers.insert(bunkerTile);
+			autoplay_journal_bunker_removed(aiFactionId, bunkerTile->owner, getX(bunkerTile), getY(bunkerTile), bunkerGain);
 		}
 
 	}
