@@ -739,6 +739,45 @@ void autoplay_journal_bunker_removed(int factionId, int tileOwner, int x, int y,
 	fprintf(journalFile, "X\t%d\t%d\t%d\t%d\t%d\t%.4f\n", *CurrentTurn, factionId, tileOwner, x, y, gain);
 }
 
+void autoplay_journal_assignment(char const* type, int vehicleId, int requestX, int requestY, double gain, double travelTime)
+{
+	if (!journalFile)
+		return;
+
+	VEH* vehicle = &Vehs[vehicleId];
+	fprintf(journalFile, "A\t%d\t%d\t%s\t%d\t%s\t%d\t%d\t%d\t%d\t%.4f\t%.2f\n",
+		*CurrentTurn, vehicle->faction_id, type, vehicleId, vehicle->name(), vehicle->x, vehicle->y, requestX, requestY, gain, travelTime);
+}
+
+void autoplay_journal_unfulfilled(int factionId, char const* type, int requestX, int requestY, double gain)
+{
+	if (!journalFile)
+		return;
+
+	fprintf(journalFile, "U\t%d\t%d\t%s\t%d\t%d\t%.4f\n",
+		*CurrentTurn, factionId, type, requestX, requestY, gain);
+}
+
+void autoplay_journal_transit(int vehicleId, char const* passengerClass, int originX, int originY, int destinationX, int destinationY, int transportId)
+{
+	if (!journalFile)
+		return;
+
+	VEH* vehicle = &Vehs[vehicleId];
+	fprintf(journalFile, "Q\t%d\t%d\t%d\t%s\t%s\t%d\t%d\t%d\t%d\t%d\n",
+		*CurrentTurn, vehicle->faction_id, vehicleId, vehicle->name(), passengerClass, originX, originY, destinationX, destinationY, transportId);
+}
+
+void autoplay_journal_garrison(int vehicleId, int kind, int destinationX, int destinationY)
+{
+	if (!journalFile)
+		return;
+
+	VEH* vehicle = &Vehs[vehicleId];
+	fprintf(journalFile, "H\t%d\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%d\n",
+		*CurrentTurn, vehicle->faction_id, vehicleId, vehicle->name(), vehicle->x, vehicle->y, kind, destinationX, destinationY);
+}
+
 void autoplay_journal_experiment(int factionId, double rounds, double artilleryShare, int defenders, bool sufficient, char const* role, char const* unitName, double efficiency)
 {
 	if (!journalFile)

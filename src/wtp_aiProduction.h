@@ -54,19 +54,6 @@ struct Interval
 	Interval(int _min, int _max): min{_min}, max{_max} {}
 };
 
-struct SurfacePodData
-{
-	int scanRange = 0;
-	int tileCount = 0;
-	int podCount = 0;
-	int scoutCount = 0;
-	double averagePodDistance = 0.0;
-	double totalConsumptionRate = 0.0;
-	double factionConsumptionRate = 0.0;
-	double factionConsumptionGain = 0.0;
-	
-};
-
 // production strategy
 
 void productionStrategy();

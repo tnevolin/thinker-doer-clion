@@ -1887,7 +1887,7 @@ void assignFormerOrders()
 
 				if (formerOrder.committedTarget == tile)
 				{
-					gain *= (1.0 + conf.ai_terraforming_committedTargetGainMargin);
+					gain *= (1.0 + conf.ai_committedTargetGainMargin);
 				}
 
 				// update best combination

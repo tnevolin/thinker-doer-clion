@@ -6,6 +6,7 @@
 #include "wtp_ai_game.h"
 #include "wtp_aiRoute.h"
 #include "wtp_aiMove.h"
+#include "wtp_autoplay.h"
 
 /*
 Assigns a healing task to a damaged, empty transport.
@@ -133,9 +134,31 @@ void moveTranportStrategy()
 	
 	for (TransitRequest &transitRequest : aiData.transportControl.transitRequests)
 	{
+		if (autoplay_journal_wanted() && transitRequest.getVehicleId() != -1)
+		{
+			int passengerId = transitRequest.getVehicleId();
+			char const *passengerClass =
+				isColonyVehicle(passengerId) ? "colony" :
+				isFormerVehicle(passengerId) ? "former" :
+				isArtifactVehicle(passengerId) ? "artifact" :
+				isSupplyVehicle(passengerId) ? "supply" :
+				isProbeVehicle(passengerId) ? "probe" :
+				isCombatVehicle(passengerId) ? "combat" :
+				"other"
+			;
+			autoplay_journal_transit
+			(
+				passengerId,
+				passengerClass,
+				getX(transitRequest.origin), getY(transitRequest.origin),
+				getX(transitRequest.destination), getY(transitRequest.destination),
+				transitRequest.isFulfilled() ? transitRequest.getSeaTransportVehicleId() : -1
+			);
+		}
+
 		if (transitRequest.isFulfilled())
 			continue;
-		
+
 		int seaTransportCluster = getSeaCluster(transitRequest.origin);
 		
 		debug
@@ -237,23 +260,10 @@ void moveSeaTransportStrategy(int vehicleId)
 		if (travelTime == INF)
 			continue;
 		
-		// preference
-		
-		int preference;
-		
-		if (isColonyVehicle(passengerVehicleId))
-		{
-			preference = 10;
-		}
-		else if (isFormerVehicle(passengerVehicleId))
-		{
-			preference = 9;
-		}
-		else
-		{
-			preference = 0;
-		}
-		
+		// preference: a colony founds a base on arrival, any other passenger is delivered to the closest drop-off
+
+		int preference = isColonyVehicle(passengerVehicleId) ? 1 : 0;
+
 		// update best
 		
 		if
@@ -339,10 +349,18 @@ void moveSeaTransportStrategy(int vehicleId)
 			return;
 		
 		// for now don't bother mixing load tasks
-		
+
 		if (task->type == TT_LOAD)
 			return;
-		
+
+		// a colony on board is delivered first, no pickups on the way
+
+		for (int passengerVehicleId : getTransportPassengers(vehicleId))
+		{
+			if (isColonyVehicle(passengerVehicleId))
+				return;
+		}
+
 		MAP *vehicleTile = getVehicleMapTile(vehicleId);
 		MAP *destination = task->getDestination();
 		double currentTravelTime = getVehicleTravelTime(vehicleId, destination, false);
@@ -359,18 +377,18 @@ void moveSeaTransportStrategy(int vehicleId)
 			if (transitRequest.isFulfilled())
 				continue;
 			
-			// reachable
-			
-			if (isVehicleDestinationReachable(vehicleId, transitRequest.destination))
+			// the ferry reaches the pickup
+
+			if (!isVehicleDestinationReachable(vehicleId, vehicleTile, transitRequest.origin))
 				continue;
-			
+
 			// combined travel time
-			
+
 			double travelTime =
 				+ getVehicleTravelTime(vehicleId, vehicleTile, transitRequest.origin, false)
 				+ getVehicleTravelTime(vehicleId, transitRequest.origin, destination, false)
 			;
-			
+
 			if (travelTime < closestLoadLocationTravelTime)
 			{
 				closestTransitRequest = &transitRequest;

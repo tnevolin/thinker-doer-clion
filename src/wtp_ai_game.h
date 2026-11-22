@@ -737,6 +737,14 @@ struct ConvoyRequest
 	double gain;
 };
 
+// pod to be popped by a vehicle
+struct PodRequest
+{
+	MAP const *tile;
+	double gain;
+	mutable bool assigned = false;
+};
+
 enum CombatRequestType
 {
 	CRT_REPAIR_MONOLITH,	// repair and monolith promotion can collocate
@@ -765,6 +773,8 @@ struct Production
 	
 	std::vector<TerraformingRequest> terraformingRequests;
 	std::vector<ConvoyRequest> convoyRequests;
+	// pods not assigned to any vehicle
+	std::vector<PodRequest> podRequests;
 	
 	// combat unit demands
 	

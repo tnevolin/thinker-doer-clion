@@ -158,8 +158,17 @@ void autoplay_journal_production(int baseId, int currentChoice, int currentBuild
 	const int* items, const double* priorities, int count);
 // the threat evaluation of one base (defense computation check)
 void autoplay_journal_defend(int baseId, int attackerKinds, double attackerPower, int defenders, bool sufficient, int probeUnitId, double probeEfficiency);
-// one row of the defense experiment: candidate efficiency for the given attacker artillery share, bombardment rounds and defenders
+// a bunker cleared by a former because its gain is not positive
 void autoplay_journal_bunker_removed(int factionId, int tileOwner, int x, int y, double gain);
+// a vehicle assigned to a request (type "defend", "pod"); the vehicle is not moved yet
+void autoplay_journal_assignment(char const* type, int vehicleId, int requestX, int requestY, double gain, double travelTime);
+// a request left without a vehicle after the assignment
+void autoplay_journal_unfulfilled(int factionId, char const* type, int requestX, int requestY, double gain);
+// a transit request of a land passenger waiting for a sea transport: passenger class, pickup and destination; transportId is -1 when no transport is assigned
+void autoplay_journal_transit(int vehicleId, char const* passengerClass, int originX, int originY, int destinationX, int destinationY, int transportId);
+// a Thinker garrison decision for a vehicle without a WTP task: kind 0 stays at its base, kind 1 moves to another base
+void autoplay_journal_garrison(int vehicleId, int kind, int destinationX, int destinationY);
+// one row of the defense experiment: candidate efficiency for the given attacker artillery share, bombardment rounds and defenders
 void autoplay_journal_experiment(int factionId, double rounds, double artilleryShare, int defenders, bool sufficient, char const* role, char const* unitName, double efficiency);
 // append a line to autoplay.log
 void autoplay_log(const char* format, ...);

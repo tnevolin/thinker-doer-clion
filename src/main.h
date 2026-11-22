@@ -470,6 +470,7 @@ struct Config {
     double ai_base_size_c;
     double ai_statistics_base_growth_a;
     double ai_statistics_base_growth_b;
+    double ai_committedTargetGainMargin;
     double ai_citizen_income;
     double ai_production_priority_coefficient;
     double ai_production_vanilla_priority_unit;
@@ -538,7 +539,6 @@ struct Config {
     double ai_terraforming_landBridgeRangeScale;
     double ai_terraforming_landBridgeLogisticsValue;
     int ai_terraforming_futureCitizenSlotCount;
-    double ai_terraforming_committedTargetGainMargin;
     double ai_combat_enemy_unit_value_coefficient;
     double ai_combat_unit_value_offense_coefficient;
     double ai_combat_unit_value_defense_coefficient;

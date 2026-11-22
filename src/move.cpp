@@ -1,6 +1,8 @@
 
 #include "move.h"
 #include "wtp_mod.h"
+#include "wtp_autoplay.h"
+#include "wtp_ai_game.h"
 
 /*
 Priority Map Tables contain values calculated for each map square
@@ -871,7 +873,13 @@ void move_upkeep(int faction_id, UpdateMode mode) {
             if (sq->owner == faction_id && ((!p.build_tubes && sq->items & BIT_ROAD)
             || (p.build_tubes && sq->items & BIT_MAGTUBE))) {
                 mapdata[{x, y}].roads++;
+            // [WTP]
+            // pods are targeted by the WTP pod assignment for WTP enabled factions
+            /*
             } else if (goody_at(x, y)) {
+            */
+            } else if (goody_at(x, y) && !isWtpEnabledFaction(faction_id)) {
+            //
                 mapnodes.insert({x, y, NODE_PATROL});
                 if (!sq->is_owned()) {
                     for (auto& m : iterate_tiles(x, y, 0, 9)) {
@@ -3457,6 +3465,10 @@ int combat_move(const int id) {
     }
     if (at_base && (!defenders || defenders < defender_goal(veh->x, veh->y, faction_id, triad))) {
         debug("combat_defend %2d %2d %s\n", veh->x, veh->y, veh->name());
+		// [WTP]
+		// journal the garrison decision
+		autoplay_journal_garrison(id, 0, veh->x, veh->y);
+		//
         return set_order_none(id);
     }
     if (veh->need_heals()) {
@@ -3580,6 +3592,10 @@ int combat_move(const int id) {
             > defender_count(ts.rx, ts.ry, -1) + mp.target/2) {
                 debug("combat_defend %2d %2d -> %2d %2d %s\n",
                 veh->x, veh->y, ts.rx, ts.ry, veh->name());
+				// [WTP]
+				// journal the garrison decision
+				autoplay_journal_garrison(id, 1, ts.rx, ts.ry);
+				//
                 return set_move_to(id, ts.rx, ts.ry);
             }
         } else if (!defend && (combat || veh->is_probe())

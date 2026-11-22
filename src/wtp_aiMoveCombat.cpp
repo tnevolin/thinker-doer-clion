@@ -5,6 +5,7 @@
 #include "wtp_aiRoute.h"
 #include "wtp_aiMove.h"
 #include "wtp_ai.h"
+#include "wtp_autoplay.h"
 
 std::vector<CombatRequest> combatRequests;
 std::vector<CombatOrder> combatOrders;
@@ -75,9 +76,9 @@ void moveCombatStrategy()
 //
 //	assignRequests();
 //
-	// assign defenders to the defended locations
+	// assign the vehicles to the defended locations and the pods
 
-	moveDefenders();
+	assignCombatVehicles();
 
 	journalDefendLocations();
 
@@ -116,7 +117,6 @@ void generateRequests()
 //
 //	// generic unit requests
 //
-//	generatePodRequests();
 //	generateDefendBaseRequests();
 //	generateDefendBunkerRequests();
 //	generateCaptureBaseRequests();
@@ -305,33 +305,6 @@ void generateRepairMonolithRequests()
 		// add request
 
 		combatRequests.emplace_back(CRT_REPAIR_MONOLITH, bestLocation, vehicleId, bestLocationPriority);
-
-	}
-
-}
-
-void generatePodRequests()
-{
-	for (TileInfo const &tileInfo : aiData.tileInfos)
-	{
-		// friendly territory
-
-		if (!isFriendlyTerritory(aiFactionId, tileInfo.tile))
-			continue;
-
-		// pod
-
-		if (!isPodAt(tileInfo.tile))
-			continue;
-
-		// not blocked
-
-		if (tileInfo.blocks.at(aiFactionId))
-			continue;
-
-		// generate request
-
-		combatRequests.emplace_back(CRT_POP_POD, tileInfo.tile);
 
 	}
 
@@ -747,35 +720,65 @@ void immediateAttack()
 }
 
 /*
-Assigns defenders to the defended locations (bases and bunkers) every turn.
-Locations start with no defenders: a vehicle at the location is preferred to a distant one by the travel time coefficient.
-The gain of a vehicle at a base is protection gain plus police gain: the same vehicle serves both purposes, so they accumulate.
-The vehicle and location pair with the highest gain is assigned first; the gain of the location is recomputed after every assignment.
+Assigns the vehicles to the combat requests every turn: the defended locations (bases and bunkers) and the pods.
+All requests compete for the vehicles by one metric: the gain of the vehicle at the request discounted by the travel time.
+- The gain of a vehicle at a defended location is protection gain plus, for a base, police gain: the same vehicle serves both purposes, so they accumulate.
+  The gain of the location is recomputed after every assignment.
+- The gain of a pod is the pod bonus. A vehicle already moving to a pod gets a stickiness bonus.
+  Pods are requested anywhere on the map: a pod on another land mass is reached by transport.
+The vehicle and request pair with the highest gain is assigned first.
 Vehicles not needed anywhere are left to the other strategies.
+Pod requests left without a vehicle are passed to the production.
 */
-void moveDefenders()
+void assignCombatVehicles()
 {
-	Profiling::start("moveDefenders", "moveCombatStrategy");
+	Profiling::start("assignCombatVehicles", "moveCombatStrategy");
 
-	debug("moveDefenders - %s\n", MFactions[aiFactionId].noun_faction);
+	debug("assignCombatVehicles - %s\n", MFactions[aiFactionId].noun_faction);
 
-	// vehicle and location pairs
+	// pod requests: pods in nobody's, own or allied territory that are not blocked
 
-	struct DefenderOption
+	std::vector<PodRequest> &podRequests = aiData.production.podRequests;
+	podRequests.clear();
+
+	double podGain = getGainBonus(conf.ai_production_pod_bonus);
+
+	for (MAP *pod : aiData.pods)
+	{
+		if (!isFriendlyTerritory(aiFactionId, pod))
+			continue;
+
+		if (aiData.getTileInfo(pod).blocks.at(aiFactionId))
+			continue;
+
+		podRequests.push_back({pod, podGain});
+
+	}
+
+	// vehicle and request pairs
+
+	struct CombatOption
 	{
 		int vehicleId;
+		// defended location; nullptr for a pod
 		DefendData *defendData;
-		// base id for police; -1 for a bunker
+		// base id for police; -1 for a bunker and for a pod
 		int baseId;
+		// pod request; nullptr for a defended location
+		PodRequest *podRequest;
 		double travelTime;
 		double travelTimeCoefficient;
 		double gain;
+		// the vehicle is already at the defended location or moving there
+		bool committed = false;
 	};
 
-	std::vector<DefenderOption> options;
+	std::vector<CombatOption> options;
 
 	for (int vehicleId : aiData.combatVehicleIds)
 	{
+		VEH *vehicle = getVehicle(vehicleId);
+
 		// available
 
 		if (!isVehicleAvailable(vehicleId))
@@ -783,33 +786,80 @@ void moveDefenders()
 
 		// defender stationed at a location: infantry, land artillery or interceptor
 
-		if (!isDefenseCandidateVehicle(vehicleId))
-			continue;
-
-		bool air = (Vehs[vehicleId].triad() == TRIAD_AIR);
-
-		for (auto &[tile, defendData] : aiData.defendLocations)
+		if (isDefenseCandidateVehicle(vehicleId))
 		{
-			// air vehicle cannot land at a bunker
+			bool air = (vehicle->triad() == TRIAD_AIR);
 
-			if (air && !aiData.getTileInfo(tile).base)
-				continue;
+			for (auto &[tile, defendData] : aiData.defendLocations)
+			{
+				// air vehicle cannot land at a bunker
 
-			// reachable
+				if (air && !aiData.getTileInfo(tile).base)
+					continue;
 
-			if (!isVehicleDestinationReachable(vehicleId, tile))
-				continue;
+				// reachable
 
-			double travelTime = getVehicleTravelTime(vehicleId, tile, false);
+				if (!isVehicleDestinationReachable(vehicleId, tile))
+					continue;
 
-			if (travelTime == INF)
-				continue;
+				double travelTime = getVehicleTravelTime(vehicleId, tile, false);
 
-			double travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, travelTime);
+				if (travelTime == INF)
+					continue;
 
-			TileInfo &tileInfo = aiData.getTileInfo(tile);
+				double travelTimeCoefficient = getExponentialCoefficient(conf.ai_base_threat_travel_time_scale, travelTime);
 
-			options.push_back({vehicleId, &defendData, (tileInfo.base ? tileInfo.baseId : -1), travelTime, travelTimeCoefficient, 0.0});
+				TileInfo &tileInfo = aiData.getTileInfo(tile);
+
+				bool committed =
+					(getVehicleMapTile(vehicleId) == tile)
+					||
+					(vehicle->order == ORDER_MOVE_TO && vehicle->waypoint_x[0] == getX(tile) && vehicle->waypoint_y[0] == getY(tile))
+				;
+
+				options.push_back({vehicleId, &defendData, (tileInfo.base ? tileInfo.baseId : -1), nullptr, travelTime, travelTimeCoefficient, 0.0, committed});
+
+			}
+
+		}
+
+		// pod popper
+
+		if (isPodPoppingVehicle(vehicleId) && !vehicle->need_heals())
+		{
+			bool seaVehicle = (vehicle->triad() == TRIAD_SEA);
+
+			for (PodRequest &podRequest : podRequests)
+			{
+				// pod is on the surface of the vehicle triad
+
+				if (aiData.getTileInfo(podRequest.tile).ocean != seaVehicle)
+					continue;
+
+				if (!isVehicleDestinationReachable(vehicleId, podRequest.tile))
+					continue;
+
+				double travelTime = getVehicleTravelTime(vehicleId, podRequest.tile, false);
+
+				if (travelTime == INF)
+					continue;
+
+				double travelTimeCoefficient = getExponentialCoefficient(conf.ai_combat_travel_time_scale, travelTime);
+
+				double gain = podRequest.gain * travelTimeCoefficient;
+
+				// stickiness: a vehicle already moving to this pod gets a bonus so a competing request has to be meaningfully better
+				// to redirect it, otherwise the far pods rotate between the vehicles and nobody arrives
+				// (a vehicle queued for sea transport has the pickup tile as waypoint and does not get the bonus while it is ferried)
+
+				if (vehicle->order == ORDER_MOVE_TO && vehicle->waypoint_x[0] == getX(podRequest.tile) && vehicle->waypoint_y[0] == getY(podRequest.tile))
+				{
+					gain *= (1.0 + conf.ai_committedTargetGainMargin);
+				}
+
+				options.push_back({vehicleId, nullptr, -1, &podRequest, travelTime, travelTimeCoefficient, gain});
+
+			}
 
 		}
 
@@ -818,7 +868,7 @@ void moveDefenders()
 	// protection gain and, for a base, police gain as in the defender production
 	// police is not provided by ogres
 
-	auto getOptionGain = [](DefenderOption const &option)
+	auto getDefendOptionGain = [](CombatOption const &option)
 	{
 		double protectionGain = option.defendData->getVehicleGain(option.vehicleId) * option.travelTimeCoefficient;
 
@@ -835,27 +885,42 @@ void moveDefenders()
 
 		}
 
-		return protectionGain + policeGain;
+		double gain = protectionGain + policeGain;
+
+		// stickiness: a defender staying at or moving to a location keeps it unless another location is meaningfully better
+
+		if (option.committed)
+		{
+			gain *= (1.0 + conf.ai_committedTargetGainMargin);
+		}
+
+		return gain;
 
 	};
 
-	for (DefenderOption &option : options)
+	for (CombatOption &option : options)
 	{
-		option.gain = getOptionGain(option);
+		if (option.defendData != nullptr)
+		{
+			option.gain = getDefendOptionGain(option);
+		}
 	}
 
 	// assign the best pair until no vehicle is needed
 
-	robin_hood::unordered_flat_map<int, MAP const *> assignments;
+	robin_hood::unordered_flat_set<int> assignedVehicleIds;
 
 	while (true)
 	{
-		DefenderOption *bestOption = nullptr;
+		CombatOption *bestOption = nullptr;
 		double bestGain = 0.0;
 
-		for (DefenderOption &option : options)
+		for (CombatOption &option : options)
 		{
-			if (assignments.contains(option.vehicleId))
+			if (assignedVehicleIds.contains(option.vehicleId))
+				continue;
+
+			if (option.podRequest != nullptr && option.podRequest->assigned)
 				continue;
 
 			if (option.gain > bestGain)
@@ -869,47 +934,101 @@ void moveDefenders()
 		if (bestOption == nullptr)
 			break;
 
-		DefendData *assignedDefendData = bestOption->defendData;
+		// set the task
 
-		assignedDefendData->addDefenderVehicle(bestOption->vehicleId, bestOption->travelTime);
-		assignments.emplace(bestOption->vehicleId, assignedDefendData->tile);
+		MAP const *destination = (bestOption->defendData != nullptr ? bestOption->defendData->tile : bestOption->podRequest->tile);
 
-		// the vehicle provides police too
-		if (bestOption->baseId != -1 && !isOgreVehicle(bestOption->vehicleId))
+		bool transit;
+
+		if (bestOption->defendData != nullptr)
 		{
-			aiData.getBaseInfo(bestOption->baseId).policeData.addVehicle(bestOption->vehicleId);
+			transit = transitVehicle(Task(bestOption->vehicleId, TT_HOLD, destination));
+		}
+		else
+		{
+			transit = transitVehicle(Task(bestOption->vehicleId, TT_MOVE, destination));
+		}
+
+		// the vehicle cannot get there
+
+		if (!transit)
+		{
+			bestOption->gain = 0.0;
+			continue;
+		}
+
+		assignedVehicleIds.insert(bestOption->vehicleId);
+
+		if (bestOption->defendData != nullptr)
+		{
+			DefendData *assignedDefendData = bestOption->defendData;
+
+			assignedDefendData->addDefenderVehicle(bestOption->vehicleId, bestOption->travelTime);
+
+			// the vehicle provides police too
+			if (bestOption->baseId != -1 && !isOgreVehicle(bestOption->vehicleId))
+			{
+				aiData.getBaseInfo(bestOption->baseId).policeData.addVehicle(bestOption->vehicleId);
+			}
+
+			autoplay_journal_assignment("defend", bestOption->vehicleId, getX(destination), getY(destination), bestGain, bestOption->travelTime);
+
+			// the location has changed
+
+			for (CombatOption &option : options)
+			{
+				if (option.defendData != assignedDefendData || assignedVehicleIds.contains(option.vehicleId))
+					continue;
+
+				option.gain = getDefendOptionGain(option);
+
+			}
+
+		}
+		else
+		{
+			bestOption->podRequest->assigned = true;
+
+			autoplay_journal_assignment("pod", bestOption->vehicleId, getX(destination), getY(destination), bestGain, bestOption->travelTime);
+
 		}
 
 		debug
 		(
-			"\t[%4d] %s -> %s gain=%5.2f\n"
+			"\t[%4d] %s -> %s %s gain=%5.2f\n"
 			, bestOption->vehicleId
 			, getLocationString(getVehicleMapTile(bestOption->vehicleId))
-			, getLocationString(assignedDefendData->tile)
+			, getLocationString(destination)
+			, bestOption->defendData != nullptr ? "defend" : "pod"
 			, bestGain
 		);
 
-		// the location has changed
+	}
 
-		for (DefenderOption &option : options)
+	// keep the pod requests without a vehicle for the production
+
+	podRequests.erase(std::remove_if(podRequests.begin(), podRequests.end(), [](PodRequest const &podRequest) { return podRequest.assigned; }), podRequests.end());
+
+	// journal the requests left without a vehicle
+
+	if (autoplay_journal_wanted())
+	{
+		for (auto &[tile, defendData] : aiData.defendLocations)
 		{
-			if (option.defendData != assignedDefendData || assignments.contains(option.vehicleId))
-				continue;
+			if (!defendData.isSufficient())
+			{
+				autoplay_journal_unfulfilled(aiFactionId, "defend", getX(tile), getY(tile), defendData.targetGain);
+			}
+		}
 
-			option.gain = getOptionGain(option);
-
+		for (PodRequest const &podRequest : podRequests)
+		{
+			autoplay_journal_unfulfilled(aiFactionId, "pod", getX(podRequest.tile), getY(podRequest.tile), podRequest.gain);
 		}
 
 	}
 
-	// set tasks
-
-	for (robin_hood::pair<int, MAP const *> &assignment : assignments)
-	{
-		transitVehicle(Task(assignment.first, TT_HOLD, assignment.second));
-	}
-
-	Profiling::stop("moveDefenders");
+	Profiling::stop("assignCombatVehicles");
 
 }
 

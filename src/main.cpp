@@ -1154,6 +1154,10 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_statistics_base_growth_b = atof(value);
     }
+    else if (MATCH("ai_committedTargetGainMargin"))
+    {
+        cf->ai_committedTargetGainMargin = atof(value);
+    }
     else if (MATCH("ai_citizen_income"))
     {
         cf->ai_citizen_income = atof(value);
@@ -1451,10 +1455,6 @@ int option_handler(void* user, const char* section, const char* name, const char
     else if (MATCH("ai_terraforming_futureCitizenSlotCount"))
     {
         cf->ai_terraforming_futureCitizenSlotCount = atoi(value);
-    }
-    else if (MATCH("ai_terraforming_committedTargetGainMargin"))
-    {
-        cf->ai_terraforming_committedTargetGainMargin = atof(value);
     }
     else if (MATCH("ai_combat_enemy_unit_value_coefficient"))
     {

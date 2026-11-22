@@ -126,7 +126,6 @@ void moveCombatStrategy();
 void popualteOrders();
 void generateRequests();
 void generateRepairMonolithRequests();
-void generatePodRequests();
 void generateDefendBaseRequests();
 void generateDefendBunkerRequests();
 void generateCaptureBaseRequests();
@@ -134,7 +133,7 @@ void generateAttackStackRequests();
 void assignRequests();
 //
 void immediateAttack();
-void moveDefenders();
+void assignCombatVehicles();
 void moveBaseProtectors();
 void moveBunkerProtectors();
 void moveCombat();

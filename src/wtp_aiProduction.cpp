@@ -2707,6 +2707,12 @@ void evaluateConvoyUnits()
 	
 }
 
+/*
+Evaluates the production of the units that pop pods.
+The demand is the pods left without a vehicle by the pod assignment, so the vehicles already available are accounted for.
+A unit serves the pods near the base that it reaches without transportation.
+The gain is the discounted pod bonuses the unit collects popping them one by one, like the former production queue.
+*/
 void evaluatePodPoppingUnits()
 {
 	Profiling::start("evaluatePodPoppingUnits", "suggestBaseProduction");
@@ -2714,122 +2720,12 @@ void evaluatePodPoppingUnits()
 	ProductionDemand &productionDemand = *currentBaseProductionDemand;
 	int baseId = productionDemand.baseId;
 	MAP *baseTile = getBaseMapTile(baseId);
-	std::set<int> baseSeaRegions = getBaseSeaRegions(baseId);
 	
 	debug("evaluatePodPoppingUnits\n");
 
-	// ReSharper disable once CppTooWideScope
-	constexpr std::array<int, 2> SCAN_RANGES {10, 20};
-	std::array<SurfacePodData, 2> surfacePodDatas;
+	// proximity of the pods by the unit triad: land, sea
 	
-	for (int surface = 0; surface < 2; surface++)
-	{
-		SurfacePodData &surfacePodData = surfacePodDatas.at(surface);
-		surfacePodData.scanRange = SCAN_RANGES[surface];
-		
-		// base needs access to water to collect sea pods
-		
-		if (surface == 1 && !isBaseAccessesWater(baseId))
-			continue;
-		
-		// count pods around the base
-
-		for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; ++tile)
-		{
-			// within range
-			
-			if (getRange(baseTile, tile) > surfacePodData.scanRange)
-				continue;
-			
-			// matching surface
-			
-			if (is_ocean(tile) != surface)
-				continue;
-			
-			// same cluster
-			
-			if ((surface == 0 && !isSameLandTransportedCluster(baseTile, tile)) || (surface == 1 && !isSameSeaCluster(baseTile, tile)))
-				continue;
-			
-			// not unfriendly territory
-			
-			if (isUnfriendlyTerritory(aiFactionId, tile))
-				continue;
-
-			// count tiles
-
-			surfacePodData.tileCount++;
-			
-			// count pods
-
-			if (mod_goody_at(getX(tile), getY(tile)))
-			{
-				surfacePodData.podCount++;
-			}
-
-		}
-		
-		if (surfacePodData.podCount == 0)
-			continue;
-		
-		// average pod distance
-		
-		surfacePodData.averagePodDistance = sqrt(static_cast<double>(surfacePodData.tileCount) / static_cast<double>(surfacePodData.podCount)) / 2.0;
-		
-		// consumption rate
-		// all non-alien factions consume pods in the region
-		
-		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
-		{
-			VEH *vehicle = getVehicle(vehicleId);
-			int triad = vehicle->triad();
-			MAP *vehicleTile = getVehicleMapTile(vehicleId);
-			
-			// not alien
-			
-			if (vehicle->faction_id == 0)
-				continue;
-			
-			// pop popping vehicle
-			
-			if (!isPodPoppingVehicle(vehicleId))
-				continue;
-			
-			// matching triad
-			
-			if (triad != surface)
-				continue;
-			
-			// within range
-			
-			if (getRange(baseTile, vehicleTile) > surfacePodData.scanRange)
-				continue;
-			
-			// same cluster
-			
-			if (vehicle->faction_id == aiFactionId)
-			{
-				if ((surface == 0 && !isSameLandTransportedCluster(baseTile, vehicleTile)) || (surface == 1 && !isSameSeaCluster(baseTile, vehicleTile)))
-					continue;
-			}
-			else
-			{
-				if ((surface == 0 && !isSameEnemyLandCombatCluster(vehicle->faction_id, baseTile, vehicleTile)) || (surface == 1 && !isSameEnemySeaCombatCluster(vehicle->faction_id, baseTile, vehicleTile)))
-					continue;
-			}
-			
-			// not in base or holding
-			
-			if (isBaseAt(vehicleTile) || vehicle->order == ORDER_HOLD)
-				continue;
-
-			// count scouts
-
-			surfacePodData.scoutCount++;
-			
-		}
-
-	}
+	constexpr std::array<int, 2> SCAN_RANGES {10, 20};
 	
 	// scan combat units
 	
@@ -2837,7 +2733,6 @@ void evaluatePodPoppingUnits()
 	{
 		UNIT *unit = getUnit(unitId);
 		int triad = unit->triad();
-		int surface = triad;
 
 		// producible
 
@@ -2860,23 +2755,14 @@ void evaluatePodPoppingUnits()
 		if (triad == TRIAD_AIR)
 			continue;
 		
+		// base needs access to water to collect sea pods
+		
+		if (triad == TRIAD_SEA && !isBaseAccessesWater(baseId))
+			continue;
+		
 		// fastest triad chassis
 		
 		if (unit->speed() < aiFactionInfo->fastestTriadChassisIds.at(triad))
-			continue;
-		
-		// pod data
-		
-		SurfacePodData &surfacePodData = surfacePodDatas.at(triad);
-		
-		// there are pods
-		
-		if (surfacePodData.podCount == 0)
-			continue;
-		
-		// there are insufficient number of scouts in the area
-
-		if (surfacePodData.scoutCount > surfacePodData.podCount / 2)
 			continue;
 
 		// speed
@@ -2885,13 +2771,58 @@ void evaluatePodPoppingUnits()
 		if (unitSpeed <= 0)
 			continue;
 
-		// income gain
+		// pod requests near the base that the unit reaches without transportation
 
-		double unitTravelTime = surfacePodData.averagePodDistance / static_cast<double>(unitSpeed);
-		double podPoppingInterval = unitTravelTime + (unitSpeed == 1 ? 2.0 : 1.0); // for average repair time
-		double podPoppingRate = 1.0 / podPoppingInterval;
-		double podPoppingIncome = conf.ai_production_pod_bonus * podPoppingRate;
-		double podPoppingIncomeGain = getGainIncome(podPoppingIncome);
+		std::vector<std::pair<double, double>> podTravelTimeGains;
+
+		for (PodRequest const &podRequest : aiData.production.podRequests)
+		{
+			// matching surface
+			
+			if (aiData.getTileInfo(podRequest.tile).ocean != (triad == TRIAD_SEA))
+				continue;
+			
+			// proximity
+			
+			if (getRange(baseTile, podRequest.tile) > SCAN_RANGES.at(triad))
+				continue;
+			
+			// same cluster
+			
+			if ((triad == TRIAD_LAND && !isSameLandCluster(baseTile, podRequest.tile)) || (triad == TRIAD_SEA && !isSameSeaCluster(baseTile, podRequest.tile)))
+				continue;
+			
+			// travel time
+			
+			double travelTime = getUnitApproachTime(aiFactionId, unitId, baseTile, podRequest.tile);
+			if (travelTime == INF)
+				continue;
+			
+			podTravelTimeGains.push_back({travelTime, podRequest.gain});
+
+		}
+
+		// there are pods to pop
+
+		if (podTravelTimeGains.empty())
+			continue;
+
+		// the unit pops the pods one by one, the closest first
+		// every pod pop is followed by the average recovery time: a slow unit cannot disengage from wildlife and is damaged more
+		// the gain is how much of the pod bonuses the unit collects before they lose value to the delay
+		// the pods already served by the available vehicles are not in the requests
+
+		std::sort(podTravelTimeGains.begin(), podTravelTimeGains.end());
+
+		double recoveryTime = unitSpeed == 1 ? 2.0 : 1.0;
+		double minTravelTime = podTravelTimeGains.front().first;
+		double podPoppingIncomeGain = 0.0;
+
+		for (size_t index = 0; index < podTravelTimeGains.size(); index++)
+		{
+			double delay = podTravelTimeGains.at(index).first + static_cast<double>(index) * recoveryTime;
+			podPoppingIncomeGain += getGainDelay(podTravelTimeGains.at(index).second, delay);
+		}
 
 		// upkeep
 		
@@ -2923,10 +2854,7 @@ void evaluatePodPoppingUnits()
 			" priority=%5.2f   |"
 			" conf.ai_production_pod_popping_priority=%5.2f"
 			" unitPriorityCoefficient=%5.2f"
-			" surface=%2d"
-			" tileCount=%2d"
-			" podCount=%2d"
-			" scoutCount=%2d"
+			" minTravelTime=%5.2f"
 			" podPoppingIncomeGain=%5.2f"
 			" upkeepGain=%5.2f"
 			" gain=%5.2f"
@@ -2936,10 +2864,7 @@ void evaluatePodPoppingUnits()
 			, priority
 			, conf.ai_production_pod_popping_priority
 			, unitPriorityCoefficient
-			, surface
-			, surfacePodData.tileCount
-			, surfacePodData.podCount
-			, surfacePodData.scoutCount
+			, minTravelTime
 			, podPoppingIncomeGain
 			, upkeepGain
 			, gain
