@@ -6,7 +6,12 @@
 #include "engine.h"
 #include "wtp_ai_game.h"
 
-constexpr int MIN_LANDMARK_DISTANCE = 20;
+constexpr int MIN_LANDMARK_DISTANCE = 30;
+// small clusters keep landmarks closer than MIN_LANDMARK_DISTANCE, down to this distance (both scaled by the map width)
+constexpr int MIN_CLUSTER_LANDMARK_DISTANCE = 10;
+// persistent route data is rebuilt when nothing has triggered a rebuild for this many turns
+// safety net for changes that are not tracked directly (roads, forests, fungus, borders)
+constexpr int ROUTE_DATA_REFRESH_TURNS = 10;
 constexpr double A_DISTANCE_TRESHOLD = 10.0;
 
 const double RANGED_AIR_TRAVEL_TIME_COEFFICIENT = 1.5;
@@ -31,12 +36,26 @@ struct BaseChange
 	void clear()
 	{
 		friendly = false;
+		friendlySea = false;
 		friendlyPort = false;
 		unfriendly = false;
 		unfriendlySea = false;
 		unfriendlyLand = false;
 	}
 	
+	bool any() const
+	{
+		return friendly || friendlySea || friendlyPort || unfriendly || unfriendlySea || unfriendlyLand;
+	}
+	void setAll()
+	{
+		friendly = true;
+		friendlySea = true;
+		friendlyPort = true;
+		unfriendly = true;
+		unfriendlySea = true;
+		unfriendlyLand = true;
+	}
 	void setFriendly()
 	{
 		friendly = true;
@@ -74,6 +93,10 @@ struct MapSnapshot
 	robin_hood::unordered_flat_map<MAP *, int> mapBases;
 	bool mapChanged;
 	std::array<BaseChange, MaxPlayerNum> baseChanges;
+	// diplomatic relation of the first faction to the second: 0 friendly, 1 neutral, 2 hostile
+	std::array<std::array<int, MaxPlayerNum>, MaxPlayerNum> relations;
+	// turn of the last change that triggered a rebuild of the persistent route data
+	int lastChangeTurn = -1000;
 };
 
 /// Route node for A* path search algorithm.
@@ -206,9 +229,6 @@ struct PlayerFactionMovementInfo
 	// [initial][terminal] = first connection
 	robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_set<int>>> firstConnectedClusters;
 	
-	// locations reachable by our vehicles
-	std::vector<bool> reachableTileIndexes;
-	
 	// sea clusters with other faction presense
 	// [tileIndex] = false/true
 	std::vector<bool> sharedSeas;
@@ -226,8 +246,6 @@ void precomputeRouteData();
 void populateImpediments(int factionId);
 void populateAirbases(int factionId);
 void populateUnitAirClusters(int factionId, int chassisId, int unitSpeed);
-void populateAirClusters(int factionId);
-void populateAirCluster(int factionId, int chassisId, int speed);
 void populateSeaTransportWaitTimes(int factionId);
 void populateSeaCombatClusters(int factionId);
 void populateLandCombatClusters(int factionId);
@@ -238,7 +256,6 @@ void populateSeaClusters(int factionId);
 void populateLandClusters();
 void populateLandTransportedClusters();
 void populateTransfers(int factionId);
-void populateReachableLocations();
 
 void populateSharedSeas();
 
@@ -349,7 +366,6 @@ int getCluster(MAP const* tile);
 int getVehicleCluster(int vehicleId);
 
 bool isConnected(int cluster1, int cluster2);
-bool isReachable(MAP const* tile);
 bool isSharedSea(MAP const* tile);
 
 int getSeaClusterArea(int seaCluster);
