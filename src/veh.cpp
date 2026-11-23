@@ -3271,6 +3271,7 @@ int set_move_to(int veh_id, int x, int y) {
     debug("set_move_to %2d %2d -> %2d %2d %s\n", veh->x, veh->y, x, y, veh->name());
     veh->waypoint_x[0] = x;
     veh->waypoint_y[0] = y;
+    veh->waypoint_count = 0;
     veh->order = ORDER_MOVE_TO;
     veh->status_icon = 'G';
     if (veh->is_former()) {

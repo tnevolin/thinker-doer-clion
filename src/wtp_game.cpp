@@ -6617,6 +6617,39 @@ void setVehicleWaypoints(int vehicleId,  std::vector<MAP *> waypoints)
 		vehicle->waypoint_y[3] = static_cast<int16_t>(getY(waypoints.at(3)));
 	}
 
+	// the waypoint count is the number of intermediate waypoints, the destination follows them
+
+	if (!waypoints.empty())
+	{
+		vehicle->waypoint_count = static_cast<uint8_t>(std::min<size_t>(waypoints.size(), 4) - 1);
+	}
+
+}
+
+/*
+The tile the vehicle is currently moving to: the destination of its move order.
+The waypoints are the intermediate points followed by the destination, so the destination is at the index equal to the waypoint count.
+Returns nullptr if the vehicle has no move order.
+The order and the waypoints are saved with the game, so this survives a reload.
+*/
+MAP *getVehicleMoveToDestination(int vehicleId)
+{
+	VEH *vehicle = getVehicle(vehicleId);
+
+	// patrol keeps the return point after the intermediate points
+
+	if (vehicle->order != ORDER_MOVE_TO || vehicle->is_patrol_order())
+		return nullptr;
+
+	int index = std::min<int>(vehicle->waypoint_count, 3);
+	int x = vehicle->waypoint_x[index];
+	int y = vehicle->waypoint_y[index];
+
+	if (!isOnMap(x, y))
+		return nullptr;
+
+	return getMapTile(x, y);
+
 }
 
 bool isHoveringLandUnit(int unitId)

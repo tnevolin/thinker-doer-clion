@@ -1020,6 +1020,7 @@ int setMoveTo(int vehicleId, MAP const *destination)
 
     vehicle->waypoint_x[0] = x;
     vehicle->waypoint_y[0] = y;
+    vehicle->waypoint_count = 0;
     vehicle->order = ORDER_MOVE_TO;
     vehicle->status_icon = 'G';
     vehicle->movement_turns = 0;

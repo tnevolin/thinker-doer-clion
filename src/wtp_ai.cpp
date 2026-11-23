@@ -489,7 +489,7 @@ void populateTileInfos()
 			if (range2TileIndex == -1)
 				continue;
 
-			TileInfo &rangeTileInfo = aiData.tileInfos.at(tileIndex);
+			TileInfo &rangeTileInfo = aiData.tileInfos.at(range2TileIndex);
 			tileInfo.range2CenterTileInfos.push_back(&rangeTileInfo);
 			if (range2TileIndex != tileIndex)
 			{
@@ -3640,12 +3640,11 @@ void evaluateEnemyStacks()
 					if (effect <= 0.0)
 						continue;
 					
-					// bonuses and multipliers
+					// the table effect is per unit and includes the tile effects, the foe vehicle morale and health come on top
 					
-					double offenseStrengthMultiplier = getUnitMeleeOffenseStrengthMultipler(aiFactionId, ownUnitId, foeVehicle->faction_id, foeVehicle->unit_id, enemyStackTile, true);
 					double foeVehicleStrengthMultiplier = getVehicleStrenghtMultiplier(foeVehicleId);
 					
-					effect *= (offenseStrengthMultiplier / foeVehicleStrengthMultiplier);
+					effect /= foeVehicleStrengthMultiplier;
 					
 					// accumulate values
 					
@@ -3683,12 +3682,11 @@ void evaluateEnemyStacks()
 					if (effect <= 0.0)
 						continue;
 					
-					// bonuses and multipliers
+					// the table effect is per unit and includes the tile effects, the foe vehicle morale and health come on top
 					
-					double offenseStrengthMultiplier = getUnitArtilleryOffenseStrengthMultipler(aiFactionId, ownUnitId, foeVehicle->faction_id, foeVehicle->unit_id, enemyStackTile, true);
 					double foeVehicleStrengthMultiplier = getVehicleStrenghtMultiplier(foeVehicleId);
 					
-					effect *= (offenseStrengthMultiplier / foeVehicleStrengthMultiplier);
+					effect /= foeVehicleStrengthMultiplier;
 					
 					// accumulate values
 					
@@ -3726,12 +3724,11 @@ void evaluateEnemyStacks()
 					if (effect <= 0.0)
 						continue;
 					
-					// bonuses and multipliers
+					// the table effect is per unit and includes the tile effects, the foe vehicle morale and health come on top
 					
-					double offenseStrengthMultiplier = getUnitArtilleryOffenseStrengthMultipler(aiFactionId, ownUnitId, foeVehicle->faction_id, foeVehicle->unit_id, enemyStackTile, true);
 					double foeVehicleStrengthMultiplier = getVehicleMoraleMultiplier(foeVehicleId);
 					
-					effect *= (offenseStrengthMultiplier / foeVehicleStrengthMultiplier);
+					effect /= foeVehicleStrengthMultiplier;
 					
 					// accumulate values
 					

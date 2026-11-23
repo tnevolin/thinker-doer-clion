@@ -1,6 +1,7 @@
 
 #include "wtp_ai_game.h"
 
+#include <cmath>
 #include <cstring>
 #include <float.h>
 #include <numeric>
@@ -9,6 +10,8 @@
 #include "wtp_terranx.h"
 #include "wtp_aiRoute.h"
 #include "wtp_base.h"
+#include "map.h"
+#include "path.h"
 
 /**
 AI related common functions.
@@ -295,8 +298,28 @@ double getEfficiency(double enemyPowerDestroyed, double ownPowerLost)
 
 }
 
+// statistics of how much the morale neutral combat effect differs from the one battle_compute gives
+// [native involved: 0 none, 1 attacker, 2 defender][engagement mode]
+namespace
+{
+
+struct MoraleShiftStatistics
+{
+	long long count = 0;
+	double logSum = 0.0;
+	double minShift = DBL_MAX;
+	double maxShift = 0.0;
+};
+
+bool collectMoraleShift = false;
+MoraleShiftStatistics moraleShiftStatistics[3][2];
+
+}
+
 /*
 Computes combat effect using battle_compute.
+The effect is morale neutral: battle_compute multiplies the strength of each side by its morale factor, the factors are removed here.
+Morale is applied per vehicle.
 Creates fake vehicles using units and optionally battle tile.
 */
 double CombatEffectTable::computeUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, EngagementMode engagementMode, MAP const *attackerTile, MAP const *defenderTile)
@@ -349,6 +372,23 @@ double CombatEffectTable::computeUnitCombatEffect(int attackerFactionId, int att
 	int attackerStrength;
 	int defenderStrength;
 	wtp_mod_battle_compute(attackerVehicleId, defenderVehicleId, &attackerStrength, &defenderStrength, combat_type);
+
+	// remove morale
+
+	double attackerMoraleMultiplier = getMoraleMultiplier(VehBasicBattleMorale[0]);
+	double defenderMoraleMultiplier = getMoraleMultiplier(VehBasicBattleMorale[1]);
+	double attackerStrengthNeutral = static_cast<double>(attackerStrength) / attackerMoraleMultiplier;
+	double defenderStrengthNeutral = static_cast<double>(defenderStrength) / defenderMoraleMultiplier;
+
+	if (collectMoraleShift)
+	{
+		MoraleShiftStatistics &statistics = moraleShiftStatistics[attackerFactionId == 0 ? 1 : defenderFactionId == 0 ? 2 : 0][engagementMode];
+		double shift = defenderMoraleMultiplier / attackerMoraleMultiplier;
+		statistics.count++;
+		statistics.logSum += std::log(shift);
+		statistics.minShift = std::min(statistics.minShift, shift);
+		statistics.maxShift = std::max(statistics.maxShift, shift);
+	}
 	
 	// compute combat effect
 	
@@ -357,9 +397,9 @@ double CombatEffectTable::computeUnitCombatEffect(int attackerFactionId, int att
 	{
 		// convert bombardment damage to strength
 		
-		int off_value = std::max(1, attackerStrength * Rules->artillery_dmg_numerator);
-		int def_value = std::max(1, defenderStrength * Rules->artillery_dmg_denominator);
-		double damage_value = static_cast<double>(off_value) / static_cast<double>(def_value);
+		double off_value = std::max(1.0, attackerStrengthNeutral * Rules->artillery_dmg_numerator);
+		double def_value = std::max(1.0, defenderStrengthNeutral * Rules->artillery_dmg_denominator);
+		double damage_value = off_value / def_value;
 		int maxHitPointCount = 10 * (conf.ignore_reactor_power ? 1 : defenderUnit.reactor_id);
 		combatEffect = damage_value / static_cast<double>(maxHitPointCount);
 		
@@ -367,7 +407,7 @@ double CombatEffectTable::computeUnitCombatEffect(int attackerFactionId, int att
 	else
 	{
 		// mutual fight combat effect: the attacker efficiency
-		combatEffect = getEfficiency(static_cast<double>(attackerStrength), static_cast<double>(defenderStrength));
+		combatEffect = getEfficiency(attackerStrengthNeutral, defenderStrengthNeutral);
 	}
 	
 	// combattant without a tile inherits sensor bonus from the other combattant tile
@@ -388,21 +428,385 @@ double CombatEffectTable::computeUnitCombatEffect(int attackerFactionId, int att
 
 void CombatEffectTable::clear()
 {
+	if (conf.ai_combatEffectVerification && lookupCount > 0)
+	{
+		FILE *file = fopen("combat_effect_verify.log", "a");
+		if (file != nullptr)
+		{
+			fprintf(file, "SUMMARY turn=%d faction=%d lookups=%lld computed=%lld tileKeyedComputed=%lld verified=%lld mismatches=%lld\n", *CurrentTurn, aiFactionId, lookupCount, computeCount, tileKeyedComputeCount, verifyCount, mismatchCount);
+
+			for (int category = 0; category < 3; category++)
+			{
+				for (int mode = 0; mode < 2; mode++)
+				{
+					MoraleShiftStatistics const &statistics = moraleShiftStatistics[category][mode];
+
+					if (statistics.count > 0)
+					{
+						fprintf(file, "MORALE_SHIFT native=%d mode=%d count=%lld geomean=%.4f min=%.4f max=%.4f\n", category, mode, statistics.count, std::exp(statistics.logSum / static_cast<double>(statistics.count)), statistics.minShift, statistics.maxShift);
+					}
+
+				}
+
+			}
+
+			fclose(file);
+		}
+	}
+
+	for (auto &categoryStatistics : moraleShiftStatistics)
+	{
+		for (MoraleShiftStatistics &statistics : categoryStatistics)
+		{
+			statistics = MoraleShiftStatistics();
+		}
+
+	}
+
 	combatEffects.clear();
+	tileFactionProperties.clear();
+	tileKeyedEffects.clear();
+	lookupCount = 0;
+	computeCount = 0;
+	tileKeyedComputeCount = 0;
+	verifyCount = 0;
+	mismatchCount = 0;
+
+}
+
+// combat effect signatures
+// A tile is represented by the properties battle_compute and its surroundings read from it.
+// Properties of rules that are switched off do not influence combat and are not included.
+
+namespace
+{
+
+bool isAltitudeCombatRelevant()
+{
+	return Rules->combat_bonus_atk_higher_elevation != 0 || Rules->combat_penalty_atk_lower_elevation != 0 || Rules->combat_artillery_bonus_altitude != 0;
+}
+
+bool isRoadCombatRelevant()
+{
+	return Rules->combat_bonus_atk_road != 0;
+}
+
+struct TileSignatureBuilder
+{
+	long long signature = 1;
+
+	void add(long long value, int bits)
+	{
+		signature = (signature << bits) | (value & ((1LL << bits) - 1));
+	}
+
+};
+
+}
+
+/*
+Collects faction dependent tile properties in the way battle_compute reads them.
+*/
+TileFactionCombatProperties CombatEffectTable::getTileFactionProperties(MAP const *tile, int factionId)
+{
+	int tileIndex = tile - *MapTiles;
+	int key = tileIndex * MaxPlayerNum + factionId;
+
+	if (auto iterator = tileFactionProperties.find(key); iterator != tileFactionProperties.end())
+		return iterator->second;
+
+	int x = getX(tile);
+	int y = getY(tile);
+
+	TileFactionCombatProperties properties;
+
+	// defender sensor bonus
+
+	if (factionId != 0)
+	{
+		for (MapTile const &rangeTile : iterate_tiles(x, y, 0, 25))
+		{
+			int value = is_sensor(rangeTile.x, rangeTile.y);
+
+			if (value <= 0)
+				continue;
+
+			bool found = false;
+
+			if (!conf.sensor_defense_ocean && is_ocean(rangeTile.sq))
+			{
+				int nearBaseId = base_find(rangeTile.x, rangeTile.y);
+				found = (nearBaseId >= 0 && Bases[nearBaseId].faction_id == factionId);
+			}
+			else
+			{
+				found = (rangeTile.sq->owner < 0 || rangeTile.sq->owner == factionId);
+			}
+
+			if (found)
+			{
+				properties.sensorDefenseState |= 1;
+
+				if (value > 1)
+				{
+					properties.sensorDefenseState |= 2;
+					break;
+				}
+
+			}
+
+		}
+
+	}
+
+	// sensor offense
+
+	properties.withinFriendlySensorRange = isWithinFriendlySensorRange(factionId, const_cast<MAP *>(tile));
+
+	// defense facilities extend their effect 2 tiles outside of the base
+
+	for (int triad = 0; triad < 3; triad++)
+	{
+		properties.fieldFacilities.at(triad) = isFriendlyBaseInRangeHasFacility(factionId, x, y, 2, TRIAD_DEFENSIVE_FACILITIES[triad]);
+	}
+	properties.fieldFacilities.at(3) = isFriendlyBaseInRangeHasFacility(factionId, x, y, 2, FAC_TACHYON_FIELD);
+
+	// flechette defense
+
+	for (int baseId = 0; baseId < *BaseCount; baseId++)
+	{
+		BASE &base = Bases[baseId];
+
+		if (base.faction_id != factionId)
+			continue;
+
+		if (map_range(x, y, base.x, base.y) > FlechetteDefenseRange)
+			continue;
+
+		if (!has_fac_built(FAC_FLECHETTE_DEFENSE_SYS, baseId))
+			continue;
+
+		properties.flechetteCount++;
+
+	}
+
+	// AAA extended range
+
+	if (conf.aaa_range >= 0)
+	{
+		for (int vehicleId = 0; vehicleId < *VehCount; vehicleId++)
+		{
+			VEH &vehicle = Vehs[vehicleId];
+
+			if (vehicle.faction_id != factionId)
+				continue;
+
+			if (!isVehicleHasAbility(vehicleId, ABL_AAA))
+				continue;
+
+			if (map_range(x, y, vehicle.x, vehicle.y) > conf.aaa_range)
+				continue;
+
+			properties.aaaInRange = true;
+			break;
+
+		}
+
+	}
+
+	tileFactionProperties.emplace(key, properties);
+
+	return properties;
+
+}
+
+long long CombatEffectTable::getAttackerTileSignature(MAP const *tile, int attackerFactionId, int defenderFactionId)
+{
+	// no tile
+
+	if (tile == nullptr)
+		return 0;
+
+	MAP *tilePtr = const_cast<MAP *>(tile);
+	TileInfo &tileInfo = aiData.getTileInfo(tile);
+
+	TileSignatureBuilder builder;
+
+	// base: its own facilities and morale
+
+	builder.add(base_at(getX(tile), getY(tile)) + 1, 10);
+	builder.add(is_ocean(tilePtr), 1);
+
+	// sensor offense
+
+	builder.add(getTileFactionProperties(tile, attackerFactionId).withinFriendlySensorRange, 1);
+
+	// the defender without a tile inherits sensor defense bonus from this tile
+
+	builder.add(tileInfo.sensorCoverages.at(defenderFactionId), 1);
+
+	// optional rules
+
+	if (isAltitudeCombatRelevant())
+	{
+		builder.add(std::clamp(tilePtr->alt_level(), 0, 15), 4);
+	}
+	if (isRoadCombatRelevant())
+	{
+		builder.add(map_has_item(tilePtr, BIT_BASE_IN_TILE | BIT_ROAD | BIT_MAGTUBE) ? 1 : 0, 1);
+	}
+
+	return builder.signature;
+
+}
+
+long long CombatEffectTable::getDefenderTileSignature(MAP const *tile, int attackerFactionId, int attackerUnitId, int defenderFactionId, EngagementMode engagementMode)
+{
+	// no tile
+
+	if (tile == nullptr)
+		return 0;
+
+	MAP *tilePtr = const_cast<MAP *>(tile);
+	TileInfo &tileInfo = aiData.getTileInfo(tile);
+	UNIT &attackerUnit = Units[attackerUnitId];
+	int attackerTriad = attackerUnit.triad();
+
+	int baseId = base_at(getX(tile), getY(tile));
+	bool base = (baseId >= 0);
+	bool bunker = tilePtr->is_bunker();
+
+	TileSignatureBuilder builder;
+
+	// base: each base is its own tile
+
+	builder.add(baseId + 1, 10);
+	builder.add(bunker, 1);
+	builder.add(is_ocean(tilePtr), 1);
+
+	// terrain
+	// bunker may nullify terrain, artillery does not get terrain bonus outside of base
+
+	bool terrainIgnored = !base && ((bunker && conf.bunker_ignores_terrain) || engagementMode == EM_ARTILLERY);
+
+	builder.add(terrainIgnored ? 0 : tilePtr->is_rocky(), 1);
+	builder.add(terrainIgnored ? 0 : map_has_item(tilePtr, BIT_FOREST), 1);
+	builder.add(terrainIgnored ? 0 : tilePtr->is_fungus(), 1);
+
+	// sensors
+
+	TileFactionCombatProperties defenderProperties = getTileFactionProperties(tile, defenderFactionId);
+	TileFactionCombatProperties attackerProperties = getTileFactionProperties(tile, attackerFactionId);
+
+	builder.add(defenderProperties.sensorDefenseState, 2);
+	builder.add(defenderProperties.withinFriendlySensorRange, 1);
+	builder.add(attackerProperties.withinFriendlySensorRange, 1);
+
+	// the attacker without a tile inherits sensor offense bonus from this tile
+
+	builder.add(tileInfo.sensorCoverages.at(attackerFactionId), 1);
+
+	// defense facilities extend their effect 2 tiles outside of the base
+
+	builder.add(defenderProperties.fieldFacilities.at(attackerTriad), 1);
+	builder.add(defenderProperties.fieldFacilities.at(3), 1);
+
+	// flechette defense works against missiles
+
+	builder.add(attackerUnit.is_missile() ? std::min(defenderProperties.flechetteCount, 15) : 0, 4);
+
+	// AAA extended range works against air attackers
+
+	builder.add((conf.aaa_range >= 0 && attackerTriad == TRIAD_AIR) ? defenderProperties.aaaInRange : false, 1);
+
+	// optional rules
+
+	if (isAltitudeCombatRelevant())
+	{
+		builder.add(std::clamp(tilePtr->alt_level(), 0, 15), 4);
+	}
+	if (isRoadCombatRelevant())
+	{
+		builder.add(map_has_item(tilePtr, BIT_ROAD | BIT_MAGTUBE) ? 1 : 0, 1);
+	}
+
+	return builder.signature;
+
 }
 
 double CombatEffectTable::getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, EngagementMode engagementMode, MAP const *attackerTile, MAP const *defenderTile)
 {
 	trace("CombatEffectTable::getCombatModeEffect( attackerFactionId=%d attackerUnitId=%d defenderFactionId=%d defenderUnitId=%d engagementMode=%d attackerTile=%s defenderTile=%s )\n", attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, getLocationString(attackerTile), getLocationString(defenderTile));
 	
-	if (!combatEffects.contains(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile))
+	lookupCount++;
+
+	long long attackerTileSignature = getAttackerTileSignature(attackerTile, attackerFactionId, defenderFactionId);
+	long long defenderTileSignature = getDefenderTileSignature(defenderTile, attackerFactionId, attackerUnitId, defenderFactionId, engagementMode);
+
+	// count battle computations the tile keyed cache would need
+
+	if (conf.ai_combatEffectVerification)
 	{
-		double combatEffect = computeUnitCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile);
-		combatEffects.emplace(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile, combatEffect);
+		if (!tileKeyedEffects.contains(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile))
+		{
+			tileKeyedEffects.emplace(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile, 0);
+			tileKeyedComputeCount++;
+		}
+
 	}
-	
-	return combatEffects.at(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile);
-	
+
+	if (!combatEffects.contains(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTileSignature, defenderTileSignature))
+	{
+		collectMoraleShift = (conf.ai_combatEffectVerification != 0);
+		double combatEffect = computeUnitCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile);
+		collectMoraleShift = false;
+		combatEffects.emplace(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTileSignature, defenderTileSignature, combatEffect);
+		computeCount++;
+		return combatEffect;
+	}
+
+	double combatEffect = combatEffects.at(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTileSignature, defenderTileSignature);
+
+	// verify the cached value against the direct computation for these exact tiles
+
+	if (conf.ai_combatEffectVerification)
+	{
+		verifyCount++;
+
+		double directCombatEffect = computeUnitCombatEffect(attackerFactionId, attackerUnitId, defenderFactionId, defenderUnitId, engagementMode, attackerTile, defenderTile);
+
+		if (std::fabs(directCombatEffect - combatEffect) > 1e-9 * std::max(1.0, std::fabs(directCombatEffect)))
+		{
+			mismatchCount++;
+
+			static int loggedMismatchCount = 0;
+			if (loggedMismatchCount < 500)
+			{
+				loggedMismatchCount++;
+
+				FILE *file = fopen("combat_effect_verify.log", "a");
+				if (file != nullptr)
+				{
+					fprintf
+					(
+						file,
+						"MISMATCH turn=%d faction=%d mode=%d attacker=%d/%s tile=(%d,%d) defender=%d/%s tile=(%d,%d) signatures=%lld/%lld cached=%.9f direct=%.9f\n",
+						*CurrentTurn, aiFactionId, engagementMode,
+						attackerFactionId, Units[attackerUnitId].name, attackerTile == nullptr ? -1 : getX(attackerTile), attackerTile == nullptr ? -1 : getY(attackerTile),
+						defenderFactionId, Units[defenderUnitId].name, defenderTile == nullptr ? -1 : getX(defenderTile), defenderTile == nullptr ? -1 : getY(defenderTile),
+						attackerTileSignature, defenderTileSignature, combatEffect, directCombatEffect
+					);
+					fclose(file);
+				}
+
+			}
+
+		}
+
+	}
+
+	return combatEffect;
+
 }
 
 double CombatEffectTable::getUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, EngagementMode engagementMode)
@@ -4738,170 +5142,6 @@ double getSensorDefenseMultiplier(int factionId, MAP const *tile)
 			:
 			1.0
 	;
-	
-}
-
-/**
-Computes melee attack strength multiplier taking all bonuses/penalties into account.
-exactLocation: whether combat happens at this exact location (base)
-*/
-double getUnitMeleeOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP const *tile, bool exactLocation)
-{
-	assert(isOnMap(tile));
-	
-	MAP *tilePtr = const_cast<MAP *>(tile);
-	
-	int x = getX(tile);
-	int y = getY(tile);
-	
-	bool ocean = is_ocean(tilePtr);
-	bool fungus = map_has_item(tilePtr, BIT_FUNGUS);
-	bool landRough = !ocean && (map_has_item(tilePtr, BIT_FUNGUS | BIT_FOREST) || map_rockiness(tilePtr) == 2);
-	bool landOpen = !ocean && !(map_has_item(tilePtr, BIT_FUNGUS | BIT_FOREST) || map_rockiness(tilePtr) == 2);
-	
-	double offenseStrengthMultiplier = 1.0;
-	
-	// sensor
-	
-	offenseStrengthMultiplier *= getSensorOffenseMultiplier(attackerFactionId, tile);
-	offenseStrengthMultiplier /= getSensorDefenseMultiplier(defenderFactionId, tile);
-	
-	// other modifiers are difficult to guess at not exact location
-	
-	if (!exactLocation)
-		return offenseStrengthMultiplier;
-	
-	// base and terrain
-	
-	int baseId = base_at(x, y);
-	if (baseId != -1)
-	{
-		// base
-		
-		offenseStrengthMultiplier /= getBaseDefenseMultiplier(baseId, attackerUnitId, defenderUnitId);
-		
-		// infantry vs. base attack bonus
-		
-		if (isInfantryUnit(attackerUnitId))
-		{
-			offenseStrengthMultiplier *= getPercentageBonusMultiplier(Rules->combat_infantry_vs_base);
-		}
-		
-	}
-	else
-	{
-		// native -> regular (fungus) = 50% attack bonus
-		
-		if (isNativeUnit(attackerUnitId) && !isNativeUnit(defenderUnitId) && fungus)
-		{
-			offenseStrengthMultiplier *= getPercentageBonusMultiplier(50);
-		}
-		
-		// conventional defense in land rough = 50% defense bonus
-		
-		if (!isPsiCombat(attackerUnitId, defenderUnitId) && landRough)
-		{
-			offenseStrengthMultiplier /= getPercentageBonusMultiplier(50);
-		}
-		
-		// conventional defense against mobile in land rough bonus
-		
-		if (!isPsiCombat(attackerUnitId, defenderUnitId) && isMobileUnit(attackerUnitId) && landRough)
-		{
-			offenseStrengthMultiplier /= getPercentageBonusMultiplier(Rules->combat_mobile_def_in_rough);
-		}
-		
-		// mobile attack in open bonus
-		
-		if (!isPsiCombat(attackerUnitId, defenderUnitId) && isMobileUnit(attackerUnitId) && landOpen)
-		{
-			offenseStrengthMultiplier *= getPercentageBonusMultiplier(Rules->combat_mobile_open_ground);
-		}
-		
-	}
-	
-	return offenseStrengthMultiplier;
-	
-}
-
-/**
-Computes artillerry attack strength multiplier taking all bonuses/penalties into account.
-exactLocation: whether combat happens at this exact location (base)
-*/
-double getUnitArtilleryOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP const *tile, bool exactLocation)
-{
-	assert(isOnMap(tile));
-	
-	MAP *tilePtr = const_cast<MAP *>(tile);
-	
-	int x = getX(tile);
-	int y = getY(tile);
-	
-	double attackStrengthMultiplier = 1.0;
-	
-	// sensor
-	
-	attackStrengthMultiplier *= getSensorOffenseMultiplier(attackerFactionId, tile);
-	attackStrengthMultiplier /= getSensorDefenseMultiplier(defenderFactionId, tile);
-	
-	// other modifiers are difficult to guess at not exact location
-	
-	if (!exactLocation)
-		return attackStrengthMultiplier;
-	
-	if (isArtilleryUnit(defenderUnitId)) // artillery duel
-	{
-		// base and terrain
-		
-		int baseId = base_at(x, y);
-		
-		if (baseId != -1) // base
-		{
-			// artillery duel defender may get base bonus if configured
-			
-			if (conf.artillery_duel_uses_bonuses)
-			{
-				attackStrengthMultiplier /= getBaseDefenseMultiplier(baseId, attackerUnitId, defenderUnitId);
-			}
-			
-		}
-		else
-		{
-			// no other bonuses for artillery duel in open
-		}
-		
-	}
-	else // bombardment
-	{
-		// base and terrain
-		
-		int baseId = base_at(x, y);
-		
-		if (baseId != -1) // base
-		{
-			// base defense
-			
-			attackStrengthMultiplier /= getBaseDefenseMultiplier(baseId, attackerUnitId, defenderUnitId);
-			
-		}
-		else if (isRoughTerrain(tilePtr))
-		{
-			// bombardment defense in rough terrain bonus
-			
-			attackStrengthMultiplier /= getPercentageBonusMultiplier(50);
-			
-		}
-		else
-		{
-			// bombardment defense in open get 50% bonus
-			
-			attackStrengthMultiplier /= getPercentageBonusMultiplier(50);
-			
-		}
-		
-	}
-	
-	return attackStrengthMultiplier;
 	
 }
 

@@ -97,15 +97,49 @@ struct PotentialAttack
 };
 
 /*
+Combat related properties of a tile that depend on the faction.
+*/
+struct TileFactionCombatProperties
+{
+	// defender sensor bonus state: bit 0 sensor, bit 1 GSP
+	int sensorDefenseState = 0;
+	// sensor offense range for the faction
+	bool withinFriendlySensorRange = false;
+	// friendly base within 2 tiles has defensive facility: land, sea, air, tachyon
+	std::array<bool, 4> fieldFacilities {};
+	// own bases with flechette defense in range
+	int flechetteCount = 0;
+	// friendly AAA vehicle in range
+	bool aaaInRange = false;
+};
+
+/*
 all unit-to-unit combat effects
 */
 struct CombatEffectTable
 {
 private:
 	
-	// each to each unit combat effects not counting terrain
-	// [attackerFactionId][attackerUnitId][defenderFactionId][defenderUnitId][engagementMode] = combatEffect
-    MultiKeyMap<double, int, int, int, int, EngagementMode, MAP const *, MAP const *> combatEffects;
+	// each to each unit combat effects, they are morale neutral: morale is applied per vehicle
+	// a tile is represented by the signature of its properties that influence combat: tiles with the same signature give the same combat effect
+	// [attackerFactionId][attackerUnitId][defenderFactionId][defenderUnitId][engagementMode][attackerTileSignature][defenderTileSignature] = combatEffect
+    MultiKeyMap<double, int, int, int, int, EngagementMode, long long, long long> combatEffects;
+
+	// faction dependent tile properties, valid for one turn
+	// [tileIndex * MaxPlayerNum + factionId]
+	robin_hood::unordered_flat_map<int, TileFactionCombatProperties> tileFactionProperties;
+
+	// statistics and verification
+	MultiKeyMap<char, int, int, int, int, EngagementMode, MAP const *, MAP const *> tileKeyedEffects;
+	long long lookupCount = 0;
+	long long computeCount = 0;
+	long long tileKeyedComputeCount = 0;
+	long long verifyCount = 0;
+	long long mismatchCount = 0;
+
+	TileFactionCombatProperties getTileFactionProperties(MAP const *tile, int factionId);
+	long long getAttackerTileSignature(MAP const *tile, int attackerFactionId, int defenderFactionId);
+	long long getDefenderTileSignature(MAP const *tile, int attackerFactionId, int attackerUnitId, int defenderFactionId, EngagementMode engagementMode);
 
 	static double computeUnitCombatEffect(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, EngagementMode engagementMode, MAP const *attackerTile, MAP const *defenderTile);
 	
@@ -1134,8 +1168,6 @@ double getWinningProbability(double combatEffect);
 double getWinningHealthRatio(double combatEffect);
 double getSensorOffenseMultiplier(int factionId, MAP const *tile);
 double getSensorDefenseMultiplier(int factionId, MAP const *tile);
-double getUnitMeleeOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP const *tile, bool exactLocation);
-double getUnitArtilleryOffenseStrengthMultipler(int attackerFactionId, int attackerUnitId, int defenderFactionId, int defenderUnitId, MAP const *tile, bool exactLocation);
 int getBaseRequiredPolicePower(int baseId);
 double getUnitDestructionGain(int unitId);
 double getProportionalCoefficient(double minValue, double maxValue, double value);

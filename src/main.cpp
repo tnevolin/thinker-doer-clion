@@ -1158,6 +1158,10 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_committedTargetGainMargin = atof(value);
     }
+    else if (MATCH("ai_combatEffectVerification"))
+    {
+        cf->ai_combatEffectVerification = atoi(value);
+    }
     else if (MATCH("ai_citizen_income"))
     {
         cf->ai_citizen_income = atof(value);

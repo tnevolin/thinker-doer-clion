@@ -55,9 +55,6 @@ long long getUnitTravelTimeCacheKey(int factionId, int unitId, int unitSpeed, bo
 	return key;
 }
 
-// map snapshot
-MapSnapshot mapSnapshot;
-
 // faction movement infos
 std::array<FactionMovementInfo, MaxPlayerNum> factionMovementInfos;
 //// approach movement infos
@@ -101,278 +98,9 @@ void populateRouteData()
 		factionMovementInfo.airClusters.clear();
 	}
 	
-	populateMapSnapshot();
 	precomputeRouteData();
 	
 	Profiling::stop("populateRouteData");
-	
-}
-
-void populateMapSnapshot()
-{
-	Profiling::start("populateMapSnapshot", "populateRouteData");
-	
-	debug("populateMapSnapshot - %s\n", aiMFaction->noun_faction);
-	
-	mapSnapshot.mapChanged = false;
-	for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
-	{
-		mapSnapshot.baseChanges.at(factionId).clear();
-	}
-	
-	// check changes
-	
-	if (mapSnapshot.mapTilesReferencingAddress != *MapTiles || static_cast<int>(mapSnapshot.surfaceTypes.size()) != *MapAreaTiles)
-	{
-		// map size changed - invalidate everything
-		
-		mapSnapshot.mapChanged = true;
-		debug("\tmapChanged\n");
-		
-		// reset mapTilesReferencingAddress
-		
-		mapSnapshot.mapTilesReferencingAddress = *MapTiles;
-		
-		// repopulate surfaceTypes
-		
-		mapSnapshot.surfaceTypes.resize(*MapAreaTiles);
-		std::fill(mapSnapshot.surfaceTypes.begin(), mapSnapshot.surfaceTypes.end(), -1);
-		
-		for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
-		{
-			int tileIndex = tile - *MapTiles;
-			int surfaceType = is_ocean(tile) ? 1 : 0;
-			mapSnapshot.surfaceTypes.at(tileIndex) = surfaceType;
-		}
-		
-		// repopulate mapBases
-		
-		mapSnapshot.mapBases.clear();
-		
-		for (int baseId = 0; baseId < *BaseCount; baseId++)
-		{
-			BASE *base = getBase(baseId);
-			MAP *baseTile = getBaseMapTile(baseId);
-			mapSnapshot.mapBases.emplace(baseTile, base->faction_id);
-		}
-		
-	}
-	else
-	{
-		for (MAP *tile = *MapTiles; tile < *MapTiles + *MapAreaTiles; tile++)
-		{
-			int tileIndex = tile - *MapTiles;
-			int surfaceType = is_ocean(tile) ? 1 : 0;
-			
-			if (mapSnapshot.surfaceTypes.at(tileIndex) != surfaceType)
-			{
-				mapSnapshot.mapChanged = true;
-				mapSnapshot.surfaceTypes.at(tileIndex) = surfaceType;
-			}
-			
-		}
-		
-		for (int baseId = 0; baseId < *BaseCount; baseId++)
-		{
-			BASE *base = getBase(baseId);
-			MAP *baseTile = getBaseMapTile(baseId);
-			int baseFactionId = base->faction_id;
-			bool sea = is_ocean(baseTile);
-			bool port = !sea && isBaseAccessesWater(baseId);
-			
-			// base appeared
-			if (mapSnapshot.mapBases.find(baseTile) == mapSnapshot.mapBases.end())
-			{
-				debug("\t%s %-24s - appeared\n", getLocationString(baseTile), Bases[baseId].name);
-				
-				for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
-				{
-					if (isFriendly(factionId, baseFactionId))
-					{
-						if (sea)
-						{
-							mapSnapshot.baseChanges.at(factionId).setFriendlySea();
-						}
-						if (port)
-						{
-							mapSnapshot.baseChanges.at(factionId).setFriendlyPort();
-						}
-					}
-					
-					if (isUnfriendly(factionId, baseFactionId))
-					{
-						if (sea)
-						{
-							mapSnapshot.baseChanges.at(factionId).setUnfriendlySea();
-						}
-						else
-						{
-							mapSnapshot.baseChanges.at(factionId).setUnfriendlyLand();
-						}
-					}
-					
-				}
-				
-				mapSnapshot.mapBases.emplace(baseTile, baseFactionId);
-				
-			}
-			// base factionId changed
-			else if (mapSnapshot.mapBases.at(baseTile) != baseFactionId)
-			{
-				debug("\t%s %-24s - faction changed\n", getLocationString(baseTile), Bases[baseId].name);
-				
-				int oldBaseFactionId = mapSnapshot.mapBases.at(baseTile);
-				int newBaseFactionId = baseFactionId;
-				
-				for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
-				{
-					if (isFriendly(factionId, oldBaseFactionId) || isFriendly(factionId, newBaseFactionId))
-					{
-						if (port)
-						{
-							mapSnapshot.baseChanges.at(factionId).setFriendlyPort();
-						}
-					}
-					
-					if (isUnfriendly(factionId, oldBaseFactionId) || isUnfriendly(factionId, newBaseFactionId))
-					{
-						if (sea)
-						{
-							mapSnapshot.baseChanges.at(factionId).setUnfriendlySea();
-						}
-						else
-						{
-							mapSnapshot.baseChanges.at(factionId).setUnfriendlyLand();
-						}
-					}
-				}
-				
-				mapSnapshot.mapBases.at(baseTile) = baseFactionId;
-				
-			}
-			
-		}
-		
-		for (robin_hood::pair<MAP *, int> &mapBase : mapSnapshot.mapBases)
-		{
-			MAP *baseTile = mapBase.first;
-			int baseFactionId = mapBase.second;
-			TileInfo &tileInfo = aiData.getTileInfo(baseTile);
-			bool sea = tileInfo.ocean;
-			bool port = tileInfo.coast;
-			
-			int baseId = getBaseAt(baseTile);
-			
-			// base disappeared
-			if (baseId == -1)
-			{
-				debug("\t%s %-24s - disappeared\n", getLocationString(baseTile), Bases[baseId].name);
-				
-				for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
-				{
-					if (isFriendly(factionId, baseFactionId))
-					{
-						if (port)
-						{
-							mapSnapshot.baseChanges.at(factionId).setFriendlyPort();
-						}
-					}
-					
-					if (isUnfriendly(factionId, baseFactionId))
-					{
-						if (sea)
-						{
-							mapSnapshot.baseChanges.at(factionId).setUnfriendlySea();
-						}
-						else
-						{
-							mapSnapshot.baseChanges.at(factionId).setUnfriendlyLand();
-						}
-					}
-					
-				}
-				
-				mapSnapshot.mapBases.erase(baseTile);
-				
-			}
-			// base factionId changed
-			else if (baseFactionId != Bases[baseId].faction_id)
-			{
-				debug("\t%s %-24s - faction changed\n", getLocationString(baseTile), Bases[baseId].name);
-				
-				int oldBaseFactionId = baseFactionId;
-				int newBaseFactionId = Bases[baseId].faction_id;
-				
-				for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
-				{
-					if (isFriendly(factionId, oldBaseFactionId) || isFriendly(factionId, newBaseFactionId))
-					{
-						if (port)
-						{
-							mapSnapshot.baseChanges.at(factionId).setFriendlyPort();
-						}
-					}
-					
-					if (isUnfriendly(factionId, oldBaseFactionId) || isUnfriendly(factionId, newBaseFactionId))
-					{
-						if (sea)
-						{
-							mapSnapshot.baseChanges.at(factionId).setUnfriendlySea();
-						}
-						else
-						{
-							mapSnapshot.baseChanges.at(factionId).setUnfriendlyLand();
-						}
-					}
-				}
-				
-				mapSnapshot.mapBases.at(baseTile) = Bases[baseId].faction_id;
-				
-			}
-			
-		}
-		
-	}
-	
-	// diplomatic relations: they define who is friendly, unfriendly and hostile for every faction
-	
-	for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
-	{
-		for (int otherFactionId = 0; otherFactionId < MaxPlayerNum; otherFactionId++)
-		{
-			int relation = isFriendly(factionId, otherFactionId) ? 0 : isHostile(factionId, otherFactionId) ? 2 : 1;
-			
-			if (mapSnapshot.relations.at(factionId).at(otherFactionId) != relation)
-			{
-				debug("\trelation changed: %d -> %d\n", factionId, otherFactionId);
-				mapSnapshot.baseChanges.at(factionId).setAll();
-				mapSnapshot.relations.at(factionId).at(otherFactionId) = relation;
-			}
-			
-		}
-		
-	}
-	
-	// full rebuild after a quiet period catches the changes not tracked above
-	
-	bool changed = mapSnapshot.mapChanged;
-	for (BaseChange const &baseChange : mapSnapshot.baseChanges)
-	{
-		changed = changed || baseChange.any();
-	}
-	
-	if (changed)
-	{
-		mapSnapshot.lastChangeTurn = *CurrentTurn;
-	}
-	else if (*CurrentTurn < mapSnapshot.lastChangeTurn || *CurrentTurn - mapSnapshot.lastChangeTurn >= ROUTE_DATA_REFRESH_TURNS)
-	{
-		debug("\tno change for %d turns - full rebuild\n", ROUTE_DATA_REFRESH_TURNS);
-		mapSnapshot.mapChanged = true;
-		mapSnapshot.lastChangeTurn = *CurrentTurn;
-	}
-	
-	Profiling::stop("populateMapSnapshot");
 	
 }
 
@@ -415,11 +143,6 @@ Computes estimated values on how much faction vehicles will be slowed down passi
 */
 void populateImpediments(int factionId)
 {
-	// skip processing if no changes required
-	
-	if (!(mapSnapshot.mapChanged || mapSnapshot.baseChanges.at(factionId).unfriendly))
-		return;
-	
 	Profiling::start("populateImpediments", "precomputeRouteData");
 	
 	debug("populateImpediments aiFactionId=%d factionId=%d\n", aiFactionId, factionId);
@@ -491,13 +214,11 @@ void populateImpediments(int factionId)
 	
 }
 
+/**
+Airbases are collected every turn: airbase improvements, territory borders and carrier positions change without a base event.
+*/
 void populateAirbases(int factionId)
 {
-	// skip processing if no changes required
-	
-	if (!(mapSnapshot.mapChanged || mapSnapshot.baseChanges.at(factionId).friendly))
-		return;
-	
 	Profiling::start("populateAirbases", "precomputeRouteData");
 	
 	debug("populateAirbases aiFactionId=%d factionId=%d\n", aiFactionId, factionId);
@@ -873,11 +594,6 @@ void populateSeaTransportWaitTimes(int factionId)
 
 void populateSeaCombatClusters(int factionId)
 {
-	// skip processing if no changes required
-	
-	if (!(mapSnapshot.mapChanged || mapSnapshot.baseChanges.at(factionId).unfriendlySea || mapSnapshot.baseChanges.at(factionId).friendlyPort))
-		return;
-	
 	Profiling::start("populateSeaCombatClusters", "precomputeRouteData");
 	
 	debug("populateSeaCombatClusters aiFactionId=%d factionId=%d\n", aiFactionId, factionId);
@@ -1008,11 +724,6 @@ void populateSeaCombatClusters(int factionId)
 
 void populateLandCombatClusters(int factionId)
 {
-	// skip processing if no changes required
-	
-	if (!(mapSnapshot.mapChanged || mapSnapshot.baseChanges.at(factionId).unfriendlyLand))
-		return;
-	
 	Profiling::start("populateLandCombatClusters", "precomputeRouteData");
 	
 	debug("populateLandCombatClusters aiFactionId=%d factionId=%d\n", aiFactionId, factionId);
@@ -1118,11 +829,6 @@ void populateLandCombatClusters(int factionId)
 
 void populateSeaLandmarks(int factionId)
 {
-	// skip processing if no changes required
-	
-	if (!(mapSnapshot.mapChanged || mapSnapshot.baseChanges.at(factionId).unfriendlySea || mapSnapshot.baseChanges.at(factionId).friendlyPort))
-		return;
-	
 	Profiling::start("populateSeaLandmarks", "precomputeRouteData");
 	
 	debug("populateSeaLandmarks - %s\n", aiMFaction->noun_faction);
@@ -1366,11 +1072,6 @@ void populateSeaLandmarks(int factionId)
 
 void populateLandLandmarks(int factionId)
 {
-	// skip processing if no changes required
-	
-	if (!(mapSnapshot.mapChanged || mapSnapshot.baseChanges.at(factionId).unfriendly || mapSnapshot.baseChanges.at(factionId).friendlyPort))
-		return;
-	
 	Profiling::start("populateLandLandmarks", "precomputeRouteData");
 	
 	debug("populateLandLandmarks - aiFactionId=%d factionId=%d\n", aiFactionId, factionId);

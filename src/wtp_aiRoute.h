@@ -11,7 +11,6 @@ constexpr int MIN_LANDMARK_DISTANCE = 30;
 constexpr int MIN_CLUSTER_LANDMARK_DISTANCE = 10;
 // persistent route data is rebuilt when nothing has triggered a rebuild for this many turns
 // safety net for changes that are not tracked directly (roads, forests, fungus, borders)
-constexpr int ROUTE_DATA_REFRESH_TURNS = 10;
 constexpr double A_DISTANCE_TRESHOLD = 10.0;
 
 const double RANGED_AIR_TRAVEL_TIME_COEFFICIENT = 1.5;
@@ -23,81 +22,6 @@ static constexpr double IMPEDIMENT_HOSTILE = 10.0;
 static constexpr double IMPEDIMENT_NEUTRAL = 5.0;
 
 static constexpr double A_TRAVEL_TIME_THRESHOLD = 10.0;
-
-struct BaseChange
-{
-	bool friendly;
-	bool friendlySea;
-	bool friendlyPort;
-	bool unfriendly;
-	bool unfriendlySea;
-	bool unfriendlyLand;
-	
-	void clear()
-	{
-		friendly = false;
-		friendlySea = false;
-		friendlyPort = false;
-		unfriendly = false;
-		unfriendlySea = false;
-		unfriendlyLand = false;
-	}
-	
-	bool any() const
-	{
-		return friendly || friendlySea || friendlyPort || unfriendly || unfriendlySea || unfriendlyLand;
-	}
-	void setAll()
-	{
-		friendly = true;
-		friendlySea = true;
-		friendlyPort = true;
-		unfriendly = true;
-		unfriendlySea = true;
-		unfriendlyLand = true;
-	}
-	void setFriendly()
-	{
-		friendly = true;
-	}
-	void setFriendlySea()
-	{
-		friendly = true;
-		friendlySea = true;
-	}
-	void setFriendlyPort()
-	{
-		friendly = true;
-		friendlyPort = true;
-	}
-	void setUnfriendly()
-	{
-		unfriendly = true;
-	}
-	void setUnfriendlySea()
-	{
-		unfriendly = true;
-		unfriendlySea = true;
-	}
-	void setUnfriendlyLand()
-	{
-		unfriendly = true;
-		unfriendlyLand = true;
-	}
-	
-};
-struct MapSnapshot
-{
-	MAP *mapTilesReferencingAddress;
-	std::vector<int> surfaceTypes;
-	robin_hood::unordered_flat_map<MAP *, int> mapBases;
-	bool mapChanged;
-	std::array<BaseChange, MaxPlayerNum> baseChanges;
-	// diplomatic relation of the first faction to the second: 0 friendly, 1 neutral, 2 hostile
-	std::array<std::array<int, MaxPlayerNum>, MaxPlayerNum> relations;
-	// turn of the last change that triggered a rebuild of the persistent route data
-	int lastChangeTurn = -1000;
-};
 
 /// Route node for A* path search algorithm.
 struct ANode
@@ -236,7 +160,6 @@ struct PlayerFactionMovementInfo
 };
 
 void populateRouteData();
-void populateMapSnapshot();
 void precomputeRouteData();
 
 // ==================================================

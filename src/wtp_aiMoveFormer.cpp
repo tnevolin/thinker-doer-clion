@@ -653,10 +653,7 @@ void populateTerraformingData()
 				// (one known gap: a land former queued for sea transport reads as the pickup tile, not the
 				// final terraforming tile, so it simply won't get the bonus while it is being ferried)
 
-				if (vehicle->order == ORDER_MOVE_TO && isOnMap(vehicle->waypoint_x[0], vehicle->waypoint_y[0]))
-				{
-					newFormerOrder.committedTarget = getMapTile(vehicle->waypoint_x[0], vehicle->waypoint_y[0]);
-				}
+				newFormerOrder.committedTarget = getVehicleMoveToDestination(vehicleId);
 
 			}
 

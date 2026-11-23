@@ -814,7 +814,7 @@ void assignCombatVehicles()
 				bool committed =
 					(getVehicleMapTile(vehicleId) == tile)
 					||
-					(vehicle->order == ORDER_MOVE_TO && vehicle->waypoint_x[0] == getX(tile) && vehicle->waypoint_y[0] == getY(tile))
+					(getVehicleMoveToDestination(vehicleId) == tile)
 				;
 
 				options.push_back({vehicleId, &defendData, (tileInfo.base ? tileInfo.baseId : -1), nullptr, travelTime, travelTimeCoefficient, 0.0, committed});
@@ -852,7 +852,7 @@ void assignCombatVehicles()
 				// to redirect it, otherwise the far pods rotate between the vehicles and nobody arrives
 				// (a vehicle queued for sea transport has the pickup tile as waypoint and does not get the bonus while it is ferried)
 
-				if (vehicle->order == ORDER_MOVE_TO && vehicle->waypoint_x[0] == getX(podRequest.tile) && vehicle->waypoint_y[0] == getY(podRequest.tile))
+				if (getVehicleMoveToDestination(vehicleId) == podRequest.tile)
 				{
 					gain *= (1.0 + conf.ai_committedTargetGainMargin);
 				}

@@ -1377,6 +1377,7 @@ bool isSurfaceVehicle(int vehicleId);
 bool isBombardmentUnit(int unitId);
 bool isBombardmentVehicle(int vehicleId);
 void setVehicleWaypoints(int vehicleId,  std::vector<MAP *> waypoints);
+MAP *getVehicleMoveToDestination(int vehicleId);
 bool isHoveringLandUnit(int unitId);
 bool isHoveringLandVehicle(int vehicleId);
 bool isEasyFungusEnteringLandUnit(int unitId);
