@@ -19,6 +19,10 @@ A CSV with all collected values is written only when -stats is given.
 energy allocation, research, treaties), base (B: what it builds), vehicle (V: order and destination) after every round,
 and a map of the land tiles (M) at the start, every 50 rounds and at the end.
 
+Combat statistics measure how well a faction fights over many turns: the damage in HP the factions dealt to each other
+(what the engine applied and what the fights were expected to cost) and the HP that was healed back.
+The summary in autoplay.log reports the faction given by ai_experimentFaction (all factions that fought when it is 0).
+
 -set overrides any thinker.ini option for this run only (e.g. -set ai_terraforming_mineralWeight=2.0).
 The yield of the AI factions (nutrient surplus, mineral surplus, economy plus labs) is logged after each round,
 together with a score that uses fixed reference weights, so no scanned parameter can move the yardstick.
@@ -170,6 +174,15 @@ void autoplay_journal_transit(int vehicleId, char const* passengerClass, int ori
 void autoplay_journal_garrison(int vehicleId, int kind, int destinationX, int destinationY);
 // one row of the defense experiment: candidate efficiency for the given attacker artillery share, bombardment rounds and defenders
 void autoplay_journal_experiment(int factionId, double rounds, double artilleryShare, int defenders, bool sufficient, char const* role, char const* unitName, double efficiency);
+// combat statistics, summed over the run: the HP of damage the factions dealt to each other; no-ops outside autoplay
+// the damage the engine applied to a vehicle of the victim faction
+void autoplay_battle_damage(int victimFactionId, int inflicterFactionId, int hp);
+// the damage a melee fight is expected to cost both sides, from the strengths and HP of the two vehicles (called before the rounds)
+void autoplay_battle_expected_melee(int attackerFactionId, int defenderFactionId, int attackerHp, int attackerHit, int defenderHp, int defenderHit, int offense, int defense);
+// the damage a bombardment is expected to do to one defender (the damage is limited so the defender keeps damageLimit HP of its own)
+void autoplay_battle_expected_bombardment(int attackerFactionId, int defenderFactionId, int defenderHp, int damageLimit, int offenseValue, int defenseValue, int reactor);
+// the HP a vehicle of the faction healed
+void autoplay_battle_heal(int factionId, int hp);
 // append a line to autoplay.log
 void autoplay_log(const char* format, ...);
 

@@ -472,6 +472,7 @@ struct Config {
     double ai_statistics_base_growth_b;
     double ai_committedTargetGainMargin;
     int ai_combatEffectVerification = 0;
+    int ai_experimentFaction = 0;
     double ai_citizen_income;
     double ai_production_priority_coefficient;
     double ai_production_vanilla_priority_unit;

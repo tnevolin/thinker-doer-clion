@@ -1162,6 +1162,10 @@ int option_handler(void* user, const char* section, const char* name, const char
     {
         cf->ai_combatEffectVerification = atoi(value);
     }
+    else if (MATCH("ai_experimentFaction"))
+    {
+        cf->ai_experimentFaction = atoi(value);
+    }
     else if (MATCH("ai_citizen_income"))
     {
         cf->ai_citizen_income = atof(value);

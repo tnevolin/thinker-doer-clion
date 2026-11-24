@@ -1,6 +1,7 @@
 
 #include "veh_combat.h"
 #include "wtp_mod.h"
+#include "wtp_autoplay.h"
 
 
 static void reset_veh_draw() {
@@ -2112,6 +2113,10 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
                         combat_type = CT_CAN_ARTY;
                     }
                 }
+                // [WTP]
+                // autoplay combat statistics: expected and real bombardment damage
+                autoplay_battle_expected_bombardment(faction_id_atk, veh_def->faction_id, veh_def->cur_hitpoints(), damage_limit, off_value, def_value, veh_def->reactor_type());
+                autoplay_battle_damage(veh_def->faction_id, faction_id_atk, damage_value);
                 veh_def->damage_taken += damage_value;
                 veh_def->state |= VSTATE_HAS_MOVED;
                 if (veh_def->is_former()) {
@@ -2233,6 +2238,10 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
     int draw_x = 0;
     int draw_y = 0;
 
+    // [WTP]
+    // autoplay combat statistics: expected losses of the fight
+    autoplay_battle_expected_melee(faction_id_atk, faction_id_def, veh_atk->cur_hitpoints(), veh_atk_val, veh_def->cur_hitpoints(), veh_def_val, offense_out, defense_out);
+
     while (veh_atk->cur_hitpoints() > 0 && veh_def->cur_hitpoints() > 0) {
 		
 		// [WTP]
@@ -2249,6 +2258,7 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
 		//
 		
             veh_atk->damage_taken += veh_atk_val;
+            autoplay_battle_damage(faction_id_atk, faction_id_def, veh_atk_val); // [WTP]
             if (render_battle && damage_mod
             && veh_atk->damage_taken / (veh_atk_val * damage_mod)
             != (veh_atk->damage_taken - veh_atk_val) / (veh_atk_val * damage_mod)) {
@@ -2265,6 +2275,7 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
             }
         } else {
             veh_def->damage_taken += veh_def_val;
+            autoplay_battle_damage(faction_id_def, faction_id_atk, veh_def_val); // [WTP]
             if (render_battle && damage_mod
             && veh_def->damage_taken / (veh_def_val * damage_mod)
             != (veh_def->damage_taken - veh_def_val) / (veh_def_val * damage_mod)) {
@@ -2576,6 +2587,7 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
                 && (veh->order != ORDER_SENTRY_BOARD
                 || veh->waypoint_x[0] == veh_id_def
                 || veh->waypoint_x[0] < 0)) {
+                    autoplay_battle_damage(veh->faction_id, faction_id_atk, veh->cur_hitpoints()); // [WTP]
                     veh->damage_taken = veh->max_hitpoints();
                     num_damaged++;
                 }
@@ -2587,6 +2599,7 @@ int __cdecl mod_battle_fight_2(int veh_id_atk, int offset, int tx, int ty, int t
                     } else {
                         value = veh->reactor_type();
                     }
+                    autoplay_battle_damage(veh->faction_id, faction_id_atk, std::min(conf.collateral_damage_value * value, veh->cur_hitpoints())); // [WTP]
                     veh->damage_taken += conf.collateral_damage_value * value;
                     veh->state |= VSTATE_HAS_MOVED;
                     num_damaged++;

@@ -1,6 +1,7 @@
 #include "wtp_autoplay.h"
 
 #include <cstdarg>
+#include <cstring>
 #include <map>
 #include <algorithm>
 #include <vector>
@@ -46,6 +47,202 @@ void autoplay_log(const char* format, ...)
 	va_end(args);
 	fputc('\n', logFile);
 	fflush(logFile);
+}
+
+/*
+Combat statistics, summed over the whole run. [victim][inflicter], faction 0 is the natives.
+real: HP of damage the engine applied.
+expected: HP the fights were expected to cost both sides, computed from the strengths and HP of the two vehicles when the fight starts,
+so the luck of the dice is not in it.
+fights: [attacker][defender] battles (a bombardment counts once for every defender it hits).
+healed: HP the vehicles of a faction healed back.
+*/
+static long long combatReal[MaxPlayerNum][MaxPlayerNum];
+static double combatExpected[MaxPlayerNum][MaxPlayerNum];
+static long long combatFights[MaxPlayerNum][MaxPlayerNum];
+static long long combatHealed[MaxPlayerNum];
+
+static void resetCombatStats()
+{
+	memset(combatReal, 0, sizeof(combatReal));
+	memset(combatExpected, 0, sizeof(combatExpected));
+	memset(combatFights, 0, sizeof(combatFights));
+	memset(combatHealed, 0, sizeof(combatHealed));
+}
+
+static bool combatFactionsValid(int firstFactionId, int secondFactionId)
+{
+	return autoplay.active
+		&& firstFactionId >= 0 && firstFactionId < MaxPlayerNum
+		&& secondFactionId >= 0 && secondFactionId < MaxPlayerNum
+		&& firstFactionId != secondFactionId;
+}
+
+void autoplay_battle_damage(int victimFactionId, int inflicterFactionId, int hp)
+{
+	if (hp <= 0 || !combatFactionsValid(victimFactionId, inflicterFactionId))
+		return;
+	combatReal[victimFactionId][inflicterFactionId] += hp;
+}
+
+/*
+Every round the attacker loses with probability defense / (offense + defense), the defender otherwise.
+A loss costs the vehicle its hit value, the fight ends when one of them has no HP left.
+Walks the distribution over the hits both vehicles have left.
+*/
+void autoplay_battle_expected_melee(int attackerFactionId, int defenderFactionId, int attackerHp, int attackerHit, int defenderHp, int defenderHit, int offense, int defense)
+{
+	if (!combatFactionsValid(attackerFactionId, defenderFactionId) || attackerHp <= 0 || defenderHp <= 0)
+		return;
+
+	attackerHit = std::max(1, attackerHit);
+	defenderHit = std::max(1, defenderHit);
+	offense = std::max(1, offense);
+	defense = std::max(1, defense);
+
+	int attackerHits = (attackerHp + attackerHit - 1) / attackerHit;
+	int defenderHits = (defenderHp + defenderHit - 1) / defenderHit;
+	double attackerLosesRound = static_cast<double>(defense) / static_cast<double>(offense + defense);
+
+	// probability to have attackerLeft and defenderLeft hits left
+	std::vector<double> probabilities((attackerHits + 1) * (defenderHits + 1), 0.0);
+	auto at = [&](int attackerLeft, int defenderLeft) -> double&
+	{
+		return probabilities[attackerLeft * (defenderHits + 1) + defenderLeft];
+	};
+	at(attackerHits, defenderHits) = 1.0;
+
+	double attackerLoss = 0.0;
+	double defenderLoss = 0.0;
+
+	for (int attackerLeft = attackerHits; attackerLeft >= 1; attackerLeft--)
+	{
+		for (int defenderLeft = defenderHits; defenderLeft >= 1; defenderLeft--)
+		{
+			double probability = at(attackerLeft, defenderLeft);
+
+			if (probability == 0.0)
+				continue;
+
+			double attackerHpLeft = attackerHp - (attackerHits - attackerLeft) * attackerHit;
+			double defenderHpLeft = defenderHp - (defenderHits - defenderLeft) * defenderHit;
+
+			attackerLoss += probability * attackerLosesRound * std::min(static_cast<double>(attackerHit), attackerHpLeft);
+			defenderLoss += probability * (1.0 - attackerLosesRound) * std::min(static_cast<double>(defenderHit), defenderHpLeft);
+			at(attackerLeft - 1, defenderLeft) += probability * attackerLosesRound;
+			at(attackerLeft, defenderLeft - 1) += probability * (1.0 - attackerLosesRound);
+
+		}
+
+	}
+
+	combatExpected[attackerFactionId][defenderFactionId] += attackerLoss;
+	combatExpected[defenderFactionId][attackerFactionId] += defenderLoss;
+	combatFights[attackerFactionId][defenderFactionId]++;
+
+}
+
+/*
+The bombardment damage is offense / defense in whole HP plus one more with the probability of the remainder.
+The attacker takes no damage.
+*/
+void autoplay_battle_expected_bombardment(int attackerFactionId, int defenderFactionId, int defenderHp, int damageLimit, int offenseValue, int defenseValue, int reactor)
+{
+	if (!combatFactionsValid(attackerFactionId, defenderFactionId))
+		return;
+
+	defenseValue = std::max(1, defenseValue);
+	offenseValue = std::max(1, offenseValue);
+	int damageCap = std::max(0, defenderHp - damageLimit);
+	int wholeDamage = offenseValue / defenseValue;
+	double extraProbability = static_cast<double>(offenseValue % defenseValue) / static_cast<double>(defenseValue);
+
+	double expectedDamage =
+		(1.0 - extraProbability) * std::min(wholeDamage * reactor, damageCap)
+		+ extraProbability * std::min((wholeDamage + 1) * reactor, damageCap);
+
+	combatExpected[defenderFactionId][attackerFactionId] += expectedDamage;
+	combatFights[attackerFactionId][defenderFactionId]++;
+
+}
+
+void autoplay_battle_heal(int factionId, int hp)
+{
+	if (!autoplay.active || hp <= 0 || factionId < 0 || factionId >= MaxPlayerNum)
+		return;
+	combatHealed[factionId] += hp;
+}
+
+static double combatBalance(double dealt, double taken)
+{
+	return dealt + taken > 0.0 ? (dealt - taken) / (dealt + taken) : 0.0;
+}
+
+/*
+Per faction, against all the other factions (not natives):
+matchup: the balance of the expected damage dealt and taken, no luck and no healing.
+healing: the HP the enemies healed back, split over their attackers in proportion to the damage each dealt to them over the whole run,
+as a share of the damage the faction dealt (lower is better); the faction's own healed share of the damage it took beside it.
+*/
+static void logCombatSummary()
+{
+	int experimentFactionId = conf.ai_experimentFaction;
+	bool anyHealing = false;
+	for (int factionId = 0; factionId < MaxPlayerNum; factionId++)
+		anyHealing = anyHealing || combatHealed[factionId] > 0;
+
+	autoplay_log("combat statistics (HP, whole run), experiment faction %d%s", experimentFactionId, anyHealing ? "" : ", no healing recorded");
+
+	for (int factionId = 1; factionId < MaxPlayerNum; factionId++)
+	{
+		if (experimentFactionId > 0 && factionId != experimentFactionId)
+			continue;
+
+		double dealtReal = 0.0, dealtExpected = 0.0, takenReal = 0.0, takenExpected = 0.0;
+		long long fights = 0;
+		double enemyHealedAttributed = 0.0;
+
+		for (int otherFactionId = 1; otherFactionId < MaxPlayerNum; otherFactionId++)
+		{
+			if (otherFactionId == factionId)
+				continue;
+
+			dealtReal += static_cast<double>(combatReal[otherFactionId][factionId]);
+			dealtExpected += combatExpected[otherFactionId][factionId];
+			takenReal += static_cast<double>(combatReal[factionId][otherFactionId]);
+			takenExpected += combatExpected[factionId][otherFactionId];
+			fights += combatFights[factionId][otherFactionId] + combatFights[otherFactionId][factionId];
+
+			// share of the enemy healing that belongs to this faction
+			double enemyTaken = 0.0;
+			for (int inflicterFactionId = 1; inflicterFactionId < MaxPlayerNum; inflicterFactionId++)
+			{
+				if (inflicterFactionId != otherFactionId)
+					enemyTaken += static_cast<double>(combatReal[otherFactionId][inflicterFactionId]);
+			}
+			if (enemyTaken > 0.0)
+				enemyHealedAttributed += static_cast<double>(combatHealed[otherFactionId]) * static_cast<double>(combatReal[otherFactionId][factionId]) / enemyTaken;
+
+		}
+
+		if (fights == 0)
+			continue;
+
+		autoplay_log("\tfaction %d %s: fights %lld | dealt real %.0f expected %.1f | taken real %.0f expected %.1f"
+			" | matchup %.3f (real %.3f) | luck dealt %.0f taken %.0f",
+			factionId, MFactions[factionId].noun_faction, fights, dealtReal, dealtExpected, takenReal, takenExpected,
+			combatBalance(dealtExpected, takenExpected), combatBalance(dealtReal, takenReal),
+			dealtReal - dealtExpected, takenReal - takenExpected);
+
+		if (anyHealing)
+		{
+			autoplay_log("\t\tconcentration: enemy healed back %.1f of %.0f dealt = %.3f (lower is better) | own healed %lld of %.0f taken = %.3f",
+				enemyHealedAttributed, dealtReal, dealtReal > 0.0 ? enemyHealedAttributed / dealtReal : 0.0,
+				combatHealed[factionId], takenReal, takenReal > 0.0 ? static_cast<double>(combatHealed[factionId]) / takenReal : 0.0);
+		}
+
+	}
+
 }
 
 /*
@@ -540,6 +737,8 @@ T	turn faction base name | attacker kinds, total attacker power | defenders assi
 		| best defensive unit the base can build, its efficiency (attacker power destroyed per own power lost) (written during the faction turn)
 E	turn faction | expected bombardment rounds, attacker artillery share, defenders (0/1), sufficient (0/1) | candidate role, unit | efficiency (-defenseexperiment)
 M	turn phase x y | altitude, rocky, moisture climate bits, owner, contour, items, landmarks
+W	turn victim inflicter | HP of damage the engine applied, HP the fights were expected to cost, fights (summed from the start, faction 0 is the natives)
+H	turn faction | HP healed back (summed from the start)
 */
 static FILE* journalFile = nullptr;
 
@@ -697,6 +896,22 @@ static void recordJournal()
 			fprintf(journalFile, "P\t%d\t%d\t%d\n", turn, getX(mapIndex), getY(mapIndex));
 	}
 
+	for (int victimFactionId = 0; victimFactionId < MaxPlayerNum; victimFactionId++)
+	{
+		for (int inflicterFactionId = 0; inflicterFactionId < MaxPlayerNum; inflicterFactionId++)
+		{
+			if (combatReal[victimFactionId][inflicterFactionId] == 0 && combatExpected[victimFactionId][inflicterFactionId] == 0.0)
+				continue;
+			fprintf(journalFile, "W\t%d\t%d\t%d\t%lld\t%.2f\t%lld\n", turn, victimFactionId, inflicterFactionId,
+				combatReal[victimFactionId][inflicterFactionId], combatExpected[victimFactionId][inflicterFactionId],
+				combatFights[inflicterFactionId][victimFactionId]);
+		}
+
+		if (combatHealed[victimFactionId] > 0)
+			fprintf(journalFile, "H\t%d\t%d\t%lld\n", turn, victimFactionId, combatHealed[victimFactionId]);
+
+	}
+
 	fflush(journalFile);
 }
 
@@ -792,6 +1007,7 @@ void autoplay_after_load()
 	startTurn = *CurrentTurn;
 	stopRequested = false;
 	finished = false;
+	resetCombatStats();
 
 	if (!autoplay.statsPath.empty())
 	{
@@ -901,6 +1117,7 @@ static void finish(const char* reason)
 			autoplay_log("	caller %p: %d calls, %lld ms", reinterpret_cast<void*>(byTime[i].second), entry.first, entry.second);
 		}
 	}
+	logCombatSummary();
 	if (statsFile)
 	{
 		fclose(statsFile);

@@ -1823,6 +1823,7 @@ void __cdecl repair_phase(int faction_id) {
         }
         int damage = clamp(veh->damage_taken - repair_value, repair_limit, 255);
         if (damage < veh->damage_taken) {
+            autoplay_battle_heal(veh->faction_id, veh->damage_taken - damage); // [WTP] autoplay combat statistics
             veh->damage_taken = damage;
             if (damage <= repair_limit && is_human(faction_id)
             && veh->order == ORDER_SENTRY_BOARD
